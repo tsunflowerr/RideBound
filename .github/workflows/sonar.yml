@@ -41,7 +41,7 @@ jobs:
         if: steps.config.outputs.enabled == 'true'
         with:
           fetch-depth: 0
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         if: steps.config.outputs.enabled == 'true'
         with:
           global-json-file: global.json

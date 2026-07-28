@@ -58,6 +58,16 @@ public sealed class DependencyRuleTests
     }
 
     [Theory]
+    [InlineData(@"..\RideBound.Domain\RideBound.Domain.csproj", "RideBound.Domain")]
+    [InlineData("../RideBound.Domain/RideBound.Domain.csproj", "RideBound.Domain")]
+    public void Project_reference_names_are_portable_across_path_styles(
+        string projectReference,
+        string expectedProjectName)
+    {
+        Assert.Equal(expectedProjectName, GetProjectName(projectReference));
+    }
+
+    [Theory]
     [InlineData("RideBound.Domain")]
     [InlineData("RideBound.Application")]
     [InlineData("RideBound.Contracts")]
@@ -143,9 +153,16 @@ public sealed class DependencyRuleTests
             .Descendants("ProjectReference")
             .Select(element => element.Attribute("Include")?.Value)
             .Where(value => value is not null)
-            .Select(value => Path.GetFileNameWithoutExtension(value!))
+            .Select(value => GetProjectName(value!))
             .Order(StringComparer.Ordinal)
             .ToArray();
+    }
+
+    private static string GetProjectName(string projectReference)
+    {
+        var normalized = projectReference.Replace('\\', '/');
+        var fileName = normalized[(normalized.LastIndexOf('/') + 1)..];
+        return Path.GetFileNameWithoutExtension(fileName);
     }
 
     private static string FindRepositoryRoot()

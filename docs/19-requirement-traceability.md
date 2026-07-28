@@ -4,7 +4,7 @@
 
 | ID | Yêu cầu | Thiết kế/tài liệu | Artifact dự kiến | Verification | Trạng thái |
 |---|---|---|---|---|---|
-| R-001 | Hệ thống RideBound độc lập | `05` | `Domain/Application/Runner` trong Git repo riêng | 5 architecture tests | WP0 verified |
+| R-001 | Hệ thống RideBound độc lập | `05` | `Domain/Application/Runner` trong Git repo riêng | 5 architecture rules + 2 cross-platform path cases | WP0 verified; Linux CI rerun pending |
 | R-002 | Gắn được vào BeGo | `02`, `14` | BeGo adapter/API | integration replay | Planned |
 | R-003 | Core mang sang benchmark | `05`, `06` | contracts + runner | same binary hash | Planned |
 | R-004 | Layer 1 cùng codebase | `09` | B1/C1 chung RideBound engine; BeGo export adapter | paired runs | Planned |
@@ -46,6 +46,8 @@ khác tại work package có behavior thật; không scaffold assembly rỗng.
 - 7 source project và 2 test project;
 - `tests/RideBound.ArchitectureTests/DependencyRuleTests.cs`;
 - root `README.md`, `AGENTS.md`, GitHub Actions CI;
+- PR template, Dependabot, format/test/coverage/dependency gates, conditional
+  Sonar Quality Gate và conditional PR-Agent review;
 - `benchmarks/`, `simulators/`, `scripts/`, `artifacts/` có boundary README;
 - 6/6 RideBound tests cùng 25/25 backend và 7/7 frontend BeGo regression pass.
 

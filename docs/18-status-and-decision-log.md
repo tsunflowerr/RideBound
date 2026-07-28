@@ -36,6 +36,10 @@
 - Tạo `RideBound.slnx` với 7 source project và 2 test project.
 - Khóa dependency Clean Architecture/DDD bằng architecture tests.
 - Thêm `global.json`, shared build policy, `.editorconfig`, CI và README.
+- Sửa architecture test để đọc `ProjectReference` dùng cả dấu phân cách Windows và
+  Linux; bổ sung regression cases cho hai kiểu đường dẫn.
+- Mở rộng CI thành các gate format, Release build/test/coverage, dependency audit,
+  main runner artifact, Sonar Quality Gate tùy cấu hình và PR-Agent tùy cấu hình.
 - Chuyển 23 tài liệu lõi cùng archive evidence liên quan sang `docs/` và tạo root `AGENTS.md`.
 - Xác minh 37 tệp Markdown/6.821 dòng: 0 link nội bộ hỏng, 0 code fence lệch,
   0 dấu hiệu mojibake; kèm 3 JSON evidence machine-readable.
@@ -66,6 +70,19 @@
 Build Release: 0 warnings, 0 errors
 Architecture tests: 5 passed
 Domain smoke tests: 1 passed
+Date: 2026-07-28
+```
+
+### CI hardening task
+
+```text
+Release build: passed, 0 warnings, 0 errors
+Whitespace format verification: passed
+NuGet vulnerability audit: no vulnerable direct/transitive packages
+Runner publish smoke: passed
+Architecture reference graph with normalized separators: passed
+Local xUnit execution: blocked by Windows Application Control (0x800711C7)
+Linux CI confirmation: pending
 Date: 2026-07-28
 ```
 
@@ -183,6 +200,21 @@ tests kiểm project graph và từ khóa framework bị cấm.
 **Consequence:** Chỉ thêm adapter/persistence project khi có behavior thật;
 không scaffold hàng loạt assembly rỗng.
 
+### ADR-012 — 2026-07-28 — Accepted
+
+**Context:** Architecture test đọc dấu `\` trong `ProjectReference` bằng API path
+phụ thuộc hệ điều hành, tạo false positive trên Linux CI. CI WP0 cũng mới chỉ có
+restore/build/test nên chưa hiện thực đầy đủ PR fast gates trong tài liệu `15`.
+
+**Decision:** Chuẩn hóa separator trước khi lấy project name và khóa lỗi bằng hai
+regression cases Windows/Linux. Tách CI thành format, Release build/test/coverage,
+NuGet/dependency review và package runner sau main. Sonar và PR-Agent được khai báo
+nhưng chỉ chạy khi repository secrets/variables tương ứng đã tồn tại.
+
+**Consequence:** Architecture rule giữ nguyên; chỉ cách đọc `.csproj` trở nên
+cross-platform. AI review không phải required correctness gate. Sonar chỉ được đặt
+required sau khi cấu hình và bootstrap scan thành công.
+
 ## 8. Work package tracker
 
 | WP | Trạng thái | Bắt đầu | Kết thúc | Evidence |
@@ -203,6 +235,9 @@ không scaffold hàng loạt assembly rỗng.
 
 ## 9. Change history
 
+- 2026-07-28: Sửa false positive architecture test trên Linux và mở rộng CI quality
+  gates; Release build local sạch, test local chờ Linux CI xác nhận do Windows
+  Application Control chặn nạp DLL test.
 - 2026-07-28: Tách RideBound thành Git repository riêng, hoàn tất WP0 scaffold và chuyển next action sang WP1.
 - 2026-07-27: Hoàn tất kiểm tra cấu trúc và mã hóa; chuyển docs sang `COMPLETE_V1_VERIFIED_PENDING_USER_REVIEW`.
 - 2026-07-27: Khởi tạo status log và docs v1.

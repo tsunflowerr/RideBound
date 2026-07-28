@@ -192,6 +192,31 @@ Mọi integration change giữ ít nhất các test này. Nếu test count đổ
 - artifact checksum;
 - paired experiment.
 
+### CI đã triển khai cho WP0
+
+Các workflow trong `.github/workflows` hiện thực hóa gate ban đầu như sau:
+
+- `ci.yml` chạy khi mở/cập nhật PR, push `main`, hoặc chạy thủ công:
+  - kiểm tra whitespace bằng `dotnet format`;
+  - build Release với warning là error;
+  - chạy toàn bộ test và thu OpenCover/TRX làm evidence;
+  - audit package transitive và dependency diff của PR;
+  - chỉ sau khi main pass mới publish runner artifact có tên gắn commit SHA.
+- `sonar.yml` build/test lại bên trong SonarScanner for .NET và chờ Quality Gate.
+  Workflow chỉ bật khi repository có secret `SONAR_TOKEN` và variables
+  `SONAR_PROJECT_KEY`, `SONAR_ORGANIZATION`; thiếu cấu hình thì phát notice thay vì
+  làm mọi PR fail.
+- `pr-agent.yml` cung cấp review/description tự động cho PR không phải draft. Workflow
+  chỉ bật khi có secret `OPENAI_KEY`; review AI là tín hiệu hỗ trợ, không thay thế
+  format, build, test, architecture rule hoặc human approval.
+- Dependabot cập nhật NuGet và GitHub Actions hàng tuần. Dependency review yêu cầu
+  public repository hoặc GitHub Advanced Security nếu repository là private.
+
+Branch protection nên yêu cầu tối thiểu `Code formatting`,
+`Build, test and coverage`, `NuGet vulnerability audit` và `Dependency review`.
+Chỉ thêm `Sonar quality gate` vào required checks sau khi ba giá trị Sonar ở trên
+đã được cấu hình và một lần scan main thành công.
+
 ## 12. Reproducibility bundle
 
 Mỗi result bundle có:

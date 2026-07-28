@@ -1,0 +1,29 @@
+# .NET build output
+**/bin/
+**/obj/
+TestResults/
+coverage/
+*.trx
+
+# IDE and operating-system files
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+.DS_Store
+Thumbs.db
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+appsettings.*.local.json
+secrets.json
+
+# Experiment output and downloaded/vendor content
+artifacts/*
+!artifacts/README.md
+benchmarks/results/
+tmp/
+vendor/

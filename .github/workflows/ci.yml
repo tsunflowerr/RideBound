@@ -1,0 +1,26 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  dotnet:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/*.csproj"
+      - name: Restore
+        run: dotnet restore RideBound.slnx
+      - name: Build
+        run: dotnet build RideBound.slnx --no-restore --configuration Release
+      - name: Test
+        run: dotnet test RideBound.slnx --no-build --configuration Release

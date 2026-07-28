@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\RideBound.Application\RideBound.Application.csproj" />
+    <ProjectReference Include="..\RideBound.Algorithms\RideBound.Algorithms.csproj" />
+    <ProjectReference Include="..\RideBound.Contracts\RideBound.Contracts.csproj" />
+    <ProjectReference Include="..\RideBound.Infrastructure\RideBound.Infrastructure.csproj" />
+    <ProjectReference Include="..\RideBound.Solvers.OrTools\RideBound.Solvers.OrTools.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

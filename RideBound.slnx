@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/RideBound.Algorithms/RideBound.Algorithms.csproj" />
+    <Project Path="src/RideBound.Application/RideBound.Application.csproj" />
+    <Project Path="src/RideBound.Contracts/RideBound.Contracts.csproj" />
+    <Project Path="src/RideBound.Domain/RideBound.Domain.csproj" />
+    <Project Path="src/RideBound.Infrastructure/RideBound.Infrastructure.csproj" />
+    <Project Path="src/RideBound.Runner/RideBound.Runner.csproj" />
+    <Project Path="src/RideBound.Solvers.OrTools/RideBound.Solvers.OrTools.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/RideBound.ArchitectureTests/RideBound.ArchitectureTests.csproj" />
+    <Project Path="tests/RideBound.Domain.Tests/RideBound.Domain.Tests.csproj" />
+  </Folder>
+</Solution>

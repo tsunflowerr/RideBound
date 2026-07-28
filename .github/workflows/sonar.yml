@@ -37,7 +37,7 @@ jobs:
             echo "enabled=false" >> "$GITHUB_OUTPUT"
             echo "::notice::Sonar is disabled. Configure SONAR_TOKEN, SONAR_PROJECT_KEY and SONAR_ORGANIZATION."
           fi
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         if: steps.config.outputs.enabled == 'true'
         with:
           fetch-depth: 0

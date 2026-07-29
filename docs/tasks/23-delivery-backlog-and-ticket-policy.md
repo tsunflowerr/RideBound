@@ -129,17 +129,17 @@ WP11 không nằm trên critical path nghiên cứu và không được làm ch�
 WP1 `RB-WP1-001..015` đã hoàn thành theo
 [24-wp1-contracts-ticket-plan.md](24-wp1-contracts-ticket-plan.md).
 
-WP2 refinement `RB-WP2-001` cũng đã hoàn thành. ADR-018 khóa state ownership,
-atomic reducer, route prefix/suffix và O-001. Ordered queue `RB-WP2-002..012`
-nằm trong
+WP2 `RB-WP2-001..006` đã hoàn thành. ADR-018/019 khóa và hiện thực state
+ownership, atomic reducer, route prefix/suffix, O-001 và physical validator.
+Ordered queue còn lại `RB-WP2-007..012` nằm trong
 [26-wp2-online-baseline-ticket-plan.md](26-wp2-online-baseline-ticket-plan.md).
 
 Ticket implementation duy nhất hiện `READY`:
 
-> **RB-WP2-002 — Typed online input contracts và fixtures**
+> **RB-WP2-007 — Deterministic insertion candidate generator**
 
-Không bắt đầu Domain state/reducer/B1 trước khi contract payload/fixture của
-ticket này có evidence.
+Không bắt đầu B1 fleet selection trước khi generator dùng chung physical
+validator, stable order và no-op candidate có evidence.
 
 ## 9. Template refinement cho topic kế tiếp
 
@@ -166,4 +166,4 @@ Không copy BDD của WP1 sang topic khác nếu semantics khác.
 6. Chỉ đóng topic khi toàn bộ exit gate trong `16` đạt.
 
 Theo trạng thái ngày 2026-07-29, ticket tiếp theo phải thực hiện là
-**RB-WP2-002**.
+**RB-WP2-007**.

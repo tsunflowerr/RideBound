@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/tsunflowerr/RideBound/main/benchmarks/schemas/v1/travel-arc.schema.json",
+  "title": "RideBound directed travel arc v1",
+  "type": "object",
+  "required": [
+    "fromNodeId",
+    "toNodeId",
+    "travelTimeMs"
+  ],
+  "properties": {
+    "fromNodeId": {
+      "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+    },
+    "toNodeId": {
+      "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+    },
+    "travelTimeMs": {
+      "$ref": "definitions.schema.json#/$defs/canonicalNonNegativeInteger"
+    }
+  },
+  "additionalProperties": false
+}

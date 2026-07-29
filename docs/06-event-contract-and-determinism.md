@@ -228,6 +228,9 @@ Framework không có hai bước offer/confirm có thể phát `requestArrived` 
 
 ## 6. Request contract tối thiểu
 
+`requestArrived.payload` bọc object dưới field `request`; object bên trong có
+shape:
+
 ```json
 {
   "requestId": "r-1042",
@@ -245,6 +248,10 @@ Framework không có hai bước offer/confirm có thể phát `requestArrived` 
 
 `serviceClass` chỉ là policy label đã công bố. Không biến thuộc tính giả thành nhóm người thật.
 
+Các event request-reference (`bookingConfirmed`, `offerDeclined` và hai
+cancellation) dùng đúng `{ "requestId": "..." }`. Runtime codec và schema v1
+từ chối unknown/duplicate/null/fraction/out-of-range field.
+
 ## 7. Vehicle snapshot tối thiểu
 
 ```json
@@ -261,8 +268,27 @@ Framework không có hai bước offer/confirm có thể phát `requestArrived` 
   },
   "onboardRequestIds": ["r-1001", "r-1010"],
   "acceptedRequestIds": ["r-1001", "r-1010", "r-1033"],
-  "executedStopCount": 8,
-  "planVersion": 15
+  "route": {
+    "planVersion": 15,
+    "executedStopCount": 1,
+    "frozenPrefix": [
+      {
+        "stopId": "s-08",
+        "nodeId": "n-100",
+        "kind": "waypoint",
+        "serviceDurationMs": 0
+      }
+    ],
+    "mutableSuffix": [
+      {
+        "stopId": "s-drop-r-1033",
+        "nodeId": "n-120",
+        "kind": "dropOff",
+        "requestId": "r-1033",
+        "serviceDurationMs": 0
+      }
+    ]
+  }
 }
 ```
 
@@ -287,6 +313,28 @@ Nếu policy cần freeze leg đang chạy mà adapter chỉ có `nodeOnly`, man
 chọn policy downgrade đã đặt tên hoặc handshake fail. Không tự đặt progress bằng
 0/1000. Quyết định này đóng phần contract của O-006; khả năng FleetPy trích xuất
 đúng progress vẫn là preflight adapter ở WP7.
+
+### 7.1. Typed online payload WP2
+
+Từ `RB-WP2-002`, `protocol-event.schema.json` dispatch payload theo exact
+`eventType`; không còn `fixtureIntent` hoặc catch-all object cho field đã khóa:
+
+| Event | Payload v1 |
+|---|---|
+| `requestArrived` | `{ request: RequestContract }` |
+| booking/offer/two cancellation | `{ requestId }` |
+| `vehicleAdvanced` | `{ vehicle: VehicleSnapshotContract }` |
+| `vehicleReachedStop` | `{ vehicleId, stopId, planVersion, position(node) }` |
+| boarding/alighting | `{ vehicleId, requestId, planVersion }` |
+| `travelTimesUpdated` | `{ snapshot: { version, snapshotHash, arcs[] } }` |
+| `timerTick` | `{}` |
+| incident open/resolve | typed identity/reason payload; reducer WP2 vẫn từ chối vì behavior thuộc WP3 |
+
+Route gồm exact ordered `frozenPrefix`/`mutableSuffix`; stop pickup/drop bắt
+buộc có `requestId`, waypoint phải omit. Directed travel arcs là semantic set,
+normalize ordinal theo `(fromNodeId,toNodeId)` và mang integer
+`travelTimeMs`. Snapshot đầu phải có hash đúng manifest; các bản sau tăng version
+đúng một.
 
 ## 8. Decision contract tối thiểu
 

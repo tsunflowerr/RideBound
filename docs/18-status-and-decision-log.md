@@ -9,8 +9,8 @@
 |---|---|
 | Research direction | `LOCKED_FOR_IMPLEMENTATION_PLANNING` |
 | Documentation | `MIGRATED_AND_VERIFIED_V1` |
-| Implementation | `WP1_Q1_REVALIDATED_RELEASE_161; WP2_REFINED_NO_CODE` |
-| Current work package | `WP2 ONLINE BASELINE — RB-WP2-002 READY` |
+| Implementation | `WP1_Q1_COMPLETE; WP2_001_006_IMPLEMENTED_VERIFIED_278` |
+| Current work package | `WP2 ONLINE BASELINE — RB-WP2-007 READY` |
 | Repository | `https://github.com/tsunflowerr/RideBound` |
 | Main baseline | B1 `rolling-cost` |
 | Main treatment | C1 `ridebound-hard-vector` |
@@ -85,14 +85,27 @@
   batch đổi `simTimeMs` là retry hợp lệ; exact retry hiện hash toàn canonical
   eventBatch envelope + payload theo ADR-017.
 - Bổ sung regression test cho changed-time duplicate và replay exact transcript
-  qua hai runner process sạch; current Release inventory đạt 161/161.
+  qua hai runner process sạch; WP1 revalidation inventory đạt 161/161.
 - Hoàn thành `RB-WP2-001`: ADR-018 khóa state/reducer/route/reassignment boundary
   và tạo ordered queue `RB-WP2-002..012` trong execution plan WP2.
+- Hoàn thành `RB-WP2-002`: typed request/vehicle/position/route/travel contracts,
+  strict event payload schema dispatch, thay `fixtureIntent` và thêm
+  bootstrap/two-epoch fixtures.
+- Hoàn thành `RB-WP2-003`: immutable Domain run/request/vehicle state machine,
+  exhaustive lifecycle table và accepted-never-rejected evidence.
+- Hoàn thành `RB-WP2-004`: exact frozen prefix, ordered route leg, mutable suffix,
+  no-op, planVersion và monotonic reached-stop progress.
+- Hoàn thành `RB-WP2-005`: Runner contract mapper, Application internal events,
+  manifest-bound travel snapshot, atomic reducer và pending/ack coordinator.
+- Hoàn thành `RB-WP2-006`: independent physical validator tự dựng schedule và
+  deterministic witness cho capacity/window/max-ride/precedence/connectivity/
+  prefix/onboard/accepted/reassignment.
 
 ## 3. Chưa làm
 
-- Chưa có Domain event reducer hoặc online baseline; đây là phạm vi WP2 sau
-  refinement.
+- Chưa có deterministic insertion candidate generator, B1 selection/apply,
+  exact-small oracle hoặc produced online Runner decision; đây là
+  `RB-WP2-007..010`.
 - Chưa có ledger/certificate implementation.
 - Chưa có BeGo/FleetPy/RidePy adapter.
 - Chưa tải/freeze dataset cho experiment.
@@ -163,13 +176,13 @@ Release full solution at Q1 closure: 157 passed, 0 failed
   Runner: 35 passed
   Architecture: 7 passed
   Domain: 1 passed
-Current inventory after schema/vocabulary assertion và ba regression/E2E tests: 161
+WP1 inventory after schema/vocabulary assertion và ba regression/E2E tests: 161
 Current Debug full solution attempt:
   Contracts: 115 passed, 0 failed
   Architecture: 7 passed, 0 failed
   Domain: 1 passed, 0 failed
   Runner: 38 blocked before discovery by Windows Application Control 0x800711C7
-Current Release full solution revalidation:
+WP1 Release full solution revalidation:
   Contracts: 115 passed, 0 failed
   Runner: 38 passed, 0 failed
   Architecture: 7 passed, 0 failed
@@ -191,7 +204,7 @@ Required golden fixture inventory: exactly 10
 dotnet format --verify-no-changes: passed
 NuGet direct/transitive vulnerability audit: no vulnerable packages
 JSON artifact parse audit: 66 files, 0 invalid
-Current Markdown audit: 53 files, 0 broken internal links, 0 unbalanced fences
+Current Markdown audit: 52 files, 0 broken internal links, 0 unbalanced fences
 Default Debug full-suite final attempt: Architecture 7 passed; Domain 1 was
 blocked; Runner reported 5 passed and 30 load-policy failures; Contracts reported
 15 passed and 85 load-policy failures before completing its full 115-case
@@ -200,7 +213,35 @@ inventory. Enterprise Code Integrity policy
 The Release rerun likewise blocked fresh Runner.dll. Event IDs 3033/3077 confirm
 the signing-level policy; no assertion failure is used as correctness evidence.
 Policy blocker reproduced for the fresh Debug Runner.Tests.dll but not for the
-current Release suite, which passed 161/161.
+then-current WP1 Release suite, which passed 161/161.
+Date: 2026-07-29
+```
+
+### RB-WP2-002–006 typed state, reducer và physical validator
+
+```text
+.NET SDK 10.0.301
+Required dotnet test RideBound.slnx (Debug): 278 passed, 0 failed
+Release full solution: 278 passed, 0 failed
+  Contracts: 127 passed
+  Domain: 89 passed
+  Application: 13 passed
+  Runner: 42 passed
+  Architecture: 7 passed
+Release build: 0 warnings, 0 errors
+Whitespace format verification: passed
+NuGet direct/transitive vulnerability audit: no vulnerable packages
+Source JSON parse audit: 85 files, 0 invalid
+Markdown audit: 52 files, 95 local links valid, 0 unbalanced fences
+Git diff whitespace/error audit: passed
+Typed WP2 schema additions: 16
+Published WP2 fixture flow: bootstrap map/reduce/ack + epoch two pass
+Lifecycle transition matrix: exhaustive pass
+Small route precedence permutations: 24/24 match expected feasibility
+Physical mutation dimensions: capacity, pickup window, max ride, precedence,
+  connectivity, stop location, frozen prefix, plan version,
+  onboard/accepted preservation, reassignment
+Q1 exact transcript/hash/idempotency regression: pass
 Date: 2026-07-29
 ```
 
@@ -244,12 +285,13 @@ WP1 — Contracts và canonical replay đã Complete/Q1, được revalidate Rel
 
 Ticket duy nhất đang `READY`:
 
-> `RB-WP2-002` — Cài typed online input contracts và fixtures cho bootstrap/
-> two-epoch WP2; chưa viết Domain state/reducer/B1 trong ticket này.
+> `RB-WP2-007` — Cài deterministic insertion candidate generator trên exact
+> mutable suffix, dùng `PhysicalPlanValidator`, luôn phát no-op candidate và
+> chưa làm B1 fleet selection.
 
 Chi tiết:
 [26-wp2-online-baseline-ticket-plan.md](tasks/26-wp2-online-baseline-ticket-plan.md).
-`RB-WP2-001` refinement đã Done; chưa bắt đầu Domain state, online insertion,
+`RB-WP2-001..006` đã Done; chưa bắt đầu candidate generation/B1 selection,
 ledger, OR-Tools hoặc adapter.
 
 ## 6. Open decisions
@@ -568,13 +610,57 @@ B1 không được trả `WP1_STRUCTURAL_ONLY`.
 **Supersedes / superseded by:** Đóng O-001 cho WP2 và bổ sung ADR-011/016; không
 đổi protocol v1 hoặc quyết định ledger/certificate của WP3.
 
+### ADR-019 — 2026-07-29 — Accepted
+
+**Context:** `RB-WP2-002..006` cần biến ADR-018 thành types/transition có thể
+chạy, nhưng các chi tiết wire route/travel, proposed-state ownership, edge
+progress scheduling và witness order chưa có executable semantics. Nếu reducer
+nhận raw JSON, snapshot ngoài ghi đè route core hoặc validator tin cost/schedule
+do candidate gửi, Q2 correctness không còn độc lập.
+
+**Decision:** Protocol event v1 dispatch exact typed payload theo `eventType`.
+Vehicle snapshot mang full canonical position/rider sets và route gồm
+`planVersion`, `executedStopCount`, exact `frozenPrefix` cùng `mutableSuffix`;
+stop pickup/drop mang request ID, waypoint không mang. Travel snapshot là directed
+arc semantic set có version/hash; snapshot đầu phải khớp manifest và bản sau tăng
+đúng một. Domain state/route là immutable và transition trả state mới hoặc stable
+witness. Runner map toàn wire batch sang internal event trước khi Application
+fold; một lỗi bỏ toàn proposed state. Committed state chỉ đổi qua matching
+acknowledgement. Physical validator tự suy schedule từ current position,
+remaining route và travel lookup; với edge progress nó cộng phần thời gian cạnh
+còn lại bằng integer ceiling. Thứ tự witness deterministic bắt planVersion,
+frozen prefix, connectivity/schedule, physical service và incumbent preservation.
+
+**Alternatives considered:** giữ `JsonElement` payload; dùng catch-all
+`fixtureIntent`; mutate aggregate từng event; cho external vehicle snapshot thay
+route core; dùng schedule/cost candidate làm proof; đưa network/solver vào
+validator; cho incident behavior chạy sớm.
+
+**Consequences:** Contracts không phụ thuộc Domain; Application chỉ phụ thuộc
+Domain; online fixture có thể map/reduce hai epoch mà chưa cần B1. Invalid event
+cuối không tạo partial commit. Validator bắt capacity, pickup window,
+max-ride-time, precedence, stop location, connectivity, plan/prefix,
+onboard/accepted preservation và incumbent reassignment bằng witness máy đọc
+được. Incident vẫn typed ở wire nhưng reducer trả unsupported tới WP3. WP2/Q2
+chưa hoàn thành cho tới candidate/B1/exact-small/Runner online tickets.
+
+**Evidence:** `OnlineEventModels`, `EventBatchPayloadCodec`,
+`RideBoundRun`, `RideRequest`, `VehicleState`, `RoutePlan`,
+`TravelTimeSnapshot`, `EventReducer`, `EventReductionCoordinator`,
+`OnlineEventMapper`, `PhysicalPlanValidator`; published fixtures trong
+`benchmarks/schemas/fixtures/wp2`; Debug/Release 278/278 cùng transition,
+mutation và 24-permutation tests.
+
+**Supersedes / superseded by:** Hiện thực hóa ADR-018; không đổi lifecycle/hash
+chain của ADR-016/017 và không kéo commitment semantics WP3 vào WP2.
+
 ## 8. Work package tracker
 
 | WP | Trạng thái | Bắt đầu | Kết thúc | Evidence |
 |---|---|---|---|---|
 | WP0 Scaffold | Complete | 2026-07-28 | 2026-07-28 | build + 8 RideBound + 25 backend + 7 frontend tests |
-| WP1 Contracts | Complete; Q1 Release revalidated with host-policy exception | 2026-07-29 | 2026-07-29 | ADR-014–017 + 157/157 closure + current Release 161/161 + replay/hash proof |
-| WP2 Online baseline | Refinement complete; `RB-WP2-002` ready; no code | 2026-07-29 | — | ADR-018 + `RB-WP2-001` |
+| WP1 Contracts | Complete; Q1 Release revalidated with host-policy exception | 2026-07-29 | 2026-07-29 | ADR-014–017 + 157/157 closure + WP1 revalidation 161/161 + replay/hash proof |
+| WP2 Online baseline | In progress; `RB-WP2-001..006` complete, `007` ready | 2026-07-29 | — | ADR-018/019 + Debug/Release 278/278 |
 | WP3 Ledger/certificate | Not started | — | — | — |
 | WP4 Algorithms/solver | Not started | — | — | — |
 | WP5 BeGo integration | Not started | — | — | — |
@@ -588,6 +674,11 @@ B1 không được trả `WP1_STRUCTURAL_ONLY`.
 
 ## 9. Change history
 
+- 2026-07-29: Hoàn thành `RB-WP2-002..006`: typed online schemas/fixtures,
+  immutable Domain lifecycle/route, manifest-bound travel snapshot, atomic
+  mapper/reducer/ack và independent physical validator. Debug/Release full
+  solution pass 278/278; 24 small route permutations và mutation dimensions
+  pass. ADR-019 khóa executable semantics; next duy nhất là `RB-WP2-007`.
 - 2026-07-29: Revalidate toàn bộ WP1: Release 161/161; Debug pass 123 non-Runner
   test rồi fresh Runner assembly bị host policy chặn trước discovery. Phát hiện
   payload-only dedup hash nhận nhầm retry đổi `simTimeMs`; sửa bằng ADR-017 để

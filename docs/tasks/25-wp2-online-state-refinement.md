@@ -96,5 +96,7 @@ dotnet test RideBound.slnx -c Release --no-build --no-restore
 - Domain/Application tiếp tục không phụ thuộc Contracts/framework/simulator;
 - ledger/certificate/incident accounting WP3 và OR-Tools/C1 WP4 không bị kéo
   vào WP2;
-- ticket implementation duy nhất chuyển `READY` là `RB-WP2-002`;
+- tại mốc refinement, ticket implementation duy nhất chuyển `READY` là
+  `RB-WP2-002`; ticket đó cùng `003..006` nay đã Done, current next nằm trong
+  `26`;
 - không thêm C# domain/algorithm WP2 trong ticket refinement này.

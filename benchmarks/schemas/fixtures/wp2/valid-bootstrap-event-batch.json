@@ -1,0 +1,87 @@
+{
+  "schemaVersion": "1.0.0",
+  "messageType": "eventBatch",
+  "runId": "wp2-run-001",
+  "scenarioId": "wp2-two-epoch-small",
+  "epochId": 1,
+  "simTimeMs": 1000,
+  "payload": {
+    "events": [
+      {
+        "eventSeq": 1,
+        "eventType": "travelTimesUpdated",
+        "payload": {
+          "snapshot": {
+            "version": 1,
+            "snapshotHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "arcs": [
+              {
+                "fromNodeId": "n-0",
+                "toNodeId": "n-1",
+                "travelTimeMs": 100
+              },
+              {
+                "fromNodeId": "n-1",
+                "toNodeId": "n-2",
+                "travelTimeMs": 100
+              },
+              {
+                "fromNodeId": "n-2",
+                "toNodeId": "n-0",
+                "travelTimeMs": 200
+              }
+            ]
+          }
+        }
+      },
+      {
+        "eventSeq": 2,
+        "eventType": "requestArrived",
+        "payload": {
+          "request": {
+            "requestId": "r-1",
+            "arrivalTimeMs": 1000,
+            "originNodeId": "n-1",
+            "destinationNodeId": "n-2",
+            "earliestPickupMs": 1000,
+            "latestPickupMs": 2000,
+            "maxRideTimeMs": 1000,
+            "partySize": 1,
+            "serviceClass": "standard",
+            "commitmentPolicyId": "uniform-v1"
+          }
+        }
+      },
+      {
+        "eventSeq": 3,
+        "eventType": "vehicleAdvanced",
+        "payload": {
+          "vehicle": {
+            "vehicleId": "v-1",
+            "capacity": 4,
+            "occupiedSeats": 0,
+            "position": {
+              "kind": "node",
+              "nodeId": "n-0"
+            },
+            "onboardRequestIds": [],
+            "acceptedRequestIds": [],
+            "route": {
+              "planVersion": 0,
+              "executedStopCount": 0,
+              "frozenPrefix": [],
+              "mutableSuffix": [
+                {
+                  "stopId": "s-waypoint-1",
+                  "nodeId": "n-1",
+                  "kind": "waypoint",
+                  "serviceDurationMs": 0
+                }
+              ]
+            }
+          }
+        }
+      }
+    ]
+  }
+}

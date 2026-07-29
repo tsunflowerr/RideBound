@@ -79,7 +79,7 @@ public sealed class SchemaAssetTests
                     == "implemented")
             .ToArray();
 
-        Assert.Equal(8, implementedEntries.Length);
+        Assert.Equal(15, implementedEntries.Length);
 
         foreach (var entry in implementedEntries)
         {
@@ -112,6 +112,21 @@ public sealed class SchemaAssetTests
                      "decision-applied-payload.schema.json",
                      "error-payload.schema.json",
                      "golden-fixture-metadata.schema.json",
+                     "request.schema.json",
+                     "route-stop.schema.json",
+                     "route-plan.schema.json",
+                     "vehicle-snapshot.schema.json",
+                     "travel-arc.schema.json",
+                     "travel-time-snapshot.schema.json",
+                     "request-arrived-event-payload.schema.json",
+                     "request-reference-event-payload.schema.json",
+                     "vehicle-advanced-event-payload.schema.json",
+                     "vehicle-reached-stop-event-payload.schema.json",
+                     "passenger-event-payload.schema.json",
+                     "travel-times-updated-event-payload.schema.json",
+                     "timer-tick-event-payload.schema.json",
+                     "incident-opened-event-payload.schema.json",
+                     "incident-resolved-event-payload.schema.json",
                  })
         {
             using var document = JsonDocument.Parse(
@@ -167,6 +182,55 @@ public sealed class SchemaAssetTests
         Assert.Equal(
             DecisionReasonCodes.All.Order(StringComparer.Ordinal),
             schemaReasons);
+    }
+
+    [Fact]
+    public void Event_schema_dispatches_every_runtime_event_type_to_a_strict_payload()
+    {
+        using var document = JsonDocument.Parse(
+            FixtureLoader.ReadSchemaUtf8("v1/protocol-event.schema.json"));
+        var mappings = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        foreach (var branch in document.RootElement.GetProperty("allOf").EnumerateArray())
+        {
+            var eventType = branch
+                .GetProperty("if")
+                .GetProperty("properties")
+                .GetProperty("eventType");
+            var payloadReference = branch
+                .GetProperty("then")
+                .GetProperty("properties")
+                .GetProperty("payload")
+                .GetProperty("$ref")
+                .GetString()!;
+            var values = eventType.TryGetProperty("const", out var constant)
+                ? [constant.GetString()!]
+                : eventType.GetProperty("enum")
+                    .EnumerateArray()
+                    .Select(value => value.GetString()!)
+                    .ToArray();
+
+            foreach (var value in values)
+            {
+                Assert.True(
+                    mappings.TryAdd(value, payloadReference),
+                    $"Event type '{value}' has more than one schema payload mapping.");
+            }
+        }
+
+        Assert.Equal(
+            Enum.GetValues<EventType>()
+                .Select(EventTypeVocabulary.ToProtocolValue)
+                .Order(StringComparer.Ordinal),
+            mappings.Keys.Order(StringComparer.Ordinal));
+
+        foreach (var reference in mappings.Values.Distinct(StringComparer.Ordinal))
+        {
+            using var payload = JsonDocument.Parse(
+                FixtureLoader.ReadSchemaUtf8($"v1/{reference}"));
+            Assert.False(
+                payload.RootElement.GetProperty("additionalProperties").GetBoolean());
+        }
     }
 
     [Fact]

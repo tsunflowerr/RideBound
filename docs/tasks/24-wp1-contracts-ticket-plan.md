@@ -3,7 +3,7 @@
 > Topic ID: `RB-WP1`
 > Trạng thái: `COMPLETE — Q1 RELEASE VERIFIED`
 > Cập nhật: 2026-07-29
-> Ticket tiếp theo: `RB-WP2-002` trong
+> Ticket tiếp theo hiện tại: `RB-WP2-007` trong
 > `26-wp2-online-baseline-ticket-plan.md`
 > Exit gate: Q1 Contracts
 
@@ -1257,7 +1257,7 @@ dotnet test RideBound.slnx
 - [x] Duplicate cùng payload idempotent.
 - [x] Duplicate khác payload và version/gap lỗi đúng taxonomy.
 - [x] Same clean transcript tạo same response/hash.
-- [x] Full solution Release pass 157/157 tại mốc đóng; current revalidation sau
+- [x] Full solution Release pass 157/157 tại mốc đóng; WP1 revalidation sau
   assertion vocabulary và exact-retry regression đạt Release 161/161. Debug
   pass 123 non-Runner test rồi fresh Runner assembly bị Application Control chặn
   trước discovery. Exact environment/correctness evidence nằm trong `18`.
@@ -1267,7 +1267,7 @@ dotnet test RideBound.slnx
 ## 7. Lệnh bắt đầu
 
 `RB-WP1-001` đến `RB-WP1-015` đã hoàn thành và revalidate. Q1 đã đóng;
-`RB-WP2-001` refinement cũng đã Done. Ticket duy nhất `READY` là `RB-WP2-002`
+`RB-WP2-001..006` cũng đã Done. Ticket duy nhất `READY` là `RB-WP2-007`
 trong `26-wp2-online-baseline-ticket-plan.md`. Trước khi thực hiện:
 
 ```powershell

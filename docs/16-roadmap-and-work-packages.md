@@ -70,12 +70,19 @@ Tạo repository và skeleton độc lập mà không copy hoặc đổi behavio
 - duplicate/idempotency/version tests;
 - same transcript replay same hash.
 
-Evidence cụ thể nằm trong `18` và `19`: 115 Contracts, 38 Runner, 7 Architecture
-và 1 Domain hiện pass — Release 161/161. Debug pass 123 non-Runner test rồi
+WP1 closure/revalidation evidence nằm trong `18` và `19`: 115 Contracts,
+38 Runner, 7 Architecture và 1 Domain pass — Release 161/161. Debug từng pass
+123 non-Runner test rồi
 Windows enterprise policy chặn fresh Runner DLL trước discovery; environment
 exception và Release correctness evidence được giữ riêng, không nhập nhằng.
 
 ## WP2 — Online state và rolling baseline
+
+**Trạng thái:** In progress; `RB-WP2-001..006` complete, `RB-WP2-007` ready.
+
+Current Debug/Release full solution pass 278/278 sau state/reducer/validator;
+chi tiết per-suite và mutation evidence nằm trong `18`, `19` và execution plan
+`26`.
 
 ### Deliverable
 
@@ -312,9 +319,9 @@ WP0 được thực hiện trực tiếp trong repository RideBound mới theo y
 người dùng. Sau khi WP0 qua exit gate:
 
 1. WP0 và ordered queue `RB-WP1-001..015` đã hoàn thành.
-2. `RB-WP2-001` đã refine state/reducer/B1/validator, khóa O-001 và tạo queue
-   `RB-WP2-002..012`.
-3. Thực hiện đúng một ticket `READY`: `RB-WP2-002` typed online input contracts
-   và fixtures.
+2. `RB-WP2-001..006` đã hoàn thành refinement, typed contracts/fixtures, Domain
+   state/route, atomic reducer/mapper và independent physical validator.
+3. Thực hiện đúng một ticket `READY`: `RB-WP2-007` deterministic insertion
+   candidate generator.
 4. Không kéo ledger/certificate WP3 hoặc OR-Tools WP4 vào online baseline.
 5. Giữ transcript/hash Q1 làm regression oracle cho mọi WP2 ticket.

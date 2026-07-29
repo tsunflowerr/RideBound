@@ -9,12 +9,13 @@ adapter hoặc scenario chuẩn hóa.
 
 ## Trạng thái
 
-- WP0 scaffold và WP1 Contracts/Q1 đã hoàn thành; WP2 refinement cũng đã đóng.
-  Ticket tiếp theo là
-  [`RB-WP2-002`](docs/tasks/26-wp2-online-baseline-ticket-plan.md).
+- WP0 scaffold và WP1 Contracts/Q1 đã hoàn thành. Sáu ticket đầu WP2
+  `RB-WP2-001..006` đã xong; ticket tiếp theo là
+  [`RB-WP2-007`](docs/tasks/26-wp2-online-baseline-ticket-plan.md).
 - Đã có protocol/schema v1, canonical JSON/hash, long-lived NDJSON runner,
-  session lifecycle, idempotent retry và golden replay proof. Chưa có Domain
-  event reducer, online algorithm, solver, ledger/certificate thật hoặc adapter.
+  typed online input, Domain state/route, atomic event reducer và independent
+  physical validator. Chưa có candidate generator, B1 selection/produced online
+  decision, solver, ledger/certificate thật hoặc adapter.
 - Nguồn sự thật: [`docs/18-status-and-decision-log.md`](docs/18-status-and-decision-log.md).
 - Lộ trình: [`docs/16-roadmap-and-work-packages.md`](docs/16-roadmap-and-work-packages.md).
 
@@ -32,6 +33,7 @@ src/
 tests/
   RideBound.Domain.Tests/
   RideBound.ArchitectureTests/
+  RideBound.Application.Tests/
   RideBound.Contracts.Tests/
   RideBound.Runner.Tests/
 benchmarks/                    schema, scenario và manifest tái lập

@@ -11,7 +11,17 @@
         "eventSeq": 1,
         "eventType": "travelTimesUpdated",
         "payload": {
-          "fixtureIntent": "traffic-only-eta-shift"
+          "snapshot": {
+            "version": 1,
+            "snapshotHash": "7777777777777777777777777777777777777777777777777777777777777777",
+            "arcs": [
+              {
+                "fromNodeId": "n-1",
+                "toNodeId": "n-2",
+                "travelTimeMs": 1000
+              }
+            ]
+          }
         }
       }
     ]

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/tsunflowerr/RideBound/main/benchmarks/schemas/v1/vehicle-advanced-event-payload.schema.json",
+  "title": "RideBound vehicleAdvanced payload v1",
+  "type": "object",
+  "required": [
+    "vehicle"
+  ],
+  "properties": {
+    "vehicle": {
+      "$ref": "vehicle-snapshot.schema.json"
+    }
+  },
+  "additionalProperties": false
+}

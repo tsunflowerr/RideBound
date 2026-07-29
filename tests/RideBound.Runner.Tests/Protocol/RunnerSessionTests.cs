@@ -112,7 +112,7 @@ public sealed class RunnerSessionTests
         _ = session.Process(CreateEventBatch(eventSequence: 1));
 
         var conflict = session.Process(
-            CreateEventBatch(eventSequence: 1, eventType: "incidentOpened"));
+            CreateEventBatch(eventSequence: 1, eventType: "incidentResolved"));
 
         AssertError(conflict, "DUPLICATE_PAYLOAD_CONFLICT", "failSession");
         Assert.Equal(RunnerSessionStatus.Failed, session.Status);
@@ -313,7 +313,7 @@ public sealed class RunnerSessionTests
                   {
                     "eventSeq":{{eventSequence}},
                     "eventType":"{{eventType}}",
-                    "payload":{}
+                    "payload":{{(eventType == "timerTick" ? "{}" : """{"incidentId":"incident-1"}""")}}
                   }
                 ]
               }

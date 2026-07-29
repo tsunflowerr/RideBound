@@ -254,16 +254,21 @@ Một người khác phải chạy được tiny/medium reproduction trước kh
 Q1 được đóng ngày 2026-07-29 cho phạm vi contract/runner WP1: full Release
 solution 157/157 pass tại mốc đóng, đúng 10 required fixture, exact transcript
 replay/hash và tamper proof pass. Sau assertion vocabulary và revalidation
-exact-retry, inventory hiện tại là 161: Contracts 115, Runner 38, Architecture 7
-và Domain 1 cùng pass ở Release. Debug pass 123 non-Runner test rồi fresh
-Runner test assembly bị enterprise Code Integrity chặn trước discovery. Đây
+exact-retry, WP1-only inventory là 161: Contracts 115, Runner 38, Architecture 7
+và Domain 1 cùng pass ở Release. Host-policy history được giữ trong `18`. Đây
 không phải Q2 core correctness; 9 future-behavior fixture chỉ được
-schema-validate. Current Release pass, Debug blocker và policy ID được tách rõ
-trong `18`.
+schema-validate tại mốc Q1.
 
 ### Q2 — core correctness
 
 - invariants/property/exact-small pass.
+
+`RB-WP2-002..006` hiện cung cấp phần đầu của Q2: typed online fixtures, exhaustive
+request lifecycle matrix, route properties, atomic reducer/replay và physical
+validator mutation/generated cases. Current Debug/Release full solution pass
+278/278 (Contracts 127, Domain 89, Application 13, Runner 42, Architecture 7).
+Q2 **chưa đóng** vì candidate generator, B1 selector và exact-small differential
+oracle thuộc `RB-WP2-007..009` chưa tồn tại.
 
 ### Q3 — BeGo
 

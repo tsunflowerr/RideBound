@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/tsunflowerr/RideBound/main/benchmarks/schemas/v1/position.schema.json",
+  "title": "RideBound canonical vehicle position v1",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "kind",
+        "nodeId"
+      ],
+      "properties": {
+        "kind": {
+          "const": "node"
+        },
+        "nodeId": {
+          "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "kind",
+        "fromNodeId",
+        "toNodeId",
+        "edgeId",
+        "progressPermille"
+      ],
+      "properties": {
+        "kind": {
+          "const": "edgeProgress"
+        },
+        "fromNodeId": {
+          "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+        },
+        "toNodeId": {
+          "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+        },
+        "edgeId": {
+          "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+        },
+        "progressPermille": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 999
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

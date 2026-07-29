@@ -18,7 +18,7 @@
 | R-012 | Dùng paper nhưng không làm lại | `03`, `21` | claim ledger | novelty re-audit | Docs v1 |
 | R-013 | Nêu công nghệ và tối ưu | `05`, `08`, `12`–`14` | projects/adapters | build/performance | Docs v1 |
 | R-014 | Nêu thêm/bỏ gì | `02`, mục 2 dưới | migration plan | code review | Docs v1 |
-| R-015 | Agent sau biết tiếp tục | `00`, `17`, `18`, `23`–`26` | root `AGENTS.md` + ordered current-topic tickets | reading order + one unambiguous next ticket | Verified; `RB-WP2-002` next |
+| R-015 | Agent sau biết tiếp tục | `00`, `17`, `18`, `23`–`26` | root `AGENTS.md` + ordered current-topic tickets | reading order + one unambiguous next ticket | Verified; `RB-WP2-007` next |
 | R-016 | Thuật ngữ dễ hiểu | `22` | glossary | doc review | Docs v1 |
 | R-017 | Không bias bằng dữ liệu giả | `01`, `10`, `11` | pilot/holdout | prereg audit | Planned |
 | R-018 | Tái lập | `06`, `15`, `24` | hashes/bundle | clean reproduction | WP1 transcript/hash replay verified; experiment bundle planned |
@@ -37,6 +37,7 @@
 - `RideBound.Domain.Tests`
 - `RideBound.ArchitectureTests`
 - `RideBound.Contracts.Tests` (WP1)
+- `RideBound.Application.Tests` (WP2)
 - `RideBound.Runner.Tests` (WP1)
 
 Chỉ thêm `RideBound.Adapters.BeGo`, `RideBound.Persistence` và các test project
@@ -67,8 +68,9 @@ khác tại work package có behavior thật; không scaffold assembly rỗng.
 WP1 runtime boundary đã được cài theo `24`: contract harness,
 primitives/envelope, canonical JSON, schema/version policy, hello/init,
 event/decision/error shell, hash chain, NDJSON session và idempotent retry đều
-có code/test. Online vehicle/request state, business decision, ledger,
-certificate thật và adapter vẫn planned ở WP2 trở đi.
+có code/test. WP2 hiện đã có typed online payload, vehicle/request state, route,
+atomic reducer và physical validator. Candidate generation, business decision,
+ledger, certificate thật và adapter vẫn planned ở các ticket/package tiếp theo.
 
 ### Product hoặc BeGo integration
 
@@ -99,10 +101,10 @@ Sau khi RideBound ổn định có thể deprecate benchmark claims quá mạnh 
 
 | ID | Requirement | Test/evidence |
 |---|---|---|
-| F-001 | Nhận ordered event batch | protocol golden |
-| F-002 | Advance/freeze vehicle state | state property |
-| F-003 | Accept/reject/defer request | lifecycle tests |
-| F-004 | Generate/evaluate route candidates | exact-small |
+| F-001 | Nhận ordered event batch | WP1 protocol golden + WP2 mapper/atomic reducer verified |
+| F-002 | Advance/freeze vehicle state | Domain/reducer/route properties verified cho WP2-003..006 |
+| F-003 | Accept/reject/defer request | lifecycle/accepted-never-rejected verified; B1 actions planned ở 008 |
+| F-004 | Generate/evaluate route candidates | independent physical evaluation verified; generation/exact-small planned ở 007/009 |
 | F-005 | Publish promise | ledger tests |
 | F-006 | Track cumulative/switch budgets | property tests |
 | F-007 | Reject candidate vượt budget | witness golden |
@@ -236,25 +238,26 @@ Evidence ngày 2026-07-29:
   Runner báo 5 pass/30 load-policy failure và Contracts báo 15 pass/85
   load-policy failure trước khi hoàn tất inventory. Enterprise Code Integrity
   policy `0283ac0f-fff1-49ae-ada1-8a933130cad6` chặn fresh DLL với
-  `0x800711C7`; event 3033/3077 xác nhận signing-level policy. Current Debug pass
-  123 non-Runner test rồi fresh Runner assembly lại bị policy chặn; current
-  Release pass 161/161.
+  `0x800711C7`; event 3033/3077 xác nhận signing-level policy. Tại lần WP1
+  revalidation sau đó, Debug pass 123 non-Runner test rồi fresh Runner assembly
+  lại bị policy chặn; Release pass 161/161.
 
 Phạm vi được Verified ở Q1 là schema/canonical hash/runner lifecycle/replay.
 R-003 chưa chứng minh same binary trong adapter, N-002 chưa chứng minh portable
-cross-system và N-007 chưa phải experiment bundle hoàn chỉnh. F-002–F-010,
-ledger/certificate/online algorithm vẫn Planned.
+cross-system và N-007 chưa phải experiment bundle hoàn chỉnh. Trạng thái
+F-001–F-004 sau WP2-002..006 được cập nhật riêng dưới đây; F-005–F-010 và
+ledger/certificate/online selection vẫn Planned.
 
 ## 9. WP2 ticket traceability
 
 | Ticket | Requirement chính | Evidence dự kiến/trạng thái |
 |---|---|---|
 | RB-WP2-001 | R-015, F-001–F-004, N-001 | ADR-018 + execution plan `26`; refinement Done, no WP2 code |
-| RB-WP2-002 | F-001, F-002, F-003, N-001, N-009 | typed event/state contracts, schemas và bootstrap/two-epoch fixtures |
-| RB-WP2-003 | F-002, F-003, N-001 | Domain request/vehicle/run lifecycle unit/property tests |
-| RB-WP2-004 | F-002, F-004, N-001 | frozen-prefix/mutable-suffix/no-op route properties |
-| RB-WP2-005 | F-001–F-003, N-001, N-004 | contract mapper + atomic reducer/replay tests |
-| RB-WP2-006 | F-002, F-004 | independent physical validator mutation/witness tests |
+| RB-WP2-002 | F-001, F-002, F-003, N-001, N-009 | Implemented/Verified: typed contracts, 16 schemas, bootstrap/two-epoch fixtures |
+| RB-WP2-003 | F-002, F-003, N-001 | Implemented/Verified: Domain lifecycle matrix + aggregate atomic tests |
+| RB-WP2-004 | F-002, F-004, N-001 | Implemented/Verified: prefix/suffix/leg/no-op/progress properties |
+| RB-WP2-005 | F-001–F-003, N-001, N-004 | Implemented/Verified: Runner mapper + atomic reducer/replay/ack tests |
+| RB-WP2-006 | F-002, F-004 | Implemented/Verified: physical mutation/generated/witness tests |
 | RB-WP2-007 | F-004, N-001 | deterministic insertion candidates/count/order fixtures |
 | RB-WP2-008 | F-003, F-004, N-001 | B1 accept/reject/defer, no-reassignment và stable selection tests |
 | RB-WP2-009 | F-004, N-001 | independent exact-small generator/selection gap report |
@@ -273,4 +276,25 @@ ledger/certificate/online algorithm vẫn Planned.
   commitment constraint.
 - Ordered queue và acceptance criteria đầy đủ nằm trong
   `tasks/26-wp2-online-baseline-ticket-plan.md`.
-- Ticket implementation duy nhất `READY` là `RB-WP2-002`.
+- Ticket implementation duy nhất `READY` là `RB-WP2-007`.
+
+### 9.2. RB-WP2-002–006 implementation evidence
+
+| Ticket | Artifact chính | Verification |
+|---|---|---|
+| `002` | `OnlineEventModels`, strict payload codecs/schema và `fixtures/wp2` | typed round-trip, schema/runtime vocabulary, invalid unknown/null/fraction/duplicate/range |
+| `003` | `RideBoundRun`, `RideRequest`, `VehicleState` | exhaustive transition table, duplicate/stale/atomic boarding, accepted-never-rejected |
+| `004` | `RoutePlan`, `RouteStop`, `RouteLeg` | exact prefix/no-op/version/progress, generated suffix preservation |
+| `005` | `OnlineEventMapper`, internal events, `EventReducer`, coordinator | published two-epoch map/reduce/ack, invalid-last-event rollback, replay, snapshot hash/version |
+| `006` | `PhysicalPlanValidator` + travel lookup port | 24 stop permutations và mutations cho mọi physical dimension trong scope |
+
+Evidence ngày 2026-07-29:
+
+- required Debug command `dotnet test RideBound.slnx`: 278/278 pass;
+- Release full solution: 278/278 pass — Contracts 127, Domain 89,
+  Application 13, Runner 42, Architecture 7;
+- Domain/Application không có Contracts/framework/simulator/solver dependency;
+- Q1 exact transcript/hash/retry tests tiếp tục pass;
+- F-001/F-002 và physical-evaluation phần F-004 đã implemented/verified;
+  F-003 chưa có B1 action và candidate-generation phần F-004 vẫn chờ
+  `RB-WP2-007..008`, nên Q2/WP2 chưa đóng.

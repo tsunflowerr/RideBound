@@ -1,9 +1,9 @@
 # WP2 — Online state và rolling baseline: execution plan
 
 > Topic ID: `RB-WP2`
-> Trạng thái: `READY`
+> Trạng thái: `IN_PROGRESS — RB-WP2-001..006 DONE`
 > Cập nhật: 2026-07-29
-> Ticket tiếp theo: `RB-WP2-002`
+> Ticket tiếp theo: `RB-WP2-007`
 > Exit gate: WP2 online baseline / một phần Q2 core correctness
 
 ## 1. Outcome
@@ -137,12 +137,12 @@ tương lai nhưng không prune candidate theo revision.
 | Thứ tự | Ticket | Kết quả chính | Trạng thái |
 |---:|---|---|---|
 | 1 | RB-WP2-001 | Refinement, ADR và ordered queue | `DONE` |
-| 2 | RB-WP2-002 | Typed online input contracts và fixtures | `READY` |
-| 3 | RB-WP2-003 | Domain run/request/vehicle state machine | `PROPOSED` |
-| 4 | RB-WP2-004 | Route frozen prefix/mutable suffix và no-op | `PROPOSED` |
-| 5 | RB-WP2-005 | Contract mapper và atomic event reducer | `PROPOSED` |
-| 6 | RB-WP2-006 | Independent physical validator | `PROPOSED` |
-| 7 | RB-WP2-007 | Deterministic insertion candidate generator | `PROPOSED` |
+| 2 | RB-WP2-002 | Typed online input contracts và fixtures | `DONE` |
+| 3 | RB-WP2-003 | Domain run/request/vehicle state machine | `DONE` |
+| 4 | RB-WP2-004 | Route frozen prefix/mutable suffix và no-op | `DONE` |
+| 5 | RB-WP2-005 | Contract mapper và atomic event reducer | `DONE` |
+| 6 | RB-WP2-006 | Independent physical validator | `DONE` |
+| 7 | RB-WP2-007 | Deterministic insertion candidate generator | `READY` |
 | 8 | RB-WP2-008 | B1 rolling-cost selection và apply model | `PROPOSED` |
 | 9 | RB-WP2-009 | Exact-small oracle và differential/property tests | `PROPOSED` |
 | 10 | RB-WP2-010 | Runner/decision integration giữ Q1 oracle | `PROPOSED` |
@@ -155,6 +155,9 @@ mặc định là một ticket.
 ---
 
 ## RB-WP2-002 — Typed online input contracts và fixtures
+
+**Trạng thái:** `DONE` — typed DTO/codecs, strict schema dispatch và
+bootstrap/two-epoch fixtures đã executable ở contract/mapper boundary.
 
 **Mục đích**
 
@@ -217,6 +220,9 @@ Scenario: Vehicle snapshot thiếu mutable suffix
 
 ## RB-WP2-003 — Domain run/request/vehicle state machine
 
+**Trạng thái:** `DONE` — immutable lifecycle/aggregate transitions và
+accepted-never-rejected exhaustive transition matrix đã pass.
+
 **Mục đích**
 
 Tạo state và lifecycle thuần để reducer/algorithm không dựa vào Contracts DTO.
@@ -270,6 +276,9 @@ Scenario: Boarding đúng assignment
 ---
 
 ## RB-WP2-004 — Route frozen prefix, mutable suffix và no-op
+
+**Trạng thái:** `DONE` — exact prefix, implicit ordered legs, monotonic progress,
+versioned suffix replacement và no-op đã có property/regression tests.
 
 **Mục đích**
 
@@ -325,6 +334,10 @@ Scenario: No-op
 
 ## RB-WP2-005 — Contract mapper và atomic event reducer
 
+**Trạng thái:** `DONE` — Runner mapper map toàn batch trước; Application reducer
+trả proposed state bất biến và coordinator chỉ commit sau matching
+`decisionApplied` acknowledgement.
+
 **Mục đích**
 
 Nối ordered `EventBatchPayload` vào internal events mà không làm Contracts rò
@@ -379,6 +392,10 @@ Scenario: Replay cùng batch
 ---
 
 ## RB-WP2-006 — Independent physical validator
+
+**Trạng thái:** `DONE` — validator tự dựng schedule từ state/route/travel
+snapshot và trả deterministic machine witness cho mọi physical violation trong
+scope.
 
 **Mục đích**
 
@@ -742,28 +759,51 @@ Chỉ đóng WP2 khi online state/B1/validator/oracle/demo có evidence và tạ
 
 ## 6. WP2 exit-gate checklist
 
-- [ ] Typed WP2 input payload/schema/fixtures.
-- [ ] Run/request/vehicle state machine.
-- [ ] Frozen prefix/mutable suffix/no-op route.
-- [ ] Atomic event reducer không phụ thuộc Contracts.
-- [ ] Independent physical validator và mutation tests.
+- [x] Typed WP2 input payload/schema/fixtures.
+- [x] Run/request/vehicle state machine.
+- [x] Frozen prefix/mutable suffix/no-op route.
+- [x] Atomic event reducer không phụ thuộc Contracts.
+- [x] Independent physical validator và mutation tests.
 - [ ] Deterministic candidate generator.
 - [ ] B1 rolling-cost selection, no incumbent reassignment.
 - [ ] Exact-small differential/property evidence.
 - [ ] Produced online decisions qua versioned runner lifecycle.
 - [ ] Tiny CLI clean-process replay/tamper proof.
-- [ ] Accepted-never-rejected.
-- [ ] Q1 protocol/hash/transcript regression xanh.
-- [ ] Không có commitment ledger/certificate/OR-Tools/adapter bị làm sớm.
+- [x] Accepted-never-rejected.
+- [x] Q1 protocol/hash/transcript regression xanh.
+- [x] Không có commitment ledger/certificate/OR-Tools/adapter bị làm sớm.
 
-## 7. Lệnh bắt đầu RB-WP2-002
+## 7. Lệnh bắt đầu RB-WP2-007
 
 ```powershell
 Get-Content docs/18-status-and-decision-log.md -Encoding utf8
 Get-Content docs/tasks/26-wp2-online-baseline-ticket-plan.md -Encoding utf8
-Get-Content docs/04-problem-model-and-notation.md -Encoding utf8
-Get-Content docs/05-portable-core-architecture.md -Encoding utf8
-Get-Content docs/06-event-contract-and-determinism.md -Encoding utf8
 Get-Content docs/08-algorithms-baselines-and-solver.md -Encoding utf8
+rg -n "InsertionCandidate|PhysicalPlanValidator|RoutePlan" src tests
 dotnet test RideBound.slnx -c Release --no-build --no-restore
 ```
+
+## 8. Completion evidence RB-WP2-002..006 — 2026-07-29
+
+- `RideBound.Contracts`: typed request/vehicle/position/route/travel DTO, strict
+  event payload dispatch và 16 schema mới; placeholder `fixtureIntent` đã được
+  thay bằng payload v1 có nghĩa.
+- `RideBound.Domain`: run/request/vehicle aggregate, exhaustive lifecycle table,
+  exact route prefix/suffix/leg/progress và independent
+  `PhysicalPlanValidator`.
+- `RideBound.Application`: internal events, versioned travel snapshot, atomic
+  `EventReducer` và pending/ack coordinator; source không tham chiếu Contracts.
+- `RideBound.Runner`: `OnlineEventMapper` là anti-corruption boundary duy nhất
+  từ wire DTO sang internal event.
+- Published bootstrap và epoch-two fixtures map/reduce/ack thành công; event cuối
+  invalid không để lại partial state.
+- Physical mutation/generated evidence bắt capacity, pickup window,
+  max-ride-time, precedence, connectivity, stop location, frozen prefix,
+  onboard/accepted preservation, plan version và incumbent reassignment.
+- Cả Debug lẫn Release full solution pass **278/278**:
+  Contracts 127, Domain 89, Application 13, Runner 42, Architecture 7.
+- Release build `--warnaserror` pass với 0 warning/0 error; format verification,
+  dependency vulnerability audit, 85 JSON source artifacts, 52 Markdown files,
+  95 local links và `git diff --check` đều sạch.
+- Chưa có candidate generator/B1 selection/online produced decision; vì vậy Q2
+  và WP2 vẫn chưa đóng. Next implementation duy nhất là `RB-WP2-007`.

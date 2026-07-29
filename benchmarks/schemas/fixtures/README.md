@@ -25,8 +25,12 @@ Thư mục hiện có:
 - `golden/required/`: đúng 10 scenario bắt buộc; 9 scenario
   `future-behavior`, riêng duplicate là `runner-executable`;
 - `runner/`: full tiny NDJSON transcript, exact output và final decision hash;
+- `wp2/`: typed bootstrap/epoch-two payload cùng invalid full-vehicle case;
+  executable qua mapper/atomic reducer nhưng chưa phải B1 decision;
 - `harness/`: dữ liệu smoke cho fixture loader.
 
 Q1 chỉ tính `golden/required/09-duplicate-event-idempotent` và transcript trong
 `runner/` là behavior executable. Các scenario accept/reject, budget, incident
-và checkpoint chỉ được kiểm cấu trúc cho tới WP2/WP3.
+và checkpoint chỉ được nâng behavior support tại đúng WP2/WP3 ticket tương ứng.
+Việc thay `fixtureIntent` bằng typed payload không tự nâng accept/reject fixture
+thành runner-executable trước `RB-WP2-010`.

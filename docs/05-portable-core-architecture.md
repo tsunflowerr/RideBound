@@ -28,7 +28,10 @@ src/
 tests/
   RideBound.Domain.Tests/
   RideBound.ArchitectureTests/
-  # Thêm contract/application/integration tests khi có behavior
+  RideBound.Contracts.Tests/
+  RideBound.Application.Tests/
+  RideBound.Runner.Tests/
+  # Thêm integration tests khi có external behavior
 
 simulators/
   fleetpy-ridebound/

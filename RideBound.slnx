@@ -10,6 +10,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/RideBound.ArchitectureTests/RideBound.ArchitectureTests.csproj" />
+    <Project Path="tests/RideBound.Application.Tests/RideBound.Application.Tests.csproj" />
     <Project Path="tests/RideBound.Contracts.Tests/RideBound.Contracts.Tests.csproj" />
     <Project Path="tests/RideBound.Domain.Tests/RideBound.Domain.Tests.csproj" />
     <Project Path="tests/RideBound.Runner.Tests/RideBound.Runner.Tests.csproj" />

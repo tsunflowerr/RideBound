@@ -1,6 +1,6 @@
 # RideBound — bản đồ tài liệu
 
-> Trạng thái: đặc tả v1 + WP0/WP1 hoàn thành + WP2 refinement hoàn thành
+> Trạng thái: đặc tả v1 + WP0/WP1 hoàn thành + WP2 ticket 001–006 hoàn thành
 > Cập nhật: 2026-07-29
 > Nguồn sự thật về tiến độ: [18-status-and-decision-log.md](18-status-and-decision-log.md)
 
@@ -144,20 +144,23 @@ không chép lại thuật toán RideBound bằng Python hoặc C++.
 
 - Repository độc lập: `https://github.com/tsunflowerr/RideBound`.
 - WP0 hoàn thành với `RideBound.slnx`; repository hiện có 7 source project và
-  4 test project sau khi WP1 thêm Contracts/Runner boundary tests.
-- Baseline hiện có 115 Contracts, 38 Runner, 7 Architecture và 1 Domain test:
-  Release pass 161/161. Debug pass 123 non-Runner test nhưng fresh
-  `Runner.Tests.dll` bị Windows Application Control chặn trước discovery; exact
-  policy evidence và lịch sử lần pass/block nằm riêng trong `18`.
+  5 test project sau khi WP2 thêm Application test boundary.
+- Current inventory có 127 Contracts, 89 Domain, 13 Application, 42 Runner và
+  7 Architecture test: cả Debug và Release pass **278/278**. Lịch sử WP1 cùng
+  Windows Application Control exception cũ được giữ riêng trong `18`.
 - BeGo độc lập vẫn đạt 25/25 backend và 7/7 frontend test.
 - Đã có protocol/schema v1, canonical unit/JSON/hash, long-lived NDJSON runner,
   hello/init/event/error lifecycle, idempotent retry, đúng 10 golden fixture và
   source-controlled replay/hash proof.
-- Chưa có event reducer Domain, online baseline, ledger, certificate thật hoặc
-  simulator adapter; decision WP1 ghi rõ `notProduced`.
+- Đã có typed WP2 payload/schema/fixtures, Domain run/request/vehicle state,
+  frozen-prefix/mutable-suffix route, Application atomic reducer/ack coordinator,
+  Runner mapper và independent physical validator.
+- Chưa có candidate generator, B1 selection, produced online decision,
+  exact-small oracle, ledger, certificate thật hoặc simulator adapter; Q1
+  conformance decision vẫn ghi rõ `notProduced`.
 - WP1 `RB-WP1-001..015` đã hoàn thành, Q1 đã đóng và exact-retry bug fix được
   khóa bởi ADR-017.
-- WP2 refinement `RB-WP2-001` đã hoàn thành; O-001/state/reducer/route boundary
-  được khóa bởi ADR-018.
-- Bước duy nhất tiếp theo: `RB-WP2-002` trong
+- WP2 `RB-WP2-001..006` đã hoàn thành; ADR-018/019 khóa boundary và semantics
+  đã thực thi.
+- Bước duy nhất tiếp theo: `RB-WP2-007` trong
   [26-wp2-online-baseline-ticket-plan.md](tasks/26-wp2-online-baseline-ticket-plan.md).

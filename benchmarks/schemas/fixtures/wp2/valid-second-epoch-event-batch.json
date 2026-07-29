@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "1.0.0",
+  "messageType": "eventBatch",
+  "runId": "wp2-run-001",
+  "scenarioId": "wp2-two-epoch-small",
+  "epochId": 2,
+  "simTimeMs": 1100,
+  "payload": {
+    "events": [
+      {
+        "eventSeq": 4,
+        "eventType": "vehicleReachedStop",
+        "payload": {
+          "vehicleId": "v-1",
+          "stopId": "s-waypoint-1",
+          "planVersion": 0,
+          "position": {
+            "kind": "node",
+            "nodeId": "n-1"
+          }
+        }
+      },
+      {
+        "eventSeq": 5,
+        "eventType": "timerTick",
+        "payload": {}
+      }
+    ]
+  }
+}

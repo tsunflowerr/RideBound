@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/tsunflowerr/RideBound/main/benchmarks/schemas/v1/route-plan.schema.json",
+  "title": "RideBound frozen-prefix route plan v1",
+  "type": "object",
+  "required": [
+    "planVersion",
+    "executedStopCount",
+    "frozenPrefix",
+    "mutableSuffix"
+  ],
+  "properties": {
+    "planVersion": {
+      "$ref": "definitions.schema.json#/$defs/canonicalNonNegativeInteger"
+    },
+    "executedStopCount": {
+      "$ref": "definitions.schema.json#/$defs/canonicalNonNegativeInteger"
+    },
+    "frozenPrefix": {
+      "type": "array",
+      "items": {
+        "$ref": "route-stop.schema.json"
+      },
+      "x-ridebound-order": "exact-frozen-route-order"
+    },
+    "mutableSuffix": {
+      "type": "array",
+      "items": {
+        "$ref": "route-stop.schema.json"
+      },
+      "x-ridebound-order": "exact-mutable-route-order"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/tsunflowerr/RideBound/main/benchmarks/schemas/v1/route-stop.schema.json",
+  "title": "RideBound route stop v1",
+  "type": "object",
+  "required": [
+    "stopId",
+    "nodeId",
+    "kind",
+    "serviceDurationMs"
+  ],
+  "properties": {
+    "stopId": {
+      "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+    },
+    "nodeId": {
+      "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "waypoint",
+        "pickup",
+        "dropOff"
+      ]
+    },
+    "requestId": {
+      "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+    },
+    "serviceDurationMs": {
+      "$ref": "definitions.schema.json#/$defs/canonicalNonNegativeInteger"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "waypoint"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "not": {
+          "required": [
+            "requestId"
+          ]
+        }
+      },
+      "else": {
+        "required": [
+          "requestId"
+        ]
+      }
+    }
+  ],
+  "additionalProperties": false
+}

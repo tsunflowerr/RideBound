@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/tsunflowerr/RideBound/main/benchmarks/schemas/v1/travel-time-snapshot.schema.json",
+  "title": "RideBound travel-time snapshot v1",
+  "type": "object",
+  "required": [
+    "version",
+    "snapshotHash",
+    "arcs"
+  ],
+  "properties": {
+    "version": {
+      "$ref": "definitions.schema.json#/$defs/canonicalPositiveInteger"
+    },
+    "snapshotHash": {
+      "$ref": "definitions.schema.json#/$defs/sha256Hex"
+    },
+    "arcs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "travel-arc.schema.json"
+      },
+      "x-ridebound-semantic-set": true,
+      "x-ridebound-sort": "fromNodeId-then-toNodeId-ordinal"
+    }
+  },
+  "additionalProperties": false
+}

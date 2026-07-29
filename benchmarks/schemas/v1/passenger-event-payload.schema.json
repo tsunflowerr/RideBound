@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/tsunflowerr/RideBound/main/benchmarks/schemas/v1/passenger-event-payload.schema.json",
+  "title": "RideBound passenger lifecycle payload v1",
+  "type": "object",
+  "required": [
+    "vehicleId",
+    "requestId",
+    "planVersion"
+  ],
+  "properties": {
+    "vehicleId": {
+      "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+    },
+    "requestId": {
+      "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+    },
+    "planVersion": {
+      "$ref": "definitions.schema.json#/$defs/canonicalNonNegativeInteger"
+    }
+  },
+  "additionalProperties": false
+}

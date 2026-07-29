@@ -1,9 +1,9 @@
 # WP1 — Contracts và canonical replay: execution plan
 
 > Topic ID: `RB-WP1`
-> Trạng thái: `READY`
-> Cập nhật: 2026-07-28
-> Ticket tiếp theo: `RB-WP1-001`
+> Trạng thái: `IN_PROGRESS`
+> Cập nhật: 2026-07-29
+> Ticket tiếp theo: `RB-WP1-002`
 > Exit gate: Q1 Contracts
 
 ## 1. Outcome
@@ -52,8 +52,8 @@ không được giả lập thuật toán để làm fixture “pass”.
 
 | Thứ tự | Ticket | Kết quả chính | Trạng thái |
 |---:|---|---|---|
-| 1 | RB-WP1-001 | Protocol decisions/ADR được khóa | `READY` |
-| 2 | RB-WP1-002 | Contract test harness trong solution | `PROPOSED` |
+| 1 | RB-WP1-001 | Protocol decisions/ADR được khóa | `DONE` |
+| 2 | RB-WP1-002 | Contract test harness trong solution | `READY` |
 | 3 | RB-WP1-003 | Protocol primitives và envelope | `PROPOSED` |
 | 4 | RB-WP1-004 | Canonical JSON và unit rules | `PROPOSED` |
 | 5 | RB-WP1-005 | Schema/version compatibility | `PROPOSED` |
@@ -157,6 +157,18 @@ Scenario: Một breaking interpretation được đề xuất
 **Rollback**
 
 ADR không bị xóa. Nếu đổi, tạo ADR superseding.
+
+**Completion evidence — 2026-07-29**
+
+- ADR-014 trong `../18-status-and-decision-log.md`;
+- normative decision table và exact protocol rules trong
+  `../06-event-contract-and-determinism.md`, mục 2–14;
+- traceability closure trong `../19-requirement-traceability.md`, mục 8;
+- O-006 đã thu hẹp còn FleetPy executable capability preflight ở WP7;
+- `dotnet test RideBound.slnx` pass 8/8 (7 architecture + 1 domain);
+- 48 Markdown file: 0 internal link hỏng, 0 code fence lệch; `git diff --check`
+  pass;
+- không thêm C# DTO/schema/runtime code; ticket tiếp theo là `RB-WP1-002`.
 
 ---
 
@@ -1178,11 +1190,11 @@ dotnet test RideBound.slnx
 
 ## 7. Lệnh bắt đầu
 
-Ticket đầu tiên là `RB-WP1-001`. Trước khi thực hiện:
+`RB-WP1-001` đã hoàn thành. Ticket tiếp theo là `RB-WP1-002`. Trước khi thực hiện:
 
 ```powershell
 Get-Content docs/06-event-contract-and-determinism.md -Encoding utf8
 Get-Content docs/18-status-and-decision-log.md -Encoding utf8
-Get-Content docs/24-wp1-contracts-ticket-plan.md -Encoding utf8
+Get-Content docs/tasks/24-wp1-contracts-ticket-plan.md -Encoding utf8
 dotnet test RideBound.slnx
 ```

@@ -144,7 +144,7 @@ Mỗi khi work package hoàn thành:
 
 | Ticket | Requirement chính | Evidence dự kiến |
 |---|---|---|
-| RB-WP1-001 | N-001, N-002, N-009 | protocol ADR và decision table |
+| RB-WP1-001 | N-001, N-002, N-009 | ADR-014 + normative decision table `06` mục 2–14; docs verified, runtime vẫn planned |
 | RB-WP1-002–005 | R-003, R-008, N-009 | contract tests, schemas, canonical bytes |
 | RB-WP1-006–009 | F-001, N-002, N-009 | hello/init/event/decision/error fixtures |
 | RB-WP1-010 | N-001, N-003 | published SHA-256 hash vectors |
@@ -154,3 +154,19 @@ Mỗi khi work package hoàn thành:
 
 Các dòng này là planned traceability. Chỉ `RB-WP1-015` mới được chuyển status
 requirement tương ứng dựa trên file/test/result cụ thể.
+
+### 8.1. RB-WP1-001 closure
+
+| Contract concern | Normative evidence | Trạng thái |
+|---|---|---|
+| exact schema version/compatibility boundary | `06` mục 2, ADR-014 | Khóa cho v1; implementation ở `003`/`005` |
+| unit, rounding và overflow | `06` mục 3, ADR-014 | Khóa cho v1; test vectors ở `004` |
+| node/edge-progress position | `06` mục 7/9, ADR-014 | Contract khóa; FleetPy extraction preflight ở WP7 |
+| batch/epoch/event ordering | `06` mục 2/12, ADR-014 | Khóa cho v1; implementation ở `008`/`013` |
+| envelope/payload/manifest ownership | `06` mục 2/4.1, ADR-014 | Khóa cho v1 |
+| error taxonomy/severity | `06` mục 12.2, ADR-014 | Khóa cho v1; implementation ở `009`/`011`–`013` |
+| canonical bytes/hash framing | `06` mục 10, ADR-014 | Khóa cho v1; vectors/code ở `004`/`010` |
+| fixture support taxonomy | `06` mục 13, ADR-014 | Khóa cho v1; assets ở `002`/`014` |
+
+`RB-WP1-001` là docs/ADR evidence, không phải runtime verification. Vì vậy
+N-001/N-002/N-009 và WP1 vẫn chưa chuyển thành `Implemented/Verified`.

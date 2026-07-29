@@ -13,9 +13,9 @@ Mỗi work package có:
 Chỉ một package chính ở trạng thái `IN_PROGRESS` trong [18-status-and-decision-log.md](18-status-and-decision-log.md). Có thể làm task nhỏ song song nếu không thay đổi contract chưa khóa.
 
 Roadmap này quản lý outcome và exit gate. Quy tắc ticket nằm trong
-[23-delivery-backlog-and-ticket-policy.md](23-delivery-backlog-and-ticket-policy.md).
+[23-delivery-backlog-and-ticket-policy.md](tasks/23-delivery-backlog-and-ticket-policy.md).
 Chỉ topic hiện hành được refinement chi tiết; WP1 hiện có execution plan tại
-[24-wp1-contracts-ticket-plan.md](24-wp1-contracts-ticket-plan.md).
+[24-wp1-contracts-ticket-plan.md](tasks/24-wp1-contracts-ticket-plan.md).
 
 ## WP0 — Freeze baseline và scaffold
 

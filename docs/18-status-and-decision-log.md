@@ -1,7 +1,7 @@
 # Trạng thái và decision log
 
 > Tệp sống — cập nhật ở cuối mọi task RideBound
-> Cập nhật gần nhất: 2026-07-28
+> Cập nhật gần nhất: 2026-07-29
 
 ## 1. Trạng thái tổng thể
 
@@ -10,7 +10,7 @@
 | Research direction | `LOCKED_FOR_IMPLEMENTATION_PLANNING` |
 | Documentation | `MIGRATED_AND_VERIFIED_V1` |
 | Implementation | `WP0_SCAFFOLD_COMPLETE` |
-| Current work package | `WP1 READY — next RB-WP1-001` |
+| Current work package | `WP1 IN_PROGRESS — RB-WP1-001 DONE; next RB-WP1-002` |
 | Repository | `https://github.com/tsunflowerr/RideBound` |
 | Main baseline | B1 `rolling-cost` |
 | Main treatment | C1 `ridebound-hard-vector` |
@@ -49,6 +49,9 @@
   - RideBound tests hiện tại: 8/8 pass;
   - BeGo backend: 25/25 pass;
   - BeGo frontend: 7/7 pass.
+- Hoàn thành `RB-WP1-001`: khóa schema version, unit/range, position union,
+  event ordering, envelope/payload/manifest boundary, error taxonomy, canonical
+  JSON/hash framing và fixture taxonomy bằng ADR-014.
 
 ## 3. Chưa làm
 
@@ -71,6 +74,19 @@ Build Release: 0 warnings, 0 errors
 Architecture tests: 7 passed
 Domain smoke tests: 1 passed
 Date: 2026-07-28
+```
+
+### RB-WP1-001 protocol decision ticket
+
+```text
+dotnet test RideBound.slnx: passed
+Architecture tests: 7 passed
+Domain smoke tests: 1 passed
+Markdown files checked: 48
+Broken internal links: 0
+Unbalanced code fences: 0
+git diff --check: passed
+Date: 2026-07-29
 ```
 
 ### CI hardening task
@@ -108,14 +124,14 @@ Date: 2026-07-28
 ## 5. Next action
 
 Topic hiện hành là WP1 — Contracts và canonical replay. Execution plan đầy đủ:
-[24-wp1-contracts-ticket-plan.md](24-wp1-contracts-ticket-plan.md).
+[24-wp1-contracts-ticket-plan.md](tasks/24-wp1-contracts-ticket-plan.md).
 
 Ticket duy nhất đang `READY`:
 
-> `RB-WP1-001` — Khóa protocol boundary, unit, position model, error taxonomy,
-> hash framing và fixture taxonomy bằng ADR trước khi thêm contract code.
+> `RB-WP1-002` — Tạo `RideBound.Contracts.Tests`, fixture loader dùng chung và
+> smoke fixture trước khi thêm protocol DTO.
 
-Sau khi ticket này `DONE`, chỉ chuyển `RB-WP1-002` sang `READY`. Chưa bắt đầu
+`RB-WP1-001` đã `DONE` bằng ADR-014 và decision checklist trong `06`. Chưa bắt đầu
 online insertion, ledger, OR-Tools hoặc ticket hóa WP2 trong WP1.
 
 ## 6. Open decisions
@@ -127,7 +143,7 @@ online insertion, ledger, OR-Tools hoặc ticket hóa WP2 trong WP1.
 | O-003 | Material ETA revision threshold/bucket? | WP8 pilot |
 | O-004 | Service non-inferiority margin cuối? | WP8 prereg |
 | O-005 | RidePy hay AMoD2 là Layer 3 final? | WP10 preflight |
-| O-006 | Node/edge position canonical tối thiểu? | WP1 + FleetPy preflight |
+| O-006 | FleetPy 1.0.2 có cung cấp exact directed-edge progress ổn định không? Protocol union/capability đã khóa bởi ADR-014. | WP7 executable preflight; nếu không đạt, khai báo `nodeOnly` và fail/downgrade |
 | O-007 | HTTP/gRPC có cần cho product v1 ngoài NDJSON? | WP5 |
 | O-008 | Cross-city confirmatory hay robustness only? | WP8 |
 
@@ -236,12 +252,51 @@ từ deliverable cấp WP.
 **Evidence:** `23-delivery-backlog-and-ticket-policy.md`,
 `24-wp1-contracts-ticket-plan.md`.
 
+### ADR-014 — 2026-07-29 — Accepted
+
+**Context:** Protocol draft còn cho phép nhiều cách hiểu về `schemaVersion`,
+distance unit, node/edge position, batch sequence, field ownership, error
+severity và hash concatenation. FleetPy có network position/plan locks trong khi
+RidePy có thể chỉ cung cấp node-level state; một contract ngầm chọn một bên sẽ
+làm cross-system replay không còn so sánh được.
+
+**Decision:** Protocol v1 bắt đầu ở exact version `1.0.0`; dùng JSON integer-only
+trong common safe range, millisecond, millimeter, WGS84 E7 và micro-cost có
+`costUnitId`. Position là tagged union `node`/`edgeProgress` với capability
+`nodeOnly`/`directedEdgeProgress`. Event sequence liên tiếp trên toàn run, epoch
+chỉ tiến sau `decisionApplied`; gap/overlap làm session failed. Envelope chỉ giữ
+message routing/identity, payload giữ nội dung message và initialize manifest giữ
+config bất biến. Error dùng stable code cùng disposition
+`rejectMessage`/`failSession`/`terminateProcess`. Canonical JSON là RFC 8785
+subset integer-only; SHA-256 dùng domain prefix và tagged length frames. Fixture
+phân loại `schema-only`, `runner-executable` hoặc `future-behavior`.
+
+Chi tiết normative, exact range, field table, framing bytes và checklist nằm
+trong `06-event-contract-and-determinism.md`, mục 2–14.
+
+**Alternatives considered:** giữ distance là “mm hoặc meter”; chỉ hỗ trợ node;
+ép mọi adapter phát edge progress; nối raw JSON/string khi hash; coi mọi fixture
+là executable.
+
+**Consequences:** Contract tests có thể viết exact bytes/error/order mà không tự
+chọn semantics. Adapter thiếu edge progress phải công bố `nodeOnly` và
+fail/downgrade có tên; không âm thầm bịa position. Mọi thay đổi unit, position
+meaning, ordering hoặc hash input sau ADR này là breaking change, cần schema
+major, ADR superseding và fixture migration.
+
+**Evidence:** `05-portable-core-architecture.md`,
+`06-event-contract-and-determinism.md`, `12-fleetpy-adapter.md`,
+`13-cross-system-adapters.md`, `tasks/24-wp1-contracts-ticket-plan.md`.
+
+**Supersedes / superseded by:** Không supersede ADR trước. Đóng phần contract của
+O-006; chỉ giữ executable FleetPy capability preflight cho WP7.
+
 ## 8. Work package tracker
 
 | WP | Trạng thái | Bắt đầu | Kết thúc | Evidence |
 |---|---|---|---|---|
 | WP0 Scaffold | Complete | 2026-07-28 | 2026-07-28 | build + 8 RideBound + 25 backend + 7 frontend tests |
-| WP1 Contracts | Ready; not started | — | — | ticket plan `RB-WP1-001..015` |
+| WP1 Contracts | In progress; `001` done, `002` ready | 2026-07-29 | — | ADR-014 + ticket plan `RB-WP1-001..015` |
 | WP2 Online baseline | Not started | — | — | — |
 | WP3 Ledger/certificate | Not started | — | — | — |
 | WP4 Algorithms/solver | Not started | — | — | — |
@@ -256,6 +311,11 @@ từ deliverable cấp WP.
 
 ## 9. Change history
 
+- 2026-07-29: Hoàn thành docs ticket `RB-WP1-001` bằng ADR-014 và protocol
+  decision checklist; thu hẹp O-006 sang FleetPy executable preflight; chuyển
+  `RB-WP1-002` thành next/`READY`. Không thêm runtime/schema code và chưa nâng
+  trạng thái implementation của WP1. Full RideBound regression pass 8/8; kiểm
+  48 Markdown file có 0 internal link hỏng và 0 code fence lệch.
 - 2026-07-28: Chuyển WP1 sang `READY`, thêm delivery policy và 15 ticket chi tiết;
   next action là `RB-WP1-001`. `dotnet test RideBound.slnx` hiện pass 8/8;
   không có implementation status nào được nâng.

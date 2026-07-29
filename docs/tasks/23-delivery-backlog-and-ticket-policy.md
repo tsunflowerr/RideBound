@@ -1,8 +1,8 @@
 # Delivery backlog và quy tắc ticket
 
 > Trạng thái: `BASELINE_V1`
-> Cập nhật: 2026-07-28
-> Nguồn tiến độ: [18-status-and-decision-log.md](18-status-and-decision-log.md)
+> Cập nhật: 2026-07-29
+> Nguồn tiến độ: [18-status-and-decision-log.md](../18-status-and-decision-log.md)
 > Topic duy nhất đã ticket hóa: [WP1 Contracts và canonical replay](24-wp1-contracts-ticket-plan.md)
 
 ## 1. Mục đích
@@ -127,12 +127,15 @@ WP11 không nằm trên critical path nghiên cứu và không được làm ch�
 WP1 được chia thành 15 ticket tuần tự trong
 [24-wp1-contracts-ticket-plan.md](24-wp1-contracts-ticket-plan.md).
 
-Ticket đầu tiên:
+Ticket đầu tiên đã hoàn thành:
 
 > **RB-WP1-001 — Khóa protocol boundary và open decisions**
 
 Ticket này là docs/ADR task. Không thêm contract code trước khi unit, position,
 error taxonomy và hash framing được quyết định.
+
+ADR-014 đã khóa các quyết định trên ngày 2026-07-29. Ticket hiện tại là
+`RB-WP1-002` — tạo contract test project và fixture harness.
 
 ## 9. Template refinement cho topic kế tiếp
 
@@ -158,5 +161,5 @@ Không copy BDD của WP1 sang topic khác nếu semantics khác.
 5. Chỉ chuyển ticket kế tiếp sau khi evidence của ticket hiện tại được review.
 6. Chỉ đóng topic khi toàn bộ exit gate trong `16` đạt.
 
-Theo baseline ngày 2026-07-28, ticket đầu tiên phải thực hiện là
-**RB-WP1-001**.
+Theo trạng thái ngày 2026-07-29, ticket tiếp theo phải thực hiện là
+**RB-WP1-002**.

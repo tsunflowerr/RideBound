@@ -6,42 +6,89 @@ BeGo dùng C#, FleetPy/RidePy dùng Python và AMoD2 dùng C++. Nếu mỗi adap
 
 Protocol v1 dùng **NDJSON**: mỗi dòng là một JSON object hoàn chỉnh. Runner sống suốt một run.
 
-## 2. Envelope bắt buộc
+## 2. Version và envelope v1
 
-Mọi message có:
+Protocol v1 dùng chính xác `schemaVersion = "1.0.0"`. Giá trị phải khớp
+`^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$`; không nhận `1`, `1.0`,
+prefix `v`, metadata hoặc số có leading zero. Major đổi khi semantics unit,
+ordering, lifecycle hoặc hash thay đổi. Minor chỉ thêm field optional có safe
+behavior đã công bố; patch không đổi canonical semantics.
+
+Mọi message có hai field envelope bắt buộc `schemaVersion`, `messageType` và một
+`payload` object bắt buộc (dùng `{}` khi message không có nội dung):
 
 ```json
 {
-  "schemaVersion": "1.0",
+  "schemaVersion": "1.0.0",
   "messageType": "eventBatch",
   "runId": "run-001",
   "scenarioId": "manhattan-20260727-a",
   "epochId": 42,
-  "eventSeq": 178,
   "simTimeMs": 28830000,
-  "payload": {}
+  "payload": {
+    "events": [
+      {
+        "eventSeq": 178,
+        "eventType": "timerTick",
+        "payload": {}
+      }
+    ]
+  }
 }
 ```
 
+Field envelope bổ sung phụ thuộc message:
+
+| Message | Field envelope ngoài `schemaVersion`, `messageType` |
+|---|---|
+| `hello`, `helloAck`, `shutdown` | không có |
+| `initializeRun`, `initialized`, `finalizeRun`, `runSummary`, `checkpoint`, `restore` | `runId`, `scenarioId` |
+| `eventBatch` | `runId`, `scenarioId`, `epochId`, `simTimeMs` |
+| decision và `decisionApplied` | `runId`, `scenarioId`, `epochId`, `simTimeMs` |
+| `error` | các field context đã đọc hợp lệ từ input; field chưa xác định bị bỏ, không phát `null` |
+
+`eventSeq` thuộc từng event trong `payload.events`, không thuộc envelope batch.
+Field optional vắng mặt thì bị omit; v1 không dùng `null`. Unknown field bị từ
+chối cho `1.0.0`; compatibility với minor tương lai chỉ được mở theo matrix của
+RB-WP1-005.
+
 Quy tắc:
 
-- `runId` và `scenarioId` bất biến trong run.
-- `epochId` tăng đúng một cho mỗi decision.
-- `eventSeq` tăng đơn điệu cho từng event đầu vào.
-- `simTimeMs` là thời gian từ simulation origin, không phải wall clock.
-- Identifier là string opaque; không dựa vào thứ tự GUID ngẫu nhiên.
+- `runId` và `scenarioId` là string opaque, dài 1–128 UTF-8 byte, bất biến sau
+  `initializeRun`; không trim, case-fold hoặc dựa vào thứ tự GUID.
+- `epochId` bắt đầu từ `1` ở `eventBatch` đầu tiên và tăng đúng một sau mỗi
+  decision đã được `decisionApplied`; state vừa initialize có epoch `0`.
+- `eventSeq` bắt đầu từ `1`, liên tiếp trên toàn run và tăng một cho từng input
+  event, không reset theo batch/epoch.
+- `simTimeMs` là thời gian từ simulation origin, không phải wall clock, và không
+  được giảm giữa các epoch.
 
-## 3. Đơn vị canonical
+## 3. Đơn vị canonical và range
 
-| Đại lượng | Đơn vị protocol | Lý do |
+Mọi JSON number trong protocol v1 là integer và nằm trong vùng chính xác chung
+`[-9007199254740991, 9007199254740991]` (`±(2^53-1)`). Không nhận exponent,
+fraction, `NaN`, infinity, negative zero hoặc numeric string. Range hẹp hơn trong
+bảng có ưu tiên:
+
+| Đại lượng/field suffix | Đơn vị protocol | Range |
 |---|---|---|
-| Thời gian | integer millisecond | Cross-language, tránh float drift |
-| Khoảng cách | integer millimeter hoặc meter đã làm tròn theo manifest | Xác định, không phụ thuộc locale |
-| Tọa độ WGS84 | integer `1e-7` degree khi cần | Không dùng double làm khóa |
-| Capacity/party | integer | Tự nhiên |
-| Cost | integer micro-cost hoặc structured components | Tránh so sánh float không ổn định |
+| thời gian `*TimeMs`, duration `*Ms` | integer millisecond | `0..9007199254740991` |
+| khoảng cách `*DistanceMm` | integer millimeter | `0..9007199254740991` |
+| WGS84 `latitudeE7` | integer `10^-7` degree | `-900000000..900000000` |
+| WGS84 `longitudeE7` | integer `10^-7` degree | `-1800000000..1800000000` |
+| capacity, party, count, sequence, epoch | integer count | `0..9007199254740991`, trừ minimum riêng của schema |
+| edge progress `progressPermille` | integer phần nghìn chiều cạnh có hướng | `1..999` |
+| cost `*CostMicros` | integer `10^-6` cost unit của manifest | `-9007199254740991..9007199254740991` |
 
-Adapter phải ghi rounding rule trong manifest. Không được một adapter làm tròn giây còn adapter khác giữ float mà vẫn gọi là cùng scenario semantics.
+Mỗi manifest khai báo `sourceUnitConversions` cho adapter, gồm source unit,
+canonical unit và exact rule `roundTiesToEven`. Conversion phải kiểm range trước
+và sau khi nhân scale; overflow hoặc giá trị ngoài range bị từ chối, không
+saturate. Cùng scenario phải có cùng conversion table. FleetPy seconds được đổi
+sang millisecond; distance được đổi duy nhất sang millimeter.
+
+`costUnitId` trong manifest là opaque identifier của một cost basis đã versioned
+(ví dụ `abstract-generalized-cost-v1`), không mặc định là tiền tệ. Các component
+cost phải mang suffix `CostMicros`; không cộng các `costUnitId` khác nhau.
 
 ## 4. Vòng đời protocol
 
@@ -64,9 +111,26 @@ sequenceDiagram
 
 Runner không được tự đoán một decision đã được simulator áp dụng. Chỉ sau `decisionApplied` mới chuyển promise từ proposed sang published.
 
-## 5. Message types v1
+### 4.1. Ranh giới envelope, payload và manifest
 
-### Control
+- **Envelope** chỉ chứa routing/identity của message: version, type, run,
+  scenario, epoch và simulation time theo bảng ở mục 2.
+- **Payload** chứa nội dung thay đổi theo message: capabilities, event list,
+  snapshot, decision, acknowledgement, certificate shell hoặc error detail.
+  Payload không lặp lại field envelope.
+- **Manifest** là payload bất biến của `initializeRun`: protocol/policy version,
+  master seed, scenario/config identity, graph/travel snapshot identity,
+  canonical unit/conversion table, negotiated capabilities, adapter/simulator
+  version, core commit và binary hash. Dataset path, wall clock, hostname và log
+  không thuộc canonical manifest.
+
+`runId` và `scenarioId` có trong envelope `initializeRun`; manifest chứa
+`scenarioContentHash` để chứng minh nội dung, không lặp hai ID. Thay manifest
+sau initialize là lỗi fatal; run mới phải dùng `runId` mới.
+
+## 5. Message/event/decision types v1
+
+### Envelope `messageType`
 
 - `hello`
 - `helloAck`
@@ -76,10 +140,13 @@ Runner không được tự đoán một decision đã được simulator áp d�
 - `restore`
 - `finalizeRun`
 - `runSummary`
+- `eventBatch`
+- `decision`
+- `decisionApplied`
 - `shutdown`
 - `error`
 
-### Input events
+### `eventType` trong `eventBatch.payload.events`
 
 - `requestArrived`
 - `bookingConfirmed`
@@ -95,7 +162,7 @@ Runner không được tự đoán một decision đã được simulator áp d�
 - `incidentOpened`
 - `incidentResolved`
 
-### Decisions
+### `decisionType` trong `decision.payload.actions`
 
 - `offerProposed`
 - `requestAccepted`
@@ -105,7 +172,8 @@ Runner không được tự đoán một decision đã được simulator áp d�
 - `promisePublished`
 - `commitmentBreachDeclared`
 
-Một `eventBatch` có thể chứa nhiều event cùng simulation time. Batch order được xác định bởi `eventSeq`.
+Một `eventBatch` có thể chứa nhiều event cùng simulation time. Batch order được
+xác định bởi `eventSeq`; một `decision` có thể chứa nhiều action có thứ tự.
 
 Framework không có hai bước offer/confirm có thể phát `requestArrived` và áp `requestAccepted` trong cùng epoch. Framework có booking hai bước như FleetPy dùng `offerProposed`, rồi chỉ mở ledger khi nhận `bookingConfirmed`.
 
@@ -136,6 +204,9 @@ Framework không có hai bước offer/confirm có thể phát `requestArrived` 
   "capacity": 4,
   "occupiedSeats": 2,
   "position": {
+    "kind": "edgeProgress",
+    "fromNodeId": "n-100",
+    "toNodeId": "n-101",
     "edgeId": "e-100-101",
     "progressPermille": 630
   },
@@ -146,7 +217,27 @@ Framework không có hai bước offer/confirm có thể phát `requestArrived` 
 }
 ```
 
-Nếu simulator chỉ có node position, capability nêu `edgeProgress=false`; freeze rule phải dùng semantic phù hợp.
+Position là tagged union:
+
+```json
+{ "kind": "node", "nodeId": "n-100" }
+```
+
+hoặc object `edgeProgress` như ví dụ trên. Edge có hướng; `fromNodeId`,
+`toNodeId` và `edgeId` đều bắt buộc để không nhập nhằng parallel edge.
+`progressPermille` chỉ nhận `1..999`; đúng endpoint phải normalize thành
+`kind = "node"`. Không suy diễn edge từ hai node, tọa độ hoặc route gần nhất.
+
+Capability `positionModel` nhận:
+
+- `nodeOnly`: chỉ phát `node`;
+- `directedEdgeProgress`: phát được cả `node` tại stop và `edgeProgress` khi xe
+  đang ở giữa cạnh.
+
+Nếu policy cần freeze leg đang chạy mà adapter chỉ có `nodeOnly`, manifest phải
+chọn policy downgrade đã đặt tên hoặc handshake fail. Không tự đặt progress bằng
+0/1000. Quyết định này đóng phần contract của O-006; khả năng FleetPy trích xuất
+đúng progress vẫn là preflight adapter ở WP7.
 
 ## 8. Decision contract tối thiểu
 
@@ -187,38 +278,90 @@ Simulator gửi:
 - native baseline hooks;
 - maximum supported fleet/request scale.
 
-Runner trả capability cần cho policy. Nếu thiếu capability bắt buộc:
+Các set capability được canonicalize theo string ordinal. `positionModel` là
+single-valued enum, không phải boolean `edgeProgress`. Runner trả capability cần
+cho policy. Nếu thiếu capability bắt buộc:
 
 - fail fast trước run; hoặc
-- hạ xuống policy đã khai báo và đánh dấu experiment không so sánh trực tiếp.
+- hạ xuống `downgradePolicyId` đã khai báo trong `helloAck`, đưa selection vào
+  canonical manifest và đánh dấu experiment không so sánh trực tiếp.
 
 Không âm thầm bỏ một promise dimension.
 
 ## 10. Canonical serialization và hash
 
-Decision hash được tạo từ canonical representation:
+### 10.1. Canonical JSON v1
 
-- key order cố định;
-- UTF-8;
-- newline `\n`;
-- integer units;
-- list được sort chỉ khi semantics là set;
-- route order không bao giờ sort;
-- không chứa runtime, timestamp wall-clock hoặc log text;
-- enum dùng exact string versioned.
+Canonical JSON là subset integer-only của RFC 8785:
 
-Hash:
+- UTF-8 không BOM, không whitespace ngoài string;
+- object property sort tăng dần theo UTF-16 code units như RFC 8785;
+- property trùng tên, surrogate lỗi và Unicode không hợp lệ bị từ chối;
+- string escaping theo RFC 8785, hex escape chữ thường;
+- number chỉ là integer decimal tối giản trong range mục 3;
+- required field luôn có; optional field vắng thì omit; v1 không serialize `null`;
+- array giữ nguyên thứ tự;
+- field có semantic set phải được schema đánh dấu và normalize trước serialization
+  bằng exact sort key/comparer đã công bố; route/stop/event list không bao giờ sort;
+- enum là exact lower-camel string versioned.
+
+Canonical bytes không có newline. NDJSON writer nối đúng một byte LF `0x0A` sau
+JSON để framing; LF đó không nằm trong canonical/hash input. Runtime, wall clock,
+hostname, local path, log text và nondeterministic solver timing bị loại khỏi
+canonical projections.
+
+### 10.2. Length framing
+
+Không nối text trực tiếp. Một frame được mã hóa:
 
 ```text
-SHA-256(
-  previousDecisionHash
-  || canonicalInputState
-  || canonicalDecision
-  || policyVersion
+Frame(tag, value) =
+  UInt16BE(byteLength(UTF8(tag)))
+  || UTF8(tag)
+  || UInt64BE(byteLength(value))
+  || value
+```
+
+Tag trong v1 là ASCII, unique và case-sensitive. Domain prefix kết thúc bằng NUL
+để không trùng với một frame:
+
+```text
+manifestDomain = UTF8("RideBound.ManifestHash.v1\0")
+decisionDomain = UTF8("RideBound.DecisionHash.v1\0")
+```
+
+### 10.3. Manifest và decision hash
+
+```text
+manifestHash = SHA-256(
+  manifestDomain
+  || Frame("canonicalManifest", canonicalManifestBytes)
+)
+
+decisionHash = SHA-256(
+  decisionDomain
+  || Frame("previousDecisionHash", previousDecisionHashRaw32)
+  || Frame("manifestHash", manifestHashRaw32)
+  || Frame("policyVersion", UTF8(policyVersion))
+  || Frame("canonicalInputState", canonicalInputStateBytes)
+  || Frame("canonicalDecision", canonicalDecisionBytes)
 )
 ```
 
-Nhờ chain hash, có thể phát hiện thiếu hoặc sửa event/decision giữa run.
+Epoch đầu dùng 32 zero byte làm `previousDecisionHashRaw32`; các epoch sau bắt
+buộc dùng raw 32 byte của decision đã được apply trước đó. Text representation
+của SHA-256 là đúng 64 lowercase hex character.
+
+`canonicalInputState` chứa event batch đã validate, vehicle/travel snapshot và
+state identity trước decision. `canonicalDecision` chứa toàn bộ outcome
+deterministic, state hash, certificate shell/status và solver status; nó loại
+`previousDecisionHash`, `decisionHash`, runtime duration, log và free-text
+diagnostic để tránh circular/nondeterministic input. Schema của RB-WP1-009 phải
+đánh dấu từng field include/exclude; field không được phân loại thì fixture/hash
+test phải fail.
+
+Nhờ domain separation, length framing và chain hash, có thể phát hiện thiếu, đổi
+thứ tự hoặc sửa event/decision mà không có ambiguity do nối chuỗi.
 
 ## 11. Deterministic random
 
@@ -230,27 +373,53 @@ Nhờ chain hash, có thể phát hiện thiếu hoặc sửa event/decision gi�
 
 Solver có nondeterminism phải được cấu hình single-thread/deterministic mode cho regression. Performance runs có thể đa luồng nhưng phải ghi rõ và không dùng cho bitwise equivalence claim.
 
-## 12. Failure semantics
+## 12. Ordering, idempotency và failure semantics
 
-### Malformed message
+### 12.1. Event batch
 
-Runner trả `error` với code và không mutate state.
+- Một `eventBatch` không rỗng và chỉ chứa events tại đúng `simTimeMs` của envelope.
+- Event giữ input order và có `eventSeq` liên tiếp; event đầu phải bằng sequence
+  kế tiếp của run.
+- Batch mới phải có `epochId = previousAppliedEpoch + 1`. Runner không nhận batch
+  tiếp theo trước `decisionApplied`.
+- `eventSeq` gap/reorder và `epochId` gap/reorder làm session failed; không tự
+  điền, buffer hoặc sort.
+- Gửi lại toàn batch đã xử lý với cùng run/epoch, sequence range và canonical
+  payload hash trả lại response đã cache, không advance state/hash.
+- Trùng key nhưng payload khác là data corruption fatal. Duplicate event riêng
+  lẻ hoặc batch overlap một phần cũng fatal; client phải retry nguyên batch.
 
-### Duplicate event
+### 12.2. Error contract
 
-Nếu cùng `(runId,eventSeq)` và cùng payload hash: idempotent ack. Nếu payload khác: fail run vì data corruption.
+Error payload có `code`, `disposition` và `message`. `message` là mô tả sanitized,
+không tham gia logic/hash và không chứa stack trace, path hoặc secret.
 
-### Epoch gap
+| Code | Disposition | Ý nghĩa |
+|---|---|---|
+| `MALFORMED_UTF8`, `MALFORMED_JSON`, `MESSAGE_TOO_LARGE` | `rejectMessage` | bỏ line, không mutate |
+| `INVALID_SCHEMA_VERSION`, `UNKNOWN_MESSAGE_TYPE`, `SCHEMA_VALIDATION_FAILED`, `UNKNOWN_FIELD` | `rejectMessage` | message không thuộc schema đã chọn |
+| `UNSUPPORTED_SCHEMA_MAJOR` | `failSession` | không thể diễn giải session an toàn |
+| `UNSUPPORTED_SCHEMA_MINOR` | `rejectMessage` | chỉ có thể retry bằng version được hỗ trợ |
+| `INVALID_SESSION_STATE`, `IDENTITY_MISMATCH`, `CAPABILITY_REQUIRED_MISSING` | `rejectMessage` | giữ nguyên state trước message |
+| `EVENT_SEQUENCE_GAP`, `EVENT_SEQUENCE_OVERLAP`, `EPOCH_GAP` | `failSession` | transcript không còn liên tục |
+| `DUPLICATE_PAYLOAD_CONFLICT`, `HASH_MISMATCH`, `MANIFEST_MUTATION` | `failSession` | corruption hoặc identity bị sửa |
+| `INTERNAL_ERROR` | `failSession` | invariant/runtime lỗi; diagnostic chi tiết chỉ ở `stderr` |
+| `INCOMPLETE_FRAME_EOF` | `terminateProcess` | không thể trả response tin cậy sau EOF giữa frame |
 
-Fail fast; không tự điền event.
+`rejectMessage` là recoverable: state/hash không đổi và client có thể gửi message
+hợp lệ tiếp theo. `failSession` là fatal cho run/session: runner phát một error,
+chuyển sang `failed`, sau đó chỉ nhận `shutdown`; không tái initialize cùng
+process. `terminateProcess` đóng process với exit code khác zero khi có thể.
 
-### Runner timeout
+Business rejection như `CAPACITY`, `TIME_WINDOW` hoặc
+`SOLVER_TIMEOUT_SAFE_FALLBACK` là decision reason code, không phải protocol
+error. Timeout dùng safe fallback đã đăng ký và vẫn lưu transcript.
 
-Adapter dùng safe fallback đã đăng ký, ghi `SOLVER_TIMEOUT_SAFE_FALLBACK`, và vẫn lưu transcript.
+### 12.3. Process crash
 
-### Process crash
-
-Restore từ checkpoint cuối + replay events sau checkpoint. Decision hash sau restore phải bằng run không crash.
+Restore từ checkpoint cuối + replay events sau checkpoint. Decision hash sau
+restore phải bằng run không crash. Behavior này thuộc WP3; fixture WP1 chỉ được
+gắn `future-behavior`.
 
 ## 13. Golden fixtures bắt buộc
 
@@ -268,3 +437,53 @@ Tối thiểu:
 10. checkpoint/restore equivalence.
 
 JSON fixture được validate bởi .NET và từng adapter Python/C++.
+
+Mỗi fixture có metadata:
+
+```json
+{
+  "fixtureId": "duplicate-event-idempotent",
+  "supportLevel": "runner-executable",
+  "expectedValidator": "runner-session",
+  "minimumWorkPackage": "WP1",
+  "expectedOutcome": "pass"
+}
+```
+
+`supportLevel` chỉ nhận:
+
+- `schema-only`: kiểm shape valid/invalid, không tuyên bố runner thực thi behavior;
+- `runner-executable`: runner của work package hiện tại phải chạy và so exact
+  response/hash;
+- `future-behavior`: contract mô tả behavior WP2/WP3 trở đi; chỉ schema validation
+  được tính ở Q1.
+
+`expectedValidator` và `minimumWorkPackage` bắt buộc. `expectedOutcome` nhận
+`pass` hoặc exact error code. Expected canonical bytes/hash là source-controlled,
+không tự regenerate khi test chạy. Trong 10 fixture bắt buộc, fixture 9 có thể là
+`runner-executable` ở WP1; fixture 1–8 và checkpoint restore giữ
+`future-behavior` cho tới work package cài semantics tương ứng. WP1 có thêm
+transcript hello/init/structural-event/error riêng để chứng minh runner lifecycle.
+
+## 14. Decision checklist RB-WP1-001
+
+| Hạng mục | Quyết định v1 | Lý do/hệ quả |
+|---|---|---|
+| Schema version | SemVer ba phần, bắt đầu `1.0.0` | Không còn hai cách hiểu `1.0`/`1.0.0`; đổi semantics là major |
+| Integer/range | Integer-only, common safe range `±(2^53-1)` | Cross-language và schema tooling không mất chính xác |
+| Distance/coordinate/cost | mm, WGS84 E7, micro-cost có `costUnitId` | Một unit duy nhất; conversion/rounding nằm trong manifest |
+| Position | tagged union `node`/`edgeProgress`; capability `nodeOnly`/`directedEdgeProgress` | Bao phủ RidePy và FleetPy mà không bịa progress |
+| Event order | sequence toàn run liên tiếp; epoch sau applied decision; gap/overlap fatal | Replay không tự sửa input |
+| Boundary | envelope định tuyến, payload nội dung, manifest config bất biến | Không lặp identity hoặc đưa local runtime vào hash |
+| Error | stable code + `rejectMessage`/`failSession`/`terminateProcess` | Client biết retry hay dừng, không parse free text |
+| Canonical JSON | RFC 8785 subset integer-only; LF chỉ là NDJSON framing | Exact bytes độc lập locale/OS |
+| Hash | SHA-256, domain prefix, tagged UInt16/UInt64 BE frames | Không ambiguity do nối chuỗi; có vector cross-language |
+| Fixture | `schema-only`/`runner-executable`/`future-behavior` | Không biến contract tương lai thành implementation claim |
+
+Decision chưa khóa trong ticket này:
+
+- vehicle reassignment tiếp tục là O-001, khóa ở WP2;
+- khả năng trích xuất `edgeProgress` chính xác từ FleetPy là WP7 preflight; nếu
+  không đạt thì adapter công bố `nodeOnly` và fail/downgrade theo policy;
+- exact minor-version compatibility matrix được hiện thực và kiểm ở RB-WP1-005,
+  nhưng không được đổi các semantic đã khóa ở bảng trên.

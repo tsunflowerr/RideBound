@@ -9,8 +9,8 @@ adapter hoặc scenario chuẩn hóa.
 
 ## Trạng thái
 
-- WP0 scaffold đã hoàn thành; WP1 Contracts đã sẵn sàng, ticket tiếp theo là
-  [`RB-WP1-001`](docs/24-wp1-contracts-ticket-plan.md#rb-wp1-001--khóa-protocol-boundary-và-open-decisions).
+- WP0 scaffold đã hoàn thành; WP1 Contracts đang thực hiện, ticket tiếp theo là
+  [`RB-WP1-002`](docs/tasks/24-wp1-contracts-ticket-plan.md#rb-wp1-002--tạo-contract-test-project-và-fixture-harness).
 - Chưa có thuật toán, protocol, solver hoặc adapter hoạt động.
 - Nguồn sự thật: [`docs/18-status-and-decision-log.md`](docs/18-status-and-decision-log.md).
 - Lộ trình: [`docs/16-roadmap-and-work-packages.md`](docs/16-roadmap-and-work-packages.md).

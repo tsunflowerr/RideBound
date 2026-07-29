@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/tsunflowerr/RideBound/main/benchmarks/schemas/v1/hello-ack.schema.json",
+  "title": "RideBound helloAck message v1",
+  "allOf": [
+    {
+      "$ref": "protocol-envelope.schema.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "messageType": {
+          "const": "helloAck"
+        },
+        "payload": {
+          "$ref": "hello-ack-payload.schema.json"
+        }
+      }
+    }
+  ]
+}

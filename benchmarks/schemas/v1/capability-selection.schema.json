@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/tsunflowerr/RideBound/main/benchmarks/schemas/v1/capability-selection.schema.json",
+  "title": "RideBound negotiated capability selection v1",
+  "type": "object",
+  "required": [
+    "status",
+    "positionModel",
+    "capabilities",
+    "maxFleetSize",
+    "maxRequestCount"
+  ],
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": [
+        "accepted",
+        "downgraded"
+      ]
+    },
+    "positionModel": {
+      "$ref": "definitions.schema.json#/$defs/positionModel"
+    },
+    "capabilities": {
+      "$ref": "definitions.schema.json#/$defs/capabilitySet"
+    },
+    "maxFleetSize": {
+      "$ref": "definitions.schema.json#/$defs/canonicalPositiveInteger"
+    },
+    "maxRequestCount": {
+      "$ref": "definitions.schema.json#/$defs/canonicalPositiveInteger"
+    },
+    "downgradePolicyId": {
+      "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "downgraded"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "downgradePolicyId"
+        ]
+      },
+      "else": {
+        "not": {
+          "required": [
+            "downgradePolicyId"
+          ]
+        }
+      }
+    }
+  ],
+  "additionalProperties": false
+}

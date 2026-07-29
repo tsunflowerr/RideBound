@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "1.0.0",
+  "messageType": "hello",
+  "payload": {
+    "adapterId": "fleetpy-ridebound",
+    "adapterVersion": "1.0.0",
+    "supportedSchemaVersions": [
+      "1.0.0"
+    ],
+    "positionModel": "directedEdgeProgress",
+    "capabilities": [
+      "oldPlanProjection",
+      "cancellations",
+      "exactEventOrdering",
+      "dynamicTravelTimes"
+    ],
+    "maxFleetSize": 5000,
+    "maxRequestCount": 100000
+  }
+}

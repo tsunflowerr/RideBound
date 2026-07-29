@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "1.0.7",
+  "messageType": "hello",
+  "payload": {
+    "adapterId": "fixture-adapter",
+    "adapterVersion": "1.0.0",
+    "supportedSchemaVersions": [
+      "1.0.7"
+    ],
+    "positionModel": "nodeOnly",
+    "capabilities": [
+      "exactEventOrdering"
+    ],
+    "maxFleetSize": 10,
+    "maxRequestCount": 100
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "1.0.0",
+  "messageType": "initialized",
+  "runId": "run-001",
+  "scenarioId": "manhattan-20260729-a",
+  "payload": {
+    "manifestHash": "6666666666666666666666666666666666666666666666666666666666666666",
+    "initialStateIdentity": {
+      "epochId": 0,
+      "nextEventSeq": 1,
+      "simTimeMs": 0,
+      "stateHash": "7777777777777777777777777777777777777777777777777777777777777777"
+    }
+  }
+}

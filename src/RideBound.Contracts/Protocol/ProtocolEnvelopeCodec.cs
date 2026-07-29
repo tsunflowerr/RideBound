@@ -89,14 +89,6 @@ public static class ProtocolEnvelopeCodec
                         property.Name,
                         $"Envelope field '{property.Name}' appears more than once.");
                 }
-
-                if (!EnvelopeFields.Contains(property.Name))
-                {
-                    return Failure(
-                        ProtocolEnvelopeErrorCode.UnknownField,
-                        property.Name,
-                        $"Envelope field '{property.Name}' is not defined in protocol v1.");
-                }
             }
 
             var schemaTextResult = ReadRequiredString(root, "schemaVersion");
@@ -112,6 +104,40 @@ public static class ProtocolEnvelopeCodec
                     ProtocolEnvelopeErrorCode.InvalidSchemaVersion,
                     "schemaVersion",
                     "schemaVersion must use exact MAJOR.MINOR.PATCH decimal form.");
+            }
+
+            var compatibility = ProtocolVersionCompatibility.Evaluate(schemaVersion!);
+
+            if (compatibility.Status == ProtocolVersionCompatibilityStatus.UnsupportedMajor)
+            {
+                return Failure(
+                    ProtocolEnvelopeErrorCode.UnsupportedSchemaMajor,
+                    "schemaVersion",
+                    $"Schema major '{schemaVersion!.Major}' is not supported by receiver " +
+                    $"'{ProtocolVersion.Current}'.",
+                    schemaVersion);
+            }
+
+            if (compatibility.Status == ProtocolVersionCompatibilityStatus.UnsupportedMinor)
+            {
+                return Failure(
+                    ProtocolEnvelopeErrorCode.UnsupportedSchemaMinor,
+                    "schemaVersion",
+                    $"Schema minor '{schemaVersion!.Minor}' has no explicit safe compatibility " +
+                    $"profile for receiver '{ProtocolVersion.Current}'.",
+                    schemaVersion);
+            }
+
+            foreach (var property in root.EnumerateObject())
+            {
+                if (!EnvelopeFields.Contains(property.Name))
+                {
+                    return Failure(
+                        ProtocolEnvelopeErrorCode.UnknownField,
+                        property.Name,
+                        $"Envelope field '{property.Name}' is not defined in protocol v1.",
+                        schemaVersion);
+                }
             }
 
             var messageTypeResult = ReadRequiredString(root, "messageType", schemaVersion);
@@ -213,6 +239,13 @@ public static class ProtocolEnvelopeCodec
     {
         ArgumentNullException.ThrowIfNull(envelope.SchemaVersion);
         ArgumentNullException.ThrowIfNull(envelope.MessageType);
+
+        if (!ProtocolVersionCompatibility.Evaluate(envelope.SchemaVersion).IsCompatible)
+        {
+            throw new ArgumentException(
+                $"Schema version '{envelope.SchemaVersion}' is not supported.",
+                nameof(envelope));
+        }
 
         if (envelope.Payload.ValueKind != JsonValueKind.Object)
         {

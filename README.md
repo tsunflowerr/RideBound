@@ -10,9 +10,10 @@ adapter hoặc scenario chuẩn hóa.
 ## Trạng thái
 
 - WP0 scaffold đã hoàn thành; WP1 Contracts đang thực hiện, ticket tiếp theo là
-  [`RB-WP1-005`](docs/tasks/24-wp1-contracts-ticket-plan.md#rb-wp1-005--đặc-tả-schema-và-compatibility-v1).
-- Đã có protocol primitives/envelope và canonical JSON; chưa có runner behavior,
-  thuật toán, solver hoặc adapter hoạt động.
+  [`RB-WP1-008`](docs/tasks/24-wp1-contracts-ticket-plan.md#rb-wp1-008--cài-event-batch-contract-và-ordering-validation).
+- Đã có protocol primitives/envelope, canonical JSON, schema/version policy,
+  hello negotiation và initialize identity. Chưa có NDJSON session, event
+  reducer, thuật toán, solver hoặc adapter hoạt động.
 - Nguồn sự thật: [`docs/18-status-and-decision-log.md`](docs/18-status-and-decision-log.md).
 - Lộ trình: [`docs/16-roadmap-and-work-packages.md`](docs/16-roadmap-and-work-packages.md).
 
@@ -30,6 +31,8 @@ src/
 tests/
   RideBound.Domain.Tests/
   RideBound.ArchitectureTests/
+  RideBound.Contracts.Tests/
+  RideBound.Runner.Tests/
 benchmarks/                    schema, scenario và manifest tái lập
 simulators/                    adapter FleetPy/RidePy/AMoD2
 docs/                          đặc tả nghiên cứu và kỹ thuật

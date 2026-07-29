@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/tsunflowerr/RideBound/main/benchmarks/schemas/v1/protocol-envelope.schema.json",
+  "title": "RideBound protocol envelope v1",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "messageType",
+    "payload"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "$ref": "definitions.schema.json#/$defs/schemaVersion"
+    },
+    "messageType": {
+      "type": "string",
+      "enum": [
+        "hello",
+        "helloAck",
+        "initializeRun",
+        "initialized",
+        "checkpoint",
+        "restore",
+        "finalizeRun",
+        "runSummary",
+        "eventBatch",
+        "decision",
+        "decisionApplied",
+        "shutdown",
+        "error"
+      ]
+    },
+    "runId": {
+      "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+    },
+    "scenarioId": {
+      "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+    },
+    "epochId": {
+      "$ref": "definitions.schema.json#/$defs/canonicalPositiveInteger"
+    },
+    "simTimeMs": {
+      "$ref": "definitions.schema.json#/$defs/canonicalNonNegativeInteger"
+    },
+    "payload": {
+      "type": "object"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "messageType": {
+            "enum": [
+              "hello",
+              "helloAck",
+              "shutdown"
+            ]
+          }
+        }
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "runId"
+              ]
+            },
+            {
+              "required": [
+                "scenarioId"
+              ]
+            },
+            {
+              "required": [
+                "epochId"
+              ]
+            },
+            {
+              "required": [
+                "simTimeMs"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "messageType": {
+            "enum": [
+              "initializeRun",
+              "initialized",
+              "checkpoint",
+              "restore",
+              "finalizeRun",
+              "runSummary"
+            ]
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "runId",
+          "scenarioId"
+        ],
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "epochId"
+              ]
+            },
+            {
+              "required": [
+                "simTimeMs"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "messageType": {
+            "enum": [
+              "eventBatch",
+              "decision",
+              "decisionApplied"
+            ]
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "runId",
+          "scenarioId",
+          "epochId",
+          "simTimeMs"
+        ]
+      }
+    }
+  ],
+  "additionalProperties": false
+}

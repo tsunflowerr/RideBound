@@ -3,7 +3,7 @@
 > Topic ID: `RB-WP1`
 > Trạng thái: `IN_PROGRESS`
 > Cập nhật: 2026-07-29
-> Ticket tiếp theo: `RB-WP1-005`
+> Ticket tiếp theo: `RB-WP1-008`
 > Exit gate: Q1 Contracts
 
 ## 1. Outcome
@@ -56,10 +56,10 @@ không được giả lập thuật toán để làm fixture “pass”.
 | 2 | RB-WP1-002 | Contract test harness trong solution | `DONE` |
 | 3 | RB-WP1-003 | Protocol primitives và envelope | `DONE` |
 | 4 | RB-WP1-004 | Canonical JSON và unit rules | `DONE` |
-| 5 | RB-WP1-005 | Schema/version compatibility | `READY` |
-| 6 | RB-WP1-006 | Hello/capability negotiation | `PROPOSED` |
-| 7 | RB-WP1-007 | Initialize-run/manifest identity | `PROPOSED` |
-| 8 | RB-WP1-008 | Event batch và ordering validation | `PROPOSED` |
+| 5 | RB-WP1-005 | Schema/version compatibility | `DONE` |
+| 6 | RB-WP1-006 | Hello/capability negotiation | `DONE` |
+| 7 | RB-WP1-007 | Initialize-run/manifest identity | `DONE` |
+| 8 | RB-WP1-008 | Event batch và ordering validation | `READY` |
 | 9 | RB-WP1-009 | Decision/error/certificate shell | `PROPOSED` |
 | 10 | RB-WP1-010 | Decision hash chain | `PROPOSED` |
 | 11 | RB-WP1-011 | NDJSON reader/writer | `PROPOSED` |
@@ -489,6 +489,17 @@ Scenario: Optional minor field được hỗ trợ
 dotnet test RideBound.slnx
 ```
 
+**Completion evidence — 2026-07-29**
+
+- thêm Draft 2020-12 schema assets, stable `$id`, relative `$ref`, schema inventory
+  và machine-readable compatibility matrix trong `benchmarks/schemas/v1`;
+- `ProtocolVersionCompatibility` cùng envelope boundary phân biệt exact/patch,
+  unsupported minor, unsupported major và unknown field theo disposition đã khóa;
+- compatibility fixtures/tests chứng minh patch-compatible, minor reject, major
+  fail-session và explicit-safe-minor policy; current safe profile list rỗng;
+- schema tests parse mọi asset, kiểm `$id` không chứa local path, local `$ref`
+  resolve từ artifact directory và inventory map được về contract type/fixture.
+
 ---
 
 ## RB-WP1-006 — Cài hello và capability negotiation
@@ -556,6 +567,16 @@ Scenario: Thiếu old-plan projection bắt buộc
 ```powershell
 dotnet test RideBound.slnx
 ```
+
+**Completion evidence — 2026-07-29**
+
+- thêm typed `hello`/`helloAck`, position/capability vocabulary, scale limits và
+  strict payload codecs/schema/fixtures;
+- thêm pure `CapabilityNegotiator` tại runner boundary; required/optional,
+  deterministic set order, unknown required, missing old-plan projection,
+  scale limit và named downgrade đều có test;
+- selection không thể công bố capability/position/scale client chưa offer và
+  không tạo run state; exact result được dùng tiếp trong manifest identity.
 
 ---
 
@@ -626,6 +647,22 @@ Scenario: Scenario ID không khớp envelope
 ```powershell
 dotnet test RideBound.slnx
 ```
+
+**Completion evidence — 2026-07-29**
+
+- thêm immutable `RunManifestIdentity`, `initializeRun`/`initialized` codecs,
+  schema và valid/invalid fixtures;
+- manifest khóa seed, policy/config, scenario/graph/travel hashes, unit conversion,
+  negotiated capability, adapter/simulator, core commit và binary hash; không
+  lặp run/scenario ID hoặc nhận wall-clock/hostname/path;
+- pure `InitializeRunValidator` kiểm envelope/session context với hello/ack/
+  manifest; mismatch và re-initialize trả exact protocol code mà không tạo
+  identity mới;
+- `tests/RideBound.Runner.Tests` được thêm vào solution để test negotiation/init
+  boundary mà chưa cài NDJSON session hoặc thuật toán;
+- required full solution test pass 114/114; Release build/format/dependency audit
+  sạch. Release-only Domain smoke bị Windows Application Control chặn
+  `0x800711C7` sau khi 113 test khác pass.
 
 ---
 
@@ -1225,8 +1262,8 @@ dotnet test RideBound.slnx
 
 ## 7. Lệnh bắt đầu
 
-`RB-WP1-001` đến `RB-WP1-004` đã hoàn thành. Ticket tiếp theo là
-`RB-WP1-005`. Trước khi thực hiện:
+`RB-WP1-001` đến `RB-WP1-007` đã hoàn thành. Ticket tiếp theo là
+`RB-WP1-008`. Trước khi thực hiện:
 
 ```powershell
 Get-Content docs/06-event-contract-and-determinism.md -Encoding utf8

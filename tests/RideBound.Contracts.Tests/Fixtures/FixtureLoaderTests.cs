@@ -33,4 +33,16 @@ public sealed class FixtureLoaderTests
 
         Assert.Contains("must stay relative", exception.Message);
     }
+
+    [Fact]
+    public void Reads_schema_asset_from_stable_repository_relative_root()
+    {
+        var content = FixtureLoader.ReadSchemaUtf8("v1/schema-inventory.json");
+
+        Assert.Contains("\"schemaVersion\": \"1.0.0\"", content);
+        Assert.EndsWith(
+            Path.Combine("benchmarks", "schemas", "v1", "schema-inventory.json"),
+            FixtureLoader.GetSchemaPath("v1/schema-inventory.json"),
+            StringComparison.OrdinalIgnoreCase);
+    }
 }

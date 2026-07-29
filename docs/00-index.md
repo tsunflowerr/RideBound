@@ -141,12 +141,14 @@ không chép lại thuật toán RideBound bằng Python hoặc C++.
 ## 8. Mốc hiện tại
 
 - Repository độc lập: `https://github.com/tsunflowerr/RideBound`.
-- WP0 hoàn thành với `RideBound.slnx`, 7 source project và 2 test project.
-- RideBound test hiện tại: 8/8 pass ngày 2026-07-28
-  (7 architecture + 1 domain).
+- WP0 hoàn thành với `RideBound.slnx`; repository hiện có 7 source project và
+  4 test project sau khi WP1 thêm Contracts/Runner boundary tests.
+- Baseline WP1 hiện có 95 Contracts, 11 Runner boundary và 7 architecture tests
+  pass; full-suite result nằm trong tài liệu `18`.
 - BeGo độc lập vẫn đạt 25/25 backend và 7/7 frontend test.
-- Đã có test harness, protocol envelope/primitives và canonical JSON; chưa có
-  schema compatibility, runner behavior, online baseline, ledger hoặc adapter.
-- WP1 đang thực hiện: `RB-WP1-001..004` đã hoàn thành.
-- Bước thực thi tiếp theo: `RB-WP1-005` trong
+- Đã có test harness, protocol envelope/primitives, canonical JSON,
+  schema/version compatibility, hello negotiation và initialize identity; chưa
+  có event reducer, NDJSON session, online baseline, ledger hoặc adapter.
+- WP1 đang thực hiện: `RB-WP1-001..007` đã hoàn thành.
+- Bước thực thi tiếp theo: `RB-WP1-008` trong
   [24-wp1-contracts-ticket-plan.md](tasks/24-wp1-contracts-ticket-plan.md).

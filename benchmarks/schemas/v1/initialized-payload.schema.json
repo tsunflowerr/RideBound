@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/tsunflowerr/RideBound/main/benchmarks/schemas/v1/initialized-payload.schema.json",
+  "title": "RideBound initialized payload v1",
+  "type": "object",
+  "required": [
+    "manifestHash",
+    "initialStateIdentity"
+  ],
+  "properties": {
+    "manifestHash": {
+      "$ref": "definitions.schema.json#/$defs/sha256Hex"
+    },
+    "initialStateIdentity": {
+      "type": "object",
+      "required": [
+        "epochId",
+        "nextEventSeq",
+        "simTimeMs",
+        "stateHash"
+      ],
+      "properties": {
+        "epochId": {
+          "const": 0
+        },
+        "nextEventSeq": {
+          "const": 1
+        },
+        "simTimeMs": {
+          "$ref": "definitions.schema.json#/$defs/canonicalNonNegativeInteger"
+        },
+        "stateHash": {
+          "$ref": "definitions.schema.json#/$defs/sha256Hex"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

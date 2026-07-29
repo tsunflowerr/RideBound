@@ -6,7 +6,7 @@
 |---|---|---|---|---|---|
 | R-001 | Hệ thống RideBound độc lập | `05` | `Domain/Application/Runner` trong Git repo riêng | 5 architecture rules + 2 cross-platform path cases | WP0 verified; Linux CI rerun pending |
 | R-002 | Gắn được vào BeGo | `02`, `14` | BeGo adapter/API | integration replay | Planned |
-| R-003 | Core mang sang benchmark | `05`, `06`, `24` | contracts + runner | same binary hash | WP1 `002–004` implemented; runner planned |
+| R-003 | Core mang sang benchmark | `05`, `06`, `24` | contracts + runner | same binary hash | WP1 `002–007` implemented; NDJSON/replay planned |
 | R-004 | Layer 1 cùng codebase | `09` | B1/C1 chung RideBound engine; BeGo export adapter | paired runs | Planned |
 | R-005 | Layer 2 simulator chung | `09`, `12` | FleetPy adapter | Layer 2 gate | Planned |
 | R-006 | Layer 3 framework độc lập | `09`, `13` | RidePy/AMoD2 adapter | Layer 3 gate | Planned |
@@ -21,7 +21,7 @@
 | R-015 | Agent sau biết tiếp tục | `00`, `17`, `18`, `23`, `24` | root `AGENTS.md` + ordered WP1 tickets | reading order + one unambiguous next ticket | Verified |
 | R-016 | Thuật ngữ dễ hiểu | `22` | glossary | doc review | Docs v1 |
 | R-017 | Không bias bằng dữ liệu giả | `01`, `10`, `11` | pilot/holdout | prereg audit | Planned |
-| R-018 | Tái lập | `06`, `15`, `24` | hashes/bundle | clean reproduction | WP1 ticketed; not implemented |
+| R-018 | Tái lập | `06`, `15`, `24` | hashes/bundle | clean reproduction | manifest identity implemented; hash/replay planned |
 
 ## 2. Những gì cần thêm
 
@@ -36,6 +36,8 @@
 - `RideBound.Runner`
 - `RideBound.Domain.Tests`
 - `RideBound.ArchitectureTests`
+- `RideBound.Contracts.Tests` (WP1)
+- `RideBound.Runner.Tests` (WP1)
 
 Chỉ thêm `RideBound.Adapters.BeGo`, `RideBound.Persistence` và các test project
 khác tại work package có behavior thật; không scaffold assembly rỗng.
@@ -63,8 +65,9 @@ khác tại work package có behavior thật; không scaffold assembly rỗng.
 - experiment artifact pipeline.
 
 WP1 runtime items ở trên được chia trong `24`. Contract harness,
-primitives/envelope và canonical JSON của `RB-WP1-002..004` đã có code/test;
-schema, runner và các runtime item còn lại vẫn planned. Việc chỉ có ticket không
+primitives/envelope, canonical JSON, schema/version policy, hello negotiation và
+initialize identity của `RB-WP1-002..007` đã có code/test. Event/decision/hash,
+NDJSON session và các runtime item còn lại vẫn planned. Việc chỉ có ticket không
 được tính là `Implemented`.
 
 ### Product hoặc BeGo integration
@@ -149,8 +152,10 @@ Mỗi khi work package hoàn thành:
 | RB-WP1-002 | R-003, N-009 | `RideBound.Contracts.Tests`, fixture loader + smoke tests |
 | RB-WP1-003 | R-003, N-009 | protocol primitives/envelope codec + structural fixtures/tests |
 | RB-WP1-004 | R-003, N-001 | canonical units/JSON + exact UTF-8 golden hex + 63 Contracts tests |
-| RB-WP1-005 | R-003, R-008, N-009 | planned schemas + compatibility matrix/tests |
-| RB-WP1-006–009 | F-001, N-002, N-009 | hello/init/event/decision/error fixtures |
+| RB-WP1-005 | R-003, R-008, N-009 | schemas + compatibility matrix/tests; implemented |
+| RB-WP1-006 | N-002, N-009 | hello/ack schema, fixture và negotiation tests; implemented |
+| RB-WP1-007 | R-018, N-001, N-009 | init/manifest schema, identity validation tests; implemented |
+| RB-WP1-008–009 | F-001, N-002, N-009 | planned event/decision/error fixtures |
 | RB-WP1-010 | N-001, N-003 | published SHA-256 hash vectors |
 | RB-WP1-011–013 | N-001, N-004 | pipe, session, duplicate/version tests |
 | RB-WP1-014 | R-018, N-001, N-007 | 10 fixtures + clean replay/hash proof |
@@ -188,3 +193,18 @@ build/format/vulnerability audit pass. Full solution local chưa thể xác nh�
 do Windows Application Control chặn 1 Domain smoke với `0x800711C7` sau khi 73
 test khác pass; Q1 và các
 requirement cấp WP vẫn chưa `Verified` cho tới các ticket còn lại và gate `015`.
+
+### 8.3. RB-WP1-005–007 implementation evidence
+
+| Ticket | Implementation | Verification | Trạng thái |
+|---|---|---|---|
+| `005` | `benchmarks/schemas/v1`, `ProtocolVersionCompatibility`, version-aware envelope validation | schema ID/ref/inventory, patch/minor/major/unknown-field matrix tests | Implemented; task tests verified |
+| `006` | `HelloMessages`, `CapabilityNegotiator`, hello/ack schema + fixtures | required/optional/order/unknown/missing/scale/named-downgrade tests | Implemented; task tests verified |
+| `007` | `InitializeRunMessages`, `InitializeRunValidator`, manifest/init schemas + fixtures | identity match/mismatch, unoffered capability, re-init, unit/hash/wall-clock boundary tests | Implemented; task tests verified |
+
+Evidence ngày 2026-07-29: Contracts 95/95, Runner boundary 11/11 và required
+full solution 114/114 pass; Release build/format/vulnerability audit pass.
+Release-only full-suite attempt có 113 pass và Domain smoke bị Windows
+Application Control chặn `0x800711C7`. Đây là schema/handshake/identity evidence,
+chưa phải deterministic decision hash, executable NDJSON lifecycle hoặc
+portable-core verification; các claim đó vẫn chờ `008–015`.

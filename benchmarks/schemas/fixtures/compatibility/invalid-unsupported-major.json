@@ -1,0 +1,6 @@
+{
+  "schemaVersion": "2.0.0",
+  "messageType": "hello",
+  "futureEnvelopeField": "must-not-mask-major-error",
+  "payload": {}
+}

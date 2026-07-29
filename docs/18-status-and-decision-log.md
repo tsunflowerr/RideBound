@@ -9,8 +9,8 @@
 |---|---|
 | Research direction | `LOCKED_FOR_IMPLEMENTATION_PLANNING` |
 | Documentation | `MIGRATED_AND_VERIFIED_V1` |
-| Implementation | `WP1_CONTRACT_FOUNDATION_002_004_COMPLETE` |
-| Current work package | `WP1 IN_PROGRESS — RB-WP1-001..004 DONE; next RB-WP1-005` |
+| Implementation | `WP1_SCHEMA_HANDSHAKE_INIT_002_007_COMPLETE` |
+| Current work package | `WP1 IN_PROGRESS — RB-WP1-001..007 DONE; next RB-WP1-008` |
 | Repository | `https://github.com/tsunflowerr/RideBound` |
 | Main baseline | B1 `rolling-cost` |
 | Main treatment | C1 `ridebound-hard-vector` |
@@ -58,12 +58,18 @@
   encode/decode và structural validation có reason code.
 - Hoàn thành `RB-WP1-004`: thêm canonical unit conversions, canonical JSON
   byte writer và source-controlled golden byte vector.
+- Hoàn thành `RB-WP1-005`: thêm machine-readable JSON Schema v1, schema inventory,
+  compatibility matrix và executable version/unknown-field policy.
+- Hoàn thành `RB-WP1-006`: thêm hello/helloAck contracts, capability vocabulary
+  và deterministic fail-fast/named-downgrade negotiation.
+- Hoàn thành `RB-WP1-007`: thêm immutable initialize manifest/initial state
+  identity cùng validation chéo envelope/hello/ack không mutate.
 
 ## 3. Chưa làm
 
-- Chưa tạo JSON Schema assets hoặc compatibility matrix; protocol code hiện mới
-  có primitives/envelope/canonical boundary.
-- Runner mới chỉ là executable scaffold, chưa có NDJSON behavior.
+- Chưa có event batch payload/ordering validation; đây là `RB-WP1-008`.
+- Runner đã có pure negotiation/init validation boundary nhưng chưa có NDJSON
+  reader/writer hoặc executable session lifecycle.
 - Chưa có online baseline.
 - Chưa có ledger/certificate implementation.
 - Chưa có BeGo/FleetPy/RidePy adapter.
@@ -110,6 +116,21 @@ by Windows Application Control 0x800711C7, same pre-existing local blocker
 Date: 2026-07-29
 ```
 
+### RB-WP1-005–007 schema, handshake và initialize identity
+
+```text
+.NET SDK 10.0.301
+Contracts tests: 95 passed, 0 failed
+Runner boundary tests: 11 passed, 0 failed
+Required dotnet test RideBound.slnx: 114 passed, 0 failed
+Release build: passed, 0 warnings, 0 errors
+dotnet format --verify-no-changes: passed
+NuGet direct/transitive vulnerability audit: no vulnerable packages
+Release full-suite attempt: 113 passed; Domain smoke 1 blocked/reported failed
+by Windows Application Control 0x800711C7, same configuration-specific blocker
+Date: 2026-07-29
+```
+
 ### CI hardening task
 
 ```text
@@ -149,10 +170,10 @@ Topic hiện hành là WP1 — Contracts và canonical replay. Execution plan đ
 
 Ticket duy nhất đang `READY`:
 
-> `RB-WP1-005` — Thêm JSON Schema v1 và compatibility matrix/tests trên
-> primitives, envelope và canonical bytes đã khóa.
+> `RB-WP1-008` — Thêm event batch/event vocabulary v1 và structural ordering
+> validation, chưa mutate Domain.
 
-`RB-WP1-001..004` đã `DONE`. Chưa bắt đầu
+`RB-WP1-001..007` đã `DONE`. Chưa bắt đầu
 online insertion, ledger, OR-Tools hoặc ticket hóa WP2 trong WP1.
 
 ## 6. Open decisions
@@ -312,12 +333,47 @@ major, ADR superseding và fixture migration.
 **Supersedes / superseded by:** Không supersede ADR trước. Đóng phần contract của
 O-006; chỉ giữ executable FleetPy capability preflight cho WP7.
 
+### ADR-015 — 2026-07-29 — Accepted
+
+**Context:** ADR-014 khóa semantics chung nhưng RB-WP1-005–007 vẫn cần exact
+receiver behavior cho patch/minor/major, capability wire vocabulary và field
+identity bất biến của initialize manifest. Nếu receiver tự bỏ field minor,
+capability tự mặc định hoặc manifest lặp identity không nhất quán, cross-system
+replay có thể dùng input khác nhau mà vẫn tưởng là cùng run.
+
+**Decision:** Version phát hành hiện tại vẫn là exact `1.0.0`; receiver v1 nhận
+cùng patch line `1.0.x`, từ chối higher minor nếu chưa có explicit safe-forward
+profile và fail session với major khác trước unknown-field check. Safe-forward
+profile phải machine-readable và current list rỗng. Capability v1 dùng
+single-valued `positionModel`, semantic set có vocabulary cố định và explicit
+fleet/request scale. Required capability thiếu/không biết phải fail; downgrade
+chỉ hợp lệ khi có `downgradePolicyId`. `initializeRun` giữ run/scenario ID ở
+envelope, manifest chỉ giữ content/config hashes, seed, policy, unit conversion,
+exact negotiated selection, adapter/simulator, core commit và binary identity.
+Pure validation không đọc Git/environment, không mutate active identity và cấm
+re-initialize.
+
+**Consequences:** Adapter có machine-readable schema/inventory để kiểm trước khi
+gọi runner; patch bug fix không buộc migration semantics. Không có future minor
+nào được nhận ngầm. Manifest không lặp ID nên mismatch scenario được kiểm với
+envelope/session context, còn nội dung scenario được kiểm bằng hash. Hash values
+trong WP1-007 là contract fields do caller cung cấp; calculation/vector vẫn thuộc
+RB-WP1-010.
+
+**Evidence:** `benchmarks/schemas/v1`, `ProtocolVersionCompatibility`,
+`HelloMessages`, `InitializeRunMessages`, `CapabilityNegotiator`,
+`InitializeRunValidator`, Contracts/Runner boundary tests và
+`06-event-contract-and-determinism.md` mục 2.1, 4.2, 9.
+
+**Supersedes / superseded by:** Bổ sung cách hiện thực ADR-014; không thay unit,
+ordering, lifecycle hay hash framing đã khóa.
+
 ## 8. Work package tracker
 
 | WP | Trạng thái | Bắt đầu | Kết thúc | Evidence |
 |---|---|---|---|---|
 | WP0 Scaffold | Complete | 2026-07-28 | 2026-07-28 | build + 8 RideBound + 25 backend + 7 frontend tests |
-| WP1 Contracts | In progress; `001..004` done, `005` ready | 2026-07-29 | — | ADR-014 + 63 Contracts tests + golden bytes |
+| WP1 Contracts | In progress; `001..007` done, `008` ready | 2026-07-29 | — | ADR-014/015 + schema/handshake/init tests |
 | WP2 Online baseline | Not started | — | — | — |
 | WP3 Ledger/certificate | Not started | — | — | — |
 | WP4 Algorithms/solver | Not started | — | — | — |
@@ -332,6 +388,11 @@ O-006; chỉ giữ executable FleetPy capability preflight cho WP7.
 
 ## 9. Change history
 
+- 2026-07-29: Hoàn thành `RB-WP1-005..007`: schema/inventory/compatibility
+  assets, hello capability negotiation và immutable initialize identity.
+  Required full solution test pass 114/114; Release build/format/dependency audit
+  sạch. Release-only Domain smoke vẫn bị Windows Application Control chặn
+  `0x800711C7` sau khi 113 test khác pass; next là `RB-WP1-008`.
 - 2026-07-29: Hoàn thành `RB-WP1-002..004`: contract fixture harness, typed
   envelope/validation, canonical unit conversion và exact canonical JSON bytes.
   Contracts 66/66 và Architecture 7/7 pass từ independent artifacts path;

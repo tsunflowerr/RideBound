@@ -7,36 +7,61 @@ internal static class FixtureLoader
 {
     private const string FixtureRoot = "benchmarks/schemas/fixtures";
 
-    public static string ReadUtf8(string relativePath)
+    private const string SchemaRoot = "benchmarks/schemas";
+
+    public static string ReadUtf8(string relativePath) =>
+        ReadUnderRoot(FixtureRoot, relativePath);
+
+    public static string ReadSchemaUtf8(string relativePath) =>
+        ReadUnderRoot(SchemaRoot, relativePath);
+
+    public static string GetSchemaPath(string relativePath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(relativePath);
+        var normalizedPath = ValidateRelativePath(relativePath, SchemaRoot);
+        return BuildFullPath(SchemaRoot, normalizedPath);
+    }
 
-        var normalizedPath = relativePath.Replace('\\', '/');
-
-        if (Path.IsPathRooted(normalizedPath)
-            || normalizedPath.Split('/').Any(segment => segment == ".."))
-        {
-            throw new ArgumentException(
-                "Fixture path must stay relative to benchmarks/schemas/fixtures.",
-                nameof(relativePath));
-        }
-
-        var repositoryRoot = FindRepositoryRoot();
-        var fullPath = Path.Combine(
-            repositoryRoot,
-            FixtureRoot.Replace('/', Path.DirectorySeparatorChar),
-            normalizedPath.Replace('/', Path.DirectorySeparatorChar));
+    private static string ReadUnderRoot(string assetRoot, string relativePath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(relativePath);
+        var normalizedPath = ValidateRelativePath(relativePath, assetRoot);
+        var fullPath = BuildFullPath(assetRoot, normalizedPath);
 
         if (!File.Exists(fullPath))
         {
             throw new FileNotFoundException(
-                $"Fixture '{normalizedPath}' was not found under '{FixtureRoot}'.",
+                $"Asset '{normalizedPath}' was not found under '{assetRoot}'.",
                 normalizedPath);
         }
 
         return File.ReadAllText(fullPath, new UTF8Encoding(
             encoderShouldEmitUTF8Identifier: false,
             throwOnInvalidBytes: true));
+    }
+
+    private static string ValidateRelativePath(string relativePath, string assetRoot)
+    {
+        var normalizedPath = relativePath.Replace('\\', '/');
+
+        if (Path.IsPathRooted(normalizedPath)
+            || normalizedPath.Split('/').Any(segment => segment == ".."))
+        {
+            throw new ArgumentException(
+                $"Asset path must stay relative to {assetRoot}.",
+                nameof(relativePath));
+        }
+
+        return normalizedPath;
+    }
+
+    private static string BuildFullPath(string assetRoot, string normalizedPath)
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        return Path.Combine(
+            repositoryRoot,
+            assetRoot.Replace('/', Path.DirectorySeparatorChar),
+            normalizedPath.Replace('/', Path.DirectorySeparatorChar));
     }
 
     private static string FindRepositoryRoot()

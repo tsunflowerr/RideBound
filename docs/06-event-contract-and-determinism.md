@@ -14,6 +14,11 @@ prefix `v`, metadata hoặc số có leading zero. Major đổi khi semantics un
 ordering, lifecycle hoặc hash thay đổi. Minor chỉ thêm field optional có safe
 behavior đã công bố; patch không đổi canonical semantics.
 
+`1.0.0` là version được phát hành hiện tại. Receiver v1 chấp nhận cùng nhánh
+patch `1.0.x` vì patch không được đổi schema/canonical semantics; nó từ chối
+minor cao hơn nếu chưa có explicit safe-forward profile. Vì vậy việc parser nhận
+`1.0.7` không có nghĩa `1.0.7` đã được phát hành.
+
 Mọi message có hai field envelope bắt buộc `schemaVersion`, `messageType` và một
 `payload` object bắt buộc (dùng `{}` khi message không có nội dung):
 
@@ -51,6 +56,24 @@ Field envelope bổ sung phụ thuộc message:
 Field optional vắng mặt thì bị omit; v1 không dùng `null`. Unknown field bị từ
 chối cho `1.0.0`; compatibility với minor tương lai chỉ được mở theo matrix của
 RB-WP1-005.
+
+### 2.1. Compatibility matrix thực thi
+
+Machine-readable matrix nằm tại
+`benchmarks/schemas/v1/compatibility-matrix.json`:
+
+| Sender so với receiver `1.0.0` | Behavior | Code/disposition |
+|---|---|---|
+| cùng major/minor, patch bất kỳ | nhận với cùng semantics | — |
+| cùng major, minor cao hơn | mặc định từ chối message | `UNSUPPORTED_SCHEMA_MINOR` / `rejectMessage` |
+| major khác | fail session trước khi diễn giải field mới | `UNSUPPORTED_SCHEMA_MAJOR` / `failSession` |
+| field lạ trên nhánh `1.0.x` | từ chối message | `UNKNOWN_FIELD` / `rejectMessage` |
+
+Một future-minor field chỉ được bỏ qua khi profile machine-readable ghi đủ
+message type, exact field path, default/ignore behavior và việc field có tham gia
+canonical/hash projection hay không. Danh sách profile hiện rỗng; không có minor
+tương lai nào được tuyên bố hỗ trợ. Kiểm tra major diễn ra trước unknown-field
+check để message major mới không bị phân loại nhầm thành lỗi field recoverable.
 
 Quy tắc:
 
@@ -127,6 +150,32 @@ Runner không được tự đoán một decision đã được simulator áp d�
 `runId` và `scenarioId` có trong envelope `initializeRun`; manifest chứa
 `scenarioContentHash` để chứng minh nội dung, không lặp hai ID. Thay manifest
 sau initialize là lỗi fatal; run mới phải dùng `runId` mới.
+
+### 4.2. Initialize manifest identity v1
+
+`initializeRun.payload` có đúng một field `manifest`. Manifest v1 bắt buộc:
+
+- `protocolVersion`, `masterSeed`, `policyId`, `policyVersion` và
+  `policyConfigurationHash`;
+- `scenarioContentHash`, `graphSnapshotHash`, `travelTimeSnapshotHash`;
+- `costUnitId` và semantic set `sourceUnitConversions`, unique theo `quantity`,
+  sort ordinal, với exact `roundingRule = "roundTiesToEven"`;
+- exact `capabilitySelection` đã trả trong `helloAck`;
+- `adapter` (`adapterId`, `adapterVersion`);
+- `simulator` (`simulatorId`, `simulatorVersion`, `upstreamCommitSha`);
+- `coreCommitSha` và `binarySha256`.
+
+SHA-256 text là 64 lowercase hex; source commit là 40 hoặc 64 lowercase hex.
+Manifest không chứa `runId`, `scenarioId`, wall clock, hostname, dataset path,
+local path hoặc log. `runId`/`scenarioId` được đối chiếu từ envelope và
+session/experiment context; scenario content được khóa bằng hash.
+
+`initialized.payload` chứa `manifestHash` và `initialStateIdentity`. State ban
+đầu có `epochId = 0`, `nextEventSeq = 1`, `simTimeMs >= 0` và `stateHash`.
+WP1-007 chỉ khóa shape/identity do caller cung cấp; tính manifest/state hash nằm
+ở RB-WP1-010. Re-initialize một session active là `INVALID_SESSION_STATE`;
+version, adapter, capability, run hoặc scenario lệch là `IDENTITY_MISMATCH`.
+Validation không được mutate identity đang tồn tại.
 
 ## 5. Message/event/decision types v1
 
@@ -266,17 +315,28 @@ Reason code mẫu:
 
 ## 9. Handshake và capability negotiation
 
-Simulator gửi:
+`hello.payload` gửi:
 
-- position model: node/edge;
-- dynamic travel times;
-- stop relocation;
-- vehicle reassignment;
-- cancellations;
-- exact event ordering;
-- ability to replay old plan under new travel times;
-- native baseline hooks;
-- maximum supported fleet/request scale.
+- `adapterId`, `adapterVersion`;
+- semantic set `supportedSchemaVersions`;
+- single-valued `positionModel`;
+- semantic set `capabilities`;
+- `maxFleetSize`, `maxRequestCount`.
+
+Vocabulary capability v1:
+
+- `dynamicTravelTimes`;
+- `stopRelocation`;
+- `vehicleReassignment`;
+- `cancellations`;
+- `exactEventOrdering`;
+- `oldPlanProjection`;
+- `nativeBaselineHooks`.
+
+`helloAck.payload` chứa `selectedSchemaVersion` và `capabilitySelection`.
+Selection bắt buộc công bố `status` (`accepted`/`downgraded`), position model,
+semantic set capability cùng hai giới hạn scale. `downgraded` bắt buộc có
+`downgradePolicyId`; `accepted` không được mang field này.
 
 Các set capability được canonicalize theo string ordinal. `positionModel` là
 single-valued enum, không phải boolean `edgeProgress`. Runner trả capability cần
@@ -287,6 +347,14 @@ cho policy. Nếu thiếu capability bắt buộc:
   canonical manifest và đánh dấu experiment không so sánh trực tiếp.
 
 Không âm thầm bỏ một promise dimension.
+
+Negotiation là pure selection: không phụ thuộc thứ tự input set và chưa
+initialize state. Required/optional capability và minimum scale phải được policy
+khai báo explicit. Unknown required capability hoặc required capability thiếu
+trả `CAPABILITY_REQUIRED_MISSING`; unknown optional/config lỗi trả
+`SCHEMA_VALIDATION_FAILED`. Selection không được công bố position, capability
+hoặc scale mà client chưa offer. Exact selection được lặp trong manifest để
+initialize validation có thể phát hiện drift.
 
 ## 10. Canonical serialization và hash
 

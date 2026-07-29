@@ -6,7 +6,7 @@
 |---|---|---|---|---|---|
 | R-001 | Hệ thống RideBound độc lập | `05` | `Domain/Application/Runner` trong Git repo riêng | 5 architecture rules + 2 cross-platform path cases | WP0 verified; Linux CI rerun pending |
 | R-002 | Gắn được vào BeGo | `02`, `14` | BeGo adapter/API | integration replay | Planned |
-| R-003 | Core mang sang benchmark | `05`, `06` | contracts + runner | same binary hash | Planned |
+| R-003 | Core mang sang benchmark | `05`, `06`, `24` | contracts + runner | same binary hash | WP1 ready; not implemented |
 | R-004 | Layer 1 cùng codebase | `09` | B1/C1 chung RideBound engine; BeGo export adapter | paired runs | Planned |
 | R-005 | Layer 2 simulator chung | `09`, `12` | FleetPy adapter | Layer 2 gate | Planned |
 | R-006 | Layer 3 framework độc lập | `09`, `13` | RidePy/AMoD2 adapter | Layer 3 gate | Planned |
@@ -18,10 +18,10 @@
 | R-012 | Dùng paper nhưng không làm lại | `03`, `21` | claim ledger | novelty re-audit | Docs v1 |
 | R-013 | Nêu công nghệ và tối ưu | `05`, `08`, `12`–`14` | projects/adapters | build/performance | Docs v1 |
 | R-014 | Nêu thêm/bỏ gì | `02`, mục 2 dưới | migration plan | code review | Docs v1 |
-| R-015 | Agent sau biết tiếp tục | `00`, `17`, `18` | root `AGENTS.md` | reading order + status audit | Verified |
+| R-015 | Agent sau biết tiếp tục | `00`, `17`, `18`, `23`, `24` | root `AGENTS.md` + ordered WP1 tickets | reading order + one unambiguous next ticket | Verified |
 | R-016 | Thuật ngữ dễ hiểu | `22` | glossary | doc review | Docs v1 |
 | R-017 | Không bias bằng dữ liệu giả | `01`, `10`, `11` | pilot/holdout | prereg audit | Planned |
-| R-018 | Tái lập | `06`, `15` | hashes/bundle | clean reproduction | Planned |
+| R-018 | Tái lập | `06`, `15`, `24` | hashes/bundle | clean reproduction | WP1 ticketed; not implemented |
 
 ## 2. Những gì cần thêm
 
@@ -49,7 +49,7 @@ khác tại work package có behavior thật; không scaffold assembly rỗng.
 - PR template, Dependabot, format/test/coverage/dependency gates, conditional
   Sonar Quality Gate và conditional PR-Agent review;
 - `benchmarks/`, `simulators/`, `scripts/`, `artifacts/` có boundary README;
-- 6/6 RideBound tests cùng 25/25 backend và 7/7 frontend BeGo regression pass.
+- 8/8 RideBound tests hiện tại cùng baseline 25/25 backend và 7/7 frontend BeGo.
 
 ### Runtime/system
 
@@ -61,6 +61,10 @@ khác tại work package có behavior thật; không scaffold assembly rỗng.
 - paired replay harness;
 - simulator adapters;
 - experiment artifact pipeline.
+
+WP1 runtime items ở trên được chia trong `24`; trạng thái vẫn là planned cho tới
+khi từng artifact có code và test evidence. Việc có ticket không được tính là
+`Implemented`.
 
 ### Product hoặc BeGo integration
 
@@ -135,3 +139,18 @@ Mỗi khi work package hoàn thành:
 - điền file/test/result cụ thể;
 - nếu requirement bị cắt, ghi rationale trong decision log;
 - không để status “Verified” chỉ dựa trên docs.
+
+## 8. WP1 ticket traceability
+
+| Ticket | Requirement chính | Evidence dự kiến |
+|---|---|---|
+| RB-WP1-001 | N-001, N-002, N-009 | protocol ADR và decision table |
+| RB-WP1-002–005 | R-003, R-008, N-009 | contract tests, schemas, canonical bytes |
+| RB-WP1-006–009 | F-001, N-002, N-009 | hello/init/event/decision/error fixtures |
+| RB-WP1-010 | N-001, N-003 | published SHA-256 hash vectors |
+| RB-WP1-011–013 | N-001, N-004 | pipe, session, duplicate/version tests |
+| RB-WP1-014 | R-018, N-001, N-007 | 10 fixtures + clean replay/hash proof |
+| RB-WP1-015 | R-003, R-015, R-018 | Q1 gate report và WP2 handoff |
+
+Các dòng này là planned traceability. Chỉ `RB-WP1-015` mới được chuyển status
+requirement tương ứng dựa trên file/test/result cụ thể.

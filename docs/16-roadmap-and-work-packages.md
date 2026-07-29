@@ -12,6 +12,11 @@ Mỗi work package có:
 
 Chỉ một package chính ở trạng thái `IN_PROGRESS` trong [18-status-and-decision-log.md](18-status-and-decision-log.md). Có thể làm task nhỏ song song nếu không thay đổi contract chưa khóa.
 
+Roadmap này quản lý outcome và exit gate. Quy tắc ticket nằm trong
+[23-delivery-backlog-and-ticket-policy.md](23-delivery-backlog-and-ticket-policy.md).
+Chỉ topic hiện hành được refinement chi tiết; WP1 hiện có execution plan tại
+[24-wp1-contracts-ticket-plan.md](24-wp1-contracts-ticket-plan.md).
+
 ## WP0 — Freeze baseline và scaffold
 
 ### Mục tiêu
@@ -295,7 +300,8 @@ Cắt trước:
 WP0 được thực hiện trực tiếp trong repository RideBound mới theo yêu cầu của
 người dùng. Sau khi WP0 qua exit gate:
 
-1. Chuyển current work package sang WP1.
-2. Khóa protocol boundary trong `06`.
+1. Thực hiện `RB-WP1-001` để khóa protocol boundary và open decisions.
+2. Tiếp tục đúng ordered queue `RB-WP1-002` đến `RB-WP1-015`.
 3. Chỉ thêm Contracts/Application files khi có golden test tương ứng.
 4. Không bắt đầu online algorithm trước khi canonical replay của WP1 ổn định.
+5. Không ticket hóa WP2 cho tới khi Q1 có evidence và WP1 được đóng đúng gate.

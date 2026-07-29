@@ -10,7 +10,7 @@
 | Research direction | `LOCKED_FOR_IMPLEMENTATION_PLANNING` |
 | Documentation | `MIGRATED_AND_VERIFIED_V1` |
 | Implementation | `WP0_SCAFFOLD_COMPLETE` |
-| Current work package | `NONE — next WP1` |
+| Current work package | `WP1 READY — next RB-WP1-001` |
 | Repository | `https://github.com/tsunflowerr/RideBound` |
 | Main baseline | B1 `rolling-cost` |
 | Main treatment | C1 `ridebound-hard-vector` |
@@ -46,7 +46,7 @@
 - Giữ nguyên cây mã nguồn `E:\Code\BeGo`; không copy `BeGo/src`.
 - Xác minh WP0:
   - RideBound restore/build Release: 0 warning, 0 error;
-  - RideBound tests: 6/6 pass;
+  - RideBound tests hiện tại: 8/8 pass;
   - BeGo backend: 25/25 pass;
   - BeGo frontend: 7/7 pass.
 
@@ -68,7 +68,7 @@
 ```text
 .NET SDK 10.0.301
 Build Release: 0 warnings, 0 errors
-Architecture tests: 5 passed
+Architecture tests: 7 passed
 Domain smoke tests: 1 passed
 Date: 2026-07-28
 ```
@@ -107,15 +107,16 @@ Date: 2026-07-28
 
 ## 5. Next action
 
-WP1 — Contracts và canonical replay:
+Topic hiện hành là WP1 — Contracts và canonical replay. Execution plan đầy đủ:
+[24-wp1-contracts-ticket-plan.md](24-wp1-contracts-ticket-plan.md).
 
-1. Đọc `06-event-contract-and-determinism.md`.
-2. Khóa protocol envelope, version, unit và error taxonomy.
-3. Thêm contract code cùng golden fixtures; không tạo DTO không có fixture.
-4. Implement runner `hello/init/event/error` tối thiểu.
-5. Chứng minh cùng transcript tạo cùng decision/hash.
+Ticket duy nhất đang `READY`:
 
-Chưa bắt đầu online insertion, ledger hoặc OR-Tools trong WP1.
+> `RB-WP1-001` — Khóa protocol boundary, unit, position model, error taxonomy,
+> hash framing và fixture taxonomy bằng ADR trước khi thêm contract code.
+
+Sau khi ticket này `DONE`, chỉ chuyển `RB-WP1-002` sang `READY`. Chưa bắt đầu
+online insertion, ledger, OR-Tools hoặc ticket hóa WP2 trong WP1.
 
 ## 6. Open decisions
 
@@ -215,12 +216,32 @@ nhưng chỉ chạy khi repository secrets/variables tương ứng đã tồn t�
 cross-platform. AI review không phải required correctness gate. Sonar chỉ được đặt
 required sau khi cấu hình và bootstrap scan thành công.
 
+### ADR-013 — 2026-07-28 — Accepted
+
+**Context:** Roadmap đã có 12 work package nhưng chưa có đơn vị delivery đủ nhỏ.
+Ticket hóa chi tiết tất cả package ngay khi WP1 chưa khóa contract sẽ tạo dependency
+và acceptance criteria dựa trên giả định chưa được kiểm chứng.
+
+**Decision:** Dùng progressive elaboration: giữ WP1–WP12 ở mức topic/outcome/gate,
+chỉ chia topic hiện hành thành ticket tuần tự. WP1 có 15 ticket trong `24`; mặc
+định WIP là một implementation ticket. Topic kế tiếp chỉ được refinement khi topic
+trước đạt exit gate.
+
+**Alternatives considered:** Ticket hóa toàn bộ WP1–WP12 ngay; triển khai trực tiếp
+từ deliverable cấp WP.
+
+**Consequence:** Bước tiếp theo luôn nhỏ và kiểm tra được, nhưng backlog xa phải
+được refinement lại bằng evidence thực trước khi triển khai.
+
+**Evidence:** `23-delivery-backlog-and-ticket-policy.md`,
+`24-wp1-contracts-ticket-plan.md`.
+
 ## 8. Work package tracker
 
 | WP | Trạng thái | Bắt đầu | Kết thúc | Evidence |
 |---|---|---|---|---|
-| WP0 Scaffold | Complete | 2026-07-28 | 2026-07-28 | build + 6 RideBound + 25 backend + 7 frontend tests |
-| WP1 Contracts | Not started | — | — | — |
+| WP0 Scaffold | Complete | 2026-07-28 | 2026-07-28 | build + 8 RideBound + 25 backend + 7 frontend tests |
+| WP1 Contracts | Ready; not started | — | — | ticket plan `RB-WP1-001..015` |
 | WP2 Online baseline | Not started | — | — | — |
 | WP3 Ledger/certificate | Not started | — | — | — |
 | WP4 Algorithms/solver | Not started | — | — | — |
@@ -235,6 +256,9 @@ required sau khi cấu hình và bootstrap scan thành công.
 
 ## 9. Change history
 
+- 2026-07-28: Chuyển WP1 sang `READY`, thêm delivery policy và 15 ticket chi tiết;
+  next action là `RB-WP1-001`. `dotnet test RideBound.slnx` hiện pass 8/8;
+  không có implementation status nào được nâng.
 - 2026-07-28: Sửa false positive architecture test trên Linux và mở rộng CI quality
   gates; Release build local sạch, test local chờ Linux CI xác nhận do Windows
   Application Control chặn nạp DLL test.

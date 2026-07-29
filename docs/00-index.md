@@ -1,6 +1,6 @@
 # RideBound — bản đồ tài liệu
 
-> Trạng thái: đặc tả v1 + WP0 scaffold hoàn thành
+> Trạng thái: đặc tả v1 + WP0 hoàn thành + WP1 ticket plan sẵn sàng
 > Cập nhật: 2026-07-28
 > Nguồn sự thật về tiến độ: [18-status-and-decision-log.md](18-status-and-decision-log.md)
 
@@ -104,6 +104,8 @@ Bộ tài liệu này trả lời năm câu hỏi:
 | [20-risks-and-scope-control.md](20-risks-and-scope-control.md) | Risk register và cơ chế dừng |
 | [21-paper-to-design-evidence.md](21-paper-to-design-evidence.md) | Paper nào ảnh hưởng quyết định nào |
 | [22-glossary.md](22-glossary.md) | Giải thích thuật ngữ bằng tiếng Việt |
+| [23-delivery-backlog-and-ticket-policy.md](23-delivery-backlog-and-ticket-policy.md) | Quy tắc topic/ticket, DoR/DoD và cách chọn việc tiếp theo |
+| [24-wp1-contracts-ticket-plan.md](24-wp1-contracts-ticket-plan.md) | 15 ticket WP1 có scope, rules, BDD và acceptance criteria |
 | [research/README.md](research/README.md) | Archive báo cáo, audit và evidence matrix nền |
 
 ## 6. Kiến trúc bằng một hình
@@ -140,7 +142,10 @@ không chép lại thuật toán RideBound bằng Python hoặc C++.
 
 - Repository độc lập: `https://github.com/tsunflowerr/RideBound`.
 - WP0 hoàn thành với `RideBound.slnx`, 7 source project và 2 test project.
-- RideBound Release build sạch; 6/6 test pass ngày 2026-07-28.
+- RideBound test hiện tại: 8/8 pass ngày 2026-07-28
+  (7 architecture + 1 domain).
 - BeGo độc lập vẫn đạt 25/25 backend và 7/7 frontend test.
 - Chưa có protocol, online baseline, commitment ledger hoặc adapter simulator.
-- Bước thực thi tiếp theo: WP1 trong `16-roadmap-and-work-packages.md`.
+- WP1 đã được refinement thành 15 ticket tuần tự; chưa có contract code.
+- Bước thực thi tiếp theo: `RB-WP1-001` trong
+  [24-wp1-contracts-ticket-plan.md](24-wp1-contracts-ticket-plan.md).

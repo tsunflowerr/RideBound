@@ -20,6 +20,8 @@ Chỉ topic hiện hành được refinement chi tiết. WP1 đã đóng theo ex
 [25-wp2-online-state-refinement.md](tasks/25-wp2-online-state-refinement.md) và
 hiện có ordered queue trong
 [26-wp2-online-baseline-ticket-plan.md](tasks/26-wp2-online-baseline-ticket-plan.md).
+WP2 đã đóng và WP3 bắt đầu bằng refinement ticket
+[27-wp3-ledger-certificate-refinement.md](tasks/27-wp3-ledger-certificate-refinement.md).
 
 ## WP0 — Freeze baseline và scaffold
 
@@ -78,11 +80,13 @@ exception và Release correctness evidence được giữ riêng, không nhập 
 
 ## WP2 — Online state và rolling baseline
 
-**Trạng thái:** In progress; `RB-WP2-001..006` complete, `RB-WP2-007` ready.
+**Trạng thái:** Complete cho physical/B1 ngày 2026-07-30; không gồm commitment.
 
-Current Debug/Release full solution pass 278/278 sau state/reducer/validator;
-chi tiết per-suite và mutation evidence nằm trong `18`, `19` và execution plan
-`26`.
+Logical test inventory sau WP2 là 333; required Debug solution pass 333/333 và
+Release build/format pass. Release xUnit bị Windows Application Control chặn
+fresh unsigned DLL ở Application/Algorithms/Runner; đúng Release artifacts đó
+pass qua policy-safe bundles/process checks. Exception nằm trong `18`, không
+được tính là Release full-solution pass.
 
 ### Deliverable
 
@@ -101,6 +105,9 @@ chi tiết per-suite và mutation evidence nằm trong `18`, `19` và execution 
 - no commitment constraint yet.
 
 ## WP3 — Ledger và certificate
+
+**Trạng thái:** Ready; chỉ `RB-WP3-001` refinement đang `READY`, chưa có runtime
+ledger/certificate.
 
 ### Deliverable
 
@@ -318,10 +325,10 @@ Cắt trước:
 WP0 được thực hiện trực tiếp trong repository RideBound mới theo yêu cầu của
 người dùng. Sau khi WP0 qua exit gate:
 
-1. WP0 và ordered queue `RB-WP1-001..015` đã hoàn thành.
-2. `RB-WP2-001..006` đã hoàn thành refinement, typed contracts/fixtures, Domain
-   state/route, atomic reducer/mapper và independent physical validator.
-3. Thực hiện đúng một ticket `READY`: `RB-WP2-007` deterministic insertion
-   candidate generator.
-4. Không kéo ledger/certificate WP3 hoặc OR-Tools WP4 vào online baseline.
-5. Giữ transcript/hash Q1 làm regression oracle cho mọi WP2 ticket.
+1. WP0, WP1/Q1 và ordered queue `RB-WP2-001..012` đã hoàn thành.
+2. WP2 đã cung cấp typed online state, immutable route/reducer, independent
+   physical validator, deterministic B1, exact-small oracle và tiny replay.
+3. Thực hiện đúng một ticket `READY`: `RB-WP3-001` refinement ledger/budget/
+   locks/incident/certificate/checkpoint.
+4. Ticket refinement chưa viết ledger code và chưa tự chọn mức O-002/O-003.
+5. Không kéo C1/OR-Tools WP4 hoặc adapter WP5+ vào WP3 refinement.

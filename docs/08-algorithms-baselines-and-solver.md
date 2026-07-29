@@ -30,6 +30,25 @@ Khác biệt chính chỉ là commitment mechanism. Nếu RideBound được th�
 
 Kết quả chính bắt buộc so C1 với B1. B2–B5 là mechanism baselines.
 
+### 2.1. B1 implemented boundary sau WP2
+
+WP2 đã cài B1 correctness baseline bằng exhaustive pickup/drop insertion trên
+mutable suffix và exhaustive fleet selection cho instance nhỏ:
+
+- exact mode không âm thầm truncate; bounded mode stable-cap và giữ no-op;
+- mọi candidate qua independent physical validator, selected candidate được
+  kiểm lại trước publish;
+- tối đa accepted count, tối thiểu checked integer route cost, rồi candidate-ID
+  ordinal tie-break;
+- incumbent accepted không reassign trong WP2;
+- test-only oracle độc lập khớp feasible set/cost/outcome trên 32 deterministic
+  seeds trong published bound tối đa 2 vehicle/2 pending request;
+- default Runner online dùng B1, còn `--mode conformance` chỉ giữ Q1 oracle.
+
+Đây không phải scale/performance evidence. B1 WP2 chưa tính promise delta,
+không prune commitment budget và không phát commitment certificate. Các phần đó
+bắt đầu ở WP3; C1/OR-Tools vẫn thuộc WP4.
+
 ## 3. Candidate plan
 
 Mỗi candidate plan cho một vehicle gồm:

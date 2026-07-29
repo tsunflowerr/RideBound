@@ -1,10 +1,11 @@
 # Delivery backlog và quy tắc ticket
 
 > Trạng thái: `BASELINE_V1`
-> Cập nhật: 2026-07-29
+> Cập nhật: 2026-07-30
 > Nguồn tiến độ: [18-status-and-decision-log.md](../18-status-and-decision-log.md)
 > Topic đã ticket hóa: [WP1 Contracts](24-wp1-contracts-ticket-plan.md) và
-> [WP2 Online baseline](26-wp2-online-baseline-ticket-plan.md)
+> [WP2 Online baseline](26-wp2-online-baseline-ticket-plan.md) và
+> [WP3 refinement](27-wp3-ledger-certificate-refinement.md)
 
 ## 1. Mục đích
 
@@ -118,9 +119,9 @@ Ticket tài liệu phải:
 | WP11 Product UX | UI/audit có rollback, không overclaim | product gate | WP5 |
 | WP12 Paper/release | Claim traceable và artifact tái lập | Q6 | WP9, WP10 |
 
-WP3–WP12 **chưa có ticket**. WP2 đã được refine sau khi WP1/Q1 đóng; khi topic
-tiếp theo được kích hoạt, tiếp tục refine vừa đủ từ deliverable/exit gate của
-`16` và evidence thật của topic trước.
+WP4–WP12 **chưa có ticket**. WP2 đã đóng physical/B1; WP3 hiện chỉ có ticket
+refinement `RB-WP3-001`. Ordered queue implementation WP3 chỉ được tạo như output
+của refinement này từ deliverable/exit gate của `16` và evidence thật WP2.
 
 WP11 không nằm trên critical path nghiên cứu và không được làm chậm WP8–WP10.
 
@@ -129,17 +130,17 @@ WP11 không nằm trên critical path nghiên cứu và không được làm ch�
 WP1 `RB-WP1-001..015` đã hoàn thành theo
 [24-wp1-contracts-ticket-plan.md](24-wp1-contracts-ticket-plan.md).
 
-WP2 `RB-WP2-001..006` đã hoàn thành. ADR-018/019 khóa và hiện thực state
-ownership, atomic reducer, route prefix/suffix, O-001 và physical validator.
-Ordered queue còn lại `RB-WP2-007..012` nằm trong
-[26-wp2-online-baseline-ticket-plan.md](26-wp2-online-baseline-ticket-plan.md).
+WP2 `RB-WP2-001..012` đã hoàn thành. ADR-018–020 khóa và hiện thực state
+ownership, atomic reducer, route prefix/suffix, O-001, physical validator,
+deterministic B1, exact-small oracle và online replay. Phạm vi đóng chỉ là
+physical/B1, chưa có hard commitment guarantee.
 
-Ticket implementation duy nhất hiện `READY`:
+Ticket duy nhất hiện `READY`:
 
-> **RB-WP2-007 — Deterministic insertion candidate generator**
+> **RB-WP3-001 — Refinement ledger, budget và certificate**
 
-Không bắt đầu B1 fleet selection trước khi generator dùng chung physical
-validator, stable order và no-op candidate có evidence.
+Ticket này chỉ tạo ADR/execution plan WP3. Không viết ledger/certificate runtime,
+không chọn số O-002/O-003 và không bắt đầu C1/OR-Tools.
 
 ## 9. Template refinement cho topic kế tiếp
 
@@ -165,5 +166,5 @@ Không copy BDD của WP1 sang topic khác nếu semantics khác.
 5. Chỉ chuyển ticket kế tiếp sau khi evidence của ticket hiện tại được review.
 6. Chỉ đóng topic khi toàn bộ exit gate trong `16` đạt.
 
-Theo trạng thái ngày 2026-07-29, ticket tiếp theo phải thực hiện là
-**RB-WP2-007**.
+Theo trạng thái ngày 2026-07-30, ticket tiếp theo phải thực hiện là
+**RB-WP3-001**.

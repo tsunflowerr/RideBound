@@ -1,0 +1,109 @@
+using RideBound.Algorithms.Candidates;
+using RideBound.Application.State;
+using RideBound.Domain.Common;
+
+namespace RideBound.Algorithms.Policies;
+
+public enum RequestDecisionOutcome
+{
+    Accepted,
+    Rejected,
+    Deferred,
+}
+
+public sealed record RequestDecisionAction(
+    RequestId RequestId,
+    RequestDecisionOutcome Outcome,
+    string ReasonCode,
+    VehicleId? VehicleId = null,
+    string? CandidateId = null);
+
+public sealed record SelectedVehiclePlan(
+    VehicleId VehicleId,
+    InsertionCandidate Candidate);
+
+public sealed record FleetSelection(
+    IReadOnlyList<SelectedVehiclePlan> VehiclePlans,
+    int AcceptedRequestCount,
+    long OperationalCost);
+
+public sealed record FleetSelectionResult
+{
+    private FleetSelectionResult(
+        FleetSelection? selection,
+        RollingCostWitness? witness)
+    {
+        Selection = selection;
+        Witness = witness;
+    }
+
+    public bool IsSuccess => Selection is not null;
+
+    public FleetSelection? Selection { get; }
+
+    public RollingCostWitness? Witness { get; }
+
+    public static FleetSelectionResult Success(FleetSelection selection) =>
+        new(selection, null);
+
+    public static FleetSelectionResult Failure(RollingCostWitness witness) =>
+        new(null, witness);
+}
+
+public sealed record RollingCostDecision(
+    OnlineState ProposedState,
+    IReadOnlyList<SelectedVehiclePlan> VehiclePlans,
+    IReadOnlyList<RequestDecisionAction> RequestActions,
+    IReadOnlyList<CandidatePruneWitness> PrunedCandidates,
+    int AcceptedRequestCount,
+    long OperationalCost);
+
+public sealed record RollingCostDecisionResult
+{
+    private RollingCostDecisionResult(
+        RollingCostDecision? decision,
+        RollingCostWitness? witness)
+    {
+        Decision = decision;
+        Witness = witness;
+    }
+
+    public bool IsSuccess => Decision is not null;
+
+    public RollingCostDecision? Decision { get; }
+
+    public RollingCostWitness? Witness { get; }
+
+    public static RollingCostDecisionResult Success(
+        RollingCostDecision decision) =>
+        new(decision, null);
+
+    public static RollingCostDecisionResult Failure(
+        RollingCostWitness witness) =>
+        new(null, witness);
+}
+
+public sealed record RollingCostWitness(
+    string Code,
+    string Message,
+    VehicleId? VehicleId = null,
+    RequestId? RequestId = null,
+    string? CandidateId = null,
+    string? Dimension = null);
+
+public static class RollingCostFailureCodes
+{
+    public const string CandidateGenerationFailed =
+        "CANDIDATE_GENERATION_FAILED";
+    public const string NoVehiclePlan = "NO_VEHICLE_PLAN";
+    public const string OperationalCostOverflow = "OPERATIONAL_COST_OVERFLOW";
+    public const string SelectedCandidateInvalid = "SELECTED_CANDIDATE_INVALID";
+    public const string DecisionApplyFailed = "DECISION_APPLY_FAILED";
+}
+
+public static class RollingCostReasonCodes
+{
+    public const string Accepted = "ACCEPTED";
+    public const string NoFeasibleInsertion = "NO_FEASIBLE_INSERTION";
+    public const string FleetSelectionConflict = "FLEET_SELECTION_CONFLICT";
+}

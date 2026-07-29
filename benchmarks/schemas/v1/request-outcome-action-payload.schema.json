@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/tsunflowerr/RideBound/main/benchmarks/schemas/v1/request-outcome-action-payload.schema.json",
+  "title": "RideBound request outcome action payload v1",
+  "type": "object",
+  "required": [
+    "requestId",
+    "reasonCode"
+  ],
+  "properties": {
+    "requestId": {
+      "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+    },
+    "reasonCode": {
+      "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+    }
+  },
+  "additionalProperties": false
+}

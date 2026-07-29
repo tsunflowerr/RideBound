@@ -25,7 +25,9 @@ public static class RunnerHost
         Stream output,
         TextWriter diagnostics,
         CancellationToken cancellationToken = default,
-        int maximumLineBytes = NdjsonReader.DefaultMaximumLineBytes)
+        int maximumLineBytes = NdjsonReader.DefaultMaximumLineBytes,
+        RunnerExecutionMode executionMode =
+            RunnerExecutionMode.StructuralConformance)
     {
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(output);
@@ -33,7 +35,9 @@ public static class RunnerHost
 
         var reader = new NdjsonReader(input, maximumLineBytes);
         var writer = new NdjsonWriter(output);
-        var session = new RunnerSession(RunnerDefaults.CapabilityRequirements);
+        var session = new RunnerSession(
+            RunnerDefaults.CapabilityRequirements,
+            executionMode);
 
         while (true)
         {

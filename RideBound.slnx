@@ -9,6 +9,7 @@
     <Project Path="src/RideBound.Solvers.OrTools/RideBound.Solvers.OrTools.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/RideBound.Algorithms.Tests/RideBound.Algorithms.Tests.csproj" />
     <Project Path="tests/RideBound.ArchitectureTests/RideBound.ArchitectureTests.csproj" />
     <Project Path="tests/RideBound.Application.Tests/RideBound.Application.Tests.csproj" />
     <Project Path="tests/RideBound.Contracts.Tests/RideBound.Contracts.Tests.csproj" />

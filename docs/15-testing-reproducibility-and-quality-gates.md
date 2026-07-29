@@ -263,12 +263,23 @@ schema-validate tại mốc Q1.
 
 - invariants/property/exact-small pass.
 
-`RB-WP2-002..006` hiện cung cấp phần đầu của Q2: typed online fixtures, exhaustive
-request lifecycle matrix, route properties, atomic reducer/replay và physical
-validator mutation/generated cases. Current Debug/Release full solution pass
-278/278 (Contracts 127, Domain 89, Application 13, Runner 42, Architecture 7).
-Q2 **chưa đóng** vì candidate generator, B1 selector và exact-small differential
-oracle thuộc `RB-WP2-007..009` chưa tồn tại.
+WP2 đã hoàn thành phần physical/B1 của Q2: typed online fixtures, exhaustive
+request lifecycle, route properties, atomic reducer/replay, independent physical
+validator, deterministic insertion/B1 và independent exact-small oracle.
+Published bound 2 vehicle/2 pending request qua 32/32 seeds với generator/
+selection gap bằng 0; tiny four-epoch replay/tamper cũng pass.
+
+Logical inventory sau WP2 là 333 (Contracts 128, Domain 89, Application 15,
+Algorithms 45, Runner 49, Architecture 7). Required Debug
+`dotnet test RideBound.slnx` pass 333/333; Release build/format pass. Release
+xUnit bị Windows Application Control chặn fresh unsigned DLL bằng `0x800711C7`
+ở ba suite, nhưng đúng artifacts đó pass qua policy-safe bundles/process checks.
+Exception nằm trong `18` và không được tính là Release full-solution xUnit pass.
+
+Q2 tổng thể **chưa đóng**: WP3 còn phải chứng minh P1/P2/P3 cho promise ledger,
+hard budget, locks, incident separation, independent commitment certificate và
+checkpoint; WP4 còn exact-small/solver equivalence cho C1/OR-Tools. Vì vậy WP2
+không được gọi là hard commitment guarantee.
 
 ### Q3 — BeGo
 

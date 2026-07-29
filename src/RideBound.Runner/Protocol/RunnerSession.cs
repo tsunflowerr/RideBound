@@ -1,8 +1,14 @@
 using System.Buffers;
 using System.Security.Cryptography;
 using System.Text.Json;
+using RideBound.Algorithms.Candidates;
+using RideBound.Algorithms.Policies;
+using RideBound.Application.State;
 using RideBound.Contracts.Protocol;
 using RideBound.Contracts.Serialization;
+using RideBound.Domain.Common;
+using RideBound.Domain.Runs;
+using RideBound.Runner.Online;
 
 namespace RideBound.Runner.Protocol;
 
@@ -16,6 +22,12 @@ public enum RunnerSessionStatus
     Shutdown,
 }
 
+public enum RunnerExecutionMode
+{
+    StructuralConformance,
+    OnlineRollingCost,
+}
+
 public sealed record RunnerSessionResult(
     ProtocolEnvelope? Response,
     bool ShouldTerminate = false);
@@ -25,6 +37,10 @@ public sealed class RunnerSession
     public const int RetainedBatchResponseCount = 1;
 
     private readonly CapabilityRequirementProfile _requirements;
+    private readonly RunnerExecutionMode _executionMode;
+    private readonly OnlineEventMapper _onlineEventMapper;
+    private readonly RollingCostPolicy _rollingCostPolicy;
+    private readonly CandidateGenerationOptions _candidateOptions;
     private HelloPayload? _hello;
     private HelloAckPayload? _helloAcknowledgement;
     private InitializedSessionIdentity? _identity;
@@ -36,11 +52,26 @@ public sealed class RunnerSession
     private Sha256Hex _manifestHash = ProtocolHash.ZeroHash;
     private Sha256Hex _stateHash = ProtocolHash.ZeroHash;
     private Sha256Hex _previousDecisionHash = ProtocolHash.ZeroHash;
+    private EventReductionCoordinator? _onlineCoordinator;
 
-    public RunnerSession(CapabilityRequirementProfile requirements)
+    public RunnerSession(
+        CapabilityRequirementProfile requirements,
+        RunnerExecutionMode executionMode =
+            RunnerExecutionMode.StructuralConformance,
+        OnlineEventMapper? onlineEventMapper = null,
+        RollingCostPolicy? rollingCostPolicy = null,
+        CandidateGenerationOptions? candidateOptions = null)
     {
         ArgumentNullException.ThrowIfNull(requirements);
         _requirements = requirements;
+        _executionMode = executionMode;
+        _onlineEventMapper = onlineEventMapper ?? new OnlineEventMapper();
+        _rollingCostPolicy = rollingCostPolicy ?? new RollingCostPolicy();
+        _candidateOptions = candidateOptions
+            ?? new CandidateGenerationOptions(
+                maximumCandidatesPerVehicle: 10_000,
+                maximumNewRequestsPerVehicle: 4,
+                exactSmallMode: false);
     }
 
     public RunnerSessionStatus Status { get; private set; } = RunnerSessionStatus.New;
@@ -204,6 +235,19 @@ public sealed class RunnerSession
             nextEventSequence,
             simTime);
         _identity = validation.Identity;
+
+        if (_executionMode == RunnerExecutionMode.OnlineRollingCost)
+        {
+            var run = RideBoundRun.Create(
+                new RunIdentifier(_identity!.RunId.Value),
+                new ScenarioIdentifier(_identity.ScenarioId.Value),
+                new SimTime(0));
+            _onlineCoordinator = new EventReductionCoordinator(
+                OnlineState.Create(
+                    run,
+                    _identity.Manifest.TravelTimeSnapshotHash.Value));
+        }
+
         Status = RunnerSessionStatus.Initialized;
 
         var initialized = new InitializedPayload(
@@ -324,23 +368,57 @@ public sealed class RunnerSession
         EpochId.TryCreate(nextEpoch, out var nextEpochId);
         EventSequence.TryCreate(nextSequence, out var nextEventSequence);
         SimulationTimeMilliseconds.TryCreate(nextSimTime, out var nextSimulationTime);
-        var stateAfterHash = ProtocolHash.CalculateStateIdentityHash(
-            nextEpochId,
-            nextEventSequence,
-            nextSimulationTime);
+        Sha256Hex stateAfterHash;
         var zero = ProtocolHash.ZeroHash;
-        var shell = new DecisionPayload(
-            DecisionProductionStatus.NotProduced,
-            DecisionPayloadCodec.StructuralOnlyReasonCode,
-            [],
-            new CertificateShell(
-                CertificateStatus.NotProduced,
-                DecisionPayloadCodec.CertificateNotAvailableReasonCode),
-            new SolverStatusShell(SolverStatus.NotRun),
-            _stateHash,
-            stateAfterHash,
-            _previousDecisionHash,
-            zero);
+        DecisionPayload shell;
+
+        if (_executionMode == RunnerExecutionMode.OnlineRollingCost)
+        {
+            var online = BuildOnlineDecision(envelope);
+
+            if (online.Error is not null)
+            {
+                return Error(
+                    online.Error.Code,
+                    online.Error.Disposition,
+                    online.Error.Message,
+                    envelope);
+            }
+
+            stateAfterHash = online.StateAfterHash!;
+            shell = new DecisionPayload(
+                DecisionProductionStatus.Produced,
+                online.ReasonCode!,
+                online.Actions!,
+                new CertificateShell(
+                    CertificateStatus.NotProduced,
+                    DecisionPayloadCodec.CertificateNotAvailableReasonCode),
+                new SolverStatusShell(SolverStatus.NotRun),
+                _stateHash,
+                stateAfterHash,
+                _previousDecisionHash,
+                zero);
+        }
+        else
+        {
+            stateAfterHash = ProtocolHash.CalculateStateIdentityHash(
+                nextEpochId,
+                nextEventSequence,
+                nextSimulationTime);
+            shell = new DecisionPayload(
+                DecisionProductionStatus.NotProduced,
+                DecisionPayloadCodec.StructuralOnlyReasonCode,
+                [],
+                new CertificateShell(
+                    CertificateStatus.NotProduced,
+                    DecisionPayloadCodec.CertificateNotAvailableReasonCode),
+                new SolverStatusShell(SolverStatus.NotRun),
+                _stateHash,
+                stateAfterHash,
+                _previousDecisionHash,
+                zero);
+        }
+
         var canonicalInput = CreateCanonicalInput(envelope);
         var canonicalDecision = CanonicalJson.Canonicalize(
             DecisionPayloadCodec.Encode(shell, hashProjection: true));
@@ -410,6 +488,22 @@ public sealed class RunnerSession
                 envelope);
         }
 
+        if (_executionMode == RunnerExecutionMode.OnlineRollingCost)
+        {
+            var acknowledged =
+                _onlineCoordinator!.ApplyDecisionAcknowledgement(
+                    _pending.Epoch);
+
+            if (!acknowledged.IsSuccess)
+            {
+                return Error(
+                    "INTERNAL_ERROR",
+                    ProtocolFailureDisposition.FailSession,
+                    acknowledged.Witness!.Message,
+                    envelope);
+            }
+        }
+
         _appliedEpoch = _pending.Epoch;
         _nextEventSequence = _pending.NextEventSequence;
         _simulationTimeMilliseconds = _pending.SimulationTimeMilliseconds;
@@ -443,6 +537,16 @@ public sealed class RunnerSession
             writer.WriteNumber("simTimeMs", _simulationTimeMilliseconds);
             writer.WriteString("stateHash", _stateHash.Value);
             writer.WriteEndObject();
+
+            if (_executionMode == RunnerExecutionMode.OnlineRollingCost)
+            {
+                writer.WritePropertyName("onlineStateBefore");
+                using var onlineDocument = JsonDocument.Parse(
+                    OnlineStateCanonicalizer.Canonicalize(
+                        _onlineCoordinator!.CommittedState));
+                onlineDocument.RootElement.WriteTo(writer);
+            }
+
             writer.WriteEndObject();
         }
 
@@ -454,6 +558,76 @@ public sealed class RunnerSession
         var canonical = CanonicalJson.Canonicalize(
             ProtocolEnvelopeCodec.Encode(envelope));
         return Convert.ToHexStringLower(SHA256.HashData(canonical));
+    }
+
+    private OnlineDecisionBuildResult BuildOnlineDecision(
+        ProtocolEnvelope envelope)
+    {
+        if (_onlineCoordinator is null)
+        {
+            return OnlineDecisionBuildResult.Fail(
+                "INTERNAL_ERROR",
+                ProtocolFailureDisposition.FailSession,
+                "Online coordinator was not initialized.");
+        }
+
+        var mapped = _onlineEventMapper.Map(envelope);
+
+        if (!mapped.IsSuccess)
+        {
+            return OnlineDecisionBuildResult.Fail(
+                "SCHEMA_VALIDATION_FAILED",
+                ProtocolFailureDisposition.RejectMessage,
+                mapped.Witness!.Message);
+        }
+
+        var reduced = _onlineCoordinator.Propose(mapped.Batch!);
+
+        if (!reduced.IsSuccess)
+        {
+            return OnlineDecisionBuildResult.Fail(
+                "SCHEMA_VALIDATION_FAILED",
+                ProtocolFailureDisposition.RejectMessage,
+                reduced.Witness!.Message);
+        }
+
+        var decision = _rollingCostPolicy.Decide(
+            reduced.ProposedState!,
+            _candidateOptions);
+
+        if (!decision.IsSuccess)
+        {
+            _onlineCoordinator.DiscardPendingProposal();
+            return OnlineDecisionBuildResult.Fail(
+                "INTERNAL_ERROR",
+                ProtocolFailureDisposition.FailSession,
+                decision.Witness!.Message);
+        }
+
+        var staged = _onlineCoordinator.StageDecisionState(
+            reduced.ProposedState!,
+            decision.Decision!.ProposedState);
+
+        if (!staged.IsSuccess)
+        {
+            _onlineCoordinator.DiscardPendingProposal();
+            return OnlineDecisionBuildResult.Fail(
+                "INTERNAL_ERROR",
+                ProtocolFailureDisposition.FailSession,
+                staged.Witness!.Message);
+        }
+
+        var actions = OnlineDecisionActionMapper.Map(decision.Decision);
+        var reasonCode = decision.Decision.RequestActions.Any(
+            value => value.Outcome == RequestDecisionOutcome.Accepted)
+            || decision.Decision.RequestActions.Count == 0
+                ? DecisionReasonCodes.Accepted
+                : DecisionReasonCodes.NoFeasibleInsertion;
+        return OnlineDecisionBuildResult.Success(
+            OnlineStateCanonicalizer.CalculateHash(
+                decision.Decision.ProposedState),
+            reasonCode,
+            actions);
     }
 
     private RunnerSessionResult PayloadError(
@@ -552,4 +726,32 @@ public sealed class RunnerSession
         long SimulationTimeMilliseconds,
         Sha256Hex StateHash,
         Sha256Hex DecisionHash);
+
+    private sealed record OnlineDecisionBuildResult(
+        Sha256Hex? StateAfterHash,
+        string? ReasonCode,
+        IReadOnlyList<JsonElement>? Actions,
+        OnlineDecisionBuildError? Error)
+    {
+        public static OnlineDecisionBuildResult Success(
+            Sha256Hex stateAfterHash,
+            string reasonCode,
+            IReadOnlyList<JsonElement> actions) =>
+            new(stateAfterHash, reasonCode, actions, null);
+
+        public static OnlineDecisionBuildResult Fail(
+            string code,
+            ProtocolFailureDisposition disposition,
+            string message) =>
+            new(
+                null,
+                null,
+                null,
+                new OnlineDecisionBuildError(code, disposition, message));
+    }
+
+    private sealed record OnlineDecisionBuildError(
+        string Code,
+        ProtocolFailureDisposition Disposition,
+        string Message);
 }

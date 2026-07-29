@@ -9,13 +9,14 @@ adapter hoặc scenario chuẩn hóa.
 
 ## Trạng thái
 
-- WP0 scaffold và WP1 Contracts/Q1 đã hoàn thành. Sáu ticket đầu WP2
-  `RB-WP2-001..006` đã xong; ticket tiếp theo là
-  [`RB-WP2-007`](docs/tasks/26-wp2-online-baseline-ticket-plan.md).
+- WP0, WP1 Contracts/Q1 và WP2 physical/B1 `RB-WP2-001..012` đã hoàn
+  thành. Ticket duy nhất tiếp theo là refinement
+  [`RB-WP3-001`](docs/tasks/27-wp3-ledger-certificate-refinement.md).
 - Đã có protocol/schema v1, canonical JSON/hash, long-lived NDJSON runner,
   typed online input, Domain state/route, atomic event reducer và independent
-  physical validator. Chưa có candidate generator, B1 selection/produced online
-  decision, solver, ledger/certificate thật hoặc adapter.
+  physical validator, deterministic insertion/B1, exact-small oracle và online
+  produced decision. Chưa có hard commitment ledger/budget/certificate,
+  C1/OR-Tools behavior hoặc adapter.
 - Nguồn sự thật: [`docs/18-status-and-decision-log.md`](docs/18-status-and-decision-log.md).
 - Lộ trình: [`docs/16-roadmap-and-work-packages.md`](docs/16-roadmap-and-work-packages.md).
 
@@ -34,6 +35,7 @@ tests/
   RideBound.Domain.Tests/
   RideBound.ArchitectureTests/
   RideBound.Application.Tests/
+  RideBound.Algorithms.Tests/
   RideBound.Contracts.Tests/
   RideBound.Runner.Tests/
 benchmarks/                    schema, scenario và manifest tái lập
@@ -53,6 +55,12 @@ Yêu cầu .NET SDK được pin trong `global.json`.
 dotnet restore RideBound.slnx
 dotnet build RideBound.slnx --no-restore
 dotnet test RideBound.slnx --no-build
+```
+
+Chạy tiny WP2 online replay hai process sạch:
+
+```powershell
+./scripts/run-wp2-tiny-demo.ps1
 ```
 
 Trước khi thay đổi code, đọc `AGENTS.md` và thứ tự tài liệu được chỉ định tại

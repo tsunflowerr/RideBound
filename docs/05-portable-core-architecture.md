@@ -223,6 +223,8 @@ tests/
   RideBound.ArchitectureTests/
   RideBound.Contracts.Tests/       # WP1
   RideBound.Application.Tests/     # WP1–WP2
+  RideBound.Algorithms.Tests/      # WP2+
+  RideBound.Runner.Tests/          # WP1+
   RideBound.IntegrationTests/      # khi có external boundary
 ```
 

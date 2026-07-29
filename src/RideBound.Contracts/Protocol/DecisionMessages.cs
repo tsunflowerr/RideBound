@@ -266,7 +266,7 @@ public static class DecisionPayloadCodec
 
             if (!DecisionTypeVocabulary.TryParse(
                     decisionTypeText.Value,
-                    out _))
+                    out var decisionType))
             {
                 return Invalid(
                     $"{actionPath}.decisionType",
@@ -276,6 +276,17 @@ public static class DecisionPayloadCodec
             if (actionPayload.Value.ValueKind != JsonValueKind.Object)
             {
                 return WrongType($"{actionPath}.payload", "an object");
+            }
+
+            var payloadError = OnlineDecisionActionCodec.ValidatePayload(
+                decisionType,
+                actionPayload.Value,
+                $"{actionPath}.payload");
+
+            if (payloadError is not null)
+            {
+                return ProtocolPayloadDecodeResult<DecisionPayload>.Failure(
+                    payloadError);
             }
 
             actions.Add(action.Clone());

@@ -378,6 +378,27 @@ route hoặc certificate hợp lệ. Schema cấm shell `notProduced` mang actio
 certificate `produced` hoặc solver result. WP2 phải thay shell bằng behavior thật
 qua cùng message shape, không đổi ordering/lifecycle v1.
 
+### 8.2. Produced online action ở WP2
+
+Runner mặc định `online` phát strict typed payload:
+
+```text
+requestAccepted  -> requestId + vehicleId + candidateId
+requestRejected  -> requestId + reasonCode
+requestDeferred  -> requestId + reasonCode
+vehiclePlanUpdated -> vehicleId + candidateId + full versioned route
+```
+
+Runtime codec và JSON Schema cùng từ chối unknown/null/missing field cho bốn
+action này. Request action sort theo request ID; route action sort theo vehicle
+ID; route giữ exact prefix/suffix order. Full committed online state, canonical
+event batch và produced action đều ảnh hưởng state/decision hash. Proposed
+request/route state chỉ commit sau matching `decisionApplied`.
+
+Q1 shell được giữ để regression bằng `--mode conformance`; mode này không phải
+online policy. Certificate trong WP2 online vẫn explicit `notProduced` vì hard
+commitment validator thuộc WP3.
+
 ## 9. Handshake và capability negotiation
 
 `hello.payload` gửi:

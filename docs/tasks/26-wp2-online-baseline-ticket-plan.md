@@ -1,9 +1,9 @@
 # WP2 — Online state và rolling baseline: execution plan
 
 > Topic ID: `RB-WP2`
-> Trạng thái: `IN_PROGRESS — RB-WP2-001..006 DONE`
-> Cập nhật: 2026-07-29
-> Ticket tiếp theo: `RB-WP2-007`
+> Trạng thái: `COMPLETE — RB-WP2-001..012 DONE`
+> Cập nhật: 2026-07-30
+> Ticket tiếp theo: `RB-WP3-001`
 > Exit gate: WP2 online baseline / một phần Q2 core correctness
 
 ## 1. Outcome
@@ -142,12 +142,12 @@ tương lai nhưng không prune candidate theo revision.
 | 4 | RB-WP2-004 | Route frozen prefix/mutable suffix và no-op | `DONE` |
 | 5 | RB-WP2-005 | Contract mapper và atomic event reducer | `DONE` |
 | 6 | RB-WP2-006 | Independent physical validator | `DONE` |
-| 7 | RB-WP2-007 | Deterministic insertion candidate generator | `READY` |
-| 8 | RB-WP2-008 | B1 rolling-cost selection và apply model | `PROPOSED` |
-| 9 | RB-WP2-009 | Exact-small oracle và differential/property tests | `PROPOSED` |
-| 10 | RB-WP2-010 | Runner/decision integration giữ Q1 oracle | `PROPOSED` |
-| 11 | RB-WP2-011 | Tiny CLI demo và executable replay | `PROPOSED` |
-| 12 | RB-WP2-012 | WP2 gate closure và handoff WP3 | `PROPOSED` |
+| 7 | RB-WP2-007 | Deterministic insertion candidate generator | `DONE` |
+| 8 | RB-WP2-008 | B1 rolling-cost selection và apply model | `DONE` |
+| 9 | RB-WP2-009 | Exact-small oracle và differential/property tests | `DONE` |
+| 10 | RB-WP2-010 | Runner/decision integration giữ Q1 oracle | `DONE` |
+| 11 | RB-WP2-011 | Tiny CLI demo và executable replay | `DONE` |
+| 12 | RB-WP2-012 | WP2 gate closure và handoff WP3 | `DONE` |
 
 Chỉ ticket có dependency đã `DONE` mới được chuyển `READY`. WIP implementation
 mặc định là một ticket.
@@ -452,6 +452,9 @@ Scenario: Xóa accepted incumbent
 
 ## RB-WP2-007 — Deterministic insertion candidate generator
 
+**Trạng thái:** `DONE` — exact/bounded generation, canonical candidate/stop ID,
+physical prune witness, no-op retention và hand-enumerated count/order tests.
+
 **Mục đích**
 
 Sinh đủ pickup/drop insertion cho instance nhỏ mà không sửa frozen prefix.
@@ -504,6 +507,9 @@ Scenario: Insert trước frozen prefix
 ---
 
 ## RB-WP2-008 — B1 rolling-cost selection và apply model
+
+**Trạng thái:** `DONE` — exhaustive fleet selection, accept/reject/defer,
+independent pre-publish validation và ACK-staged immutable apply.
 
 **Mục đích**
 
@@ -559,6 +565,9 @@ Scenario: Tie hoàn toàn
 
 ## RB-WP2-009 — Exact-small oracle và differential/property tests
 
+**Trạng thái:** `DONE` — independent brute-force oracle khớp production trên 32
+published seeds với generator/selection gap bằng 0.
+
 **Mục đích**
 
 Phát hiện candidate loss hoặc selection sai bằng implementation độc lập.
@@ -611,6 +620,9 @@ Scenario: Candidate đủ nhưng chọn sai
 ---
 
 ## RB-WP2-010 — Runner/decision integration giữ Q1 oracle
+
+**Trạng thái:** `DONE` — default online mode phát typed produced decision; named
+conformance mode giữ exact Q1 oracle; state/hash chỉ commit sau matching ACK.
 
 **Mục đích**
 
@@ -669,6 +681,9 @@ Scenario: Hai epoch online
 
 ## RB-WP2-011 — Tiny CLI demo và executable replay
 
+**Trạng thái:** `DONE` — four-epoch source-controlled demo replay qua hai clean
+single-file process cho byte-exact output/final hash và tamper evidence.
+
 **Mục đích**
 
 Chứng minh B1 từ bootstrap tới accept/pickup/drop bằng artifact chạy được, không
@@ -714,6 +729,9 @@ Scenario: Demo bị tamper
 ---
 
 ## RB-WP2-012 — WP2 gate closure và handoff WP3
+
+**Trạng thái:** `DONE` — ADR-020/gate evidence đồng bộ và đúng một refinement
+ticket `RB-WP3-001` được chuyển `READY`; chưa có WP3 runtime code.
 
 **Mục đích**
 
@@ -764,23 +782,22 @@ Chỉ đóng WP2 khi online state/B1/validator/oracle/demo có evidence và tạ
 - [x] Frozen prefix/mutable suffix/no-op route.
 - [x] Atomic event reducer không phụ thuộc Contracts.
 - [x] Independent physical validator và mutation tests.
-- [ ] Deterministic candidate generator.
-- [ ] B1 rolling-cost selection, no incumbent reassignment.
-- [ ] Exact-small differential/property evidence.
-- [ ] Produced online decisions qua versioned runner lifecycle.
-- [ ] Tiny CLI clean-process replay/tamper proof.
+- [x] Deterministic candidate generator.
+- [x] B1 rolling-cost selection, no incumbent reassignment.
+- [x] Exact-small differential/property evidence.
+- [x] Produced online decisions qua versioned runner lifecycle.
+- [x] Tiny CLI clean-process replay/tamper proof.
 - [x] Accepted-never-rejected.
 - [x] Q1 protocol/hash/transcript regression xanh.
 - [x] Không có commitment ledger/certificate/OR-Tools/adapter bị làm sớm.
 
-## 7. Lệnh bắt đầu RB-WP2-007
+## 7. Handoff duy nhất sau WP2
 
 ```powershell
 Get-Content docs/18-status-and-decision-log.md -Encoding utf8
-Get-Content docs/tasks/26-wp2-online-baseline-ticket-plan.md -Encoding utf8
-Get-Content docs/08-algorithms-baselines-and-solver.md -Encoding utf8
-rg -n "InsertionCandidate|PhysicalPlanValidator|RoutePlan" src tests
-dotnet test RideBound.slnx -c Release --no-build --no-restore
+Get-Content docs/tasks/27-wp3-ledger-certificate-refinement.md -Encoding utf8
+Get-Content docs/07-commitment-ledger-and-certificates.md -Encoding utf8
+dotnet test RideBound.slnx
 ```
 
 ## 8. Completion evidence RB-WP2-002..006 — 2026-07-29
@@ -805,5 +822,38 @@ dotnet test RideBound.slnx -c Release --no-build --no-restore
 - Release build `--warnaserror` pass với 0 warning/0 error; format verification,
   dependency vulnerability audit, 85 JSON source artifacts, 52 Markdown files,
   95 local links và `git diff --check` đều sạch.
-- Chưa có candidate generator/B1 selection/online produced decision; vì vậy Q2
-  và WP2 vẫn chưa đóng. Next implementation duy nhất là `RB-WP2-007`.
+- Tại mốc `RB-WP2-002..006` chưa có candidate generator/B1/online produced
+  decision; `RB-WP2-007` khi đó là next implementation. Trạng thái closure hiện
+  tại nằm ở mục 9.
+
+## 9. Completion evidence RB-WP2-007..012 — 2026-07-30
+
+- `RideBound.Algorithms` có deterministic insertion generator dùng chung
+  `PhysicalPlanValidator`, exact/bounded cap semantics, no-op candidate, exhaustive
+  small fleet selector và B1 apply model không reassign incumbent.
+- Independent exact-small oracle không gọi production generator/selector/
+  validator; 32 published seeds cùng hand cases pass với generator gap và
+  selection gap bằng 0 trong bound tối đa 2 vehicle/2 pending request.
+- Runner default `online` phát typed `requestAccepted`, `requestRejected`,
+  `requestDeferred` và `vehiclePlanUpdated`; path `--mode conformance` giữ Q1
+  structural transcript/hash oracle. Decision/state/route chỉ commit sau exact
+  matching `decisionApplied`.
+- `benchmarks/scenarios/wp2-tiny` đi qua accept → pickup/board → physical
+  `CAPACITY` reject → drop/alight trong bốn epoch. Script
+  `scripts/run-wp2-tiny-demo.ps1` publish runner single-file, chạy hai process
+  sạch, so byte-exact golden và khóa final hash
+  `56825f3591fb5d10f4c258d2c05897c016d82cb91c1318ffa23731c920146680`.
+- Test inventory logic là **333**: Contracts 128, Domain 89, Application 15,
+  Algorithms 45, Runner 49, Architecture 7. Release build `--warnaserror` và
+  `dotnet format --verify-no-changes` pass; vulnerability, portable-boundary,
+  89 JSON, 53 Markdown/local-link/fence và `git diff --check` audit đều sạch.
+- Required `dotnet test RideBound.slnx` Debug pass **333/333**. Release xUnit
+  pass Contracts 128, Domain 89, Architecture 7 rồi Windows Application Control
+  chặn fresh unsigned Application/Runner DLL bằng `0x800711C7` trước assertion;
+  các Release suite đó pass bằng policy-safe bundles (15 Application, 45
+  Algorithms, 46 non-process Runner) và ba Runner process checks riêng. Release
+  exception không được đổi thành full-solution Release xUnit pass.
+- WP2 chỉ hoàn thành phần physical/B1 của Q2. Không có hard commitment budget,
+  ledger append, incident breach accounting, certificate `produced`, checkpoint,
+  OR-Tools hoặc adapter. Điểm bắt đầu duy nhất tiếp theo là refinement
+  `RB-WP3-001`.

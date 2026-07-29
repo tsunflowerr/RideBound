@@ -79,7 +79,7 @@ public sealed class SchemaAssetTests
                     == "implemented")
             .ToArray();
 
-        Assert.Equal(15, implementedEntries.Length);
+        Assert.Equal(16, implementedEntries.Length);
 
         foreach (var entry in implementedEntries)
         {
@@ -127,6 +127,9 @@ public sealed class SchemaAssetTests
                      "timer-tick-event-payload.schema.json",
                      "incident-opened-event-payload.schema.json",
                      "incident-resolved-event-payload.schema.json",
+                     "request-accepted-action-payload.schema.json",
+                     "request-outcome-action-payload.schema.json",
+                     "vehicle-plan-updated-action-payload.schema.json",
                  })
         {
             using var document = JsonDocument.Parse(

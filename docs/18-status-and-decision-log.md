@@ -1,7 +1,7 @@
 # Trạng thái và decision log
 
 > Tệp sống — cập nhật ở cuối mọi task RideBound
-> Cập nhật gần nhất: 2026-07-29
+> Cập nhật gần nhất: 2026-07-30
 
 ## 1. Trạng thái tổng thể
 
@@ -9,8 +9,8 @@
 |---|---|
 | Research direction | `LOCKED_FOR_IMPLEMENTATION_PLANNING` |
 | Documentation | `MIGRATED_AND_VERIFIED_V1` |
-| Implementation | `WP1_Q1_COMPLETE; WP2_001_006_IMPLEMENTED_VERIFIED_278` |
-| Current work package | `WP2 ONLINE BASELINE — RB-WP2-007 READY` |
+| Implementation | `WP1_Q1_COMPLETE; WP2_PHYSICAL_B1_COMPLETE_DEBUG_333_PASS_RELEASE_HOST_POLICY_EXCEPTION` |
+| Current work package | `WP3 LEDGER/CERTIFICATE — RB-WP3-001 READY` |
 | Repository | `https://github.com/tsunflowerr/RideBound` |
 | Main baseline | B1 `rolling-cost` |
 | Main treatment | C1 `ridebound-hard-vector` |
@@ -100,13 +100,30 @@
 - Hoàn thành `RB-WP2-006`: independent physical validator tự dựng schedule và
   deterministic witness cho capacity/window/max-ride/precedence/connectivity/
   prefix/onboard/accepted/reassignment.
+- Hoàn thành `RB-WP2-007`: deterministic pickup/drop insertion generator,
+  canonical candidate/stop identity, exact/bounded caps, stable ordering,
+  physical prune witness và no-op retention.
+- Hoàn thành `RB-WP2-008`: exhaustive B1 fleet selection tối đa accepted count,
+  tối thiểu integer route cost, stable tie-break, accept/reject/defer và staged
+  apply không reassign incumbent.
+- Hoàn thành `RB-WP2-009`: independent exact-small brute-force oracle với 32
+  published seeds; generator/selection gap bằng 0 trong bound 2 vehicle/2
+  pending request.
+- Hoàn thành `RB-WP2-010`: Runner default online produced typed decisions,
+  full state/action hash, ACK-only commit và named `--mode conformance` giữ Q1
+  transcript oracle.
+- Hoàn thành `RB-WP2-011`: source-controlled four-epoch tiny demo chạy hai clean
+  self-contained process, byte-exact golden/final hash và tamper proof.
+- Hoàn thành `RB-WP2-012`: đóng WP2 physical/B1 bằng ADR-020, đồng bộ gate/
+  traceability và tạo đúng một next refinement ticket `RB-WP3-001`.
 
 ## 3. Chưa làm
 
-- Chưa có deterministic insertion candidate generator, B1 selection/apply,
-  exact-small oracle hoặc produced online Runner decision; đây là
-  `RB-WP2-007..010`.
 - Chưa có ledger/certificate implementation.
+- Chưa có hard commitment budget, promise projection/append, phase-lock gate,
+  incident breach accounting hoặc checkpoint.
+- Chưa có C1/B2–B5/OR-Tools behavior; Q2 mới hoàn thành phần physical/B1 của
+  WP2, chưa phải commitment guarantee.
 - Chưa có BeGo/FleetPy/RidePy adapter.
 - Chưa tải/freeze dataset cho experiment.
 - Chưa pilot hoặc preregister.
@@ -245,6 +262,63 @@ Q1 exact transcript/hash/idempotency regression: pass
 Date: 2026-07-29
 ```
 
+### RB-WP2-007–012 B1, exact-small, online Runner và WP2 closure
+
+```text
+.NET SDK 10.0.301
+Release build --warnaserror: passed, 0 warnings, 0 errors
+dotnet format --verify-no-changes: passed; 0/137 files changed
+Logical source-controlled test inventory: 333
+  Contracts: 128
+  Domain: 89
+  Application: 15
+  Algorithms: 45
+  Runner: 49
+  Architecture: 7
+Required dotnet test RideBound.slnx (Debug): 333/333 passed
+  Contracts: 128/128 passed
+  Domain: 89/89 passed
+  Application: 15/15 passed
+  Algorithms: 45/45 passed
+  Runner: 49/49 passed
+  Architecture: 7/7 passed
+Release full-solution xUnit attempt:
+  Contracts: 128/128 passed
+  Domain: 89/89 passed
+  Architecture: 7/7 passed
+  Application/Algorithms/Runner: Windows Application Control blocked fresh
+  unsigned Application/Runner DLL loads with 0x800711C7 before assertions
+Policy-safe supplemental execution for Release artifacts:
+  Application: 15/15 passed
+  Algorithms: 45/45 passed
+  Runner non-child-process: 46/46 passed
+Runner child-process cases verified separately: 3/3
+  Q1 conformance two-process exact replay: passed
+  stdout/stderr diagnostic isolation: passed
+  WP2 online two-process exact replay: passed
+NuGet direct/transitive vulnerability audit: no vulnerable packages
+Portable Domain/Application forbidden-dependency scan: passed
+Source JSON parse audit: 89 files, 0 invalid
+Markdown audit: 53 files, 0 broken local links, 0 unbalanced fences
+Git diff whitespace/error audit: passed
+Algorithms detail:
+  Hand-enumerated generator/policy cases: 13
+  Independent exact-small published seeds: 32/32
+  Generator gap: 0 in published bound
+  Selection gap: 0 in published bound
+Tiny online demo:
+  epochs: 4
+  lifecycle: accept -> pickup/board -> drop/alight
+  physical rejection: r-2 / CAPACITY
+  clean self-contained processes: 2/2 byte-exact
+  final decision hash:
+  56825f3591fb5d10f4c258d2c05897c016d82cb91c1318ffa23731c920146680
+WP2 scope exclusion audit:
+  no ledger/certificate produced, no hard budget, no OR-Tools behavior,
+  no simulator adapter
+Date: 2026-07-30
+```
+
 ### CI hardening task
 
 ```text
@@ -279,20 +353,21 @@ Date: 2026-07-28
 
 ## 5. Next action
 
-WP1 — Contracts và canonical replay đã Complete/Q1, được revalidate Release
-161/161 sau bug fix exact-retry của ADR-017. Execution evidence nằm trong
-[24-wp1-contracts-ticket-plan.md](tasks/24-wp1-contracts-ticket-plan.md).
+WP2 — online state và rolling baseline đã Complete cho phạm vi physical/B1.
+Execution/gate evidence nằm trong
+[26-wp2-online-baseline-ticket-plan.md](tasks/26-wp2-online-baseline-ticket-plan.md)
+và ADR-020. Windows host-policy exception của lần chạy xUnit cuối được giữ riêng
+ở mục 4 cho Release; required Debug baseline đã pass 333/333. Exception không
+được biến thành Release pass và không mở rộng claim sang commitment.
 
 Ticket duy nhất đang `READY`:
 
-> `RB-WP2-007` — Cài deterministic insertion candidate generator trên exact
-> mutable suffix, dùng `PhysicalPlanValidator`, luôn phát no-op candidate và
-> chưa làm B1 fleet selection.
+> `RB-WP3-001` — Refine promise/ledger/budget/lock/incident/certificate/
+> checkpoint semantics và tạo ordered execution plan WP3; chưa viết ledger code.
 
 Chi tiết:
-[26-wp2-online-baseline-ticket-plan.md](tasks/26-wp2-online-baseline-ticket-plan.md).
-`RB-WP2-001..006` đã Done; chưa bắt đầu candidate generation/B1 selection,
-ledger, OR-Tools hoặc adapter.
+[27-wp3-ledger-certificate-refinement.md](tasks/27-wp3-ledger-certificate-refinement.md).
+Không bắt đầu C1, OR-Tools, adapter hoặc tự chọn mức budget O-002/O-003.
 
 ## 6. Open decisions
 
@@ -654,14 +729,66 @@ mutation và 24-permutation tests.
 **Supersedes / superseded by:** Hiện thực hóa ADR-018; không đổi lifecycle/hash
 chain của ADR-016/017 và không kéo commitment semantics WP3 vào WP2.
 
+### ADR-020 — 2026-07-30 — Accepted
+
+**Context:** `RB-WP2-007..012` phải biến state/reducer/physical validator của
+ADR-018/019 thành baseline B1 chạy online, nhưng vẫn cần giữ candidate
+completeness kiểm được, no-op, deterministic selection, independent oracle và
+Q1 transcript oracle. Nếu generator tự chứng nhận, exact mode âm thầm truncate,
+Runner commit trước ACK hoặc B1 phát certificate commitment, WP2 sẽ vượt claim
+và làm mất oracle cho WP3/WP4.
+
+**Decision:** `RideBound.Algorithms` sinh mọi precedence-preserving pickup/drop
+insertion trong exact-small bound trên mutable suffix, giữ exact frozen prefix
+và luôn xét no-op. Mỗi leaf được `PhysicalPlanValidator` kiểm; exact bound/cap
+vượt giới hạn fail rõ, bounded mode cắt theo stable ID và giữ no-op. Fleet
+selector exhaustive chọn đúng một candidate/vehicle, không serve request hai
+lần, tối đa accepted count, tối thiểu checked integer operational cost rồi
+tie-break bằng candidate ID ordinal. Selected candidate được validator độc lập
+kiểm lại trước immutable apply; incumbent accepted không đổi vehicle và không
+thành rejected. Runner default là online B1; Q1 shell chỉ còn trong named
+`--mode conformance`. Full committed online state, event batch và typed actions
+đi vào state/decision hash; route/request state chỉ commit sau exact matching
+`decisionApplied`. Certificate WP2 luôn `notProduced`.
+
+Exact-small oracle trong test tự enumerate/evaluate, không gọi production
+generator/selector/validator. Published differential bound là tối đa 2 vehicle,
+2 pending request và 32 deterministic seeds. Tiny demo khóa four-epoch
+accept/pickup/board, physical capacity reject, drop/alight transcript cùng exact
+final hash. WP2 được đóng chỉ cho physical/B1; P1/P2/P3 commitment, hard budget,
+ledger, incident breach, checkpoint và certificate `produced` thuộc WP3.
+
+**Alternatives considered:** chỉ sinh single-request candidate; dùng production
+generator làm oracle; dùng weighted scalar/tie ngẫu nhiên; truncate exact mode;
+commit ngay khi phát decision; overwrite Q1 golden bằng B1 output; coi
+`PhysicalPlanValidator` là commitment certificate; kéo OR-Tools hoặc ledger vào
+WP2.
+
+**Consequences:** F-003/F-004 có executable B1 evidence, Q1 vẫn là regression
+oracle có tên và WP3 nhận state/hash/ACK boundary thật. Baseline exhaustive chỉ
+claim correctness trong published small bound, không claim scale/performance.
+Required Debug `dotnet test RideBound.slnx` pass 333/333. Release xUnit vẫn bị
+Windows Application Control `0x800711C7` chặn fresh unsigned Application/
+Runner DLL trước assertion; policy-safe bundles và process checks pass cho đúng
+Release artifacts đó, nhưng không được gọi là Release full-solution xUnit pass.
+
+**Evidence:** `Candidates`, `Policies`, `ExactSmallOracle`,
+`OnlineDecisionActionMapper`, `OnlineStateCanonicalizer`, online `RunnerSession`,
+typed action schemas/tests, `benchmarks/scenarios/wp2-tiny`,
+`scripts/run-wp2-tiny-demo.ps1` và execution plan `26`.
+
+**Supersedes / superseded by:** Hoàn tất ADR-018/019 cho phạm vi WP2; không
+supersede protocol/hash framing ADR-014/016/017. WP3 có thể bổ sung commitment
+gate/certificate bằng ADR mới nhưng không được đổi physical B1 oracle âm thầm.
+
 ## 8. Work package tracker
 
 | WP | Trạng thái | Bắt đầu | Kết thúc | Evidence |
 |---|---|---|---|---|
 | WP0 Scaffold | Complete | 2026-07-28 | 2026-07-28 | build + 8 RideBound + 25 backend + 7 frontend tests |
 | WP1 Contracts | Complete; Q1 Release revalidated with host-policy exception | 2026-07-29 | 2026-07-29 | ADR-014–017 + 157/157 closure + WP1 revalidation 161/161 + replay/hash proof |
-| WP2 Online baseline | In progress; `RB-WP2-001..006` complete, `007` ready | 2026-07-29 | — | ADR-018/019 + Debug/Release 278/278 |
-| WP3 Ledger/certificate | Not started | — | — | — |
+| WP2 Online baseline | Complete; physical/B1 gate, Debug 333/333; Release host-policy exception recorded | 2026-07-29 | 2026-07-30 | ADR-018–020 + Debug 333/333 + Release bundles + two-process tiny replay |
+| WP3 Ledger/certificate | Ready; `RB-WP3-001` refinement only | 2026-07-30 | — | `tasks/27-wp3-ledger-certificate-refinement.md` |
 | WP4 Algorithms/solver | Not started | — | — | — |
 | WP5 BeGo integration | Not started | — | — | — |
 | WP6 Benchmark harness | Not started | — | — | — |
@@ -674,6 +801,16 @@ chain của ADR-016/017 và không kéo commitment semantics WP3 vào WP2.
 
 ## 9. Change history
 
+- 2026-07-30: Hoàn thành `RB-WP2-007..012`: deterministic candidate generator,
+  exhaustive B1 selection/apply, independent exact-small oracle 32/32 seeds,
+  default online produced Runner decisions/ACK hash chain và four-epoch tiny
+  demo chạy hai clean single-file process với exact final hash. Logical test
+  inventory là 333; required Debug solution pass 333/333, Release build/format
+  pass và Release blocked suites pass qua policy-safe bundles/process checks.
+  Release xUnit host policy chặn fresh unsigned DLL bằng `0x800711C7` trước
+  assertion, được ghi như environment exception chứ không tính Release pass.
+  ADR-020 đóng WP2 physical/B1; next
+  duy nhất là `RB-WP3-001` refinement, chưa có ledger code.
 - 2026-07-29: Hoàn thành `RB-WP2-002..006`: typed online schemas/fixtures,
   immutable Domain lifecycle/route, manifest-bound travel snapshot, atomic
   mapper/reducer/ack và independent physical validator. Debug/Release full

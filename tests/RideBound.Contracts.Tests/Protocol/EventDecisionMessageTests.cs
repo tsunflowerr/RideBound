@@ -62,7 +62,14 @@ public sealed class EventDecisionMessageTests
             {
               "status":"notProduced",
               "reasonCode":"WP1_STRUCTURAL_ONLY",
-              "actions":[{"decisionType":"requestAccepted","payload":{}}],
+              "actions":[{
+                "decisionType":"requestAccepted",
+                "payload":{
+                  "requestId":"r-1",
+                  "vehicleId":"v-1",
+                  "candidateId":"candidate-1"
+                }
+              }],
               "certificate":{
                 "status":"notProduced",
                 "reasonCode":"COMMITMENT_VALIDATOR_NOT_AVAILABLE"
@@ -92,15 +99,7 @@ public sealed class EventDecisionMessageTests
         var payload = new DecisionPayload(
             DecisionProductionStatus.Produced,
             DecisionReasonCodes.Accepted,
-            decisionTypes.Select(
-                    value => ParseObject(
-                        $$"""
-                        {
-                          "decisionType":"{{DecisionTypeVocabulary.ToProtocolValue(value)}}",
-                          "payload":{}
-                        }
-                        """))
-                .ToArray(),
+            decisionTypes.Select(CreateAction).ToArray(),
             new CertificateShell(CertificateStatus.Produced, "VALIDATED"),
             new SolverStatusShell(SolverStatus.Completed),
             zero!,
@@ -153,6 +152,41 @@ public sealed class EventDecisionMessageTests
     }
 
     [Fact]
+    public void Online_decision_actions_reject_unknown_payload_fields()
+    {
+        using var document = JsonDocument.Parse(
+            """
+            {
+              "status":"produced",
+              "reasonCode":"ACCEPTED",
+              "actions":[{
+                "decisionType":"requestAccepted",
+                "payload":{
+                  "requestId":"r-1",
+                  "vehicleId":"v-1",
+                  "candidateId":"candidate-1",
+                  "extra":true
+                }
+              }],
+              "certificate":{
+                "status":"notProduced",
+                "reasonCode":"COMMITMENT_VALIDATOR_NOT_AVAILABLE"
+              },
+              "solver":{"status":"notRun"},
+              "stateBeforeHash":"0000000000000000000000000000000000000000000000000000000000000000",
+              "stateAfterHash":"0000000000000000000000000000000000000000000000000000000000000000",
+              "previousDecisionHash":"0000000000000000000000000000000000000000000000000000000000000000",
+              "decisionHash":"0000000000000000000000000000000000000000000000000000000000000000"
+            }
+            """);
+
+        var result = DecisionPayloadCodec.Decode(document.RootElement);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ProtocolPayloadErrorCode.UnknownField, result.Error?.Code);
+    }
+
+    [Fact]
     public void Error_taxonomy_requires_code_and_disposition_to_match()
     {
         using var document = JsonDocument.Parse(
@@ -168,6 +202,42 @@ public sealed class EventDecisionMessageTests
 
         Assert.False(result.IsSuccess);
         Assert.Equal(ProtocolPayloadErrorCode.InvalidValue, result.Error?.Code);
+    }
+
+    private static JsonElement CreateAction(DecisionType decisionType)
+    {
+        return decisionType switch
+        {
+            DecisionType.RequestAccepted => OnlineDecisionActionCodec.Encode(
+                new OnlineDecisionAction(
+                    decisionType,
+                    new RequestAcceptedActionPayload(
+                        "r-1",
+                        "v-1",
+                        "candidate-1"))),
+            DecisionType.RequestRejected or DecisionType.RequestDeferred =>
+                OnlineDecisionActionCodec.Encode(
+                    new OnlineDecisionAction(
+                        decisionType,
+                        new RequestOutcomeActionPayload(
+                            "r-1",
+                            "NO_FEASIBLE_INSERTION"))),
+            DecisionType.VehiclePlanUpdated =>
+                OnlineDecisionActionCodec.Encode(
+                    new OnlineDecisionAction(
+                        decisionType,
+                        new VehiclePlanUpdatedActionPayload(
+                            "v-1",
+                            "candidate-1",
+                            new RoutePlanContract(0, 0, [], [])))),
+            _ => ParseObject(
+                $$"""
+                {
+                  "decisionType":"{{DecisionTypeVocabulary.ToProtocolValue(decisionType)}}",
+                  "payload":{}
+                }
+                """),
+        };
     }
 
     [Fact]

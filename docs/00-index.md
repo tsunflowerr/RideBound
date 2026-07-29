@@ -1,7 +1,7 @@
 # RideBound — bản đồ tài liệu
 
-> Trạng thái: đặc tả v1 + WP0/WP1 hoàn thành + WP2 ticket 001–006 hoàn thành
-> Cập nhật: 2026-07-29
+> Trạng thái: đặc tả v1 + WP0/WP1 + WP2 physical/B1 hoàn thành
+> Cập nhật: 2026-07-30
 > Nguồn sự thật về tiến độ: [18-status-and-decision-log.md](18-status-and-decision-log.md)
 
 ## 1. Mục đích của bộ tài liệu
@@ -108,6 +108,7 @@ Bộ tài liệu này trả lời năm câu hỏi:
 | [24-wp1-contracts-ticket-plan.md](tasks/24-wp1-contracts-ticket-plan.md) | 15 ticket WP1 có scope, rules, BDD và acceptance criteria |
 | [25-wp2-online-state-refinement.md](tasks/25-wp2-online-state-refinement.md) | Ticket refinement WP2; khóa state/reducer/B1 trước khi viết code |
 | [26-wp2-online-baseline-ticket-plan.md](tasks/26-wp2-online-baseline-ticket-plan.md) | Ordered queue WP2 cho state/reducer/validator/B1/oracle/demo |
+| [27-wp3-ledger-certificate-refinement.md](tasks/27-wp3-ledger-certificate-refinement.md) | Ticket refinement WP3; khóa promise/ledger/budget/lock/certificate/checkpoint trước code |
 | [research/README.md](research/README.md) | Archive báo cáo, audit và evidence matrix nền |
 
 ## 6. Kiến trúc bằng một hình
@@ -144,23 +145,30 @@ không chép lại thuật toán RideBound bằng Python hoặc C++.
 
 - Repository độc lập: `https://github.com/tsunflowerr/RideBound`.
 - WP0 hoàn thành với `RideBound.slnx`; repository hiện có 7 source project và
-  5 test project sau khi WP2 thêm Application test boundary.
-- Current inventory có 127 Contracts, 89 Domain, 13 Application, 42 Runner và
-  7 Architecture test: cả Debug và Release pass **278/278**. Lịch sử WP1 cùng
-  Windows Application Control exception cũ được giữ riêng trong `18`.
+  6 test project sau khi WP2 thêm Application và Algorithms test boundary.
+- Logical inventory sau WP2 có 128 Contracts, 89 Domain, 15 Application,
+  45 Algorithms, 49 Runner và 7 Architecture test: tổng **333**. Required Debug
+  `dotnet test RideBound.slnx` pass **333/333**; Release build/format pass.
+  Release xUnit bị Windows Application Control `0x800711C7` chặn fresh unsigned
+  DLL ở ba suite, nhưng đúng Release artifacts đó pass qua policy-safe bundles/
+  process checks; exception được ghi riêng trong `18`, không tính là Release
+  full-solution pass.
 - BeGo độc lập vẫn đạt 25/25 backend và 7/7 frontend test.
 - Đã có protocol/schema v1, canonical unit/JSON/hash, long-lived NDJSON runner,
   hello/init/event/error lifecycle, idempotent retry, đúng 10 golden fixture và
   source-controlled replay/hash proof.
 - Đã có typed WP2 payload/schema/fixtures, Domain run/request/vehicle state,
   frozen-prefix/mutable-suffix route, Application atomic reducer/ack coordinator,
-  Runner mapper và independent physical validator.
-- Chưa có candidate generator, B1 selection, produced online decision,
-  exact-small oracle, ledger, certificate thật hoặc simulator adapter; Q1
-  conformance decision vẫn ghi rõ `notProduced`.
+  independent physical validator, deterministic insertion/B1, exact-small
+  oracle và default online produced Runner decision.
+- Tiny four-epoch demo accept/board, capacity reject và drop/alight replay hai
+  process sạch với exact final hash. Q1 structural oracle vẫn ở named
+  conformance mode.
+- Chưa có promise ledger, hard commitment budget/locks, incident breach,
+  checkpoint, certificate `produced`, C1/OR-Tools behavior hoặc simulator adapter.
 - WP1 `RB-WP1-001..015` đã hoàn thành, Q1 đã đóng và exact-retry bug fix được
   khóa bởi ADR-017.
-- WP2 `RB-WP2-001..006` đã hoàn thành; ADR-018/019 khóa boundary và semantics
-  đã thực thi.
-- Bước duy nhất tiếp theo: `RB-WP2-007` trong
-  [26-wp2-online-baseline-ticket-plan.md](tasks/26-wp2-online-baseline-ticket-plan.md).
+- WP2 `RB-WP2-001..012` đã hoàn thành phần physical/B1; ADR-018–020 khóa
+  boundary, semantics và claim limit.
+- Bước duy nhất tiếp theo: `RB-WP3-001` refinement trong
+  [27-wp3-ledger-certificate-refinement.md](tasks/27-wp3-ledger-certificate-refinement.md).

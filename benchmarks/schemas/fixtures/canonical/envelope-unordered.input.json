@@ -1,0 +1,17 @@
+{
+  "simTimeMs": 500,
+  "schemaVersion": "1.0.0",
+  "scenarioId": "Scenario-X",
+  "runId": "Run-A",
+  "payload": {
+    "vehicleIds": ["v-2", "v-1"],
+    "message": "RideBound — hợp đồng",
+    "flags": {
+      "z": true,
+      "a": false
+    },
+    "escaped": "line\nquote\"slash\\"
+  },
+  "messageType": "eventBatch",
+  "epochId": 1
+}

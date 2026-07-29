@@ -134,8 +134,9 @@ Ticket đầu tiên đã hoàn thành:
 Ticket này là docs/ADR task. Không thêm contract code trước khi unit, position,
 error taxonomy và hash framing được quyết định.
 
-ADR-014 đã khóa các quyết định trên ngày 2026-07-29. Ticket hiện tại là
-`RB-WP1-002` — tạo contract test project và fixture harness.
+ADR-014 đã khóa các quyết định trên ngày 2026-07-29.
+`RB-WP1-002..004` cũng đã hoàn thành. Ticket hiện tại là `RB-WP1-005` — đặc tả
+schema và compatibility v1.
 
 ## 9. Template refinement cho topic kế tiếp
 
@@ -162,4 +163,4 @@ Không copy BDD của WP1 sang topic khác nếu semantics khác.
 6. Chỉ đóng topic khi toàn bộ exit gate trong `16` đạt.
 
 Theo trạng thái ngày 2026-07-29, ticket tiếp theo phải thực hiện là
-**RB-WP1-002**.
+**RB-WP1-005**.

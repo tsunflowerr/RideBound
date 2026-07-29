@@ -3,7 +3,7 @@
 > Topic ID: `RB-WP1`
 > Trạng thái: `IN_PROGRESS`
 > Cập nhật: 2026-07-29
-> Ticket tiếp theo: `RB-WP1-002`
+> Ticket tiếp theo: `RB-WP1-005`
 > Exit gate: Q1 Contracts
 
 ## 1. Outcome
@@ -53,10 +53,10 @@ không được giả lập thuật toán để làm fixture “pass”.
 | Thứ tự | Ticket | Kết quả chính | Trạng thái |
 |---:|---|---|---|
 | 1 | RB-WP1-001 | Protocol decisions/ADR được khóa | `DONE` |
-| 2 | RB-WP1-002 | Contract test harness trong solution | `READY` |
-| 3 | RB-WP1-003 | Protocol primitives và envelope | `PROPOSED` |
-| 4 | RB-WP1-004 | Canonical JSON và unit rules | `PROPOSED` |
-| 5 | RB-WP1-005 | Schema/version compatibility | `PROPOSED` |
+| 2 | RB-WP1-002 | Contract test harness trong solution | `DONE` |
+| 3 | RB-WP1-003 | Protocol primitives và envelope | `DONE` |
+| 4 | RB-WP1-004 | Canonical JSON và unit rules | `DONE` |
+| 5 | RB-WP1-005 | Schema/version compatibility | `READY` |
 | 6 | RB-WP1-006 | Hello/capability negotiation | `PROPOSED` |
 | 7 | RB-WP1-007 | Initialize-run/manifest identity | `PROPOSED` |
 | 8 | RB-WP1-008 | Event batch và ordering validation | `PROPOSED` |
@@ -241,6 +241,17 @@ Scenario: Fixture không tồn tại
 dotnet test RideBound.slnx
 ```
 
+**Completion evidence — 2026-07-29**
+
+- thêm `tests/RideBound.Contracts.Tests` vào solution, chỉ dùng test stack hiện có;
+- fixture loader đọc UTF-8 strict từ `benchmarks/schemas/fixtures`, chặn path
+  traversal, báo path tương đối và dùng build-time repository metadata nên chạy
+  được cả khi output nằm ngoài repository;
+- smoke fixture và 5 harness cases pass; toàn project Contracts hiện pass 66/66;
+- ArchitectureTests chạy từ independent artifacts path pass 7/7;
+- full solution test đã chạy nhưng Domain smoke local bị Windows Application
+  Control chặn `0x800711C7`; không có assertion failure thuộc ticket này.
+
 ---
 
 ## RB-WP1-003 — Cài protocol primitives và envelope v1
@@ -311,6 +322,17 @@ Scenario: Message type không biết
 ```powershell
 dotnet test RideBound.slnx
 ```
+
+**Completion evidence — 2026-07-29**
+
+- thêm typed `ProtocolVersion`, `ProtocolMessageType`, `RunId`, `ScenarioId`,
+  `EpochId`, `EventSequence`, `SimulationTimeMilliseconds`;
+- thêm `ProtocolEnvelopeCodec` với exact lower-camel field, context rule theo
+  message type, unknown/duplicate/missing/type/range error classification;
+- payload được clone dưới dạng `JsonElement`, chưa diễn giải business semantics;
+- 3 protocol fixtures và tests chứng minh round-trip, opaque ID, unknown type
+  versioned, field/range lỗi cụ thể và encoder không nhận envelope invalid;
+- Release build 0 warning/0 error; Contracts tests nằm trong tổng 66/66 pass.
 
 ---
 
@@ -383,6 +405,19 @@ Scenario: Route order khác nhau
 ```powershell
 dotnet test RideBound.slnx
 ```
+
+**Completion evidence — 2026-07-29**
+
+- thêm value types/conversion cho ms, mm, WGS84 E7, edge permille và micro-cost;
+  conversion dùng `decimal` + `MidpointRounding.ToEven`, reject negative/overflow;
+- thêm canonical JSON byte writer: UTF-8 không BOM/newline, recursive ordinal
+  property order, ordered array preservation, exact integer-only range, Unicode
+  scalar validation và RFC-style escaping;
+- golden input + source-controlled expected hex chứng minh exact bytes;
+- tests cover culture independence, Unicode BMP/non-BMP, escape/control,
+  duplicate/null/fraction/exponent/negative-zero, min/max, route order và unit
+  boundaries; Contracts tests 66/66 pass;
+- `dotnet format --verify-no-changes` và Release build pass.
 
 ---
 
@@ -1190,7 +1225,8 @@ dotnet test RideBound.slnx
 
 ## 7. Lệnh bắt đầu
 
-`RB-WP1-001` đã hoàn thành. Ticket tiếp theo là `RB-WP1-002`. Trước khi thực hiện:
+`RB-WP1-001` đến `RB-WP1-004` đã hoàn thành. Ticket tiếp theo là
+`RB-WP1-005`. Trước khi thực hiện:
 
 ```powershell
 Get-Content docs/06-event-contract-and-determinism.md -Encoding utf8

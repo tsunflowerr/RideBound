@@ -9,8 +9,8 @@
 |---|---|
 | Research direction | `LOCKED_FOR_IMPLEMENTATION_PLANNING` |
 | Documentation | `MIGRATED_AND_VERIFIED_V1` |
-| Implementation | `WP0_SCAFFOLD_COMPLETE` |
-| Current work package | `WP1 IN_PROGRESS — RB-WP1-001 DONE; next RB-WP1-002` |
+| Implementation | `WP1_CONTRACT_FOUNDATION_002_004_COMPLETE` |
+| Current work package | `WP1 IN_PROGRESS — RB-WP1-001..004 DONE; next RB-WP1-005` |
 | Repository | `https://github.com/tsunflowerr/RideBound` |
 | Main baseline | B1 `rolling-cost` |
 | Main treatment | C1 `ridebound-hard-vector` |
@@ -52,10 +52,17 @@
 - Hoàn thành `RB-WP1-001`: khóa schema version, unit/range, position union,
   event ordering, envelope/payload/manifest boundary, error taxonomy, canonical
   JSON/hash framing và fixture taxonomy bằng ADR-014.
+- Hoàn thành `RB-WP1-002`: thêm Contracts test project, UTF-8 fixture loader và
+  smoke fixture dùng chung.
+- Hoàn thành `RB-WP1-003`: thêm protocol primitives, typed envelope,
+  encode/decode và structural validation có reason code.
+- Hoàn thành `RB-WP1-004`: thêm canonical unit conversions, canonical JSON
+  byte writer và source-controlled golden byte vector.
 
 ## 3. Chưa làm
 
-- Chưa tạo schema/protocol code.
+- Chưa tạo JSON Schema assets hoặc compatibility matrix; protocol code hiện mới
+  có primitives/envelope/canonical boundary.
 - Runner mới chỉ là executable scaffold, chưa có NDJSON behavior.
 - Chưa có online baseline.
 - Chưa có ledger/certificate implementation.
@@ -86,6 +93,20 @@ Markdown files checked: 48
 Broken internal links: 0
 Unbalanced code fences: 0
 git diff --check: passed
+Date: 2026-07-29
+```
+
+### RB-WP1-002–004 contract foundation
+
+```text
+.NET SDK 10.0.301
+Release build: passed, 0 warnings, 0 errors
+Contracts tests: 66 passed, 0 failed
+Architecture tests from independent artifacts path: 7 passed, 0 failed
+dotnet format --verify-no-changes: passed
+NuGet direct/transitive vulnerability audit: no vulnerable packages
+Full RideBound solution test: 73 passed; Domain smoke 1 blocked/reported failed
+by Windows Application Control 0x800711C7, same pre-existing local blocker
 Date: 2026-07-29
 ```
 
@@ -128,10 +149,10 @@ Topic hiện hành là WP1 — Contracts và canonical replay. Execution plan đ
 
 Ticket duy nhất đang `READY`:
 
-> `RB-WP1-002` — Tạo `RideBound.Contracts.Tests`, fixture loader dùng chung và
-> smoke fixture trước khi thêm protocol DTO.
+> `RB-WP1-005` — Thêm JSON Schema v1 và compatibility matrix/tests trên
+> primitives, envelope và canonical bytes đã khóa.
 
-`RB-WP1-001` đã `DONE` bằng ADR-014 và decision checklist trong `06`. Chưa bắt đầu
+`RB-WP1-001..004` đã `DONE`. Chưa bắt đầu
 online insertion, ledger, OR-Tools hoặc ticket hóa WP2 trong WP1.
 
 ## 6. Open decisions
@@ -296,7 +317,7 @@ O-006; chỉ giữ executable FleetPy capability preflight cho WP7.
 | WP | Trạng thái | Bắt đầu | Kết thúc | Evidence |
 |---|---|---|---|---|
 | WP0 Scaffold | Complete | 2026-07-28 | 2026-07-28 | build + 8 RideBound + 25 backend + 7 frontend tests |
-| WP1 Contracts | In progress; `001` done, `002` ready | 2026-07-29 | — | ADR-014 + ticket plan `RB-WP1-001..015` |
+| WP1 Contracts | In progress; `001..004` done, `005` ready | 2026-07-29 | — | ADR-014 + 63 Contracts tests + golden bytes |
 | WP2 Online baseline | Not started | — | — | — |
 | WP3 Ledger/certificate | Not started | — | — | — |
 | WP4 Algorithms/solver | Not started | — | — | — |
@@ -311,6 +332,11 @@ O-006; chỉ giữ executable FleetPy capability preflight cho WP7.
 
 ## 9. Change history
 
+- 2026-07-29: Hoàn thành `RB-WP1-002..004`: contract fixture harness, typed
+  envelope/validation, canonical unit conversion và exact canonical JSON bytes.
+  Contracts 66/66 và Architecture 7/7 pass từ independent artifacts path;
+  Release build/format/dependency audit sạch. Full solution test vẫn bị Windows
+  Application Control chặn Domain smoke (`0x800711C7`); next là `RB-WP1-005`.
 - 2026-07-29: Hoàn thành docs ticket `RB-WP1-001` bằng ADR-014 và protocol
   decision checklist; thu hẹp O-006 sang FleetPy executable preflight; chuyển
   `RB-WP1-002` thành next/`READY`. Không thêm runtime/schema code và chưa nâng

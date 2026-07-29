@@ -145,7 +145,8 @@ không chép lại thuật toán RideBound bằng Python hoặc C++.
 - RideBound test hiện tại: 8/8 pass ngày 2026-07-28
   (7 architecture + 1 domain).
 - BeGo độc lập vẫn đạt 25/25 backend và 7/7 frontend test.
-- Chưa có protocol, online baseline, commitment ledger hoặc adapter simulator.
-- WP1 đã bắt đầu: `RB-WP1-001` hoàn thành bằng ADR-014; chưa có contract code.
-- Bước thực thi tiếp theo: `RB-WP1-002` trong
+- Đã có test harness, protocol envelope/primitives và canonical JSON; chưa có
+  schema compatibility, runner behavior, online baseline, ledger hoặc adapter.
+- WP1 đang thực hiện: `RB-WP1-001..004` đã hoàn thành.
+- Bước thực thi tiếp theo: `RB-WP1-005` trong
   [24-wp1-contracts-ticket-plan.md](tasks/24-wp1-contracts-ticket-plan.md).

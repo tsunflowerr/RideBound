@@ -6,7 +6,7 @@
 |---|---|---|---|---|---|
 | R-001 | Hệ thống RideBound độc lập | `05` | `Domain/Application/Runner` trong Git repo riêng | 5 architecture rules + 2 cross-platform path cases | WP0 verified; Linux CI rerun pending |
 | R-002 | Gắn được vào BeGo | `02`, `14` | BeGo adapter/API | integration replay | Planned |
-| R-003 | Core mang sang benchmark | `05`, `06`, `24` | contracts + runner | same binary hash | WP1 ready; not implemented |
+| R-003 | Core mang sang benchmark | `05`, `06`, `24` | contracts + runner | same binary hash | WP1 `002–004` implemented; runner planned |
 | R-004 | Layer 1 cùng codebase | `09` | B1/C1 chung RideBound engine; BeGo export adapter | paired runs | Planned |
 | R-005 | Layer 2 simulator chung | `09`, `12` | FleetPy adapter | Layer 2 gate | Planned |
 | R-006 | Layer 3 framework độc lập | `09`, `13` | RidePy/AMoD2 adapter | Layer 3 gate | Planned |
@@ -62,9 +62,10 @@ khác tại work package có behavior thật; không scaffold assembly rỗng.
 - simulator adapters;
 - experiment artifact pipeline.
 
-WP1 runtime items ở trên được chia trong `24`; trạng thái vẫn là planned cho tới
-khi từng artifact có code và test evidence. Việc có ticket không được tính là
-`Implemented`.
+WP1 runtime items ở trên được chia trong `24`. Contract harness,
+primitives/envelope và canonical JSON của `RB-WP1-002..004` đã có code/test;
+schema, runner và các runtime item còn lại vẫn planned. Việc chỉ có ticket không
+được tính là `Implemented`.
 
 ### Product hoặc BeGo integration
 
@@ -145,7 +146,10 @@ Mỗi khi work package hoàn thành:
 | Ticket | Requirement chính | Evidence dự kiến |
 |---|---|---|
 | RB-WP1-001 | N-001, N-002, N-009 | ADR-014 + normative decision table `06` mục 2–14; docs verified, runtime vẫn planned |
-| RB-WP1-002–005 | R-003, R-008, N-009 | contract tests, schemas, canonical bytes |
+| RB-WP1-002 | R-003, N-009 | `RideBound.Contracts.Tests`, fixture loader + smoke tests |
+| RB-WP1-003 | R-003, N-009 | protocol primitives/envelope codec + structural fixtures/tests |
+| RB-WP1-004 | R-003, N-001 | canonical units/JSON + exact UTF-8 golden hex + 63 Contracts tests |
+| RB-WP1-005 | R-003, R-008, N-009 | planned schemas + compatibility matrix/tests |
 | RB-WP1-006–009 | F-001, N-002, N-009 | hello/init/event/decision/error fixtures |
 | RB-WP1-010 | N-001, N-003 | published SHA-256 hash vectors |
 | RB-WP1-011–013 | N-001, N-004 | pipe, session, duplicate/version tests |
@@ -170,3 +174,17 @@ requirement tương ứng dựa trên file/test/result cụ thể.
 
 `RB-WP1-001` là docs/ADR evidence, không phải runtime verification. Vì vậy
 N-001/N-002/N-009 và WP1 vẫn chưa chuyển thành `Implemented/Verified`.
+
+### 8.2. RB-WP1-002–004 implementation evidence
+
+| Ticket | Implementation | Verification | Trạng thái |
+|---|---|---|---|
+| `002` | `tests/RideBound.Contracts.Tests`, `benchmarks/schemas/fixtures` | fixture path/UTF-8/missing/traversal tests | Implemented; task tests verified |
+| `003` | `ProtocolPrimitives`, `ProtocolEnvelope`, `ProtocolEnvelopeCodec` | version, identity, context, round-trip và invalid fixtures | Implemented; task tests verified |
+| `004` | `CanonicalUnits`, `CanonicalJson`, canonical input/hex vector | byte equality, culture, Unicode, order, range/overflow tests | Implemented; task tests verified |
+
+Evidence ngày 2026-07-29: Contracts 66/66 và Architecture 7/7 pass, Release
+build/format/vulnerability audit pass. Full solution local chưa thể xác nhận xanh
+do Windows Application Control chặn 1 Domain smoke với `0x800711C7` sau khi 73
+test khác pass; Q1 và các
+requirement cấp WP vẫn chưa `Verified` cho tới các ticket còn lại và gate `015`.

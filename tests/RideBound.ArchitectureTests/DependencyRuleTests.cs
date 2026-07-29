@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Xml.Linq;
 
 namespace RideBound.ArchitectureTests;
@@ -167,6 +168,19 @@ public sealed class DependencyRuleTests
 
     private static string FindRepositoryRoot()
     {
+        var configuredRoot = typeof(DependencyRuleTests)
+            .Assembly
+            .GetCustomAttributes<AssemblyMetadataAttribute>()
+            .SingleOrDefault(
+                attribute => attribute.Key == "RideBoundRepositoryRoot")
+            ?.Value;
+
+        if (configuredRoot is not null
+            && File.Exists(Path.Combine(configuredRoot, "RideBound.slnx")))
+        {
+            return configuredRoot;
+        }
+
         var current = new DirectoryInfo(AppContext.BaseDirectory);
 
         while (current is not null)

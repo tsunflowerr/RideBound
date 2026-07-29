@@ -3,7 +3,8 @@
 > Trạng thái: `BASELINE_V1`
 > Cập nhật: 2026-07-29
 > Nguồn tiến độ: [18-status-and-decision-log.md](../18-status-and-decision-log.md)
-> Topic duy nhất đã ticket hóa: [WP1 Contracts và canonical replay](24-wp1-contracts-ticket-plan.md)
+> Topic đã ticket hóa: [WP1 Contracts](24-wp1-contracts-ticket-plan.md) và
+> [WP2 Online baseline](26-wp2-online-baseline-ticket-plan.md)
 
 ## 1. Mục đích
 
@@ -18,8 +19,8 @@ Backlog dùng **progressive elaboration**:
   BDD, acceptance criteria, verification và rollback khi phù hợp;
 - topic kế tiếp chỉ được refinement sau khi exit gate của topic trước đạt.
 
-Quy tắc này tránh tạo false precision cho WP2–WP12 khi contract và evidence đầu
-vào chưa tồn tại.
+Quy tắc này tránh tạo false precision cho các topic xa (hiện là WP3–WP12) khi
+contract và evidence đầu vào chưa tồn tại.
 
 ## 2. Nguồn sự thật và thứ tự ưu tiên
 
@@ -117,27 +118,28 @@ Ticket tài liệu phải:
 | WP11 Product UX | UI/audit có rollback, không overclaim | product gate | WP5 |
 | WP12 Paper/release | Claim traceable và artifact tái lập | Q6 | WP9, WP10 |
 
-WP2–WP12 **chưa có ticket**. Khi topic được kích hoạt, refine vừa đủ từ
-deliverable/exit gate của `16` và evidence thật của topic trước.
+WP3–WP12 **chưa có ticket**. WP2 đã được refine sau khi WP1/Q1 đóng; khi topic
+tiếp theo được kích hoạt, tiếp tục refine vừa đủ từ deliverable/exit gate của
+`16` và evidence thật của topic trước.
 
 WP11 không nằm trên critical path nghiên cứu và không được làm chậm WP8–WP10.
 
 ## 8. Topic hiện hành
 
-WP1 được chia thành 15 ticket tuần tự trong
+WP1 `RB-WP1-001..015` đã hoàn thành theo
 [24-wp1-contracts-ticket-plan.md](24-wp1-contracts-ticket-plan.md).
 
-Ticket đầu tiên đã hoàn thành:
+WP2 refinement `RB-WP2-001` cũng đã hoàn thành. ADR-018 khóa state ownership,
+atomic reducer, route prefix/suffix và O-001. Ordered queue `RB-WP2-002..012`
+nằm trong
+[26-wp2-online-baseline-ticket-plan.md](26-wp2-online-baseline-ticket-plan.md).
 
-> **RB-WP1-001 — Khóa protocol boundary và open decisions**
+Ticket implementation duy nhất hiện `READY`:
 
-Ticket này là docs/ADR task. Không thêm contract code trước khi unit, position,
-error taxonomy và hash framing được quyết định.
+> **RB-WP2-002 — Typed online input contracts và fixtures**
 
-ADR-014 đã khóa các quyết định trên ngày 2026-07-29.
-`RB-WP1-002..007` cũng đã hoàn thành; ADR-015 khóa compatibility, capability và
-initialize identity. Ticket hiện tại là `RB-WP1-008` — event batch contract và
-ordering validation.
+Không bắt đầu Domain state/reducer/B1 trước khi contract payload/fixture của
+ticket này có evidence.
 
 ## 9. Template refinement cho topic kế tiếp
 
@@ -164,4 +166,4 @@ Không copy BDD của WP1 sang topic khác nếu semantics khác.
 6. Chỉ đóng topic khi toàn bộ exit gate trong `16` đạt.
 
 Theo trạng thái ngày 2026-07-29, ticket tiếp theo phải thực hiện là
-**RB-WP1-008**.
+**RB-WP2-002**.

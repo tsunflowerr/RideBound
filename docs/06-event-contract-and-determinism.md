@@ -490,10 +490,12 @@ Solver có nondeterminism phải được cấu hình single-thread/deterministi
   tiếp theo trước `decisionApplied`.
 - `eventSeq` gap/reorder và `epochId` gap/reorder làm session failed; không tự
   điền, buffer hoặc sort.
-- Gửi lại toàn batch đã xử lý với cùng run/epoch, sequence range và canonical
-  payload hash trả lại response đã cache, không advance state/hash.
-- Trùng key nhưng payload khác là data corruption fatal. Duplicate event riêng
-  lẻ hoặc batch overlap một phần cũng fatal; client phải retry nguyên batch.
+- Gửi lại toàn batch đã xử lý với cùng run/epoch, sequence range và hash của
+  **toàn canonical `eventBatch` envelope + payload** trả lại response đã cache,
+  không advance state/hash. `simTimeMs` là một phần identity này.
+- Trùng key nhưng bất kỳ canonical context/payload nào khác, kể cả đổi
+  `simTimeMs`, là `DUPLICATE_PAYLOAD_CONFLICT` fatal. Duplicate event riêng lẻ
+  hoặc batch overlap một phần cũng fatal; client phải retry nguyên batch.
 - Runner WP1 giữ đúng một batch/response gần nhất. Cache một phần tử đủ cho retry
   nguyên batch quanh `decisionApplied`, có lifecycle bounded và không biến thành
   kho transcript; transcript bền vững thuộc adapter/experiment harness.

@@ -9,8 +9,8 @@
 |---|---|
 | Research direction | `LOCKED_FOR_IMPLEMENTATION_PLANNING` |
 | Documentation | `MIGRATED_AND_VERIFIED_V1` |
-| Implementation | `WP1_Q1_CONTRACT_RUNNER_REPLAY_COMPLETE` |
-| Current work package | `WP2 REFINEMENT — RB-WP2-001 READY; no WP2 code yet` |
+| Implementation | `WP1_Q1_REVALIDATED_RELEASE_161; WP2_REFINED_NO_CODE` |
+| Current work package | `WP2 ONLINE BASELINE — RB-WP2-002 READY` |
 | Repository | `https://github.com/tsunflowerr/RideBound` |
 | Main baseline | B1 `rolling-cost` |
 | Main treatment | C1 `ridebound-hard-vector` |
@@ -81,6 +81,13 @@
   exact expected output/final hash, replay hai lần và tamper proof.
 - Hoàn thành `RB-WP1-015`: đóng Q1 bằng ADR-016, traceability/gate evidence và
   tạo ticket refinement duy nhất `RB-WP2-001`.
+- Revalidate end-to-end toàn WP1: phát hiện và sửa cache idempotency từng coi
+  batch đổi `simTimeMs` là retry hợp lệ; exact retry hiện hash toàn canonical
+  eventBatch envelope + payload theo ADR-017.
+- Bổ sung regression test cho changed-time duplicate và replay exact transcript
+  qua hai runner process sạch; current Release inventory đạt 161/161.
+- Hoàn thành `RB-WP2-001`: ADR-018 khóa state/reducer/route/reassignment boundary
+  và tạo ordered queue `RB-WP2-002..012` trong execution plan WP2.
 
 ## 3. Chưa làm
 
@@ -146,7 +153,7 @@ by Windows Application Control 0x800711C7, same configuration-specific blocker
 Date: 2026-07-29
 ```
 
-### RB-WP1-008–015 Q1 closure
+### RB-WP1-008–015 Q1 closure và current revalidation
 
 ```text
 .NET SDK 10.0.301
@@ -156,23 +163,35 @@ Release full solution at Q1 closure: 157 passed, 0 failed
   Runner: 35 passed
   Architecture: 7 passed
   Domain: 1 passed
-Current inventory after one additional schema/vocabulary consistency assertion: 158
-Current Release targeted results:
+Current inventory after schema/vocabulary assertion và ba regression/E2E tests: 161
+Current Debug full solution attempt:
   Contracts: 115 passed, 0 failed
   Architecture: 7 passed, 0 failed
   Domain: 1 passed, 0 failed
-Final current Release full-suite attempt:
+  Runner: 38 blocked before discovery by Windows Application Control 0x800711C7
+Current Release full solution revalidation:
+  Contracts: 115 passed, 0 failed
+  Runner: 38 passed, 0 failed
+  Architecture: 7 passed, 0 failed
+  Domain: 1 passed, 0 failed
+Current published CIBuild runner:
+  RideBound.Runner.dll SHA-256:
+  f3baa7daaec9b9167b52d9e110ac536a1bceff64e4f87498cc3e9d1be9d0c7c0
+  Two clean processes: exit 0, empty stderr, exact expected output, byte-equivalent
+Historical final Release full-suite attempt at Q1 closure:
   123 passed before Runner load
   Runner: 35 blocked before assertions by Windows Application Control
-  Runner source/tests are unchanged from their 35/35 passing closure run
+  At that closure point Runner source/tests were unchanged from their 35/35 pass
 Real child-process NDJSON test at Q1 closure: passed
+Current exact transcript replay through two clean child processes: passed
+Changed-simTime duplicate corruption regression: passed
 Published transcript replay twice/exact output/final hash at Q1 closure: passed
 Tampered event changes decision hash at Q1 closure: passed
 Required golden fixture inventory: exactly 10
 dotnet format --verify-no-changes: passed
 NuGet direct/transitive vulnerability audit: no vulnerable packages
 JSON artifact parse audit: 66 files, 0 invalid
-Markdown audit: 51 files, 0 broken internal links, 0 unbalanced fences
+Current Markdown audit: 53 files, 0 broken internal links, 0 unbalanced fences
 Default Debug full-suite final attempt: Architecture 7 passed; Domain 1 was
 blocked; Runner reported 5 passed and 30 load-policy failures; Contracts reported
 15 passed and 85 load-policy failures before completing its full 115-case
@@ -180,6 +199,8 @@ inventory. Enterprise Code Integrity policy
 0283ac0f-fff1-49ae-ada1-8a933130cad6 blocked fresh DLL loads with 0x800711C7.
 The Release rerun likewise blocked fresh Runner.dll. Event IDs 3033/3077 confirm
 the signing-level policy; no assertion failure is used as correctness evidence.
+Policy blocker reproduced for the fresh Debug Runner.Tests.dll but not for the
+current Release suite, which passed 161/161.
 Date: 2026-07-29
 ```
 
@@ -217,24 +238,24 @@ Date: 2026-07-28
 
 ## 5. Next action
 
-WP1 — Contracts và canonical replay đã Complete/Q1 Release verified. Execution
-evidence nằm trong
+WP1 — Contracts và canonical replay đã Complete/Q1, được revalidate Release
+161/161 sau bug fix exact-retry của ADR-017. Execution evidence nằm trong
 [24-wp1-contracts-ticket-plan.md](tasks/24-wp1-contracts-ticket-plan.md).
 
 Ticket duy nhất đang `READY`:
 
-> `RB-WP2-001` — Refine online state, reducer boundary, B1 rolling baseline,
-> physical validator và exact-small plan; chưa viết WP2 code.
+> `RB-WP2-002` — Cài typed online input contracts và fixtures cho bootstrap/
+> two-epoch WP2; chưa viết Domain state/reducer/B1 trong ticket này.
 
 Chi tiết:
-[25-wp2-online-state-refinement.md](tasks/25-wp2-online-state-refinement.md).
-Chưa bắt đầu online insertion, ledger, OR-Tools hoặc adapter.
+[26-wp2-online-baseline-ticket-plan.md](tasks/26-wp2-online-baseline-ticket-plan.md).
+`RB-WP2-001` refinement đã Done; chưa bắt đầu Domain state, online insertion,
+ledger, OR-Tools hoặc adapter.
 
 ## 6. Open decisions
 
 | ID | Câu hỏi | Khi nào khóa |
 |---|---|---|
-| O-001 | Có cho vehicle reassignment trong RideBound v1 không? | WP2 trước schema final |
 | O-002 | Budget vector cụ thể và mức loose/medium/tight? | WP8 pilot |
 | O-003 | Material ETA revision threshold/bucket? | WP8 pilot |
 | O-004 | Service non-inferiority margin cuối? | WP8 prereg |
@@ -242,6 +263,9 @@ Chưa bắt đầu online insertion, ledger, OR-Tools hoặc adapter.
 | O-006 | FleetPy 1.0.2 có cung cấp exact directed-edge progress ổn định không? Protocol union/capability đã khóa bởi ADR-014. | WP7 executable preflight; nếu không đạt, khai báo `nodeOnly` và fail/downgrade |
 | O-007 | HTTP/gRPC có cần cho product v1 ngoài NDJSON? | WP5 |
 | O-008 | Cross-city confirmatory hay robustness only? | WP8 |
+
+O-001 đã được khóa bởi ADR-018: B1 WP2 không cho incumbent accepted request đổi
+vehicle; WP4 chỉ mở lại bằng ADR superseding và atomic multi-vehicle evidence.
 
 ## 7. Decision log
 
@@ -472,13 +496,85 @@ Release đã pass đầy đủ.
 không đổi version, unit, event order, manifest/decision hash framing hoặc claim
 boundary.
 
+### ADR-017 — 2026-07-29 — Accepted
+
+**Context:** Revalidation end-to-end WP1 phát hiện cache idempotency dùng key
+run/scenario/epoch/sequence range nhưng chỉ hash `payload.events`. Một retry giữ
+nguyên event payload và sequence nhưng đổi envelope `simTimeMs` được trả lại
+decision cũ có time/hash của batch ban đầu. Điều này trái nghĩa “exact retry”,
+có thể che transcript corruption và làm canonical input thực tế khác response
+được cache.
+
+**Decision:** Identity của retry nguyên batch gồm key run/scenario/epoch/sequence
+range và SHA-256 của toàn canonical `eventBatch` envelope + payload. Mọi thay đổi
+canonical context, gồm `schemaVersion`, `runId`, `scenarioId`, `epochId`,
+`simTimeMs`, hoặc payload dưới cùng batch key là
+`DUPLICATE_PAYLOAD_CONFLICT`/`failSession`. Exact retry tiếp tục trả
+byte-equivalent cached response và không advance state/hash.
+
+**Alternatives considered:** thêm riêng `simTimeMs` vào cache key rồi phân loại
+thành overlap; chỉ so raw JSON bytes; giữ payload-only hash và tin client không
+đổi context.
+
+**Consequences:** Property order/whitespace khác nhưng canonical batch tương
+đương vẫn idempotent; thay đổi semantic context không còn bị nhận nhầm. Đây là
+bug fix patch-compatible cho behavior invalid, không đổi schema/unit/order/hash
+framing của decision. Regression test changed-time duplicate và clean-process
+replay được giữ trong Runner suite.
+
+**Evidence:** `RunnerSession.CalculateCanonicalBatchHash`,
+`Same_duplicate_key_with_changed_simulation_time_fails_session`,
+`Published_transcript_replays_twice_through_clean_processes` và
+`Canonically_equal_duplicate_ignores_json_formatting`; Runner Release 38/38 và
+full solution Release 161/161. Debug fresh Runner test assembly bị host
+policy chặn trước discovery; 123 non-Runner test pass.
+
+**Supersedes / superseded by:** Làm rõ “exact retry” trong ADR-016; không
+supersede lifecycle/hash-chain decision khác.
+
+### ADR-018 — 2026-07-29 — Accepted
+
+**Context:** Sau Q1, WP2 cần state/reducer/B1 thật nhưng chưa có quyết định chính
+xác về ownership, bootstrap vehicle/travel state, atomic event reduction,
+frozen-prefix semantics hoặc O-001 reassignment. Đưa Contracts DTO vào Domain,
+commit từng event giữa batch hoặc mở reassignment incumbent ngay sẽ phá Clean
+Architecture và làm exact-small baseline khó kiểm chứng.
+
+**Decision:** Domain sở hữu run/request/vehicle/route state và invariant thuần;
+Application sở hữu internal ordered-event reducer/orchestration; Runner boundary
+map Contracts DTO sang internal events. Batch được validate/fold nguyên tử và
+domain/plan state chỉ commit tại matching `decisionApplied`. Route dùng exact
+executed/locked frozen prefix, mutable suffix và no-op candidate bắt buộc.
+Vehicle/travel bootstrap đi qua typed epoch-one events. B1 WP2 cho pending
+request chọn vehicle nhưng cấm incumbent accepted request đổi vehicle; mở lại
+cần ADR superseding cùng atomic multi-vehicle/exact-small evidence. B1 chỉ dùng
+physical constraints, accepted preservation, integer operational cost và stable
+tie-break; không có commitment gate.
+
+**Alternatives considered:** đặt reducer trong Contracts; cho Domain nhận
+`EventBatchPayload`/`JsonElement`; mutate state từng event; đưa initial mutable
+state vào manifest; cho reassignment ngay; kéo OR-Tools/WP3 ledger vào WP2.
+
+**Consequences:** WP2 có queue nhỏ và test-first, giữ Domain/Application độc lập
+và cô lập B1 physical baseline. B4/no-reassignment chưa là baseline phân biệt
+trong WP2; WP4 phải ghi rõ equivalence hoặc mở reassignment B1 trước khi đánh giá
+B4. Q1 structural conformance transcript được giữ bằng path có tên, còn online
+B1 không được trả `WP1_STRUCTURAL_ONLY`.
+
+**Evidence:** `04`, `05`, `06`, `08`, `15`,
+`tasks/25-wp2-online-state-refinement.md`,
+`tasks/26-wp2-online-baseline-ticket-plan.md`.
+
+**Supersedes / superseded by:** Đóng O-001 cho WP2 và bổ sung ADR-011/016; không
+đổi protocol v1 hoặc quyết định ledger/certificate của WP3.
+
 ## 8. Work package tracker
 
 | WP | Trạng thái | Bắt đầu | Kết thúc | Evidence |
 |---|---|---|---|---|
 | WP0 Scaffold | Complete | 2026-07-28 | 2026-07-28 | build + 8 RideBound + 25 backend + 7 frontend tests |
-| WP1 Contracts | Complete; Q1 Release verified with recorded host-policy exception | 2026-07-29 | 2026-07-29 | ADR-014/015/016 + 157/157 closure run + current 115 Contracts + replay/hash proof |
-| WP2 Online baseline | Refinement ready; no code | 2026-07-29 | — | `RB-WP2-001` |
+| WP1 Contracts | Complete; Q1 Release revalidated with host-policy exception | 2026-07-29 | 2026-07-29 | ADR-014–017 + 157/157 closure + current Release 161/161 + replay/hash proof |
+| WP2 Online baseline | Refinement complete; `RB-WP2-002` ready; no code | 2026-07-29 | — | ADR-018 + `RB-WP2-001` |
 | WP3 Ledger/certificate | Not started | — | — | — |
 | WP4 Algorithms/solver | Not started | — | — | — |
 | WP5 BeGo integration | Not started | — | — | — |
@@ -492,6 +588,12 @@ boundary.
 
 ## 9. Change history
 
+- 2026-07-29: Revalidate toàn bộ WP1: Release 161/161; Debug pass 123 non-Runner
+  test rồi fresh Runner assembly bị host policy chặn trước discovery. Phát hiện
+  payload-only dedup hash nhận nhầm retry đổi `simTimeMs`; sửa bằng ADR-017 để
+  hash toàn canonical eventBatch, thêm regression conflict và replay qua hai
+  clean runner process. Hoàn thành `RB-WP2-001` refinement bằng ADR-018 và
+  execution plan `RB-WP2-002..012`; next duy nhất là `RB-WP2-002`.
 - 2026-07-29: Hoàn thành `RB-WP1-008..015` và đóng WP1/Q1: event/decision/error
   contracts, hash chain, async NDJSON runner, lifecycle/idempotency/failure
   semantics, đúng 10 golden fixture và exact replay/tamper proof. Release full

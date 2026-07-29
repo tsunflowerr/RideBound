@@ -1,7 +1,7 @@
 # RB-WP2-001 — Refine online state và rolling baseline
 
 > Work package: `WP2 — Online state và rolling baseline`
-> Trạng thái: `READY`
+> Trạng thái: `DONE`
 > Cập nhật: 2026-07-29
 > Loại ticket: refinement/decision, chưa viết thuật toán
 
@@ -84,3 +84,17 @@ Get-Content docs/04-problem-model-and-notation.md -Encoding utf8
 Get-Content docs/08-algorithms-baselines-and-solver.md -Encoding utf8
 dotnet test RideBound.slnx -c Release --no-build --no-restore
 ```
+
+## 9. Completion evidence — 2026-07-29
+
+- ADR-018 khóa state ownership, contract mapper boundary, atomic reducer,
+  frozen-prefix/mutable-suffix/no-op semantics và O-001;
+- tạo execution plan
+  [26-wp2-online-baseline-ticket-plan.md](26-wp2-online-baseline-ticket-plan.md)
+  với ordered queue `RB-WP2-002..012`;
+- B1 WP2 khóa incumbent reassignment; pending request mới vẫn được chọn vehicle;
+- Domain/Application tiếp tục không phụ thuộc Contracts/framework/simulator;
+- ledger/certificate/incident accounting WP3 và OR-Tools/C1 WP4 không bị kéo
+  vào WP2;
+- ticket implementation duy nhất chuyển `READY` là `RB-WP2-002`;
+- không thêm C# domain/algorithm WP2 trong ticket refinement này.

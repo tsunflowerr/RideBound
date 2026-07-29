@@ -260,13 +260,13 @@ public sealed class RunnerSession
             envelope.EpochId!.Value.Value,
             firstSequence,
             lastSequence);
-        var payloadHash = CalculatePayloadHash(payload);
+        var canonicalBatchHash = CalculateCanonicalBatchHash(envelope);
 
         if (_lastBatch is not null && _lastBatch.Key == key)
         {
             if (string.Equals(
-                    _lastBatch.PayloadHash,
-                    payloadHash,
+                    _lastBatch.CanonicalBatchHash,
+                    canonicalBatchHash,
                     StringComparison.Ordinal))
             {
                 return new RunnerSessionResult(_lastBatch.Response);
@@ -365,7 +365,7 @@ public sealed class RunnerSession
             nextSimTime,
             stateAfterHash,
             decisionHash);
-        _lastBatch = new CachedBatch(key, payloadHash, response);
+        _lastBatch = new CachedBatch(key, canonicalBatchHash, response);
         Status = RunnerSessionStatus.AwaitingDecisionApplied;
 
         return new RunnerSessionResult(response);
@@ -449,10 +449,10 @@ public sealed class RunnerSession
         return CanonicalJson.Canonicalize(buffer.WrittenSpan);
     }
 
-    private static string CalculatePayloadHash(EventBatchPayload payload)
+    private static string CalculateCanonicalBatchHash(ProtocolEnvelope envelope)
     {
         var canonical = CanonicalJson.Canonicalize(
-            EventBatchPayloadCodec.Encode(payload));
+            ProtocolEnvelopeCodec.Encode(envelope));
         return Convert.ToHexStringLower(SHA256.HashData(canonical));
     }
 
@@ -543,7 +543,7 @@ public sealed class RunnerSession
 
     private sealed record CachedBatch(
         BatchKey Key,
-        string PayloadHash,
+        string CanonicalBatchHash,
         ProtocolEnvelope Response);
 
     private sealed record PendingDecision(

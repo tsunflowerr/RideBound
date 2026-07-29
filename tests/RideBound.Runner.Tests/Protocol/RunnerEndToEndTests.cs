@@ -40,6 +40,26 @@ public sealed class RunnerEndToEndTests
     }
 
     [Fact]
+    public async Task Published_transcript_replays_twice_through_clean_processes()
+    {
+        var transcript = FixtureLoader.ReadUtf8(
+            "runner/full-tiny-transcript.input.ndjson");
+        var expectedOutput = NormalizeLf(
+            FixtureLoader.ReadUtf8(
+                "runner/full-tiny-transcript.expected.ndjson"));
+
+        var first = await RunExecutable(transcript);
+        var second = await RunExecutable(transcript);
+
+        Assert.Equal(0, first.ExitCode);
+        Assert.Equal(0, second.ExitCode);
+        Assert.Equal(string.Empty, first.StandardError);
+        Assert.Equal(string.Empty, second.StandardError);
+        Assert.Equal(expectedOutput, first.StandardOutput);
+        Assert.Equal(first.StandardOutput, second.StandardOutput);
+    }
+
+    [Fact]
     public async Task Tampered_event_changes_decision_hash_and_fails_golden_comparison()
     {
         var transcript = FixtureLoader.ReadUtf8(
@@ -145,6 +165,33 @@ public sealed class RunnerEndToEndTests
             exitCode,
             Encoding.UTF8.GetString(output.ToArray()),
             diagnostics.ToString());
+    }
+
+    private static async Task<RunResult> RunExecutable(string transcript)
+    {
+        var assembly = typeof(RunnerHost).Assembly.Location;
+        var startInfo = new ProcessStartInfo("dotnet")
+        {
+            RedirectStandardInput = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+        startInfo.ArgumentList.Add(assembly);
+
+        using var process = Process.Start(startInfo);
+        Assert.NotNull(process);
+        await process.StandardInput.WriteAsync(transcript);
+        process.StandardInput.Close();
+        var stdout = await process.StandardOutput.ReadToEndAsync();
+        var stderr = await process.StandardError.ReadToEndAsync();
+        await process.WaitForExitAsync();
+
+        return new RunResult(
+            process.ExitCode,
+            NormalizeLf(stdout),
+            NormalizeLf(stderr));
     }
 
     private static string CompactFixture(string path) =>

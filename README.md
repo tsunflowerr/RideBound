@@ -9,8 +9,9 @@ adapter hoặc scenario chuẩn hóa.
 
 ## Trạng thái
 
-- WP0 scaffold và WP1 Contracts/Q1 đã hoàn thành; ticket tiếp theo là refinement
-  [`RB-WP2-001`](docs/tasks/25-wp2-online-state-refinement.md).
+- WP0 scaffold và WP1 Contracts/Q1 đã hoàn thành; WP2 refinement cũng đã đóng.
+  Ticket tiếp theo là
+  [`RB-WP2-002`](docs/tasks/26-wp2-online-baseline-ticket-plan.md).
 - Đã có protocol/schema v1, canonical JSON/hash, long-lived NDJSON runner,
   session lifecycle, idempotent retry và golden replay proof. Chưa có Domain
   event reducer, online algorithm, solver, ledger/certificate thật hoặc adapter.

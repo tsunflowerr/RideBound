@@ -3,8 +3,8 @@
 > Topic ID: `RB-WP1`
 > Trạng thái: `COMPLETE — Q1 RELEASE VERIFIED`
 > Cập nhật: 2026-07-29
-> Ticket tiếp theo: `RB-WP2-001` trong
-> `25-wp2-online-state-refinement.md`
+> Ticket tiếp theo: `RB-WP2-002` trong
+> `26-wp2-online-baseline-ticket-plan.md`
 > Exit gate: Q1 Contracts
 
 ## 1. Outcome
@@ -1022,10 +1022,10 @@ identity có payload khác.
 
 **Description**
 
-Theo dõi identity/payload hash tối thiểu trong session. Cùng
-`(runId,eventSeq)` và cùng canonical payload trả idempotent response; cùng key
-khác payload làm run fail theo ADR. Thêm major/minor/version/session/epoch gap
-paths.
+Theo dõi identity/hash tối thiểu trong session. Cùng batch key và cùng canonical
+`eventBatch` envelope + payload trả idempotent response; cùng key nhưng đổi
+context như `simTimeMs` hoặc đổi payload làm run fail theo ADR. Thêm
+major/minor/version/session/epoch gap paths.
 
 **Trong phạm vi**
 
@@ -1257,22 +1257,21 @@ dotnet test RideBound.slnx
 - [x] Duplicate cùng payload idempotent.
 - [x] Duplicate khác payload và version/gap lỗi đúng taxonomy.
 - [x] Same clean transcript tạo same response/hash.
-- [x] Full solution Release pass 157/157 tại mốc đóng; assertion đồng bộ
-  vocabulary thêm sau đó pass và đưa inventory hiện tại lên 158. Lệnh full-suite
-  cuối đã chạy nhưng enterprise Application Control chặn fresh Runner DLL trước
-  assertion cả ở Release; Debug cũng bị chặn theo lần build. Chi tiết nằm trong
-  `18`.
+- [x] Full solution Release pass 157/157 tại mốc đóng; current revalidation sau
+  assertion vocabulary và exact-retry regression đạt Release 161/161. Debug
+  pass 123 non-Runner test rồi fresh Runner assembly bị Application Control chặn
+  trước discovery. Exact environment/correctness evidence nằm trong `18`.
 - [x] `18` và `19` có evidence file/test cụ thể.
 - [x] Không có online algorithm/ledger/solver/adapter bị làm sớm.
 
 ## 7. Lệnh bắt đầu
 
-`RB-WP1-001` đến `RB-WP1-015` đã hoàn thành. Q1 đã đóng; ticket duy nhất
-`READY` là `RB-WP2-001` trong `25-wp2-online-state-refinement.md`. Ticket đó chỉ
-refine WP2, chưa viết thuật toán. Trước khi thực hiện:
+`RB-WP1-001` đến `RB-WP1-015` đã hoàn thành và revalidate. Q1 đã đóng;
+`RB-WP2-001` refinement cũng đã Done. Ticket duy nhất `READY` là `RB-WP2-002`
+trong `26-wp2-online-baseline-ticket-plan.md`. Trước khi thực hiện:
 
 ```powershell
-Get-Content docs/tasks/25-wp2-online-state-refinement.md -Encoding utf8
+Get-Content docs/tasks/26-wp2-online-baseline-ticket-plan.md -Encoding utf8
 Get-Content docs/18-status-and-decision-log.md -Encoding utf8
 Get-Content docs/04-problem-model-and-notation.md -Encoding utf8
 Get-Content docs/08-algorithms-baselines-and-solver.md -Encoding utf8

@@ -253,12 +253,13 @@ Một người khác phải chạy được tiny/medium reproduction trước kh
 
 Q1 được đóng ngày 2026-07-29 cho phạm vi contract/runner WP1: full Release
 solution 157/157 pass tại mốc đóng, đúng 10 required fixture, exact transcript
-replay/hash và tamper proof pass. Một assertion đồng bộ vocabulary được thêm sau
-mốc đó, đưa inventory hiện tại lên 158; Contracts hiện pass 115/115. Đây không
-phải Q2 core correctness; 9 future-behavior fixture chỉ được schema-validate.
-Lần full-suite cuối trên máy local bị enterprise Code Integrity chặn fresh
-Runner DLL cả ở Release và Debug trước assertion. Chi tiết mốc pass, lần bị chặn
-và policy ID được ghi trong `18`; không coi lỗi nạp DLL là lỗi nghiệp vụ.
+replay/hash và tamper proof pass. Sau assertion vocabulary và revalidation
+exact-retry, inventory hiện tại là 161: Contracts 115, Runner 38, Architecture 7
+và Domain 1 cùng pass ở Release. Debug pass 123 non-Runner test rồi fresh
+Runner test assembly bị enterprise Code Integrity chặn trước discovery. Đây
+không phải Q2 core correctness; 9 future-behavior fixture chỉ được
+schema-validate. Current Release pass, Debug blocker và policy ID được tách rõ
+trong `18`.
 
 ### Q2 — core correctness
 

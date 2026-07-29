@@ -72,6 +72,23 @@ public sealed class RunnerSessionTests
     }
 
     [Fact]
+    public void Canonically_equal_duplicate_ignores_json_formatting()
+    {
+        var session = CreateInitializedSession();
+        var batch = CreateEventBatch(eventSequence: 1);
+        var first = session.Process(batch);
+
+        var retry = session.Process(CanonicalJson.Canonicalize(batch));
+
+        Assert.Equal(
+            CanonicalJson.Serialize(first.Response!),
+            CanonicalJson.Serialize(retry.Response!));
+        Assert.Equal(RunnerSessionStatus.AwaitingDecisionApplied, session.Status);
+        Assert.Equal(0, session.AppliedEpoch);
+        Assert.Equal(ProtocolHash.ZeroHash, session.PreviousDecisionHash);
+    }
+
+    [Fact]
     public void Published_duplicate_fixture_is_runner_executable()
     {
         var session = CreateInitializedSession();
@@ -100,6 +117,21 @@ public sealed class RunnerSessionTests
         AssertError(conflict, "DUPLICATE_PAYLOAD_CONFLICT", "failSession");
         Assert.Equal(RunnerSessionStatus.Failed, session.Status);
         Assert.Equal(0, session.AppliedEpoch);
+    }
+
+    [Fact]
+    public void Same_duplicate_key_with_changed_simulation_time_fails_session()
+    {
+        var session = CreateInitializedSession();
+        _ = session.Process(CreateEventBatch(eventSequence: 1, simTime: 100));
+
+        var conflict = session.Process(
+            CreateEventBatch(eventSequence: 1, simTime: 200));
+
+        AssertError(conflict, "DUPLICATE_PAYLOAD_CONFLICT", "failSession");
+        Assert.Equal(RunnerSessionStatus.Failed, session.Status);
+        Assert.Equal(0, session.AppliedEpoch);
+        Assert.Equal(ProtocolHash.ZeroHash, session.PreviousDecisionHash);
     }
 
     [Fact]

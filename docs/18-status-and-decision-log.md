@@ -9,8 +9,8 @@
 |---|---|
 | Research direction | `LOCKED_FOR_IMPLEMENTATION_PLANNING` |
 | Documentation | `MIGRATED_AND_VERIFIED_V1` |
-| Implementation | `WP1_SCHEMA_HANDSHAKE_INIT_002_007_COMPLETE` |
-| Current work package | `WP1 IN_PROGRESS — RB-WP1-001..007 DONE; next RB-WP1-008` |
+| Implementation | `WP1_Q1_CONTRACT_RUNNER_REPLAY_COMPLETE` |
+| Current work package | `WP2 REFINEMENT — RB-WP2-001 READY; no WP2 code yet` |
 | Repository | `https://github.com/tsunflowerr/RideBound` |
 | Main baseline | B1 `rolling-cost` |
 | Main treatment | C1 `ridebound-hard-vector` |
@@ -64,13 +64,28 @@
   và deterministic fail-fast/named-downgrade negotiation.
 - Hoàn thành `RB-WP1-007`: thêm immutable initialize manifest/initial state
   identity cùng validation chéo envelope/hello/ack không mutate.
+- Hoàn thành `RB-WP1-008`: event vocabulary/payload schema và ordering validator
+  cho sequence, epoch, simulation time, gap/overlap/overflow.
+- Hoàn thành `RB-WP1-009`: decision/error/certificate shell; Q1 luôn ghi rõ
+  `notProduced`, không phát action/certificate/solver giả.
+- Hoàn thành `RB-WP1-010`: SHA-256 domain separation, tagged length framing,
+  manifest/state/decision vectors và chain/tamper/order tests.
+- Hoàn thành `RB-WP1-011`: async NDJSON reader/writer có UTF-8/size/EOF/LF/flush
+  semantics và diagnostic tách khỏi stdout.
+- Hoàn thành `RB-WP1-012`: executable long-lived runner
+  `new → negotiated → initialized → awaitingDecisionApplied`, memory pipe và
+  child-process integration tests.
+- Hoàn thành `RB-WP1-013`: retry nguyên batch trả cached response không advance;
+  conflict/overlap/gap/hash/version có đúng disposition; cache giữ một response.
+- Hoàn thành `RB-WP1-014`: đúng 10 required golden fixture, full tiny transcript,
+  exact expected output/final hash, replay hai lần và tamper proof.
+- Hoàn thành `RB-WP1-015`: đóng Q1 bằng ADR-016, traceability/gate evidence và
+  tạo ticket refinement duy nhất `RB-WP2-001`.
 
 ## 3. Chưa làm
 
-- Chưa có event batch payload/ordering validation; đây là `RB-WP1-008`.
-- Runner đã có pure negotiation/init validation boundary nhưng chưa có NDJSON
-  reader/writer hoặc executable session lifecycle.
-- Chưa có online baseline.
+- Chưa có Domain event reducer hoặc online baseline; đây là phạm vi WP2 sau
+  refinement.
 - Chưa có ledger/certificate implementation.
 - Chưa có BeGo/FleetPy/RidePy adapter.
 - Chưa tải/freeze dataset cho experiment.
@@ -131,6 +146,43 @@ by Windows Application Control 0x800711C7, same configuration-specific blocker
 Date: 2026-07-29
 ```
 
+### RB-WP1-008–015 Q1 closure
+
+```text
+.NET SDK 10.0.301
+Release build: passed, 0 warnings, 0 errors
+Release full solution at Q1 closure: 157 passed, 0 failed
+  Contracts at closure: 114 passed
+  Runner: 35 passed
+  Architecture: 7 passed
+  Domain: 1 passed
+Current inventory after one additional schema/vocabulary consistency assertion: 158
+Current Release targeted results:
+  Contracts: 115 passed, 0 failed
+  Architecture: 7 passed, 0 failed
+  Domain: 1 passed, 0 failed
+Final current Release full-suite attempt:
+  123 passed before Runner load
+  Runner: 35 blocked before assertions by Windows Application Control
+  Runner source/tests are unchanged from their 35/35 passing closure run
+Real child-process NDJSON test at Q1 closure: passed
+Published transcript replay twice/exact output/final hash at Q1 closure: passed
+Tampered event changes decision hash at Q1 closure: passed
+Required golden fixture inventory: exactly 10
+dotnet format --verify-no-changes: passed
+NuGet direct/transitive vulnerability audit: no vulnerable packages
+JSON artifact parse audit: 66 files, 0 invalid
+Markdown audit: 51 files, 0 broken internal links, 0 unbalanced fences
+Default Debug full-suite final attempt: Architecture 7 passed; Domain 1 was
+blocked; Runner reported 5 passed and 30 load-policy failures; Contracts reported
+15 passed and 85 load-policy failures before completing its full 115-case
+inventory. Enterprise Code Integrity policy
+0283ac0f-fff1-49ae-ada1-8a933130cad6 blocked fresh DLL loads with 0x800711C7.
+The Release rerun likewise blocked fresh Runner.dll. Event IDs 3033/3077 confirm
+the signing-level policy; no assertion failure is used as correctness evidence.
+Date: 2026-07-29
+```
+
 ### CI hardening task
 
 ```text
@@ -165,16 +217,18 @@ Date: 2026-07-28
 
 ## 5. Next action
 
-Topic hiện hành là WP1 — Contracts và canonical replay. Execution plan đầy đủ:
+WP1 — Contracts và canonical replay đã Complete/Q1 Release verified. Execution
+evidence nằm trong
 [24-wp1-contracts-ticket-plan.md](tasks/24-wp1-contracts-ticket-plan.md).
 
 Ticket duy nhất đang `READY`:
 
-> `RB-WP1-008` — Thêm event batch/event vocabulary v1 và structural ordering
-> validation, chưa mutate Domain.
+> `RB-WP2-001` — Refine online state, reducer boundary, B1 rolling baseline,
+> physical validator và exact-small plan; chưa viết WP2 code.
 
-`RB-WP1-001..007` đã `DONE`. Chưa bắt đầu
-online insertion, ledger, OR-Tools hoặc ticket hóa WP2 trong WP1.
+Chi tiết:
+[25-wp2-online-state-refinement.md](tasks/25-wp2-online-state-refinement.md).
+Chưa bắt đầu online insertion, ledger, OR-Tools hoặc adapter.
 
 ## 6. Open decisions
 
@@ -368,13 +422,63 @@ RB-WP1-010.
 **Supersedes / superseded by:** Bổ sung cách hiện thực ADR-014; không thay unit,
 ordering, lifecycle hay hash framing đã khóa.
 
+### ADR-016 — 2026-07-29 — Accepted
+
+**Context:** RB-WP1-008–015 cần làm event/order/hash/NDJSON/session chạy thật
+nhưng WP1 chưa có Domain reducer, solver hay commitment validator. Nếu runner
+phát action hoặc certificate rỗng, fixture có thể bị hiểu nhầm là online
+behavior đã tồn tại. State identity hash và dedup cache cũng cần exact,
+bounded semantics để replay không phụ thuộc runtime.
+
+**Decision:** Event payload v1 giữ exact input order và structural validation
+chỉ kiểm schema/sequence/epoch/simulation time. Runner WP1 trả message
+`decision` với `status = notProduced`, reason `WP1_STRUCTURAL_ONLY`, không action,
+certificate `notProduced` và solver `notRun`; đây là acknowledgement có hash,
+không phải routing decision. State identity structural dùng domain
+`RideBound.StateIdentityHash.v1\0` và tagged frame
+`canonicalStateIdentity`. Manifest/decision hash giữ nguyên ADR-014. Session chỉ
+commit epoch/next sequence/previous decision hash sau exact `decisionApplied`.
+Dedup giữ đúng một canonical batch/response gần nhất: exact retry trả byte-equivalent
+response, cùng key khác payload hoặc partial overlap làm session failed.
+Stdout chỉ có canonical NDJSON; diagnostic code đi stderr.
+
+Q1 tính 9 required scenario là `future-behavior`; chỉ duplicate fixture và full
+tiny transcript là runner-executable. Mốc đóng Q1 dùng full Release suite 157/157.
+Sau khi thêm một assertion đồng bộ vocabulary, Contracts pass 115/115 và inventory
+thành 158. Enterprise Code Integrity trên máy này có thể chặn unsigned/fresh DLL
+theo lần build với `0x800711C7`; event log 3033/3077 ghi policy
+`0283ac0f-fff1-49ae-ada1-8a933130cad6`. Lần full-suite cuối chặn fresh Runner.dll
+cả ở Release. Đây là environment/configuration exception được ghi rõ, không phải
+bỏ test, sửa policy hay assertion failure.
+
+**Alternatives considered:** phát decision/action giả; dùng object certificate
+rỗng; advance state ngay khi nhận event; cache mọi batch không giới hạn; nhận
+partial retry; ghi banner/diagnostic vào stdout; bỏ Domain smoke khỏi test count.
+
+**Consequences:** WP2 có executable protocol oracle nhưng vẫn phải cài behavior
+thật qua reducer/validator. Replay phát hiện sửa/thứ tự/hash; retry không làm
+advance state và memory dedup bounded. Q1 không chứng minh portable cross-system,
+online insertion, hard budget hoặc certificate soundness. Default Debug test
+phải được chạy lại trên CI/máy không có policy này, nhưng không chặn evidence
+Release đã pass đầy đủ.
+
+**Evidence:** `EventBatchMessages`, `DecisionMessages`, `ErrorMessage`,
+`ProtocolHash`, `NdjsonReader`, `NdjsonWriter`, `RunnerSession`, `RunnerHost`,
+`benchmarks/schemas/v1`, `benchmarks/schemas/fixtures/golden/required`,
+`benchmarks/schemas/fixtures/runner`, 115 Contracts tests, 35 Runner tests,
+7 Architecture tests và 1 Domain test; exact per-run evidence ở Q1 closure block.
+
+**Supersedes / superseded by:** Bổ sung executable semantics cho ADR-014/015;
+không đổi version, unit, event order, manifest/decision hash framing hoặc claim
+boundary.
+
 ## 8. Work package tracker
 
 | WP | Trạng thái | Bắt đầu | Kết thúc | Evidence |
 |---|---|---|---|---|
 | WP0 Scaffold | Complete | 2026-07-28 | 2026-07-28 | build + 8 RideBound + 25 backend + 7 frontend tests |
-| WP1 Contracts | In progress; `001..007` done, `008` ready | 2026-07-29 | — | ADR-014/015 + schema/handshake/init tests |
-| WP2 Online baseline | Not started | — | — | — |
+| WP1 Contracts | Complete; Q1 Release verified with recorded host-policy exception | 2026-07-29 | 2026-07-29 | ADR-014/015/016 + 157/157 closure run + current 115 Contracts + replay/hash proof |
+| WP2 Online baseline | Refinement ready; no code | 2026-07-29 | — | `RB-WP2-001` |
 | WP3 Ledger/certificate | Not started | — | — | — |
 | WP4 Algorithms/solver | Not started | — | — | — |
 | WP5 BeGo integration | Not started | — | — | — |
@@ -388,6 +492,14 @@ ordering, lifecycle hay hash framing đã khóa.
 
 ## 9. Change history
 
+- 2026-07-29: Hoàn thành `RB-WP1-008..015` và đóng WP1/Q1: event/decision/error
+  contracts, hash chain, async NDJSON runner, lifecycle/idempotency/failure
+  semantics, đúng 10 golden fixture và exact replay/tamper proof. Release full
+  suite pass 157/157 tại mốc đóng; assertion đồng bộ vocabulary thêm sau đó pass,
+  đưa Contracts lên 115 và inventory lên 158. Format/build/vulnerability audit
+  sạch. Lần full-suite cuối bị enterprise Code Integrity chặn fresh Runner DLL
+  với `0x800711C7` trước assertion cả ở Release; Debug cũng bị policy này chặn
+  các fresh DLL. Next duy nhất là refinement `RB-WP2-001`, chưa có WP2 code.
 - 2026-07-29: Hoàn thành `RB-WP1-005..007`: schema/inventory/compatibility
   assets, hello capability negotiation và immutable initialize identity.
   Required full solution test pass 114/114; Release build/format/dependency audit

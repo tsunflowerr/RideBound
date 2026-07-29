@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "1.0.0",
+  "messageType": "eventBatch",
+  "runId": "golden-run-01",
+  "scenarioId": "one-vehicle-one-request-accept",
+  "epochId": 1,
+  "simTimeMs": 1000,
+  "payload": {
+    "events": [
+      {
+        "eventSeq": 1,
+        "eventType": "requestArrived",
+        "payload": {
+          "fixtureIntent": "accept-one-request"
+        }
+      }
+    ]
+  }
+}

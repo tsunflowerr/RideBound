@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "1.0.0",
+  "messageType": "eventBatch",
+  "runId": "golden-run-07",
+  "scenarioId": "traffic-only-eta-shift",
+  "epochId": 1,
+  "simTimeMs": 1000,
+  "payload": {
+    "events": [
+      {
+        "eventSeq": 1,
+        "eventType": "travelTimesUpdated",
+        "payload": {
+          "fixtureIntent": "traffic-only-eta-shift"
+        }
+      }
+    ]
+  }
+}

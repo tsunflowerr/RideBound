@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "1.0.0",
+  "messageType": "eventBatch",
+  "runId": "run-001",
+  "scenarioId": "manhattan-20260729-a",
+  "epochId": 1,
+  "simTimeMs": 100,
+  "payload": {
+    "events": [
+      {
+        "eventSeq": 1,
+        "eventType": "timerTick",
+        "payload": {}
+      }
+    ]
+  }
+}

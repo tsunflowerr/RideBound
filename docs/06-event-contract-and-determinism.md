@@ -313,6 +313,23 @@ Reason code mẫu:
 - `SOLVER_TIMEOUT_SAFE_FALLBACK`
 - `INCIDENT_OVERRIDE`
 
+### 8.1. Decision shell ở Q1
+
+Runner WP1 chưa có reducer, solver hoặc commitment validator. Khi một
+`eventBatch` hợp lệ về cấu trúc, nó phát `decision` với:
+
+- `status = "notProduced"` và `reasonCode = "WP1_STRUCTURAL_ONLY"`;
+- `actions = []`;
+- certificate `status = "notProduced"` với reason
+  `COMMITMENT_VALIDATOR_NOT_AVAILABLE`;
+- solver `status = "notRun"`;
+- state/hash linkage đầy đủ.
+
+Đây là protocol acknowledgement có hash, không phải quyết định accept/reject,
+route hoặc certificate hợp lệ. Schema cấm shell `notProduced` mang action,
+certificate `produced` hoặc solver result. WP2 phải thay shell bằng behavior thật
+qua cùng message shape, không đổi ordering/lifecycle v1.
+
 ## 9. Handshake và capability negotiation
 
 `hello.payload` gửi:
@@ -431,6 +448,27 @@ test phải fail.
 Nhờ domain separation, length framing và chain hash, có thể phát hiện thiếu, đổi
 thứ tự hoặc sửa event/decision mà không có ambiguity do nối chuỗi.
 
+### 10.4. State identity hash của runner WP1
+
+State identity structural không phải domain state. Nó dùng projection:
+
+```json
+{"epochId":0,"nextEventSeq":1,"simTimeMs":0}
+```
+
+và công thức:
+
+```text
+stateIdentityHash = SHA-256(
+  UTF8("RideBound.StateIdentityHash.v1\0")
+  || Frame("canonicalStateIdentity", canonicalStateIdentityBytes)
+)
+```
+
+Projection không có wall clock, path, log hoặc `stateHash` của chính nó. Sau
+`eventBatch`, runner tính identity kế tiếp nhưng chỉ commit epoch, sequence,
+simulation time và previous decision hash khi nhận `decisionApplied`.
+
 ## 11. Deterministic random
 
 - Một master seed trong manifest.
@@ -456,6 +494,9 @@ Solver có nondeterminism phải được cấu hình single-thread/deterministi
   payload hash trả lại response đã cache, không advance state/hash.
 - Trùng key nhưng payload khác là data corruption fatal. Duplicate event riêng
   lẻ hoặc batch overlap một phần cũng fatal; client phải retry nguyên batch.
+- Runner WP1 giữ đúng một batch/response gần nhất. Cache một phần tử đủ cho retry
+  nguyên batch quanh `decisionApplied`, có lifecycle bounded và không biến thành
+  kho transcript; transcript bền vững thuộc adapter/experiment harness.
 
 ### 12.2. Error contract
 

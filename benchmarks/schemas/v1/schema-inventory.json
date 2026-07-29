@@ -38,11 +38,46 @@
       "implementationStatus": "implemented"
     },
     {
+      "contractType": "RideBound.Contracts.Protocol.EventBatchPayload",
+      "messageType": "eventBatch",
+      "schema": "event-batch.schema.json",
+      "fixtureDirectory": "../fixtures/golden/required",
+      "implementationStatus": "implemented"
+    },
+    {
+      "contractType": "RideBound.Contracts.Protocol.DecisionPayload",
+      "messageType": "decision",
+      "schema": "decision.schema.json",
+      "fixtureDirectory": "../fixtures/runner",
+      "implementationStatus": "implemented"
+    },
+    {
+      "contractType": "RideBound.Contracts.Protocol.DecisionAppliedPayload",
+      "messageType": "decisionApplied",
+      "schema": "decision-applied.schema.json",
+      "fixtureDirectory": "../fixtures/runner",
+      "implementationStatus": "implemented"
+    },
+    {
+      "contractType": "RideBound.Contracts.Protocol.ErrorPayload",
+      "messageType": "error",
+      "schema": "error.schema.json",
+      "fixtureDirectory": "../fixtures/runner",
+      "implementationStatus": "implemented"
+    },
+    {
+      "contractType": "artifact-metadata",
+      "messageType": "required-golden-fixture",
+      "schema": "golden-fixture-metadata.schema.json",
+      "fixtureDirectory": "../fixtures/golden/required",
+      "implementationStatus": "artifact"
+    },
+    {
       "contractType": "vocabulary-only",
-      "messageType": "eventBatch|decision|decisionApplied|checkpoint|restore|finalizeRun|runSummary|shutdown|error",
+      "messageType": "checkpoint|restore|finalizeRun|runSummary|shutdown",
       "schema": "protocol-envelope.schema.json",
       "fixtureDirectory": "../fixtures/protocol",
-      "implementationStatus": "payload-planned-RB-WP1-008-or-later"
+      "implementationStatus": "payload-future-work-package"
     }
   ]
 }

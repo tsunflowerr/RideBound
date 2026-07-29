@@ -9,11 +9,11 @@ adapter hoặc scenario chuẩn hóa.
 
 ## Trạng thái
 
-- WP0 scaffold đã hoàn thành; WP1 Contracts đang thực hiện, ticket tiếp theo là
-  [`RB-WP1-008`](docs/tasks/24-wp1-contracts-ticket-plan.md#rb-wp1-008--cài-event-batch-contract-và-ordering-validation).
-- Đã có protocol primitives/envelope, canonical JSON, schema/version policy,
-  hello negotiation và initialize identity. Chưa có NDJSON session, event
-  reducer, thuật toán, solver hoặc adapter hoạt động.
+- WP0 scaffold và WP1 Contracts/Q1 đã hoàn thành; ticket tiếp theo là refinement
+  [`RB-WP2-001`](docs/tasks/25-wp2-online-state-refinement.md).
+- Đã có protocol/schema v1, canonical JSON/hash, long-lived NDJSON runner,
+  session lifecycle, idempotent retry và golden replay proof. Chưa có Domain
+  event reducer, online algorithm, solver, ledger/certificate thật hoặc adapter.
 - Nguồn sự thật: [`docs/18-status-and-decision-log.md`](docs/18-status-and-decision-log.md).
 - Lộ trình: [`docs/16-roadmap-and-work-packages.md`](docs/16-roadmap-and-work-packages.md).
 

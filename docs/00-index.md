@@ -1,6 +1,6 @@
 # RideBound — bản đồ tài liệu
 
-> Trạng thái: đặc tả v1 + WP0 hoàn thành + WP1 đang thực hiện
+> Trạng thái: đặc tả v1 + WP0/WP1 hoàn thành + WP2 refinement sẵn sàng
 > Cập nhật: 2026-07-29
 > Nguồn sự thật về tiến độ: [18-status-and-decision-log.md](18-status-and-decision-log.md)
 
@@ -106,6 +106,7 @@ Bộ tài liệu này trả lời năm câu hỏi:
 | [22-glossary.md](22-glossary.md) | Giải thích thuật ngữ bằng tiếng Việt |
 | [23-delivery-backlog-and-ticket-policy.md](tasks/23-delivery-backlog-and-ticket-policy.md) | Quy tắc topic/ticket, DoR/DoD và cách chọn việc tiếp theo |
 | [24-wp1-contracts-ticket-plan.md](tasks/24-wp1-contracts-ticket-plan.md) | 15 ticket WP1 có scope, rules, BDD và acceptance criteria |
+| [25-wp2-online-state-refinement.md](tasks/25-wp2-online-state-refinement.md) | Ticket refinement WP2; khóa state/reducer/B1 trước khi viết code |
 | [research/README.md](research/README.md) | Archive báo cáo, audit và evidence matrix nền |
 
 ## 6. Kiến trúc bằng một hình
@@ -143,12 +144,15 @@ không chép lại thuật toán RideBound bằng Python hoặc C++.
 - Repository độc lập: `https://github.com/tsunflowerr/RideBound`.
 - WP0 hoàn thành với `RideBound.slnx`; repository hiện có 7 source project và
   4 test project sau khi WP1 thêm Contracts/Runner boundary tests.
-- Baseline WP1 hiện có 95 Contracts, 11 Runner boundary và 7 architecture tests
-  pass; full-suite result nằm trong tài liệu `18`.
+- Baseline Q1 hiện có 115 Contracts, 35 Runner, 7 Architecture và 1 Domain test.
+  Kết quả pass theo từng lần chạy và giới hạn Windows Application Control nằm trong
+  `18`; không suy diễn test bị hệ điều hành chặn thành assertion failure.
 - BeGo độc lập vẫn đạt 25/25 backend và 7/7 frontend test.
-- Đã có test harness, protocol envelope/primitives, canonical JSON,
-  schema/version compatibility, hello negotiation và initialize identity; chưa
-  có event reducer, NDJSON session, online baseline, ledger hoặc adapter.
-- WP1 đang thực hiện: `RB-WP1-001..007` đã hoàn thành.
-- Bước thực thi tiếp theo: `RB-WP1-008` trong
-  [24-wp1-contracts-ticket-plan.md](tasks/24-wp1-contracts-ticket-plan.md).
+- Đã có protocol/schema v1, canonical unit/JSON/hash, long-lived NDJSON runner,
+  hello/init/event/error lifecycle, idempotent retry, đúng 10 golden fixture và
+  source-controlled replay/hash proof.
+- Chưa có event reducer Domain, online baseline, ledger, certificate thật hoặc
+  simulator adapter; decision WP1 ghi rõ `notProduced`.
+- WP1 `RB-WP1-001..015` đã hoàn thành và Q1 đã đóng.
+- Bước duy nhất tiếp theo: `RB-WP2-001` trong
+  [25-wp2-online-state-refinement.md](tasks/25-wp2-online-state-refinement.md).

@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/tsunflowerr/RideBound/main/benchmarks/schemas/v1/golden-fixture-metadata.schema.json",
+  "title": "RideBound required golden fixture metadata v1",
+  "type": "object",
+  "required": [
+    "fixtureId",
+    "supportLevel",
+    "expectedValidator",
+    "minimumWorkPackage",
+    "expectedOutcome"
+  ],
+  "properties": {
+    "fixtureId": {
+      "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+    },
+    "supportLevel": {
+      "type": "string",
+      "enum": [
+        "schema-only",
+        "runner-executable",
+        "future-behavior"
+      ]
+    },
+    "expectedValidator": {
+      "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+    },
+    "minimumWorkPackage": {
+      "type": "string",
+      "pattern": "^WP[1-9][0-9]*$"
+    },
+    "expectedOutcome": {
+      "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+    }
+  },
+  "additionalProperties": false
+}

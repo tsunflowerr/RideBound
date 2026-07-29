@@ -1,9 +1,10 @@
 # WP1 — Contracts và canonical replay: execution plan
 
 > Topic ID: `RB-WP1`
-> Trạng thái: `IN_PROGRESS`
+> Trạng thái: `COMPLETE — Q1 RELEASE VERIFIED`
 > Cập nhật: 2026-07-29
-> Ticket tiếp theo: `RB-WP1-008`
+> Ticket tiếp theo: `RB-WP2-001` trong
+> `25-wp2-online-state-refinement.md`
 > Exit gate: Q1 Contracts
 
 ## 1. Outcome
@@ -59,14 +60,14 @@ không được giả lập thuật toán để làm fixture “pass”.
 | 5 | RB-WP1-005 | Schema/version compatibility | `DONE` |
 | 6 | RB-WP1-006 | Hello/capability negotiation | `DONE` |
 | 7 | RB-WP1-007 | Initialize-run/manifest identity | `DONE` |
-| 8 | RB-WP1-008 | Event batch và ordering validation | `READY` |
-| 9 | RB-WP1-009 | Decision/error/certificate shell | `PROPOSED` |
-| 10 | RB-WP1-010 | Decision hash chain | `PROPOSED` |
-| 11 | RB-WP1-011 | NDJSON reader/writer | `PROPOSED` |
-| 12 | RB-WP1-012 | Runner session tối thiểu | `PROPOSED` |
-| 13 | RB-WP1-013 | Idempotency và failure semantics | `PROPOSED` |
-| 14 | RB-WP1-014 | Golden fixtures và replay proof | `PROPOSED` |
-| 15 | RB-WP1-015 | Q1 gate closure và handoff | `PROPOSED` |
+| 8 | RB-WP1-008 | Event batch và ordering validation | `DONE` |
+| 9 | RB-WP1-009 | Decision/error/certificate shell | `DONE` |
+| 10 | RB-WP1-010 | Decision hash chain | `DONE` |
+| 11 | RB-WP1-011 | NDJSON reader/writer | `DONE` |
+| 12 | RB-WP1-012 | Runner session tối thiểu | `DONE` |
+| 13 | RB-WP1-013 | Idempotency và failure semantics | `DONE` |
+| 14 | RB-WP1-014 | Golden fixtures và replay proof | `DONE` |
+| 15 | RB-WP1-015 | Q1 gate closure và handoff | `DONE` |
 
 Chỉ ticket đầu tiên có dependency đã đạt mới được chuyển `READY`. Không bắt đầu
 ticket sau chỉ vì ticket trước “gần xong”.
@@ -1249,25 +1250,31 @@ dotnet test RideBound.slnx
 
 ## 6. WP1 exit-gate checklist
 
-- [ ] Protocol schema v1 được khóa và versioned.
-- [ ] Canonical unit/JSON/hash rules không còn mơ hồ.
-- [ ] Có 10 golden fixtures với support level trung thực.
-- [ ] Runner xử lý hello/init/event/error tối thiểu.
-- [ ] Duplicate cùng payload idempotent.
-- [ ] Duplicate khác payload và version/gap lỗi đúng taxonomy.
-- [ ] Same clean transcript tạo same response/hash.
-- [ ] `dotnet test RideBound.slnx` pass.
-- [ ] `18` và `19` có evidence file/test cụ thể.
-- [ ] Không có online algorithm/ledger/solver/adapter bị làm sớm.
+- [x] Protocol schema v1 được khóa và versioned.
+- [x] Canonical unit/JSON/hash rules không còn mơ hồ.
+- [x] Có 10 golden fixtures với support level trung thực.
+- [x] Runner xử lý hello/init/event/error tối thiểu.
+- [x] Duplicate cùng payload idempotent.
+- [x] Duplicate khác payload và version/gap lỗi đúng taxonomy.
+- [x] Same clean transcript tạo same response/hash.
+- [x] Full solution Release pass 157/157 tại mốc đóng; assertion đồng bộ
+  vocabulary thêm sau đó pass và đưa inventory hiện tại lên 158. Lệnh full-suite
+  cuối đã chạy nhưng enterprise Application Control chặn fresh Runner DLL trước
+  assertion cả ở Release; Debug cũng bị chặn theo lần build. Chi tiết nằm trong
+  `18`.
+- [x] `18` và `19` có evidence file/test cụ thể.
+- [x] Không có online algorithm/ledger/solver/adapter bị làm sớm.
 
 ## 7. Lệnh bắt đầu
 
-`RB-WP1-001` đến `RB-WP1-007` đã hoàn thành. Ticket tiếp theo là
-`RB-WP1-008`. Trước khi thực hiện:
+`RB-WP1-001` đến `RB-WP1-015` đã hoàn thành. Q1 đã đóng; ticket duy nhất
+`READY` là `RB-WP2-001` trong `25-wp2-online-state-refinement.md`. Ticket đó chỉ
+refine WP2, chưa viết thuật toán. Trước khi thực hiện:
 
 ```powershell
-Get-Content docs/06-event-contract-and-determinism.md -Encoding utf8
+Get-Content docs/tasks/25-wp2-online-state-refinement.md -Encoding utf8
 Get-Content docs/18-status-and-decision-log.md -Encoding utf8
-Get-Content docs/tasks/24-wp1-contracts-ticket-plan.md -Encoding utf8
-dotnet test RideBound.slnx
+Get-Content docs/04-problem-model-and-notation.md -Encoding utf8
+Get-Content docs/08-algorithms-baselines-and-solver.md -Encoding utf8
+dotnet test RideBound.slnx -c Release --no-build --no-restore
 ```

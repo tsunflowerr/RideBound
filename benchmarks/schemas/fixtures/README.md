@@ -21,4 +21,12 @@ Thư mục hiện có:
 - `initialize/`: manifest bất biến và danh tính state ban đầu;
 - `protocol/`: boundary envelope chung;
 - `canonical/`: vector canonical byte chính xác;
+- `hash/`: vector manifest/state/decision SHA-256 có input và expected hash;
+- `golden/required/`: đúng 10 scenario bắt buộc; 9 scenario
+  `future-behavior`, riêng duplicate là `runner-executable`;
+- `runner/`: full tiny NDJSON transcript, exact output và final decision hash;
 - `harness/`: dữ liệu smoke cho fixture loader.
+
+Q1 chỉ tính `golden/required/09-duplicate-event-idempotent` và transcript trong
+`runner/` là behavior executable. Các scenario accept/reject, budget, incident
+và checkpoint chỉ được kiểm cấu trúc cho tới WP2/WP3.

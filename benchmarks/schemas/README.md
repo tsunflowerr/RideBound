@@ -6,6 +6,9 @@ the repository or from a copied artifact bundle.
 
 - `v1/schema-inventory.json` maps contract types and messages to schema files.
 - `v1/compatibility-matrix.json` records executable version behavior.
+- `v1/event-batch.schema.json`, `decision.schema.json`,
+  `decision-applied.schema.json` and `error.schema.json` lock the remaining Q1
+  message shapes.
 - `fixtures/` contains valid and invalid examples used by .NET contract tests
   and future cross-language adapters.
 

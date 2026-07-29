@@ -14,8 +14,10 @@ Chỉ một package chính ở trạng thái `IN_PROGRESS` trong [18-status-and-
 
 Roadmap này quản lý outcome và exit gate. Quy tắc ticket nằm trong
 [23-delivery-backlog-and-ticket-policy.md](tasks/23-delivery-backlog-and-ticket-policy.md).
-Chỉ topic hiện hành được refinement chi tiết; WP1 hiện có execution plan tại
-[24-wp1-contracts-ticket-plan.md](tasks/24-wp1-contracts-ticket-plan.md).
+Chỉ topic hiện hành được refinement chi tiết. WP1 đã đóng theo execution plan
+[24-wp1-contracts-ticket-plan.md](tasks/24-wp1-contracts-ticket-plan.md); WP2 bắt
+đầu bằng ticket refinement
+[25-wp2-online-state-refinement.md](tasks/25-wp2-online-state-refinement.md).
 
 ## WP0 — Freeze baseline và scaffold
 
@@ -49,6 +51,8 @@ Tạo repository và skeleton độc lập mà không copy hoặc đổi behavio
 
 ## WP1 — Contracts và canonical replay
 
+**Trạng thái:** Complete, Q1 Release verified ngày 2026-07-29.
+
 ### Deliverable
 
 - protocol schema v1;
@@ -63,6 +67,12 @@ Tạo repository và skeleton độc lập mà không copy hoặc đổi behavio
 - .NET golden tests pass;
 - duplicate/idempotency/version tests;
 - same transcript replay same hash.
+
+Evidence cụ thể nằm trong `18` và `19`: 115 Contracts hiện pass ở Release; 35
+Runner, 7 Architecture và 1 Domain đã pass tại mốc Q1; format/build/vulnerability
+audit sạch. Lần full-suite cuối bị Windows enterprise policy chặn fresh Runner
+DLL cả ở Release và Debug trước assertion; mốc pass trước đó và policy exception
+được giữ riêng, không nhập nhằng thành test failure.
 
 ## WP2 — Online state và rolling baseline
 
@@ -300,8 +310,9 @@ Cắt trước:
 WP0 được thực hiện trực tiếp trong repository RideBound mới theo yêu cầu của
 người dùng. Sau khi WP0 qua exit gate:
 
-1. Thực hiện `RB-WP1-001` để khóa protocol boundary và open decisions.
-2. Tiếp tục đúng ordered queue `RB-WP1-002` đến `RB-WP1-015`.
-3. Chỉ thêm Contracts/Application files khi có golden test tương ứng.
-4. Không bắt đầu online algorithm trước khi canonical replay của WP1 ổn định.
-5. Không ticket hóa WP2 cho tới khi Q1 có evidence và WP1 được đóng đúng gate.
+1. WP0 và ordered queue `RB-WP1-001..015` đã hoàn thành.
+2. Thực hiện `RB-WP2-001` để refine state/reducer/B1/validator và khóa O-001.
+3. Chỉ sau refinement mới chuyển đúng một WP2 implementation ticket sang
+   `READY`.
+4. Không kéo ledger/certificate WP3 hoặc OR-Tools WP4 vào online baseline.
+5. Giữ transcript/hash Q1 làm regression oracle cho mọi WP2 ticket.

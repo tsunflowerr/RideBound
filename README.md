@@ -10,13 +10,15 @@ adapter hoặc scenario chuẩn hóa.
 ## Trạng thái
 
 - WP0, WP1 Contracts/Q1 và WP2 physical/B1 `RB-WP2-001..012` đã hoàn
-  thành. Ticket duy nhất tiếp theo là refinement
-  [`RB-WP3-001`](docs/tasks/27-wp3-ledger-certificate-refinement.md).
+  thành. WP3 đang thực hiện: `RB-WP3-001..007` đã xong; ticket duy nhất
+  tiếp theo là
+  [`RB-WP3-008`](docs/tasks/28-wp3-ledger-certificate-ticket-plan.md#rb-wp3-008--incident-lifecycle-và-breach-ledger).
 - Đã có protocol/schema v1, canonical JSON/hash, long-lived NDJSON runner,
   typed online input, Domain state/route, atomic event reducer và independent
-  physical validator, deterministic insertion/B1, exact-small oracle và online
-  produced decision. Chưa có hard commitment ledger/budget/certificate,
-  C1/OR-Tools behavior hoặc adapter.
+  physical validator, deterministic insertion/B1, exact-small oracle, online
+  produced decision và foundation promise/delta/ledger/budget/phase-lock.
+  Chưa có incident breach ledger, combined commitment validator, certificate
+  publication, checkpoint, C1/OR-Tools behavior hoặc adapter.
 - Nguồn sự thật: [`docs/18-status-and-decision-log.md`](docs/18-status-and-decision-log.md).
 - Lộ trình: [`docs/16-roadmap-and-work-packages.md`](docs/16-roadmap-and-work-packages.md).
 

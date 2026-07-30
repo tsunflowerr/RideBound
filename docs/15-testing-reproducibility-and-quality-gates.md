@@ -281,6 +281,26 @@ hard budget, locks, incident separation, independent commitment certificate và
 checkpoint; WP4 còn exact-small/solver equivalence cho C1/OR-Tools. Vì vậy WP2
 không được gọi là hard commitment guarantee.
 
+Sau `RB-WP3-001..007`, logical inventory là 378: Contracts 128, Domain 126,
+Application 23, Algorithms 45, Runner 49 và Architecture 7. Cùng source tree,
+các suite đã pass 378/378 khi chạy tách; full-suite process có exception môi
+trường Windows Application Control trước assertion, được ghi trong `18`.
+Evidence mới bao gồm:
+
+- exact boundary cho đủ 10 budget dimension, hard zero và unbounded;
+- canonical overflow có exact-dimension witness; enum/lock không hợp lệ bị chặn;
+- 441 cặp before/delta kiểm monotonic feasible set khi nới limit 20 lên 40;
+- initial promise zero, P1 vector conservation, stale version và no-hidden-refund;
+- publication id global-unique và promise service order không thể pickup sau drop;
+- node/edge shared schedule, initial/onboard promise projection;
+- three-way delta đủ dimension và case `visible != exogenous + decision`;
+- pending ledger chỉ commit cùng matching ACK;
+- accepted/onboard/freeze/final-confirmation lock witnesses.
+
+Đây mới là nửa đầu WP3. Incident, independent combined validator, certificate
+`produced`, Runner ledger hash binding, checkpoint và exact-small bundle còn ở
+`RB-WP3-008..013`; P2 vẫn chưa được gọi là guarantee.
+
 ### Q3 — BeGo
 
 - same-codebase paired replay pass.

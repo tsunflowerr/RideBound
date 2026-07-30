@@ -75,6 +75,9 @@ khi WP5 có behavior thật, tránh scaffold project rỗng.
 
 - Điều phối use case và deterministic decision pipeline.
 - Khai báo ports cho clock, travel time, candidate, solver và policy.
+- Sở hữu shared route schedule projection, promise projection và three-way delta
+  orchestration; `Algorithms` phải dùng lại projector này thay vì dựng schedule
+  commitment riêng.
 - Chỉ tham chiếu `RideBound.Domain`.
 - Không biết EF Core, ASP.NET, BeGo hoặc simulator.
 
@@ -84,8 +87,21 @@ khi WP5 có behavior thật, tránh scaffold project rỗng.
 - Penalty-only, freeze horizon, no-reassignment.
 - RideBound hard/soft policies.
 - Candidate plan construction và scoring.
+- Candidate schedule evaluator là adapter mỏng trên shared Application projector.
 - Không gọi database/network.
 - Tham chiếu `Application` và `Domain`.
+
+### Boundary WP3 theo ADR-021
+
+- `Domain/Commitments` giữ dimension vocabulary, vector/policy, promise version,
+  append-only ledger, budget và lock invariant.
+- `Application/Scheduling` dựng schedule; `Application/Promises` dựng promise và
+  ba delta.
+- `IStopDistanceLookup` là Domain port cho canonical millimeter; implementation
+  provider nằm ngoài Domain/Application.
+- `OnlineState` mang ledger immutable và coordinator stage ledger cùng route;
+  state chỉ commit sau matching ACK. Incident/certificate/Runner serialization/
+  checkpoint tiếp tục ở `RB-WP3-008..012`.
 
 ### `RideBound.Solvers.OrTools`
 

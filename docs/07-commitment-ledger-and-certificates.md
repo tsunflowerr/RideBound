@@ -14,11 +14,17 @@ exogenous projection
 raw/material deltas
 budget before/after
 reason/source event
-decision hash
+publication id
 certificate reference
 ```
 
 Initial accepted promise tạo ledger mở đầu nhưng không tính là revision.
+
+`publication id` là identity ổn định của promise publication trong proposed
+state. Không nhúng `decisionHash` hiện tại vào chính state đang được hash vì sẽ
+tạo vòng tự tham chiếu. Khi certificate/Runner được triển khai ở
+`RB-WP3-010..011`, decision envelope chứa publication ID và bind toàn certificate/
+state bằng decision hash bên ngoài ledger record.
 
 ## 2. Vòng đời request
 
@@ -94,6 +100,12 @@ Return allowed/rejected + witness
 
 Không mutate ledger trong lúc thử candidate. Chỉ candidate thắng và đã publish mới commit delta.
 
+Từ ADR-021, service-order evidence dùng token ổn định
+`(requestId, stopKind, stopId)`. `incumbent_order_inversion_count` đếm các cặp
+token incumbent chung bị đảo thứ tự; `pre_pickup_inserted_stop_count` đếm stop ID
+mới xuất hiện trước pickup của rider. Đổi node pickup/drop cần distance lookup
+canonical theo millimeter; không được suy khoảng cách từ travel time.
+
 ## 6. Normalized utilization
 
 Để so sánh các dimension:
@@ -153,6 +165,11 @@ Certificate không chỉ là boolean. Khi một candidate bị loại hoặc inc
 ```
 
 Đây là **witness**: bằng chứng nhỏ chỉ ra chỗ hỏng.
+
+Certificate body không tự chứa current decision hash trong phần dùng để tính
+chính hash đó. Body bind input/state/publication; decision envelope cuối cùng bind
+toàn body bằng `decisionHash`. Quy tắc này tránh fixed-point hash nhưng vẫn giữ
+tamper evidence.
 
 ## 8. Validator độc lập
 

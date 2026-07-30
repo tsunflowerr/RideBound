@@ -2,10 +2,11 @@
 
 > Topic ID: `RB-WP3`
 > Ticket: `RB-WP3-001`
-> Trạng thái: `READY`
+> Trạng thái: `DONE`
 > Cập nhật: 2026-07-30
 > Dependency: `RB-WP2-012 DONE`
-> Kết quả kế tiếp dự kiến: execution plan WP3, chưa phải ledger code
+> Kết quả: ADR-021 + ordered queue `RB-WP3-001..014` trong
+> [28-wp3-ledger-certificate-ticket-plan.md](28-wp3-ledger-certificate-ticket-plan.md)
 
 ## 1. Mục đích
 
@@ -171,3 +172,17 @@ output WP2 để hợp thức hóa thiết kế WP3.
 ## 12. Traceability
 
 R-007, R-008, R-009, R-015; F-005–F-009; N-001, N-003, N-004, N-007.
+
+## 13. Closure
+
+Refinement đã hoàn thành ngày 2026-07-30:
+
+- ADR-021 khóa ownership, projection, delta, budget/lock, append/ACK và tránh hash
+  tự tham chiếu;
+- queue WP3 có 14 ticket, bao phủ incident, validator, certificate, Runner,
+  checkpoint, independent evidence và closure;
+- mức số O-002/O-003 vẫn để WP8; test chỉ dùng named boundary profile;
+- paper audit giữ claim hẹp: Multiple-plan DARP/least-commitment và
+  Time-consistent DARP là prior work, không phải novelty RideBound;
+- theo yêu cầu thực hiện một nửa queue, `RB-WP3-002..007` cũng đã được triển khai
+  sau refinement; trạng thái sống và evidence nằm trong `18`/`19`.

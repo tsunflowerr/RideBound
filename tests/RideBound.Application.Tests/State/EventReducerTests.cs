@@ -434,5 +434,6 @@ public sealed class EventReducerTests
             run,
             ApplicationTestData.Travel(),
             4,
-            new string('a', 64));
+            new string('a', 64),
+            RideBound.Domain.Commitments.CommitmentLedger.Empty);
 }

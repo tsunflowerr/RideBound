@@ -77,6 +77,18 @@ Khi thêm một rider mới trước rider cũ, rank tuyệt đối đổi dù t
 
 ETA drift vẫn phản ánh tác động thời gian.
 
+### Quy ước executable của WP3
+
+Theo ADR-021, promise projection giữ full remaining service order bằng stable token
+`(requestId, stopKind, stopId)`. Order inversion đếm cặp token của các incumbent
+chung bị đảo giữa hai projection; stop mới trước pickup đếm bằng stop ID chưa có
+trong projection trước. Pickup đã thực hiện của rider onboard được mang từ
+published promise trước, không được chiếu lại như một stop tương lai.
+
+Relocation pickup/drop dùng khoảng cách canonical millimeter qua một distance
+lookup riêng. Nếu node đổi mà lookup không có khoảng cách, validation fail bằng
+witness đúng dimension; travel time không được dùng thay distance.
+
 ## 5. Total variation và switch budget
 
 Với mỗi dimension liên tục `k`:

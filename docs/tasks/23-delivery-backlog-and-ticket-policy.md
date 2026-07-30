@@ -5,7 +5,7 @@
 > Nguồn tiến độ: [18-status-and-decision-log.md](../18-status-and-decision-log.md)
 > Topic đã ticket hóa: [WP1 Contracts](24-wp1-contracts-ticket-plan.md) và
 > [WP2 Online baseline](26-wp2-online-baseline-ticket-plan.md) và
-> [WP3 refinement](27-wp3-ledger-certificate-refinement.md)
+> [WP3 ledger/certificate](28-wp3-ledger-certificate-ticket-plan.md)
 
 ## 1. Mục đích
 
@@ -20,7 +20,7 @@ Backlog dùng **progressive elaboration**:
   BDD, acceptance criteria, verification và rollback khi phù hợp;
 - topic kế tiếp chỉ được refinement sau khi exit gate của topic trước đạt.
 
-Quy tắc này tránh tạo false precision cho các topic xa (hiện là WP3–WP12) khi
+Quy tắc này tránh tạo false precision cho các topic xa (hiện là WP4–WP12) khi
 contract và evidence đầu vào chưa tồn tại.
 
 ## 2. Nguồn sự thật và thứ tự ưu tiên
@@ -119,9 +119,9 @@ Ticket tài liệu phải:
 | WP11 Product UX | UI/audit có rollback, không overclaim | product gate | WP5 |
 | WP12 Paper/release | Claim traceable và artifact tái lập | Q6 | WP9, WP10 |
 
-WP4–WP12 **chưa có ticket**. WP2 đã đóng physical/B1; WP3 hiện chỉ có ticket
-refinement `RB-WP3-001`. Ordered queue implementation WP3 chỉ được tạo như output
-của refinement này từ deliverable/exit gate của `16` và evidence thật WP2.
+WP4–WP12 **chưa có ticket**. WP2 đã đóng physical/B1; WP3 đã refinement thành
+ordered queue `RB-WP3-001..014`. Nửa đầu `001..007` đã DONE; queue và evidence
+nằm trong `28`.
 
 WP11 không nằm trên critical path nghiên cứu và không được làm chậm WP8–WP10.
 
@@ -137,10 +137,11 @@ physical/B1, chưa có hard commitment guarantee.
 
 Ticket duy nhất hiện `READY`:
 
-> **RB-WP3-001 — Refinement ledger, budget và certificate**
+> **RB-WP3-008 — Incident lifecycle và breach ledger**
 
-Ticket này chỉ tạo ADR/execution plan WP3. Không viết ledger/certificate runtime,
-không chọn số O-002/O-003 và không bắt đầu C1/OR-Tools.
+Ticket này thêm incident/breach separation trên ledger foundation đã có. Không
+phát certificate trước independent validator, không chọn số O-002/O-003 và không
+bắt đầu C1/OR-Tools.
 
 ## 9. Template refinement cho topic kế tiếp
 
@@ -167,4 +168,4 @@ Không copy BDD của WP1 sang topic khác nếu semantics khác.
 6. Chỉ đóng topic khi toàn bộ exit gate trong `16` đạt.
 
 Theo trạng thái ngày 2026-07-30, ticket tiếp theo phải thực hiện là
-**RB-WP3-001**.
+**RB-WP3-008**.

@@ -1,6 +1,6 @@
 # RideBound — bản đồ tài liệu
 
-> Trạng thái: đặc tả v1 + WP0/WP1 + WP2 physical/B1 hoàn thành
+> Trạng thái: đặc tả v1 + WP0/WP1/WP2 hoàn thành; WP3 7/14 ticket
 > Cập nhật: 2026-07-30
 > Nguồn sự thật về tiến độ: [18-status-and-decision-log.md](18-status-and-decision-log.md)
 
@@ -109,6 +109,7 @@ Bộ tài liệu này trả lời năm câu hỏi:
 | [25-wp2-online-state-refinement.md](tasks/25-wp2-online-state-refinement.md) | Ticket refinement WP2; khóa state/reducer/B1 trước khi viết code |
 | [26-wp2-online-baseline-ticket-plan.md](tasks/26-wp2-online-baseline-ticket-plan.md) | Ordered queue WP2 cho state/reducer/validator/B1/oracle/demo |
 | [27-wp3-ledger-certificate-refinement.md](tasks/27-wp3-ledger-certificate-refinement.md) | Ticket refinement WP3; khóa promise/ledger/budget/lock/certificate/checkpoint trước code |
+| [28-wp3-ledger-certificate-ticket-plan.md](tasks/28-wp3-ledger-certificate-ticket-plan.md) | Ordered queue 14 ticket WP3; trạng thái/evidence promise, ledger, budget, lock, incident, certificate và checkpoint |
 | [research/README.md](research/README.md) | Archive báo cáo, audit và evidence matrix nền |
 
 ## 6. Kiến trúc bằng một hình
@@ -170,5 +171,15 @@ không chép lại thuật toán RideBound bằng Python hoặc C++.
   khóa bởi ADR-017.
 - WP2 `RB-WP2-001..012` đã hoàn thành phần physical/B1; ADR-018–020 khóa
   boundary, semantics và claim limit.
-- Bước duy nhất tiếp theo: `RB-WP3-001` refinement trong
-  [27-wp3-ledger-certificate-refinement.md](tasks/27-wp3-ledger-certificate-refinement.md).
+- WP3 refinement đã hoàn thành bằng ADR-021 và queue 14 ticket. `RB-WP3-001..007`
+  (7/14) đã triển khai promise/policy model, shared schedule/promise projection,
+  three-way delta, append-only ledger trong ACK boundary, hard vector budget và
+  phase locks.
+- Logical inventory hiện là **378**: Contracts 128, Domain 126, Application 23,
+  Algorithms 45, Runner 49, Architecture 7. Các suite cùng source tree đã pass
+  378/378 khi chạy tách; full-suite process đôi lúc bị Windows Application
+  Control chặn trước assertion, xem `18`.
+- Chưa có incident, combined validator, certificate `produced`, Runner
+  commitment integration hoặc checkpoint. Bước duy nhất tiếp theo:
+  `RB-WP3-008` trong
+  [28-wp3-ledger-certificate-ticket-plan.md](tasks/28-wp3-ledger-certificate-ticket-plan.md).

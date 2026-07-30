@@ -20,8 +20,10 @@ Chỉ topic hiện hành được refinement chi tiết. WP1 đã đóng theo ex
 [25-wp2-online-state-refinement.md](tasks/25-wp2-online-state-refinement.md) và
 hiện có ordered queue trong
 [26-wp2-online-baseline-ticket-plan.md](tasks/26-wp2-online-baseline-ticket-plan.md).
-WP2 đã đóng và WP3 bắt đầu bằng refinement ticket
-[27-wp3-ledger-certificate-refinement.md](tasks/27-wp3-ledger-certificate-refinement.md).
+WP2 đã đóng; WP3 refinement trong
+[27-wp3-ledger-certificate-refinement.md](tasks/27-wp3-ledger-certificate-refinement.md)
+đã tạo ordered queue
+[28-wp3-ledger-certificate-ticket-plan.md](tasks/28-wp3-ledger-certificate-ticket-plan.md).
 
 ## WP0 — Freeze baseline và scaffold
 
@@ -106,8 +108,10 @@ pass qua policy-safe bundles/process checks. Exception nằm trong `18`, không
 
 ## WP3 — Ledger và certificate
 
-**Trạng thái:** Ready; chỉ `RB-WP3-001` refinement đang `READY`, chưa có runtime
-ledger/certificate.
+**Trạng thái:** In progress; `RB-WP3-001..007` DONE (7/14). Đã có foundation
+promise/projection/three-way delta/append-only ledger/budget/locks; chưa có
+incident, combined validator, certificate `produced`, Runner integration hoặc
+checkpoint. Ticket kế tiếp duy nhất: `RB-WP3-008`.
 
 ### Deliverable
 
@@ -328,7 +332,8 @@ người dùng. Sau khi WP0 qua exit gate:
 1. WP0, WP1/Q1 và ordered queue `RB-WP2-001..012` đã hoàn thành.
 2. WP2 đã cung cấp typed online state, immutable route/reducer, independent
    physical validator, deterministic B1, exact-small oracle và tiny replay.
-3. Thực hiện đúng một ticket `READY`: `RB-WP3-001` refinement ledger/budget/
-   locks/incident/certificate/checkpoint.
-4. Ticket refinement chưa viết ledger code và chưa tự chọn mức O-002/O-003.
-5. Không kéo C1/OR-Tools WP4 hoặc adapter WP5+ vào WP3 refinement.
+3. WP3 refinement đã khóa ADR-021 và queue `RB-WP3-001..014`.
+4. Nửa đầu `001..007` đã hoàn thành; thực hiện đúng một ticket `READY` tiếp theo:
+   `RB-WP3-008` incident lifecycle và breach ledger.
+5. Không tự chọn mức O-002/O-003, không gọi P2 là guarantee và không kéo
+   C1/OR-Tools WP4 hoặc adapter WP5+ vào nửa còn lại WP3.

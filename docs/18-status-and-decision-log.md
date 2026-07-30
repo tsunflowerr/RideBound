@@ -9,8 +9,8 @@
 |---|---|
 | Research direction | `LOCKED_FOR_IMPLEMENTATION_PLANNING` |
 | Documentation | `MIGRATED_AND_VERIFIED_V1` |
-| Implementation | `WP1_Q1_COMPLETE; WP2_PHYSICAL_B1_COMPLETE_DEBUG_333_PASS_RELEASE_HOST_POLICY_EXCEPTION` |
-| Current work package | `WP3 LEDGER/CERTIFICATE — RB-WP3-001 READY` |
+| Implementation | `WP1_Q1_COMPLETE; WP2_COMPLETE; WP3_001_007_DONE_TESTED_378` |
+| Current work package | `WP3 LEDGER/CERTIFICATE — 7/14 DONE; RB-WP3-008 READY` |
 | Repository | `https://github.com/tsunflowerr/RideBound` |
 | Main baseline | B1 `rolling-cost` |
 | Main treatment | C1 `ridebound-hard-vector` |
@@ -116,12 +116,27 @@
   self-contained process, byte-exact golden/final hash và tamper proof.
 - Hoàn thành `RB-WP2-012`: đóng WP2 physical/B1 bằng ADR-020, đồng bộ gate/
   traceability và tạo đúng một next refinement ticket `RB-WP3-001`.
+- Hoàn thành `RB-WP3-001`: đọc lại paper trực tiếp, khóa ADR-021 và tạo ordered
+  queue 14 ticket trong `tasks/28-wp3-ledger-certificate-ticket-plan.md`.
+- Hoàn thành `RB-WP3-002`: pure Domain promise/version/service-order model, stable
+  10-dimension vector và explicit policy zero/unbounded/phase/material/lock types.
+- Hoàn thành `RB-WP3-003`: shared `RouteScheduleProjector`, candidate evaluator
+  dùng lại projector và `PromiseProjector` cho initial/onboard promise.
+- Hoàn thành `RB-WP3-004`: three-way exogenous/decision/visible delta đủ
+  ETA/material/vehicle/stop/order/insertion dimension cùng distance port/witness.
+- Hoàn thành `RB-WP3-005`: immutable initial/revision ledger, exact version/P1
+  conservation/no-refund và ledger nằm trong pending `OnlineState`/ACK transaction.
+- Hoàn thành `RB-WP3-006`: hard vector budget evaluator cho đủ 10 dimension,
+  exact before/delta/after witness, hard zero, unbounded và monotonic feasible set.
+- Hoàn thành `RB-WP3-007`: accepted assignment, onboard, freeze-horizon và final
+  confirmation lock evaluator với policy flag/witness rõ.
 
 ## 3. Chưa làm
 
-- Chưa có ledger/certificate implementation.
-- Chưa có hard commitment budget, promise projection/append, phase-lock gate,
-  incident breach accounting hoặc checkpoint.
+- Đã có ledger/budget/promise projection/phase-lock foundation nhưng chưa nối vào
+  candidate pruning hoặc default Runner publication.
+- Chưa có incident breach accounting, independent combined commitment validator,
+  certificate `produced`, Runner ledger/hash integration hoặc checkpoint.
 - Chưa có C1/B2–B5/OR-Tools behavior; Q2 mới hoàn thành phần physical/B1 của
   WP2, chưa phải commitment guarantee.
 - Chưa có BeGo/FleetPy/RidePy adapter.
@@ -319,6 +334,51 @@ WP2 scope exclusion audit:
 Date: 2026-07-30
 ```
 
+### RB-WP3-001–007 refinement và commitment foundation
+
+```text
+Commit WP2 độc lập trước khi mở WP3:
+  07432ce feat: complete WP2 online baseline
+Logical source-controlled test inventory: 378
+  Contracts: 128
+  Domain: 126
+  Application: 23
+  Algorithms: 45
+  Runner: 49
+  Architecture: 7
+Current-tree test evidence: 378/378 passed when suites are scheduled separately
+  (Debug Contracts 128, Domain 126, Application 23, Algorithms 45, Runner 49;
+  Release Architecture 7). A full-suite process remains intermittently blocked
+  by Windows Application Control before affected assertions start (0x800711C7).
+Final quality gates (2026-07-31): Release build --warnaserror 0/0;
+  dotnet format verify passed; NuGet audit clean; source JSON 89/89 parsed;
+  Markdown relative links 54/54 resolved; portable dependency scan passed.
+WP2 regression before WP3: 333/333 passed
+WP2 Release build --warnaserror / format / demo: passed
+WP2 Release full xUnit: host policy 0x800711C7 reproduced; policy-safe
+  Application 15/15, Algorithms 45/45, Runner 46/46 + child process 3/3 passed
+WP3 foundation evidence:
+  10/10 budget dimensions exact-boundary tested
+  hard zero and unbounded semantics tested
+  canonical overflow gives an exact dimension witness; unknown enum/lock bits fail
+  monotonic feasible-set samples: 441/441
+  initial ledger zero + exact version/P1 conservation/no-refund tested
+  publication id is globally unique; promise service order rejects pickup-after-drop
+  node/edge shared schedule + initial/onboard promise tested
+  exogenous/decision/visible all-dimension delta tested independently
+  pending ledger/ACK atomicity tested
+  accepted/onboard/freeze/final-confirmation locks tested
+Paper review:
+  Multiple-plan dynamic DARP, Time-consistent DARP and forward-looking
+  dispatch full text rechecked; claim boundary unchanged
+DOCX inventory:
+  no .docx found in RideBound or E:\Code
+Browser:
+  in-app Browser unavailable; optional web lookup skipped because local direct
+  PDFs and existing evidence were sufficient
+Final recheck date: 2026-07-31
+```
+
 ### CI hardening task
 
 ```text
@@ -353,21 +413,22 @@ Date: 2026-07-28
 
 ## 5. Next action
 
-WP2 — online state và rolling baseline đã Complete cho phạm vi physical/B1.
-Execution/gate evidence nằm trong
-[26-wp2-online-baseline-ticket-plan.md](tasks/26-wp2-online-baseline-ticket-plan.md)
-và ADR-020. Windows host-policy exception của lần chạy xUnit cuối được giữ riêng
-ở mục 4 cho Release; required Debug baseline đã pass 333/333. Exception không
-được biến thành Release pass và không mở rộng claim sang commitment.
+WP2 đã Complete và được commit riêng tại `07432ce`. WP3 đang `IN_PROGRESS`;
+refinement + nửa đầu queue `RB-WP3-001..007` đã DONE với 378/378 assertions
+đã pass khi chạy theo suite trên cùng source tree. Foundation
+đã có promise/projection/delta/ledger/budget/locks nhưng chưa nối vào Runner và
+chưa có independent combined validator/certificate/checkpoint, nên chưa có P2
+guarantee.
 
 Ticket duy nhất đang `READY`:
 
-> `RB-WP3-001` — Refine promise/ledger/budget/lock/incident/certificate/
-> checkpoint semantics và tạo ordered execution plan WP3; chưa viết ledger code.
+> `RB-WP3-008` — Incident lifecycle và breach ledger tách normal operation,
+> không reset/refund history.
 
 Chi tiết:
-[27-wp3-ledger-certificate-refinement.md](tasks/27-wp3-ledger-certificate-refinement.md).
-Không bắt đầu C1, OR-Tools, adapter hoặc tự chọn mức budget O-002/O-003.
+[28-wp3-ledger-certificate-ticket-plan.md](tasks/28-wp3-ledger-certificate-ticket-plan.md).
+Không bắt đầu certificate/Runner sớm hơn dependency, C1, OR-Tools, adapter hoặc
+tự chọn mức budget O-002/O-003.
 
 ## 6. Open decisions
 
@@ -781,6 +842,58 @@ typed action schemas/tests, `benchmarks/scenarios/wp2-tiny`,
 supersede protocol/hash framing ADR-014/016/017. WP3 có thể bổ sung commitment
 gate/certificate bằng ADR mới nhưng không được đổi physical B1 oracle âm thầm.
 
+### ADR-021 — 2026-07-30 — Accepted
+
+**Context:** WP3 phải thêm promise history, three-way delta, vector budget, phase
+locks, incident, certificate và checkpoint lên state/hash/ACK thật của WP2.
+Tài liệu `07` trước đó liệt kê `decisionHash` bên trong ledger/certificate, nhưng
+nhúng current decision hash vào chính state/body đang được hash sẽ tạo vòng tự
+tham chiếu. Candidate evaluator cũng đang sở hữu schedule riêng, dễ làm promise
+projection lệch physical schedule. Mức số O-002/O-003 chưa được pilot khóa.
+
+**Decision:** Domain sở hữu stable 10-dimension vocabulary, canonical vector/
+explicit policy, promise/version/service tokens, immutable append-only ledger,
+budget và phase-lock invariant. Application sở hữu một `RouteScheduleProjector`
+dùng chung cho Algorithms và promise flow, `PromiseProjector` cùng
+`PromiseDeltaCalculator`; đổi stop node bắt buộc có `IStopDistanceLookup` mm.
+Three-way delta tính độc lập `old→exo`, `exo→new`, `old→new`; không giả
+`visible=exo+decision`. Initial promise version 1 không tiêu budget; revision tăng
+đúng một, round-trip không refund. Ledger nằm trong pending `OnlineState` và chỉ
+commit cùng route sau matching ACK.
+
+Ledger dùng stable `publicationId`, không nhúng current `decisionHash` vào state.
+Ticket certificate/Runner sau sẽ bind input/state/publication bằng containing
+decision envelope hash. `null` hard limit là unbounded, zero là hard zero; không có
+default numerical profile. Accepted assignment luôn lock theo O-001; onboard khóa
+pickup, freeze/final confirmation chỉ qua explicit policy flags. Incident là breach
+record riêng ở ticket `008`.
+
+**Paper/claim evidence:** Full text Multiple-plan dynamic DARP xác nhận dynamic
+insertion, plan pool, consensus và least-commitment đã có; Time-consistent DARP
+xác nhận consistency/time classes/cost trade-off đã có; forward-looking dispatch
+xác nhận rolling/future-aware matching/detour safeguards đã có. RideBound chỉ giữ
+claim hẹp per-rider, path-dependent, multi-dimensional cumulative/switch ledger
+với machine-checkable certificate.
+
+**Alternatives considered:** schedule commitment riêng trong Algorithms; nén
+budget thành weighted scalar; dùng travel time thay stop distance; lưu current
+decision hash trong state; chọn default “medium” profile; nối ngay vào Runner khi
+incident/validator/schema chưa tồn tại.
+
+**Consequences:** `RB-WP3-001..007` tạo foundation và executable tests nhưng
+default B1 Runner vẫn certificate `notProduced`; chưa có C1/P2 guarantee. Queue có
+14 ticket, đúng nửa đầu DONE và `RB-WP3-008` là next duy nhất.
+
+**Evidence:** `Domain/Commitments`, `Application/Scheduling`,
+`Application/Promises`, refactored `CandidateScheduleEvaluator`, Domain/
+Application tests, `tasks/28-wp3-ledger-certificate-ticket-plan.md`; required
+Current-tree suite evidence 378/378; host policy exception 0x800711C7 được
+ghi riêng, không tính là assertion failure.
+
+**Supersedes / superseded by:** Bổ sung ADR-020 và chỉnh ledger/certificate
+self-binding trong `07`; không đổi protocol hash framing ADR-014/016/017, không
+mở reassignment O-001 và không chọn O-002/O-003.
+
 ## 8. Work package tracker
 
 | WP | Trạng thái | Bắt đầu | Kết thúc | Evidence |
@@ -788,7 +901,7 @@ gate/certificate bằng ADR mới nhưng không được đổi physical B1 orac
 | WP0 Scaffold | Complete | 2026-07-28 | 2026-07-28 | build + 8 RideBound + 25 backend + 7 frontend tests |
 | WP1 Contracts | Complete; Q1 Release revalidated with host-policy exception | 2026-07-29 | 2026-07-29 | ADR-014–017 + 157/157 closure + WP1 revalidation 161/161 + replay/hash proof |
 | WP2 Online baseline | Complete; physical/B1 gate, Debug 333/333; Release host-policy exception recorded | 2026-07-29 | 2026-07-30 | ADR-018–020 + Debug 333/333 + Release bundles + two-process tiny replay |
-| WP3 Ledger/certificate | Ready; `RB-WP3-001` refinement only | 2026-07-30 | — | `tasks/27-wp3-ledger-certificate-refinement.md` |
+| WP3 Ledger/certificate | In progress; `001..007` DONE, `008` READY | 2026-07-31 | — | ADR-021 + `tasks/28-wp3-ledger-certificate-ticket-plan.md` + current-tree 378/378 suite evidence |
 | WP4 Algorithms/solver | Not started | — | — | — |
 | WP5 BeGo integration | Not started | — | — | — |
 | WP6 Benchmark harness | Not started | — | — | — |
@@ -801,6 +914,12 @@ gate/certificate bằng ADR mới nhưng không được đổi physical B1 orac
 
 ## 9. Change history
 
+- 2026-07-30: Revalidate WP2 end-to-end rồi commit riêng `07432ce`. Hoàn thành
+  refinement ADR-021/queue 14 ticket và triển khai đúng nửa WP3 `001..007`:
+  promise/policy/vector, shared schedule/promise projection, three-way delta,
+  append-only ledger trong ACK boundary, budget và phase locks. Debug inventory
+  378/378 suite evidence; chưa có incident/certificate/Runner/checkpoint, next duy nhất
+  `RB-WP3-008`.
 - 2026-07-30: Hoàn thành `RB-WP2-007..012`: deterministic candidate generator,
   exhaustive B1 selection/apply, independent exact-small oracle 32/32 seeds,
   default online produced Runner decisions/ACK hash chain và four-epoch tiny

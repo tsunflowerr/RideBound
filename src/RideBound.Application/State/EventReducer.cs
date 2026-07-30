@@ -74,7 +74,8 @@ public sealed class EventReducer
                 advanced.Value!,
                 travelTimes,
                 nextSequence,
-                state.ExpectedInitialTravelTimeSnapshotHash));
+                state.ExpectedInitialTravelTimeSnapshotHash,
+                state.Commitments));
     }
 
     private static EventReductionWitness? ValidateBatch(

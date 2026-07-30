@@ -49,6 +49,22 @@ mutable suffix và exhaustive fleet selection cho instance nhỏ:
 không prune commitment budget và không phát commitment certificate. Các phần đó
 bắt đầu ở WP3; C1/OR-Tools vẫn thuộc WP4.
 
+### 2.2. WP3 foundation sau `RB-WP3-001..007`
+
+- schedule candidate và promise cùng gọi `RouteScheduleProjector`;
+- `PromiseProjector` dựng promise active rider, gồm carry-forward realized pickup
+  cho onboard;
+- `PromiseDeltaCalculator` tính riêng exogenous/decision/visible trên đủ 10
+  dimension;
+- ledger immutable/versioned nằm trong pending `OnlineState` và chỉ commit cùng
+  matching ACK;
+- budget/phase-lock evaluator có exact witness nhưng chưa được nối vào candidate
+  pruning/Runner.
+
+Vì independent combined validator, incident, certificate và Runner integration
+còn ở `RB-WP3-008..011`, B1 output hiện vẫn như WP2 và certificate vẫn
+`notProduced`. Không gọi foundation này là C1 hoặc P2 guarantee.
+
 ## 3. Candidate plan
 
 Mỗi candidate plan cho một vehicle gồm:

@@ -196,7 +196,8 @@ public sealed class RollingCostPolicyTests
             run,
             travel,
             1,
-            travel.SnapshotHash);
+            travel.SnapshotHash,
+            RideBound.Domain.Commitments.CommitmentLedger.Empty);
 
         var result = new RollingCostPolicy().Decide(state, ExactOptions);
 

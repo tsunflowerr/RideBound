@@ -44,7 +44,12 @@ internal static class AlgorithmTestData
             new string('a', 64),
             arcs ?? CompleteArcs()).Value!;
 
-        return new OnlineState(run, travel, 1, travel.SnapshotHash);
+        return new OnlineState(
+            run,
+            travel,
+            1,
+            travel.SnapshotHash,
+            RideBound.Domain.Commitments.CommitmentLedger.Empty);
     }
 
     public static RideRequest PendingRequest(

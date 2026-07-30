@@ -514,6 +514,11 @@ diagnostic để tránh circular/nondeterministic input. Schema của RB-WP1-009
 đánh dấu từng field include/exclude; field không được phân loại thì fixture/hash
 test phải fail.
 
+ADR-021 áp cùng nguyên tắc cho WP3: ledger state lưu `publicationId`, không lưu
+current `decisionHash`; certificate body bind input/state/publication và được
+bind bởi decision envelope hash. Ticket `RB-WP3-010..011` phải giữ hash projection
+không vòng này khi mở certificate `produced`.
+
 Nhờ domain separation, length framing và chain hash, có thể phát hiện thiếu, đổi
 thứ tự hoặc sửa event/decision mà không có ambiguity do nối chuỗi.
 

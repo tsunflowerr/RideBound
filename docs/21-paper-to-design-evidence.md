@@ -87,3 +87,22 @@ Trước pilot và trước submission:
 - Patent/web product là evidence khác paper phản biện.
 - Không nói “180 paper đều ủng hộ RideBound”.
 - Không dùng abstract để khẳng định paper không có một cơ chế; với va chạm trực tiếp phải đọc full text.
+
+## 9. Recheck phục vụ ADR-021 — 2026-07-30
+
+Full text cục bộ được đọc lại cho ba nguồn liên quan trực tiếp:
+
+- Multiple-plan dynamic DARP: pool nhiều plan, quick accept/reject, consensus và
+  least-commitment/time-to-first-difference đã tồn tại; RideBound không claim các
+  cơ chế này, chỉ dùng làm baseline/claim boundary.
+- Time-consistent DARP: consistency bằng time classes, lexicographic refinement và
+  cost-consistency Pareto trade-off đã tồn tại trong multi-period static planning;
+  RideBound giữ khác biệt intra-trip, path-dependent revision ledger.
+- Forward-looking dynamic ride-pooling dispatch: rolling insertion/matching,
+  future opportunity và detour safeguard đã có; không dùng “future-aware” hay
+  one-step no-worse làm novelty.
+
+Ảnh trang đầu của hai paper va chạm chính và text abstract/model/conclusion đã
+được đối chiếu. Kho hiện không có DOCX; Browser trong ứng dụng không khả dụng,
+nhưng tra mạng là tùy chọn và direct local PDFs đủ để giữ nguyên claim boundary.
+Quyết định implementation tương ứng nằm trong ADR-021 và execution plan `28`.

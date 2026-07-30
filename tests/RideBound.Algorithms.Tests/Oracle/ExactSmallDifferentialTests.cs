@@ -190,7 +190,12 @@ public sealed class ExactSmallDifferentialTests
             1,
             new string('b', 64),
             CompleteArcs(seed)).Value!;
-        return new OnlineState(run, travel, 1, travel.SnapshotHash);
+        return new OnlineState(
+            run,
+            travel,
+            1,
+            travel.SnapshotHash,
+            RideBound.Domain.Commitments.CommitmentLedger.Empty);
     }
 
     private static IReadOnlyList<KeyValuePair<TravelArc, Duration>> CompleteArcs(

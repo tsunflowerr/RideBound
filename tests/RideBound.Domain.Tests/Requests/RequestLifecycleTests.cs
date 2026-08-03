@@ -88,6 +88,24 @@ public sealed class RequestLifecycleTests
         Assert.Equal(TestData.VehicleOne, request.AssignedVehicleId);
     }
 
+    [Theory]
+    [InlineData(999)]
+    [InlineData(2001)]
+    public void Boarding_outside_the_pickup_window_is_rejected(long pickupTimeMs)
+    {
+        var request = InState(RequestLifecycle.WaitingPickup);
+
+        var result = request.Board(
+            TestData.VehicleOne,
+            new SimTime(pickupTimeMs));
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(
+            RequestFailureCodes.PickupTimeOutsideWindow,
+            result.Failure?.Code);
+        Assert.Equal(RequestLifecycle.WaitingPickup, request.Lifecycle);
+    }
+
     [Fact]
     public void Accepted_request_can_never_transition_to_rejected()
     {

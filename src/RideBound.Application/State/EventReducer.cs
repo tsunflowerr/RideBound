@@ -1,7 +1,9 @@
 using RideBound.Application.Events;
 using RideBound.Application.Travel;
 using RideBound.Domain.Common;
+using RideBound.Domain.Incidents;
 using RideBound.Domain.Runs;
+using RideBound.Domain.Vehicles;
 
 namespace RideBound.Application.State;
 
@@ -23,6 +25,7 @@ public sealed class EventReducer
 
         var run = state.Run;
         var travelTimes = state.TravelTimes;
+        var incidents = state.Incidents;
 
         for (var index = 0; index < batch.Events.Count; index++)
         {
@@ -30,6 +33,7 @@ public sealed class EventReducer
             var applied = ApplyEvent(
                 run,
                 travelTimes,
+                incidents,
                 state.ExpectedInitialTravelTimeSnapshotHash,
                 batch.Epoch,
                 onlineEvent);
@@ -42,6 +46,7 @@ public sealed class EventReducer
 
             run = applied.Run!;
             travelTimes = applied.TravelTimes;
+            incidents = applied.Incidents!;
         }
 
         if (travelTimes is null)
@@ -75,7 +80,8 @@ public sealed class EventReducer
                 travelTimes,
                 nextSequence,
                 state.ExpectedInitialTravelTimeSnapshotHash,
-                state.Commitments));
+                state.Commitments,
+                incidents));
     }
 
     private static EventReductionWitness? ValidateBatch(
@@ -90,7 +96,9 @@ public sealed class EventReducer
                 "Internal event batch identity does not match the run.");
         }
 
-        if (batch.Epoch != state.Run.AppliedEpoch + 1)
+        if (batch.Epoch is < 1 or > DomainLimits.MaxCanonicalInteger
+            || state.Run.AppliedEpoch >= DomainLimits.MaxCanonicalInteger
+            || batch.Epoch != state.Run.AppliedEpoch + 1)
         {
             return new EventReductionWitness(
                 EventReductionFailureCodes.InvalidEpoch,
@@ -114,6 +122,14 @@ public sealed class EventReducer
                 "Internal event batch cannot be empty.");
         }
 
+        if (state.NextEventSequence is < 1 or > DomainLimits.MaxCanonicalInteger)
+        {
+            return new EventReductionWitness(
+                EventReductionFailureCodes.InvalidEventSequence,
+                "The next internal event sequence is outside the canonical range.",
+                Dimension: "eventSeq");
+        }
+
         var expectedSequence = state.NextEventSequence;
 
         for (var index = 0; index < batch.Events.Count; index++)
@@ -125,6 +141,16 @@ public sealed class EventReducer
                 return new EventReductionWitness(
                     EventReductionFailureCodes.InvalidEventSequence,
                     "Internal event sequence must be globally consecutive.",
+                    index,
+                    onlineEvent.EventSequence,
+                    Dimension: "eventSeq");
+            }
+
+            if (onlineEvent.EventSequence == DomainLimits.MaxCanonicalInteger)
+            {
+                return new EventReductionWitness(
+                    EventReductionFailureCodes.InvalidEventSequence,
+                    "The event sequence exhausts the canonical integer range.",
                     index,
                     onlineEvent.EventSequence,
                     Dimension: "eventSeq");
@@ -149,6 +175,7 @@ public sealed class EventReducer
     private static EventApplyResult ApplyEvent(
         RideBoundRun run,
         TravelTimeSnapshot? travelTimes,
+        OperationalIncidentLedger incidents,
         string expectedInitialTravelTimeSnapshotHash,
         long epoch,
         OnlineEvent onlineEvent)
@@ -167,7 +194,7 @@ public sealed class EventReducer
                 advanced.Observation.Id) =>
                 run.ObserveVehicle(advanced.Observation),
             VehicleAdvanced advanced when epoch == 1 =>
-                run.BootstrapVehicle(advanced.Observation),
+                BootstrapVehicle(run, advanced.Observation),
             VehicleAdvanced advanced =>
                 DomainResult<RideBoundRun>.Fail(
                     RunFailureCodes.UnknownVehicle,
@@ -194,6 +221,8 @@ public sealed class EventReducer
                     alighted.PlanVersion),
             TimerTick => DomainResult<RideBoundRun>.Success(run),
             TravelTimesUpdated => null,
+            IncidentOpened => null,
+            IncidentResolved => null,
             _ => DomainResult<RideBoundRun>.Fail(
                 "UNSUPPORTED_INTERNAL_EVENT",
                 $"Internal event '{onlineEvent.GetType().Name}' is unsupported."),
@@ -232,7 +261,78 @@ public sealed class EventReducer
             travelTimes = travel.Snapshot;
         }
 
-        return EventApplyResult.Success(runResult?.Value ?? run, travelTimes);
+        IncidentLedgerResult? incidentResult = onlineEvent switch
+        {
+            IncidentOpened opened => OpenIncident(run, incidents, opened),
+            IncidentResolved resolved => incidents.Resolve(
+                resolved.IncidentId,
+                resolved.EventSequence,
+                resolved.SimulationTime),
+            _ => null,
+        };
+
+        if (incidentResult is not null && !incidentResult.IsSuccess)
+        {
+            return EventApplyResult.Fail(incidentResult.Failure!);
+        }
+
+        return EventApplyResult.Success(
+            runResult?.Value ?? run,
+            travelTimes,
+            incidentResult?.Ledger ?? incidents);
+    }
+
+    private static IncidentLedgerResult OpenIncident(
+        RideBoundRun run,
+        OperationalIncidentLedger incidents,
+        IncidentOpened opened)
+    {
+        var unknown = opened.VehicleIds.FirstOrDefault(
+            vehicleId => !run.Vehicles.ContainsKey(vehicleId));
+
+        if (unknown != default)
+        {
+            return IncidentLedgerResult.Fail(
+                IncidentFailureCodes.UnknownIncidentVehicle,
+                "An incident cannot reference an unknown vehicle.",
+                unknown.Value,
+                "vehicleId");
+        }
+
+        var affectedRiders = opened.VehicleIds
+            .SelectMany(vehicleId => run.Vehicles[vehicleId].AcceptedRequestIds)
+            .Distinct()
+            .OrderBy(value => value.Value, StringComparer.Ordinal)
+            .ToArray();
+
+        return incidents.Open(
+            opened.IncidentId,
+            opened.ReasonCode,
+            opened.VehicleIds,
+            affectedRiders,
+            opened.EventSequence,
+            opened.SimulationTime);
+    }
+
+    private static DomainResult<RideBoundRun> BootstrapVehicle(
+        RideBoundRun run,
+        VehicleState observation)
+    {
+        if (observation.OccupiedSeats != 0
+            || observation.OnboardRequestIds.Count != 0
+            || observation.AcceptedRequestIds.Count != 0
+            || observation.Route.RemainingStops.Any(
+                stop => stop.RequestId is not null))
+        {
+            return DomainResult<RideBoundRun>.Fail(
+                RunFailureCodes.VehicleRiderMismatch,
+                "A genesis vehicle observation cannot preload riders or " +
+                "request-owned route stops before a decision accepts them.",
+                observation.Id.Value,
+                "acceptedRequestIds");
+        }
+
+        return run.BootstrapVehicle(observation);
     }
 
     private static EventReductionWitness ToWitness(
@@ -250,14 +350,16 @@ public sealed class EventReducer
     private sealed record EventApplyResult(
         RideBoundRun? Run,
         TravelTimeSnapshot? TravelTimes,
+        OperationalIncidentLedger? Incidents,
         DomainFailure? Failure)
     {
         public static EventApplyResult Success(
             RideBoundRun run,
-            TravelTimeSnapshot? travelTimes) =>
-            new(run, travelTimes, null);
+            TravelTimeSnapshot? travelTimes,
+            OperationalIncidentLedger incidents) =>
+            new(run, travelTimes, incidents, null);
 
         public static EventApplyResult Fail(DomainFailure failure) =>
-            new(null, null, failure);
+            new(null, null, null, failure);
     }
 }

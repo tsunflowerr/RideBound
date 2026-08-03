@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/tsunflowerr/RideBound/main/benchmarks/schemas/v1/empty-action-payload.schema.json",
+  "title": "RideBound empty action payload v1",
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}

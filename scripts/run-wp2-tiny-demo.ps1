@@ -49,13 +49,53 @@ $expected = (Get-Content -Raw -LiteralPath $expectedPath -Encoding utf8).
     Replace("`r`n", "`n")
 
 function Invoke-DemoReplay {
-    $outputLines = $inputLines | & $runnerPath --mode online
+    $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+    $startInfo.FileName = $runnerPath
+    $startInfo.Arguments = "--mode online"
+    $startInfo.RedirectStandardInput = $true
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    $startInfo.UseShellExecute = $false
+    $startInfo.CreateNoWindow = $true
 
-    if ($LASTEXITCODE -ne 0) {
-        throw "Runner replay failed with exit code $LASTEXITCODE."
+    $originalInputEncoding = [Console]::InputEncoding
+    try {
+        [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false)
+        $process = [System.Diagnostics.Process]::Start($startInfo)
+    }
+    finally {
+        [Console]::InputEncoding = $originalInputEncoding
+    }
+    if ($null -eq $process) {
+        throw "Runner process could not be started."
     }
 
-    return (($outputLines -join "`n") + "`n")
+    try {
+        $inputBytes = [System.Text.UTF8Encoding]::new($false).GetBytes(
+            ($inputLines -join "`n") + "`n")
+        $process.StandardInput.BaseStream.Write(
+            $inputBytes,
+            0,
+            $inputBytes.Length)
+        $process.StandardInput.BaseStream.Flush()
+        $process.StandardInput.BaseStream.Close()
+        $stdout = $process.StandardOutput.ReadToEnd().Replace("`r`n", "`n")
+        $stderr = $process.StandardError.ReadToEnd().Replace("`r`n", "`n")
+        $process.WaitForExit()
+
+        if ($process.ExitCode -ne 0) {
+            throw "Runner replay failed with exit code $($process.ExitCode)."
+        }
+
+        if ($stderr -cne "") {
+            throw "Runner replay wrote unexpected diagnostics: $stderr"
+        }
+
+        return $stdout
+    }
+    finally {
+        $process.Dispose()
+    }
 }
 
 $first = Invoke-DemoReplay

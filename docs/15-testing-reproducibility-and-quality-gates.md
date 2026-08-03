@@ -276,12 +276,12 @@ xUnit bị Windows Application Control chặn fresh unsigned DLL bằng `0x80071
 ở ba suite, nhưng đúng artifacts đó pass qua policy-safe bundles/process checks.
 Exception nằm trong `18` và không được tính là Release full-solution xUnit pass.
 
-Q2 tổng thể **chưa đóng**: WP3 còn phải chứng minh P1/P2/P3 cho promise ledger,
-hard budget, locks, incident separation, independent commitment certificate và
-checkpoint; WP4 còn exact-small/solver equivalence cho C1/OR-Tools. Vì vậy WP2
-không được gọi là hard commitment guarantee.
+Q2 tổng thể **chưa đóng** vì WP4 còn exact-small/infinite-budget/solver
+equivalence cho C1/OR-Tools. WP3 nay đã đóng phần P1/P2/P3 commitment correctness;
+điều đó không biến WP2 B1 thành treatment và không chứng minh effectiveness.
 
-Sau `RB-WP3-001..007`, logical inventory là 378: Contracts 128, Domain 126,
+Tại checkpoint lịch sử sau `RB-WP3-001..007`, logical inventory là 378:
+Contracts 128, Domain 126,
 Application 23, Algorithms 45, Runner 49 và Architecture 7. Cùng source tree,
 các suite đã pass 378/378 khi chạy tách; full-suite process có exception môi
 trường Windows Application Control trước assertion, được ghi trong `18`.
@@ -297,9 +297,34 @@ Evidence mới bao gồm:
 - pending ledger chỉ commit cùng matching ACK;
 - accepted/onboard/freeze/final-confirmation lock witnesses.
 
-Đây mới là nửa đầu WP3. Incident, independent combined validator, certificate
-`produced`, Runner ledger hash binding, checkpoint và exact-small bundle còn ở
-`RB-WP3-008..013`; P2 vẫn chưa được gọi là guarantee.
+Ở checkpoint đó đây mới là nửa đầu WP3; các phần còn thiếu nay đã được hoàn thành
+trong `RB-WP3-008..013` và được đóng bởi ADR-022.
+
+### WP3 closure evidence
+
+WP3 bổ sung các gate sau ngoài suite thông thường:
+
+- 64 seed × 12 revision history cho P1 conservation/no-refund trên đủ 10 chiều;
+- killing projection mutation cho từng dimension và stage-order/state-boundary
+  tests cho validator độc lập;
+- exact-small commitment oracle 16 seed không gọi production validator/generator;
+- P3: candidate đã feasible không mất đi khi nới pickup-ETA hard limit 40 → 160;
+- incident open/resolve/breach separation và breach-budget cross-check;
+- certificate tamper/cross-binding tests;
+- clean-process replay hai lần và checkpoint-restore suffix equivalence trong
+  `scripts/run-wp3-commitment-demo.ps1`;
+- dependency/build/format/schema/diff checks ở closure audit.
+
+Inventory closure là 414: Contracts 133, Domain 134, Application 34, Algorithms
+48, Runner 58 và Architecture 7. Required full-solution command trên host hiện
+tại bị Windows Application Control `0x800711C7`; `18` tách rõ unaffected suites,
+54 Runner non-process xUnit methods chạy qua self-contained harness và bốn
+clean-process cases. Không được đổi evidence ghép này thành tuyên bố
+full-solution xUnit pass.
+
+Các test “mutation” ở đây là explicit mutation-killing cases source-controlled,
+không phải một mutation-score phần trăm từ công cụ ngoài. Không được ghi một điểm
+mutation giả khi chưa chạy tool đo độc lập.
 
 ### Q3 — BeGo
 

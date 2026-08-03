@@ -1,7 +1,7 @@
 # RideBound — bản đồ tài liệu
 
-> Trạng thái: đặc tả v1 + WP0/WP1/WP2 hoàn thành; WP3 7/14 ticket
-> Cập nhật: 2026-07-30
+> Trạng thái: đặc tả v1 + WP0/WP1/WP2/WP3 hoàn thành; WP4 refinement READY
+> Cập nhật: 2026-08-02
 > Nguồn sự thật về tiến độ: [18-status-and-decision-log.md](18-status-and-decision-log.md)
 
 ## 1. Mục đích của bộ tài liệu
@@ -110,6 +110,8 @@ Bộ tài liệu này trả lời năm câu hỏi:
 | [26-wp2-online-baseline-ticket-plan.md](tasks/26-wp2-online-baseline-ticket-plan.md) | Ordered queue WP2 cho state/reducer/validator/B1/oracle/demo |
 | [27-wp3-ledger-certificate-refinement.md](tasks/27-wp3-ledger-certificate-refinement.md) | Ticket refinement WP3; khóa promise/ledger/budget/lock/certificate/checkpoint trước code |
 | [28-wp3-ledger-certificate-ticket-plan.md](tasks/28-wp3-ledger-certificate-ticket-plan.md) | Ordered queue 14 ticket WP3; trạng thái/evidence promise, ledger, budget, lock, incident, certificate và checkpoint |
+| [29-wp4-algorithms-solver-refinement.md](tasks/29-wp4-algorithms-solver-refinement.md) | Ticket refinement WP4; khóa schedule/candidate/objective/solver/fallback trước production code |
+| [reviews/wp1-wp3/README.md](reviews/wp1-wp3/README.md) | Review chi tiết code, invariant, tối ưu thật và khoảng trống WP1–WP3 |
 | [research/README.md](research/README.md) | Archive báo cáo, audit và evidence matrix nền |
 
 ## 6. Kiến trúc bằng một hình
@@ -147,13 +149,13 @@ không chép lại thuật toán RideBound bằng Python hoặc C++.
 - Repository độc lập: `https://github.com/tsunflowerr/RideBound`.
 - WP0 hoàn thành với `RideBound.slnx`; repository hiện có 7 source project và
   6 test project sau khi WP2 thêm Application và Algorithms test boundary.
-- Logical inventory sau WP2 có 128 Contracts, 89 Domain, 15 Application,
-  45 Algorithms, 49 Runner và 7 Architecture test: tổng **333**. Required Debug
-  `dotnet test RideBound.slnx` pass **333/333**; Release build/format pass.
-  Release xUnit bị Windows Application Control `0x800711C7` chặn fresh unsigned
-  DLL ở ba suite, nhưng đúng Release artifacts đó pass qua policy-safe bundles/
-  process checks; exception được ghi riêng trong `18`, không tính là Release
-  full-solution pass.
+- Logical inventory hiện tại có 133 Contracts, 134 Domain, 34 Application,
+  48 Algorithms, 58 Runner và 7 Architecture test: tổng **414**.
+  Required `dotnet test RideBound.slnx` được chạy lại ngày 2026-08-02; host
+  Windows Application Control `0x800711C7` chặn fresh Contracts/Runner/
+  Application DLL sau khi 223 assertion khác đã pass. Từng suite/bundle và bốn
+  clean-process case giữ đủ evidence 414/414; đây là environment exception,
+  không được ghi thành full-solution xUnit pass.
 - BeGo độc lập vẫn đạt 25/25 backend và 7/7 frontend test.
 - Đã có protocol/schema v1, canonical unit/JSON/hash, long-lived NDJSON runner,
   hello/init/event/error lifecycle, idempotent retry, đúng 10 golden fixture và
@@ -165,21 +167,24 @@ không chép lại thuật toán RideBound bằng Python hoặc C++.
 - Tiny four-epoch demo accept/board, capacity reject và drop/alight replay hai
   process sạch với exact final hash. Q1 structural oracle vẫn ở named
   conformance mode.
-- Chưa có promise ledger, hard commitment budget/locks, incident breach,
-  checkpoint, certificate `produced`, C1/OR-Tools behavior hoặc simulator adapter.
+- Đã có WP3 promise ledger, hard vector budget/locks, incident/breach separation,
+  independent combined validator, strict produced certificate/actions/schemas,
+  Runner commitment mode và canonical checkpoint/restore.
 - WP1 `RB-WP1-001..015` đã hoàn thành, Q1 đã đóng và exact-retry bug fix được
   khóa bởi ADR-017.
 - WP2 `RB-WP2-001..012` đã hoàn thành phần physical/B1; ADR-018–020 khóa
   boundary, semantics và claim limit.
-- WP3 refinement đã hoàn thành bằng ADR-021 và queue 14 ticket. `RB-WP3-001..007`
-  (7/14) đã triển khai promise/policy model, shared schedule/promise projection,
-  three-way delta, append-only ledger trong ACK boundary, hard vector budget và
-  phase locks.
-- Logical inventory hiện là **378**: Contracts 128, Domain 126, Application 23,
-  Algorithms 45, Runner 49, Architecture 7. Các suite cùng source tree đã pass
-  378/378 khi chạy tách; full-suite process đôi lúc bị Windows Application
-  Control chặn trước assertion, xem `18`.
-- Chưa có incident, combined validator, certificate `produced`, Runner
-  commitment integration hoặc checkpoint. Bước duy nhất tiếp theo:
-  `RB-WP3-008` trong
-  [28-wp3-ledger-certificate-ticket-plan.md](tasks/28-wp3-ledger-certificate-ticket-plan.md).
+- WP3 `RB-WP3-001..014` đã hoàn thành bằng ADR-021/022. Demo commitment bốn
+  epoch chạy hai process byte-exact, phát promise version 1→2, certificate
+  `produced`, giữ three-way budget và restore checkpoint cho suffix giống replay
+  từ genesis.
+- Audit code không chỉ dựa vào test đã sửa thêm các lỗ hổng state-boundary,
+  genesis route, integer exhaustion, certificate/publication binding, breach/
+  ledger relation, pickup window và checkpoint reachability. Review chi tiết ở
+  [reviews/wp1-wp3/README.md](reviews/wp1-wp3/README.md).
+- WP3 là correctness/feasibility boundary, chưa phải chứng minh C1 hiệu quả hoặc
+  tối ưu ở quy mô lớn. B1 vẫn earliest-feasible, single-plan, cap theo canonical
+  identity và giữ incumbent order. Bước duy nhất tiếp theo là refinement
+  `RB-WP4-001` trong
+  [29-wp4-algorithms-solver-refinement.md](tasks/29-wp4-algorithms-solver-refinement.md);
+  chưa được viết production solver trước khi refinement DONE.

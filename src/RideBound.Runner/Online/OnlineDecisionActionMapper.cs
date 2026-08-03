@@ -1,6 +1,8 @@
 using System.Text.Json;
 using RideBound.Algorithms.Policies;
+using RideBound.Application.Commitments;
 using RideBound.Contracts.Protocol;
+using RideBound.Domain.Commitments;
 using RideBound.Domain.Routes;
 using ContractRouteStopKind = RideBound.Contracts.Protocol.RouteStopKind;
 using DomainRouteStopKind = RideBound.Domain.Routes.RouteStopKind;
@@ -40,6 +42,76 @@ public static class OnlineDecisionActionMapper
 
         return actions.AsReadOnly();
     }
+
+    public static IReadOnlyList<JsonElement> MapPublications(
+        IEnumerable<PromisePublication> publications)
+    {
+        ArgumentNullException.ThrowIfNull(publications);
+        return publications
+            .OrderBy(value => value.PublicationId, StringComparer.Ordinal)
+            .Select(
+                publication => OnlineDecisionActionCodec.Encode(
+                    new OnlineDecisionAction(
+                        DecisionType.PromisePublished,
+                        MapPublication(publication))))
+            .ToArray();
+    }
+
+    private static PromisePublishedActionPayload MapPublication(
+        PromisePublication publication)
+    {
+        var entry = publication.Entry;
+        return new PromisePublishedActionPayload(
+            publication.PublicationId,
+            entry.PublishedPromise.Version.Value,
+            entry.ReasonCode,
+            entry.SourceEventSequence,
+            MapPromise(entry.PublishedPromise.Projection),
+            MapVector(entry.Deltas.Exogenous),
+            MapVector(entry.Deltas.DecisionInduced),
+            MapVector(entry.Deltas.Visible),
+            MapVector(entry.BudgetBefore),
+            MapVector(entry.BudgetAfter));
+    }
+
+    private static PromiseProjectionContract MapPromise(
+        PromiseProjection promise) =>
+        new(
+            promise.RequestId.Value,
+            promise.VehicleId.Value,
+            promise.PickupStopId.Value,
+            promise.PickupNodeId.Value,
+            promise.DropStopId.Value,
+            promise.DropNodeId.Value,
+            promise.PickupEta.Milliseconds,
+            promise.DropEta.Milliseconds,
+            promise.ServiceOrder.Select(
+                token => new PromiseServiceTokenContract(
+                    token.StopId.Value,
+                    token.RequestId?.Value,
+                    token.Kind switch
+                    {
+                        DomainRouteStopKind.Waypoint =>
+                            ContractRouteStopKind.Waypoint,
+                        DomainRouteStopKind.Pickup =>
+                            ContractRouteStopKind.Pickup,
+                        DomainRouteStopKind.DropOff =>
+                            ContractRouteStopKind.DropOff,
+                        _ => throw new ArgumentOutOfRangeException(nameof(token)),
+                    })).ToArray());
+
+    private static CommitmentVectorContract MapVector(CommitmentVector value) =>
+        new(
+            value.PickupEtaTotalMs,
+            value.DropEtaTotalMs,
+            value.MaterialEtaRevisionCount,
+            value.VehicleSwitchCount,
+            value.PickupStopRelocationMm,
+            value.PickupStopSwitchCount,
+            value.DropStopRelocationMm,
+            value.DropStopSwitchCount,
+            value.IncumbentOrderInversionCount,
+            value.PrePickupInsertedStopCount);
 
     private static JsonElement MapRequestAction(RequestDecisionAction action)
     {

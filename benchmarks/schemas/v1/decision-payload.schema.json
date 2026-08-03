@@ -63,8 +63,22 @@
         },
         "reasonCode": {
           "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+        },
+        "body": {
+          "$ref": "commitment-certificate-body.schema.json"
         }
       },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": { "const": "produced" }
+            }
+          },
+          "then": { "required": ["body"] },
+          "else": { "not": { "required": ["body"] } }
+        }
+      ],
       "additionalProperties": false,
       "x-ridebound-decision-hash": "include"
     },

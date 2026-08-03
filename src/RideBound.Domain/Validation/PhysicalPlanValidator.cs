@@ -191,10 +191,24 @@ public sealed class PhysicalPlanValidator
                     dimension: "routeConnectivity");
             }
 
-            var remaining = DivideRoundUp(
-                checked(fullEdgeTime.Milliseconds * (1000 - edge.ProgressPermille)),
-                1000);
-            var advanced = TryAdvance(time, new Duration(remaining));
+            Duration remainingDuration;
+
+            try
+            {
+                var remaining = DivideRoundUp(
+                    checked(
+                        fullEdgeTime.Milliseconds
+                        * (1000 - edge.ProgressPermille)),
+                    1000);
+                remainingDuration = new Duration(remaining);
+            }
+            catch (Exception error) when (
+                error is OverflowException or ArgumentOutOfRangeException)
+            {
+                return Overflow(vehicle.Id);
+            }
+
+            var advanced = TryAdvance(time, remainingDuration);
 
             if (advanced is null)
             {

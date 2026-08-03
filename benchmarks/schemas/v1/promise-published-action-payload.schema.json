@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/tsunflowerr/RideBound/main/benchmarks/schemas/v1/promise-published-action-payload.schema.json",
+  "title": "RideBound promise-published action payload v1",
+  "type": "object",
+  "required": [
+    "publicationId", "promiseVersion", "reasonCode", "sourceEventSeq",
+    "promise", "exogenousDelta", "decisionDelta", "visibleDelta",
+    "budgetBefore", "budgetAfter"
+  ],
+  "properties": {
+    "publicationId": { "$ref": "definitions.schema.json#/$defs/opaqueIdentifier" },
+    "promiseVersion": { "$ref": "definitions.schema.json#/$defs/canonicalPositiveInteger" },
+    "reasonCode": { "$ref": "definitions.schema.json#/$defs/opaqueIdentifier" },
+    "sourceEventSeq": { "$ref": "definitions.schema.json#/$defs/canonicalPositiveInteger" },
+    "promise": { "$ref": "promise-projection.schema.json" },
+    "exogenousDelta": { "$ref": "commitment-vector.schema.json" },
+    "decisionDelta": { "$ref": "commitment-vector.schema.json" },
+    "visibleDelta": { "$ref": "commitment-vector.schema.json" },
+    "budgetBefore": { "$ref": "commitment-vector.schema.json" },
+    "budgetAfter": { "$ref": "commitment-vector.schema.json" }
+  },
+  "additionalProperties": false
+}

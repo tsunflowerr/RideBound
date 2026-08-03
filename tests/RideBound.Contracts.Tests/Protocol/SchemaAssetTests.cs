@@ -79,7 +79,7 @@ public sealed class SchemaAssetTests
                     == "implemented")
             .ToArray();
 
-        Assert.Equal(16, implementedEntries.Length);
+        Assert.Equal(23, implementedEntries.Length);
 
         foreach (var entry in implementedEntries)
         {
@@ -130,6 +130,17 @@ public sealed class SchemaAssetTests
                      "request-accepted-action-payload.schema.json",
                      "request-outcome-action-payload.schema.json",
                      "vehicle-plan-updated-action-payload.schema.json",
+                     "commitment-vector.schema.json",
+                     "promise-service-token.schema.json",
+                     "promise-projection.schema.json",
+                     "promise-published-action-payload.schema.json",
+                     "commitment-breach-declared-action-payload.schema.json",
+                     "certificate-witness.schema.json",
+                     "commitment-certificate-body.schema.json",
+                     "empty-action-payload.schema.json",
+                     "checkpoint-content.schema.json",
+                     "checkpoint-payload.schema.json",
+                     "restore-acknowledged-payload.schema.json",
                  })
         {
             using var document = JsonDocument.Parse(

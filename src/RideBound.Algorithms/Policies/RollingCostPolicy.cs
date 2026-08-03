@@ -1,4 +1,5 @@
 using RideBound.Algorithms.Candidates;
+using RideBound.Algorithms.Commitments;
 using RideBound.Application.State;
 using RideBound.Domain.Common;
 using RideBound.Domain.Requests;
@@ -25,7 +26,8 @@ public sealed class RollingCostPolicy
 
     public RollingCostDecisionResult Decide(
         OnlineState state,
-        CandidateGenerationOptions options)
+        CandidateGenerationOptions options,
+        CommitmentCandidateFilter? commitmentFilter = null)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(options);
@@ -43,7 +45,10 @@ public sealed class RollingCostPolicy
                     Dimension: generated.Witness.Dimension));
         }
 
-        var selection = _selector.Select(generated.VehicleCandidates!);
+        var candidates = commitmentFilter is null
+            ? generated.VehicleCandidates!
+            : commitmentFilter.Filter(state, generated.VehicleCandidates!);
+        var selection = _selector.Select(candidates);
 
         if (!selection.IsSuccess)
         {
@@ -62,7 +67,7 @@ public sealed class RollingCostPolicy
         var applied = ApplySelection(
             state,
             selection.Selection!,
-            generated.VehicleCandidates!);
+            candidates);
 
         return applied.IsSuccess
             ? applied

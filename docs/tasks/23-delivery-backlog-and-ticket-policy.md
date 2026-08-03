@@ -1,11 +1,12 @@
 # Delivery backlog và quy tắc ticket
 
 > Trạng thái: `BASELINE_V1`
-> Cập nhật: 2026-07-30
+> Cập nhật: 2026-08-02
 > Nguồn tiến độ: [18-status-and-decision-log.md](../18-status-and-decision-log.md)
 > Topic đã ticket hóa: [WP1 Contracts](24-wp1-contracts-ticket-plan.md) và
 > [WP2 Online baseline](26-wp2-online-baseline-ticket-plan.md) và
-> [WP3 ledger/certificate](28-wp3-ledger-certificate-ticket-plan.md)
+> [WP3 ledger/certificate](28-wp3-ledger-certificate-ticket-plan.md) và
+> [WP4 refinement](29-wp4-algorithms-solver-refinement.md)
 
 ## 1. Mục đích
 
@@ -20,7 +21,7 @@ Backlog dùng **progressive elaboration**:
   BDD, acceptance criteria, verification và rollback khi phù hợp;
 - topic kế tiếp chỉ được refinement sau khi exit gate của topic trước đạt.
 
-Quy tắc này tránh tạo false precision cho các topic xa (hiện là WP4–WP12) khi
+Quy tắc này tránh tạo false precision cho các topic xa (hiện là WP5–WP12) khi
 contract và evidence đầu vào chưa tồn tại.
 
 ## 2. Nguồn sự thật và thứ tự ưu tiên
@@ -119,9 +120,9 @@ Ticket tài liệu phải:
 | WP11 Product UX | UI/audit có rollback, không overclaim | product gate | WP5 |
 | WP12 Paper/release | Claim traceable và artifact tái lập | Q6 | WP9, WP10 |
 
-WP4–WP12 **chưa có ticket**. WP2 đã đóng physical/B1; WP3 đã refinement thành
-ordered queue `RB-WP3-001..014`. Nửa đầu `001..007` đã DONE; queue và evidence
-nằm trong `28`.
+WP5–WP12 **chưa có ticket**. WP2 đã đóng physical/B1; WP3 đã hoàn thành ordered
+queue `RB-WP3-001..014`. WP4 hiện chỉ có refinement ticket `RB-WP4-001 READY`;
+12 workstream trong ticket đó chưa phải implementation ticket.
 
 WP11 không nằm trên critical path nghiên cứu và không được làm chậm WP8–WP10.
 
@@ -135,13 +136,18 @@ ownership, atomic reducer, route prefix/suffix, O-001, physical validator,
 deterministic B1, exact-small oracle và online replay. Phạm vi đóng chỉ là
 physical/B1, chưa có hard commitment guarantee.
 
-Ticket duy nhất hiện `READY`:
+WP3 `RB-WP3-001..014` đã hoàn thành theo
+[28-wp3-ledger-certificate-ticket-plan.md](28-wp3-ledger-certificate-ticket-plan.md).
+Correctness boundary gồm incident separation, independent validator,
+certificate/hash/ACK và checkpoint/restore; không bao gồm C1 solver quality.
 
-> **RB-WP3-008 — Incident lifecycle và breach ledger**
+Ticket refinement duy nhất hiện `READY`:
 
-Ticket này thêm incident/breach separation trên ledger foundation đã có. Không
-phát certificate trước independent validator, không chọn số O-002/O-003 và không
-bắt đầu C1/OR-Tools.
+> **RB-WP4-001 — refinement RideBound policies và solver**
+
+Ticket này khóa schedule strategy, candidate/compute fairness, objective,
+multiple-plan, exact-small equivalence, OR-Tools ownership và fallback trước khi
+tạo production queue. Không chọn số O-002/O-003/O-004 và không mở O-001.
 
 ## 9. Template refinement cho topic kế tiếp
 
@@ -167,5 +173,5 @@ Không copy BDD của WP1 sang topic khác nếu semantics khác.
 5. Chỉ chuyển ticket kế tiếp sau khi evidence của ticket hiện tại được review.
 6. Chỉ đóng topic khi toàn bộ exit gate trong `16` đạt.
 
-Theo trạng thái ngày 2026-07-30, ticket tiếp theo phải thực hiện là
-**RB-WP3-008**.
+Theo trạng thái ngày 2026-08-02, ticket tiếp theo phải thực hiện là
+**RB-WP4-001**; chưa có implementation WP4 nào khác được READY.

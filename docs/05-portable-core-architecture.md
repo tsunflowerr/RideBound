@@ -91,7 +91,7 @@ khi WP5 có behavior thật, tránh scaffold project rỗng.
 - Không gọi database/network.
 - Tham chiếu `Application` và `Domain`.
 
-### Boundary WP3 theo ADR-021
+### Boundary WP3 theo ADR-021/022
 
 - `Domain/Commitments` giữ dimension vocabulary, vector/policy, promise version,
   append-only ledger, budget và lock invariant.
@@ -100,8 +100,11 @@ khi WP5 có behavior thật, tránh scaffold project rỗng.
 - `IStopDistanceLookup` là Domain port cho canonical millimeter; implementation
   provider nằm ngoài Domain/Application.
 - `OnlineState` mang ledger immutable và coordinator stage ledger cùng route;
-  state chỉ commit sau matching ACK. Incident/certificate/Runner serialization/
-  checkpoint tiếp tục ở `RB-WP3-008..012`.
+  state chỉ commit sau matching ACK.
+- `Domain/Incidents` giữ typed incident/breach history; Application combined
+  validator recompute toàn boundary; Contracts/Runner giữ strict certificate,
+  named policy configuration và checkpoint serialization. Các phần này đã hoàn
+  thành trong `RB-WP3-008..012`, không rò framework/solver vào portable core.
 
 ### `RideBound.Solvers.OrTools`
 

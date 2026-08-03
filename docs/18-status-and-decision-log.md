@@ -1,7 +1,7 @@
 # Trạng thái và decision log
 
 > Tệp sống — cập nhật ở cuối mọi task RideBound
-> Cập nhật gần nhất: 2026-07-30
+> Cập nhật gần nhất: 2026-08-02
 
 ## 1. Trạng thái tổng thể
 
@@ -9,8 +9,8 @@
 |---|---|
 | Research direction | `LOCKED_FOR_IMPLEMENTATION_PLANNING` |
 | Documentation | `MIGRATED_AND_VERIFIED_V1` |
-| Implementation | `WP1_Q1_COMPLETE; WP2_COMPLETE; WP3_001_007_DONE_TESTED_378` |
-| Current work package | `WP3 LEDGER/CERTIFICATE — 7/14 DONE; RB-WP3-008 READY` |
+| Implementation | `WP1_Q1_COMPLETE; WP2_COMPLETE; WP3_COMPLETE_14_OF_14` |
+| Current work package | `WP4 POLICIES/SOLVER — RB-WP4-001 REFINEMENT READY; NO IMPLEMENTATION READY` |
 | Repository | `https://github.com/tsunflowerr/RideBound` |
 | Main baseline | B1 `rolling-cost` |
 | Main treatment | C1 `ridebound-hard-vector` |
@@ -130,15 +130,40 @@
   exact before/delta/after witness, hard zero, unbounded và monotonic feasible set.
 - Hoàn thành `RB-WP3-007`: accepted assignment, onboard, freeze-horizon và final
   confirmation lock evaluator với policy flag/witness rõ.
+- Hoàn thành `RB-WP3-008`: typed incident open/resolve, affected-rider derivation,
+  immutable breach record với chronology, vehicle và budget relation; không
+  reset/refund normal ledger.
+- Hoàn thành `RB-WP3-009`: independent combined validator tự dựng lại physical
+  plan, state boundary, promise, three-way delta, locks và hard-vector budget;
+  candidate filter chỉ là early pruning, Runner revalidate toàn fleet trước publish.
+- Hoàn thành `RB-WP3-010`: certificate/action/schema strict cho normal operation
+  và witness; input/proposed state hash cùng publication IDs bị cross-check với
+  containing decision/actions.
+- Hoàn thành `RB-WP3-011`: named commitment policy configuration/content hash,
+  Runner `commitment` mode, atomic promise/ledger/certificate/state hash và
+  matching ACK/retry semantics.
+- Hoàn thành `RB-WP3-012`: canonical full-state checkpoint/restore với content
+  hash, manifest/travel/reachable-state/tamper validation và cấm checkpoint khi
+  decision còn pending.
+- Hoàn thành `RB-WP3-013`: 10-dimension mutation-killing tests, 64×12 generated
+  ledger histories, 16-seed independent exact-small P2/P3, two-process replay và
+  checkpoint suffix equivalence.
+- Hoàn thành `RB-WP3-014`: audit toàn code WP1–WP3, Browser research recheck,
+  ADR-022, review giải thích chi tiết và chỉ `RB-WP4-001` refinement READY.
 
 ## 3. Chưa làm
 
-- Đã có ledger/budget/promise projection/phase-lock foundation nhưng chưa nối vào
-  candidate pruning hoặc default Runner publication.
-- Chưa có incident breach accounting, independent combined commitment validator,
-  certificate `produced`, Runner ledger/hash integration hoặc checkpoint.
-- Chưa có C1/B2–B5/OR-Tools behavior; Q2 mới hoàn thành phần physical/B1 của
-  WP2, chưa phải commitment guarantee.
+- Chưa có C1/C2 objective, B2–B5 behavior hoặc OR-Tools solver. WP3 mới khóa
+  feasibility/correctness và publication certificate, không chứng minh treatment
+  hiệu quả hơn B1.
+- B1 hiện dùng earliest-feasible schedule, một plan/vehicle và giữ incumbent
+  service order. Bounded generator chỉ xét bốn pending request đầu và cap theo
+  canonical candidate identity; candidate loss/solver loss chưa được đo.
+- Inversion/relocation/vehicle-switch dimensions là validator vocabulary thật,
+  nhưng B1 hiện không sinh inversion/relocation và O-001 khóa vehicle switch;
+  chúng không được báo là active optimization.
+- Incident recovery optimizer chưa có; WP3 chỉ đảm bảo breach được ghi đúng và
+  không bị certificate normal-operation che lấp.
 - Chưa có BeGo/FleetPy/RidePy adapter.
 - Chưa tải/freeze dataset cho experiment.
 - Chưa pilot hoặc preregister.
@@ -334,49 +359,80 @@ WP2 scope exclusion audit:
 Date: 2026-07-30
 ```
 
-### RB-WP3-001–007 refinement và commitment foundation
+### RB-WP3-001–014 closure: commitment correctness boundary
 
 ```text
-Commit WP2 độc lập trước khi mở WP3:
-  07432ce feat: complete WP2 online baseline
-Logical source-controlled test inventory: 378
-  Contracts: 128
-  Domain: 126
-  Application: 23
-  Algorithms: 45
-  Runner: 49
+Logical source-controlled test inventory: 414
+  Contracts: 133
+  Domain: 134
+  Application: 34
+  Algorithms: 48
+  Runner: 58
   Architecture: 7
-Current-tree test evidence: 378/378 passed when suites are scheduled separately
-  (Debug Contracts 128, Domain 126, Application 23, Algorithms 45, Runner 49;
-  Release Architecture 7). A full-suite process remains intermittently blocked
-  by Windows Application Control before affected assertions start (0x800711C7).
-Final quality gates (2026-07-31): Release build --warnaserror 0/0;
-  dotnet format verify passed; NuGet audit clean; source JSON 89/89 parsed;
-  Markdown relative links 54/54 resolved; portable dependency scan passed.
-WP2 regression before WP3: 333/333 passed
-WP2 Release build --warnaserror / format / demo: passed
-WP2 Release full xUnit: host policy 0x800711C7 reproduced; policy-safe
-  Application 15/15, Algorithms 45/45, Runner 46/46 + child process 3/3 passed
-WP3 foundation evidence:
-  10/10 budget dimensions exact-boundary tested
-  hard zero and unbounded semantics tested
-  canonical overflow gives an exact dimension witness; unknown enum/lock bits fail
-  monotonic feasible-set samples: 441/441
-  initial ledger zero + exact version/P1 conservation/no-refund tested
-  publication id is globally unique; promise service order rejects pickup-after-drop
-  node/edge shared schedule + initial/onboard promise tested
-  exogenous/decision/visible all-dimension delta tested independently
-  pending ledger/ACK atomicity tested
-  accepted/onboard/freeze/final-confirmation locks tested
-Paper review:
-  Multiple-plan dynamic DARP, Time-consistent DARP and forward-looking
-  dispatch full text rechecked; claim boundary unchanged
-DOCX inventory:
-  no .docx found in RideBound or E:\Code
-Browser:
-  in-app Browser unavailable; optional web lookup skipped because local direct
-  PDFs and existing evidence were sufficient
-Final recheck date: 2026-07-31
+
+Required command on 2026-08-02:
+  dotnet test RideBound.slnx
+  Result: host-policy blocked, not a full-solution pass.
+  Passed before/around the block: Architecture 7, Domain 134, Application 34,
+    Algorithms 48 and 5 Runner cases.
+  Contracts discovery and remaining Runner loads were blocked by Windows
+    Application Control 0x800711C7.
+
+Supplemental same-tree assertion evidence:
+  Contracts Release: 133/133 passed.
+  Domain Debug in required attempt: 134/134 passed.
+  Application Debug in required attempt: 34/34 passed.
+  Algorithms Debug in required attempt: 48/48 passed.
+  Architecture Debug in required attempt: 7/7 passed.
+  Runner exact xUnit methods through self-contained policy-safe harness:
+    54/54 non-child-process cases passed.
+  Runner child-process cases: 4/4 behavior passed independently:
+    Q1 transcript two byte-exact clean processes;
+    Q1 stdout/stderr diagnostic isolation;
+    WP2 demo two byte-exact clean processes;
+    WP3 commitment demo + checkpoint restore clean processes.
+
+Quality/replay gates:
+  Release build --warnaserror: 0 warnings, 0 errors.
+  dotnet format --verify-no-changes --no-restore: passed after import-order fix.
+  source JSON parse: 104/104 passed.
+  Markdown: 58 files, 112 relative links, balanced fences.
+  portable dependency scan: passed; NuGet direct/transitive audit: clean.
+  git diff --check: passed (only configured LF→CRLF worktree warnings).
+  WP2 final decision hash:
+    c95c3f7e651a5ff5f366051538ecc53663696baa13fbec967d769af5f3c5d90f
+  WP3 final decision hash:
+    54ebbbdda6753654aab43d522d9d24bffefe56426275035d685ecc8588371589
+  WP3 final state hash:
+    d91c91c661dd3a2d2de6d5e214bef2a55a9384d635520ca7d5bdbe9d15694527
+  Checkpoint restore suffix: byte-equal to uninterrupted genesis replay.
+  WP2/WP3 scripts write explicit UTF-8 without BOM and reject non-empty stderr,
+    removing PowerShell 5/7 native-pipeline encoding ambiguity.
+
+WP3 correctness evidence:
+  all 10 vector dimensions have exact-boundary and killing mutations;
+  hard zero/unbounded/overflow/unknown vocabulary semantics are explicit;
+  64 seeds × 12 generated ledger revisions preserve P1/no-refund;
+  16 independent exact-small seeds match P2 normal hard-gate behavior;
+  16 P3 seeds prove relaxing ETA hard limit 40→160 cannot shrink feasible set;
+  physical/state-boundary/lock/budget order is independently recomputed;
+  incident breach, certificate publication IDs and checkpoint relations are
+    structurally cross-validated rather than trusted from solver output.
+
+Browser research recheck using the in-app Browser:
+  Gaul et al. 2021 rolling-horizon MILP;
+  Schulz & Pfeiffer 2026 forward slack/precomputation;
+  Geržinič et al. 2023 stated-preference survey;
+  Tiwari et al. 2024 weighted/Pareto/lexicographic objectives;
+  Ackermann & Rieck 2025 multiple-plan dynamic DARP.
+  Outcome: no numeric paper default adopted; hard gate stays outside objective;
+  schedule strategy, bounded precompute and multiple-plan belong to WP4.
+
+Claim limit:
+  414 is logical assertion inventory, not a full-solution xUnit pass on this host.
+  WP3 proves mechanical correctness in published small bounds, not scale,
+  effectiveness, solver optimality or user satisfaction.
+Final recheck date: 2026-08-02
 ```
 
 ### CI hardening task
@@ -413,22 +469,22 @@ Date: 2026-07-28
 
 ## 5. Next action
 
-WP2 đã Complete và được commit riêng tại `07432ce`. WP3 đang `IN_PROGRESS`;
-refinement + nửa đầu queue `RB-WP3-001..007` đã DONE với 378/378 assertions
-đã pass khi chạy theo suite trên cùng source tree. Foundation
-đã có promise/projection/delta/ledger/budget/locks nhưng chưa nối vào Runner và
-chưa có independent combined validator/certificate/checkpoint, nên chưa có P2
-guarantee.
+WP1, WP2 và WP3 đã Complete. WP3 đóng đủ `RB-WP3-001..014` bằng ADR-022;
+validator/certificate/checkpoint đã chạy trên cùng Runner/state/hash/ACK boundary.
+Review code chỉ ra WP4 phải xử lý schedule/candidate/solver quality, không mở rộng
+claim WP3.
 
-Ticket duy nhất đang `READY`:
+Ticket duy nhất `READY`:
 
-> `RB-WP3-008` — Incident lifecycle và breach ledger tách normal operation,
-> không reset/refund history.
+> `RB-WP4-001` — refinement RideBound policies và solver; production WP4 code
+> chưa được phép trước khi ticket này DONE.
 
 Chi tiết:
-[28-wp3-ledger-certificate-ticket-plan.md](tasks/28-wp3-ledger-certificate-ticket-plan.md).
-Không bắt đầu certificate/Runner sớm hơn dependency, C1, OR-Tools, adapter hoặc
-tự chọn mức budget O-002/O-003.
+[29-wp4-algorithms-solver-refinement.md](tasks/29-wp4-algorithms-solver-refinement.md).
+Ticket phải khóa 12 quyết định về candidate fairness/loss, schedule strategy,
+slack/precompute, intra-route repair, multiple-plan, lexicographic/Pareto,
+C1/C2, OR-Tools, deadline/fallback, equivalence và publication. Không tự chọn
+O-002/O-003/O-004, không mở reassignment O-001 và không bắt đầu adapter WP5+.
 
 ## 6. Open decisions
 
@@ -894,6 +950,63 @@ ghi riêng, không tính là assertion failure.
 self-binding trong `07`; không đổi protocol hash framing ADR-014/016/017, không
 mở reassignment O-001 và không chọn O-002/O-003.
 
+### ADR-022 — 2026-08-02 — Accepted
+
+**Context:** `RB-WP3-008..014` phải biến vocabulary/foundation của ADR-021 thành
+publication gate thực sự. Audit toàn tuyến phát hiện các đường đi mà test cục bộ
+trước đó chưa khóa: candidate có thể mutate state ngoài route, genesis vehicle
+có thể preload pending stop, checkpoint có thể chụp pending decision hoặc dựng
+state không reachable, certificate có thể không khớp publication actions, breach
+có thể không khớp normal ledger và initial state hash chưa bao phủ full state.
+Đồng thời B1 chỉ tối ưu exhaustive trong candidate set đã sinh; earliest-feasible,
+single-plan, four-pending bound và incumbent-order preservation không phải
+state-of-the-art optimization đầy đủ.
+
+**Decision:** Hoàn thành đủ 14 ticket WP3 như một hard correctness boundary.
+Incident/breach là immutable ledger riêng. `CommitmentDecisionValidator` tự dựng
+lại physical feasibility, immutable state boundary, promise/delta, locks và
+budget; candidate filter chỉ early-prune, Runner luôn full-fleet revalidate.
+Produced certificate phải bind exact input/proposed state hash và tập publication
+ID trong actions. Commitment policy là canonical named config có content hash.
+Checkpoint chỉ được phát khi không có pending decision và restore phải qua hash,
+manifest, travel identity, genesis/post-genesis reachability cùng ledger/breach
+cross-relations. Publication vẫn commit duy nhất tại matching ACK.
+
+**Optimization/claim decision:** Hard vector không được nén vào weighted scalar
+hoặc đưa vào objective như soft preference. WP3 chứng minh feasibility/auditability,
+không chứng minh C1 tốt hơn B1. Inversion/relocation/vehicle-switch dimensions
+được validator hỗ trợ nhưng B1 hiện không chủ động sinh chúng. Schedule strategy,
+candidate loss, forward slack/precompute, multiple-plan pool, lexicographic/Pareto
+selection và OR-Tools thuộc `RB-WP4-001` refinement. Không sao chép số horizon,
+runtime hoặc stated preference từ paper thành default.
+
+**Paper/claim evidence:** In-app Browser đối chiếu Gaul et al. (2021), Schulz &
+Pfeiffer (2026), Geržinič et al. (2023), Tiwari et al. (2024), Ackermann & Rieck
+(2025). Evidence hỗ trợ rolling horizon, slack/precompute, history sensitivity,
+lexicographic/Pareto và multiple-plan baselines nhưng không cấp một universal
+numeric policy hoặc novelty claim mới. Mapping chi tiết nằm trong `03` và `21`.
+
+**Alternatives considered:** trust solver-provided delta/certificate; chỉ thêm
+if/else vào `RollingCostPolicy`; serialize partial checkpoint; dùng incident để
+refund budget; triển khai OR-Tools ngay; gọi current B1 globally optimal; lấy
+10–15 phút/99.5%/survey coefficients làm default.
+
+**Consequences:** WP3 Complete; logical inventory 414. Required full-solution
+command vẫn bị Windows Application Control `0x800711C7` chặn fresh DLL, nên
+evidence được tách minh bạch thành unaffected suites, 54/54 policy-safe Runner
+methods và bốn clean-process cases; không gọi đó là full-solution pass. Chỉ
+`RB-WP4-001` refinement READY, không production WP4 implementation nào READY.
+
+**Evidence:** `Domain/Incidents`, `Application/Commitments`, commitment filter,
+strict Contracts/schema, `Runner/Configuration`, `OnlineStateCheckpointCodec`,
+WP3 tiny scenario/script, exact-small/property/mutation tests,
+`reviews/wp1-wp3/README.md`, `tasks/28` và `tasks/29`; Release build/format và
+published replay hashes trong mục 4.
+
+**Supersedes / superseded by:** Hoàn tất executable semantics của ADR-021 và
+đóng WP3; không supersede ADR-014/016/017 hash framing, ADR-018 O-001 hoặc
+ADR-020 physical B1 semantics. ADR-023 của WP4 chỉ được bổ sung sau refinement.
+
 ## 8. Work package tracker
 
 | WP | Trạng thái | Bắt đầu | Kết thúc | Evidence |
@@ -901,8 +1014,8 @@ mở reassignment O-001 và không chọn O-002/O-003.
 | WP0 Scaffold | Complete | 2026-07-28 | 2026-07-28 | build + 8 RideBound + 25 backend + 7 frontend tests |
 | WP1 Contracts | Complete; Q1 Release revalidated with host-policy exception | 2026-07-29 | 2026-07-29 | ADR-014–017 + 157/157 closure + WP1 revalidation 161/161 + replay/hash proof |
 | WP2 Online baseline | Complete; physical/B1 gate, Debug 333/333; Release host-policy exception recorded | 2026-07-29 | 2026-07-30 | ADR-018–020 + Debug 333/333 + Release bundles + two-process tiny replay |
-| WP3 Ledger/certificate | In progress; `001..007` DONE, `008` READY | 2026-07-31 | — | ADR-021 + `tasks/28-wp3-ledger-certificate-ticket-plan.md` + current-tree 378/378 suite evidence |
-| WP4 Algorithms/solver | Not started | — | — | — |
+| WP3 Ledger/certificate | Complete; `001..014` DONE, host-policy exception recorded | 2026-07-31 | 2026-08-02 | ADR-021/022 + `tasks/28` + 414 logical assertions + WP3 process/checkpoint replay |
+| WP4 Algorithms/solver | Refinement ready; no implementation ready | — | — | `RB-WP4-001` in `tasks/29-wp4-algorithms-solver-refinement.md` |
 | WP5 BeGo integration | Not started | — | — | — |
 | WP6 Benchmark harness | Not started | — | — | — |
 | WP7 FleetPy | Not started | — | — | — |
@@ -914,6 +1027,22 @@ mở reassignment O-001 và không chọn O-002/O-003.
 
 ## 9. Change history
 
+- 2026-08-02: Hoàn thành `RB-WP3-008..014` và đóng WP3 bằng ADR-022. Thêm
+  incident/breach separation, independent full-state commitment validator,
+  strict certificate/action/schema cross-binding, named configuration hash,
+  Runner commitment publication/ACK, canonical checkpoint/restore và evidence
+  property/mutation/exact-small/process. Audit toàn WP1–WP3 sửa thêm state-boundary,
+  genesis-route, sequence exhaustion, pickup-window, breach/ledger và checkpoint
+  reachability bugs; sửa cả WP2/WP3 demo pipe để stdin UTF-8 không BOM và không
+  phụ thuộc PowerShell host. Browser recheck 5 paper khóa claim/tối ưu còn thiếu cho WP4.
+  Inventory 414; Release build/format và WP1/WP2/WP3 clean replay pass. Required
+  full solution bị host policy `0x800711C7`, được tách minh bạch thành suite/
+  policy-safe/process evidence. Tạo review `docs/reviews/wp1-wp3/README.md`; chỉ
+  `RB-WP4-001` refinement READY, chưa có production WP4 code.
+- 2026-08-02: Bắt đầu `RB-WP3-008` sau khi đọc lại toàn bộ tài liệu bắt buộc,
+  README, đặc tả và execution plan WP1–WP3; baseline full-solution tái hiện đúng
+  Windows Application Control `0x800711C7` đã ghi trước đó. Chưa nâng trạng thái
+  implementation; đang audit source và incident/breach boundary trước code.
 - 2026-07-30: Revalidate WP2 end-to-end rồi commit riêng `07432ce`. Hoàn thành
   refinement ADR-021/queue 14 ticket và triển khai đúng nửa WP3 `001..007`:
   promise/policy/vector, shared schedule/promise projection, three-way delta,

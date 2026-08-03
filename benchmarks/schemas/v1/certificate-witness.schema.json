@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/tsunflowerr/RideBound/main/benchmarks/schemas/v1/certificate-witness.schema.json",
+  "title": "RideBound certificate witness v1",
+  "type": "object",
+  "required": ["stage", "code"],
+  "properties": {
+    "stage": { "$ref": "definitions.schema.json#/$defs/opaqueIdentifier" },
+    "code": { "$ref": "definitions.schema.json#/$defs/opaqueIdentifier" },
+    "vehicleId": { "$ref": "definitions.schema.json#/$defs/opaqueIdentifier" },
+    "requestId": { "$ref": "definitions.schema.json#/$defs/opaqueIdentifier" },
+    "dimension": { "$ref": "definitions.schema.json#/$defs/opaqueIdentifier" },
+    "rule": { "$ref": "definitions.schema.json#/$defs/opaqueIdentifier" },
+    "limit": { "$ref": "definitions.schema.json#/$defs/canonicalNonNegativeInteger" },
+    "before": { "$ref": "definitions.schema.json#/$defs/canonicalNonNegativeInteger" },
+    "delta": { "$ref": "definitions.schema.json#/$defs/canonicalNonNegativeInteger" },
+    "after": { "$ref": "definitions.schema.json#/$defs/canonicalNonNegativeInteger" }
+  },
+  "additionalProperties": false
+}

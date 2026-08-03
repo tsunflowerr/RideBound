@@ -108,9 +108,58 @@
       "implementationStatus": "implemented"
     },
     {
+      "contractType": "RideBound.Contracts.Protocol.CommitmentVectorContract",
+      "messageType": "commitment-vector",
+      "schema": "commitment-vector.schema.json",
+      "fixtureDirectory": "../fixtures/runner",
+      "implementationStatus": "implemented"
+    },
+    {
+      "contractType": "RideBound.Contracts.Protocol.PromiseProjectionContract",
+      "messageType": "promise-projection",
+      "schema": "promise-projection.schema.json",
+      "fixtureDirectory": "../fixtures/runner",
+      "implementationStatus": "implemented"
+    },
+    {
+      "contractType": "RideBound.Contracts.Protocol.PromisePublishedActionPayload",
+      "messageType": "promisePublished",
+      "schema": "promise-published-action-payload.schema.json",
+      "fixtureDirectory": "../fixtures/runner",
+      "implementationStatus": "implemented"
+    },
+    {
+      "contractType": "RideBound.Contracts.Protocol.CommitmentBreachDeclaredActionPayload",
+      "messageType": "commitmentBreachDeclared",
+      "schema": "commitment-breach-declared-action-payload.schema.json",
+      "fixtureDirectory": "../fixtures/runner",
+      "implementationStatus": "implemented"
+    },
+    {
+      "contractType": "RideBound.Contracts.Protocol.CommitmentCertificateBody",
+      "messageType": "decision-certificate",
+      "schema": "commitment-certificate-body.schema.json",
+      "fixtureDirectory": "../fixtures/runner",
+      "implementationStatus": "implemented"
+    },
+    {
       "contractType": "RideBound.Contracts.Protocol.DecisionAppliedPayload",
       "messageType": "decisionApplied",
       "schema": "decision-applied.schema.json",
+      "fixtureDirectory": "../fixtures/runner",
+      "implementationStatus": "implemented"
+    },
+    {
+      "contractType": "RideBound.Contracts.Protocol.CheckpointPayload",
+      "messageType": "checkpoint|restore-input",
+      "schema": "checkpoint-payload.schema.json",
+      "fixtureDirectory": "../fixtures/runner",
+      "implementationStatus": "implemented"
+    },
+    {
+      "contractType": "RideBound.Contracts.Protocol.RestoreAcknowledgedPayload",
+      "messageType": "restore-output",
+      "schema": "restore-acknowledged-payload.schema.json",
       "fixtureDirectory": "../fixtures/runner",
       "implementationStatus": "implemented"
     },
@@ -130,7 +179,7 @@
     },
     {
       "contractType": "vocabulary-only",
-      "messageType": "checkpoint|restore|finalizeRun|runSummary|shutdown",
+      "messageType": "finalizeRun|runSummary|shutdown",
       "schema": "protocol-envelope.schema.json",
       "fixtureDirectory": "../fixtures/protocol",
       "implementationStatus": "payload-future-work-package"

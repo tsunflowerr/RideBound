@@ -9,7 +9,7 @@
 ## 1. Outcome
 
 WP2 biến protocol/replay oracle của WP1 thành một baseline online B1 có state
-thật, nhưng chưa có commitment ledger. Kết thúc topic phải có:
+thật, nhưng   có commitment ledger. Kết thúc topic phải có:
 
 - state machine của run, request và vehicle bằng kiểu Domain thuần;
 - reducer áp ordered event batch nguyên tử;

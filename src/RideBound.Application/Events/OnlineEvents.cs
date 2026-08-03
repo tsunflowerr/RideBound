@@ -1,5 +1,6 @@
 using RideBound.Application.Travel;
 using RideBound.Domain.Common;
+using RideBound.Domain.Incidents;
 using RideBound.Domain.Requests;
 using RideBound.Domain.Vehicles;
 
@@ -65,6 +66,20 @@ public sealed record TravelTimesUpdated(
     TravelTimeSnapshot Snapshot) : OnlineEvent(EventSequence, SimulationTime);
 
 public sealed record TimerTick(long EventSequence, SimTime SimulationTime)
+    : OnlineEvent(EventSequence, SimulationTime);
+
+public sealed record IncidentOpened(
+    long EventSequence,
+    SimTime SimulationTime,
+    IncidentId IncidentId,
+    string ReasonCode,
+    IReadOnlyList<VehicleId> VehicleIds)
+    : OnlineEvent(EventSequence, SimulationTime);
+
+public sealed record IncidentResolved(
+    long EventSequence,
+    SimTime SimulationTime,
+    IncidentId IncidentId)
     : OnlineEvent(EventSequence, SimulationTime);
 
 public sealed record InternalEventBatch(

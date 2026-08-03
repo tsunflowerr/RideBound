@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/tsunflowerr/RideBound/main/benchmarks/schemas/v1/checkpoint.schema.json",
+  "title": "RideBound checkpoint message v1",
+  "allOf": [
+    { "$ref": "protocol-envelope.schema.json" },
+    {
+      "type": "object",
+      "properties": {
+        "messageType": { "const": "checkpoint" },
+        "payload": {
+          "oneOf": [
+            { "$ref": "empty-action-payload.schema.json" },
+            { "$ref": "checkpoint-payload.schema.json" }
+          ]
+        }
+      }
+    }
+  ]
+}

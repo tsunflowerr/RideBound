@@ -328,7 +328,7 @@ Từ `RB-WP2-002`, `protocol-event.schema.json` dispatch payload theo exact
 | boarding/alighting | `{ vehicleId, requestId, planVersion }` |
 | `travelTimesUpdated` | `{ snapshot: { version, snapshotHash, arcs[] } }` |
 | `timerTick` | `{}` |
-| incident open/resolve | typed identity/reason payload; reducer WP2 vẫn từ chối vì behavior thuộc WP3 |
+| incident open/resolve | typed identity/reason payload; WP3 reducer mở/resolve immutable incident ledger và derive affected riders |
 
 Route gồm exact ordered `frozenPrefix`/`mutableSuffix`; stop pickup/drop bắt
 buộc có `requestId`, waypoint phải omit. Directed travel arcs là semantic set,
@@ -514,10 +514,10 @@ diagnostic để tránh circular/nondeterministic input. Schema của RB-WP1-009
 đánh dấu từng field include/exclude; field không được phân loại thì fixture/hash
 test phải fail.
 
-ADR-021 áp cùng nguyên tắc cho WP3: ledger state lưu `publicationId`, không lưu
-current `decisionHash`; certificate body bind input/state/publication và được
-bind bởi decision envelope hash. Ticket `RB-WP3-010..011` phải giữ hash projection
-không vòng này khi mở certificate `produced`.
+ADR-021/022 áp cùng nguyên tắc cho WP3: ledger state lưu `publicationId`, không
+lưu current `decisionHash`; certificate body bind input/state/publication và
+được bind bởi decision envelope hash. `RB-WP3-010..011` đã hiện thực cross-check
+không vòng này cho certificate `produced` và exact publication actions.
 
 Nhờ domain separation, length framing và chain hash, có thể phát hiện thiếu, đổi
 thứ tự hoặc sửa event/decision mà không có ambiguity do nối chuỗi.
@@ -672,3 +672,25 @@ Decision chưa khóa trong ticket này:
   không đạt thì adapter công bố `nodeOnly` và fail/downgrade theo policy;
 - exact minor-version compatibility matrix được hiện thực và kiểm ở RB-WP1-005,
   nhưng không được đổi các semantic đã khóa ở bảng trên.
+
+## 15. Checkpoint và commitment wire boundary sau WP3
+
+Protocol v1 có thêm `checkpoint`/`restore`, `promisePublished` và
+`commitmentBreachDeclared`. Checkpoint hash dùng domain riêng trên canonical content
+và chứa manifest hash, committed state hash, previous decision hash, epoch, next
+event sequence, simulation time và canonical online state.
+
+Các guard bắt buộc:
+
+- chỉ checkpoint committed state khi không còn decision chờ ACK;
+- restore chỉ trên session online vừa initialize, không có pending/epoch đã chạy;
+- manifest/run/scenario/state hash và inner/outer epoch-sequence-time phải khớp;
+- restore decoder dựng lại Domain objects, kiểm cross-entity relations rồi yêu cầu
+  bytes canonical dựng lại trùng input;
+- certificate state hashes phải trùng decision state hashes và publication IDs
+  phải trùng unique `promisePublished` actions;
+- full replay từ genesis và replay suffix sau restore phải byte/hash-equivalent.
+
+Schema `onlineState` chỉ mô tả object envelope; strict semantic validation nằm ở
+`OnlineStateCheckpointCodec`. Đây là chủ ý vì JSON Schema không diễn đạt được toàn
+bộ lifecycle/route/ledger cross-relations.

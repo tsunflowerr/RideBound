@@ -1,11 +1,11 @@
 # WP3 — ordered ticket plan cho ledger và certificate
 
 > Topic: `RB-WP3`
-> Trạng thái: `IN_PROGRESS — 7/14 ticket DONE`
-> Cập nhật: 2026-07-30
+> Trạng thái: `COMPLETE — 14/14 ticket DONE`
+> Cập nhật: 2026-08-02
 > Dependency: `RB-WP2-012 DONE`
 > Quyết định chuẩn: ADR-021 trong `../18-status-and-decision-log.md`
-> Ticket kế tiếp duy nhất: `RB-WP3-008 READY`
+> Ticket implementation WP3 hiện hành: `NONE`; handoff duy nhất là `RB-WP4-001 READY`
 
 ## 1. Outcome và giới hạn
 
@@ -59,13 +59,13 @@ WP3 không:
 | `RB-WP3-005` | append-only ledger + OnlineState/ACK boundary | DONE |
 | `RB-WP3-006` | hard vector budget evaluator/witness | DONE |
 | `RB-WP3-007` | phase-lock evaluator | DONE |
-| `RB-WP3-008` | incident lifecycle và breach ledger | READY |
-| `RB-WP3-009` | independent commitment validator | PROPOSED |
-| `RB-WP3-010` | certificate/action contracts và schemas | PROPOSED |
-| `RB-WP3-011` | Runner atomic publication/hash/ACK integration | PROPOSED |
-| `RB-WP3-012` | canonical checkpoint/restore | PROPOSED |
-| `RB-WP3-013` | mutation/property/exact-small/replay evidence | PROPOSED |
-| `RB-WP3-014` | WP3 closure và WP4 refinement handoff | PROPOSED |
+| `RB-WP3-008` | incident lifecycle và breach ledger | DONE |
+| `RB-WP3-009` | independent commitment validator | DONE |
+| `RB-WP3-010` | certificate/action contracts và schemas | DONE |
+| `RB-WP3-011` | Runner atomic publication/hash/ACK integration | DONE |
+| `RB-WP3-012` | canonical checkpoint/restore | DONE |
+| `RB-WP3-013` | mutation/property/exact-small/replay evidence | DONE |
+| `RB-WP3-014` | WP3 closure và WP4 refinement handoff | DONE |
 
 ## 4. Common rules và gate
 
@@ -494,11 +494,25 @@ audit; clean-process bundle; next action duy nhất.
 | Incident làm đẹp budget metric | breach record + separated certificate | `008`,`013` | disable incident optimization path |
 | Checkpoint che divergence | genesis-vs-restore equivalence | `012`,`013` | force genesis replay |
 
-## 7. Trạng thái nửa đầu
+## 7. Trạng thái đóng WP3
 
-`RB-WP3-001..007` hoàn thành foundation có executable tests: promise/policy model,
-shared schedule projection, three-way delta, immutable ledger trong pending/ACK
-state, hard vector budget và phase locks. Chưa có incident, independent combined
-validator, wire certificate `produced`, Runner commitment publication, checkpoint
-hay WP3 exact-small closure. Vì vậy WP3 vẫn `IN_PROGRESS`, P2 chưa được gọi là
-guarantee và ticket kế tiếp duy nhất là `RB-WP3-008`.
+`RB-WP3-001..014` đã hoàn thành. Nửa sau thêm incident/breach ledger, validator
+độc lập, certificate/action/schema strict, Runner commitment mode với atomic
+publication/hash/ACK, canonical checkpoint/restore, property/mutation-killing/
+exact-small/replay evidence và closure audit.
+
+Các sửa lỗi tìm được khi audit toàn tuyến, không chỉ khi viết ticket cục bộ:
+
+- candidate filter phải accept request mới trước khi project promise;
+- initial online state hash phải là full canonical state;
+- checkpoint bị cấm khi decision còn chờ ACK;
+- parser distance phải đọc đúng `distanceMm` và cấm same-node ambiguity;
+- genesis vehicle không được preload pending rider trong route;
+- certificate hashes/publication IDs phải khớp containing decision/actions;
+- breach budget/incident vehicle và restored breach/ledger promise phải khớp;
+- pickup thực tế phải nằm trong accepted pickup window.
+
+WP3 chứng minh cơ chế correctness trong published small bound; chưa claim scale,
+effectiveness, solver optimality hoặc user satisfaction. Ticket kế tiếp duy nhất là
+`RB-WP4-001` trong
+[29-wp4-algorithms-solver-refinement.md](29-wp4-algorithms-solver-refinement.md).

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/tsunflowerr/RideBound/main/benchmarks/schemas/v1/promise-service-token.schema.json",
+  "title": "RideBound promise service token v1",
+  "type": "object",
+  "required": ["stopId", "kind"],
+  "properties": {
+    "stopId": { "$ref": "definitions.schema.json#/$defs/opaqueIdentifier" },
+    "requestId": { "$ref": "definitions.schema.json#/$defs/opaqueIdentifier" },
+    "kind": { "type": "string", "enum": ["waypoint", "pickup", "dropOff"] }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "kind": { "const": "waypoint" } } },
+      "then": { "not": { "required": ["requestId"] } },
+      "else": { "required": ["requestId"] }
+    }
+  ],
+  "additionalProperties": false
+}

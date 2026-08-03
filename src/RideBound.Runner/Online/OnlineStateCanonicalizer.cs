@@ -6,7 +6,9 @@ using System.Text.Json;
 using RideBound.Application.State;
 using RideBound.Contracts.Protocol;
 using RideBound.Contracts.Serialization;
+using RideBound.Domain.Commitments;
 using RideBound.Domain.Common;
+using RideBound.Domain.Incidents;
 using RideBound.Domain.Requests;
 using RideBound.Domain.Routes;
 
@@ -32,6 +34,9 @@ public static class OnlineStateCanonicalizer
                 "simulationTimeMs",
                 state.Run.SimulationTime.Milliseconds);
             writer.WriteNumber("nextEventSeq", state.NextEventSequence);
+            writer.WriteString(
+                "expectedInitialTravelTimeSnapshotHash",
+                state.ExpectedInitialTravelTimeSnapshotHash);
             writer.WritePropertyName("requests");
             writer.WriteStartArray();
 
@@ -105,6 +110,11 @@ public static class OnlineStateCanonicalizer
                 writer.WriteEndArray();
                 writer.WriteEndObject();
             }
+
+            writer.WritePropertyName("commitmentLedger");
+            WriteCommitmentLedger(writer, state.Commitments);
+            writer.WritePropertyName("incidentLedger");
+            WriteIncidentLedger(writer, state.Incidents);
 
             writer.WriteEndObject();
         }
@@ -274,6 +284,261 @@ public static class OnlineStateCanonicalizer
                 "cancelledAfterAcceptance",
             _ => throw new ArgumentOutOfRangeException(nameof(lifecycle)),
         };
+
+    private static void WriteCommitmentLedger(
+        Utf8JsonWriter writer,
+        CommitmentLedger ledger)
+    {
+        writer.WriteStartArray();
+
+        foreach (var history in ledger.Histories.Values.OrderBy(
+                     value => value.RequestId.Value,
+                     StringComparer.Ordinal))
+        {
+            writer.WriteStartObject();
+            writer.WriteString("requestId", history.RequestId.Value);
+            writer.WritePropertyName("entries");
+            writer.WriteStartArray();
+
+            foreach (var entry in history.Entries)
+            {
+                writer.WriteStartObject();
+                writer.WriteString("publicationId", entry.PublicationId);
+                writer.WriteString(
+                    "kind",
+                    entry.Kind == CommitmentLedgerEntryKind.InitialPromise
+                        ? "initialPromise"
+                        : "revision");
+                writer.WritePropertyName("publishedPromise");
+                WritePublishedPromise(writer, entry.PublishedPromise);
+
+                if (entry.PreviousPromise is not null)
+                {
+                    writer.WritePropertyName("previousPromise");
+                    WritePublishedPromise(writer, entry.PreviousPromise);
+                }
+
+                writer.WritePropertyName("exogenousProjection");
+                WritePromiseProjection(writer, entry.ExogenousProjection);
+                writer.WritePropertyName("deltas");
+                writer.WriteStartObject();
+                writer.WritePropertyName("exogenous");
+                WriteVector(writer, entry.Deltas.Exogenous);
+                writer.WritePropertyName("decisionInduced");
+                WriteVector(writer, entry.Deltas.DecisionInduced);
+                writer.WritePropertyName("visible");
+                WriteVector(writer, entry.Deltas.Visible);
+                writer.WriteEndObject();
+                writer.WritePropertyName("budgetBefore");
+                WriteVector(writer, entry.BudgetBefore);
+                writer.WritePropertyName("budgetAfter");
+                WriteVector(writer, entry.BudgetAfter);
+
+                if (entry.BudgetBasis is CommitmentBudgetBasis budgetBasis)
+                {
+                    writer.WriteString(
+                        "budgetBasis",
+                        budgetBasis == CommitmentBudgetBasis.DecisionInduced
+                            ? "decisionInduced"
+                            : "customerVisible");
+                }
+
+                writer.WriteString("reasonCode", entry.ReasonCode);
+                writer.WriteNumber(
+                    "sourceEventSeq",
+                    entry.SourceEventSequence);
+                writer.WriteEndObject();
+            }
+
+            writer.WriteEndArray();
+            writer.WriteEndObject();
+        }
+
+        writer.WriteEndArray();
+    }
+
+    private static void WriteIncidentLedger(
+        Utf8JsonWriter writer,
+        OperationalIncidentLedger ledger)
+    {
+        writer.WriteStartObject();
+        writer.WritePropertyName("incidents");
+        writer.WriteStartArray();
+
+        foreach (var incident in ledger.Incidents.Values.OrderBy(
+                     value => value.Id.Value,
+                     StringComparer.Ordinal))
+        {
+            writer.WriteStartObject();
+            writer.WriteString("incidentId", incident.Id.Value);
+            writer.WriteString("reasonCode", incident.ReasonCode);
+            WriteIdentifiers(
+                writer,
+                "affectedVehicleIds",
+                incident.AffectedVehicleIds.Select(value => value.Value));
+            WriteIdentifiers(
+                writer,
+                "affectedRequestIds",
+                incident.AffectedRequestIds.Select(value => value.Value));
+            writer.WriteNumber(
+                "openedEventSeq",
+                incident.OpenedEventSequence);
+            writer.WriteNumber(
+                "openedAtMs",
+                incident.OpenedAt.Milliseconds);
+
+            if (incident.ResolvedEventSequence is long resolvedSequence)
+            {
+                writer.WriteNumber("resolvedEventSeq", resolvedSequence);
+                writer.WriteNumber(
+                    "resolvedAtMs",
+                    incident.ResolvedAt!.Value.Milliseconds);
+            }
+
+            writer.WriteEndObject();
+        }
+
+        writer.WriteEndArray();
+        writer.WritePropertyName("breaches");
+        writer.WriteStartArray();
+
+        foreach (var breach in ledger.Breaches)
+        {
+            writer.WriteStartObject();
+            writer.WriteString("breachId", breach.BreachId);
+            writer.WriteString("incidentId", breach.IncidentId.Value);
+            writer.WriteString("requestId", breach.RequestId.Value);
+            writer.WritePropertyName("previousPromise");
+            WritePublishedPromise(writer, breach.PreviousPromise);
+            writer.WritePropertyName("exogenousProjection");
+            WritePromiseProjection(writer, breach.ExogenousProjection);
+            writer.WritePropertyName("safetyProjection");
+            WritePromiseProjection(writer, breach.SafetyProjection);
+            writer.WritePropertyName("deltas");
+            writer.WriteStartObject();
+            writer.WritePropertyName("exogenous");
+            WriteVector(writer, breach.Deltas.Exogenous);
+            writer.WritePropertyName("decisionInduced");
+            WriteVector(writer, breach.Deltas.DecisionInduced);
+            writer.WritePropertyName("visible");
+            WriteVector(writer, breach.Deltas.Visible);
+            writer.WriteEndObject();
+            writer.WritePropertyName("budgetBefore");
+            WriteVector(writer, breach.BudgetBefore);
+            writer.WritePropertyName("attemptedBudgetAfter");
+            WriteVector(writer, breach.AttemptedBudgetAfter);
+            WriteIdentifiers(writer, "witnessCodes", breach.WitnessCodes);
+            writer.WriteNumber("sourceEventSeq", breach.SourceEventSequence);
+            writer.WriteNumber("recordedEpoch", breach.RecordedEpoch);
+            writer.WriteNumber("recordedAtMs", breach.RecordedAt.Milliseconds);
+            writer.WriteBoolean("normalOperation", breach.NormalOperation);
+            writer.WriteEndObject();
+        }
+
+        writer.WriteEndArray();
+        writer.WriteEndObject();
+    }
+
+    private static void WritePublishedPromise(
+        Utf8JsonWriter writer,
+        PublishedPromise promise)
+    {
+        writer.WriteStartObject();
+        writer.WriteNumber("version", promise.Version.Value);
+        writer.WriteNumber("publishedEpoch", promise.PublishedEpoch);
+        writer.WriteNumber("publishedAtMs", promise.PublishedAt.Milliseconds);
+        writer.WritePropertyName("projection");
+        WritePromiseProjection(writer, promise.Projection);
+        writer.WriteEndObject();
+    }
+
+    private static void WritePromiseProjection(
+        Utf8JsonWriter writer,
+        PromiseProjection promise)
+    {
+        writer.WriteStartObject();
+        writer.WriteString("requestId", promise.RequestId.Value);
+        writer.WriteString("vehicleId", promise.VehicleId.Value);
+        writer.WriteString("pickupStopId", promise.PickupStopId.Value);
+        writer.WriteString("pickupNodeId", promise.PickupNodeId.Value);
+        writer.WriteString("dropStopId", promise.DropStopId.Value);
+        writer.WriteString("dropNodeId", promise.DropNodeId.Value);
+        writer.WriteNumber("pickupEtaMs", promise.PickupEta.Milliseconds);
+        writer.WriteNumber("dropEtaMs", promise.DropEta.Milliseconds);
+        writer.WritePropertyName("serviceOrder");
+        writer.WriteStartArray();
+
+        foreach (var token in promise.ServiceOrder)
+        {
+            writer.WriteStartObject();
+            writer.WriteString("stopId", token.StopId.Value);
+
+            if (token.RequestId is RequestId requestId)
+            {
+                writer.WriteString("requestId", requestId.Value);
+            }
+
+            writer.WriteString(
+                "kind",
+                token.Kind switch
+                {
+                    RideBound.Domain.Routes.RouteStopKind.Waypoint => "waypoint",
+                    RideBound.Domain.Routes.RouteStopKind.Pickup => "pickup",
+                    RideBound.Domain.Routes.RouteStopKind.DropOff => "dropOff",
+                    _ => throw new ArgumentOutOfRangeException(nameof(token)),
+                });
+            writer.WriteEndObject();
+        }
+
+        writer.WriteEndArray();
+        writer.WriteEndObject();
+    }
+
+    private static void WriteVector(
+        Utf8JsonWriter writer,
+        CommitmentVector value)
+    {
+        writer.WriteStartObject();
+        writer.WriteNumber("pickupEtaTotalMs", value.PickupEtaTotalMs);
+        writer.WriteNumber("dropEtaTotalMs", value.DropEtaTotalMs);
+        writer.WriteNumber(
+            "materialEtaRevisionCount",
+            value.MaterialEtaRevisionCount);
+        writer.WriteNumber("vehicleSwitchCount", value.VehicleSwitchCount);
+        writer.WriteNumber(
+            "pickupStopRelocationMm",
+            value.PickupStopRelocationMm);
+        writer.WriteNumber(
+            "pickupStopSwitchCount",
+            value.PickupStopSwitchCount);
+        writer.WriteNumber(
+            "dropStopRelocationMm",
+            value.DropStopRelocationMm);
+        writer.WriteNumber("dropStopSwitchCount", value.DropStopSwitchCount);
+        writer.WriteNumber(
+            "incumbentOrderInversionCount",
+            value.IncumbentOrderInversionCount);
+        writer.WriteNumber(
+            "prePickupInsertedStopCount",
+            value.PrePickupInsertedStopCount);
+        writer.WriteEndObject();
+    }
+
+    private static void WriteIdentifiers(
+        Utf8JsonWriter writer,
+        string propertyName,
+        IEnumerable<string> values)
+    {
+        writer.WritePropertyName(propertyName);
+        writer.WriteStartArray();
+
+        foreach (var value in values.Order(StringComparer.Ordinal))
+        {
+            writer.WriteStringValue(value);
+        }
+
+        writer.WriteEndArray();
+    }
 
     private static void WriteFrame(
         IBufferWriter<byte> writer,

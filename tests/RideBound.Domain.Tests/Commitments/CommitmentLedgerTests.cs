@@ -229,4 +229,72 @@ public sealed class CommitmentLedgerTests
         Assert.Equal("budgetBasis", result.Failure?.Dimension);
         Assert.Single(ledger.Histories[TestData.RequestOne].Entries);
     }
+
+    [Fact]
+    public void Deterministic_random_histories_conserve_all_dimensions_without_refund()
+    {
+        const int publishedSeedCount = 64;
+        const int revisionsPerHistory = 12;
+
+        for (var seed = 0; seed < publishedSeedCount; seed++)
+        {
+            var random = new Random(seed);
+            var initial = CommitmentLedger.Empty.OpenInitial(
+                $"seed-{seed}-publication-0",
+                CommitmentTestData.Projection(),
+                1,
+                new SimTime(1_000),
+                "INITIAL_ACCEPTANCE",
+                1).Ledger!;
+            var ledger = initial;
+            var expected = CommitmentVector.Zero;
+
+            for (var revision = 1; revision <= revisionsPerHistory; revision++)
+            {
+                var delta = new CommitmentVector(
+                    random.Next(0, 8),
+                    random.Next(0, 8),
+                    random.Next(0, 3),
+                    random.Next(0, 2),
+                    random.Next(0, 8),
+                    random.Next(0, 2),
+                    random.Next(0, 8),
+                    random.Next(0, 2),
+                    random.Next(0, 4),
+                    random.Next(0, 4));
+                var appended = ledger.AppendRevision(
+                    $"seed-{seed}-publication-{revision}",
+                    TestData.RequestOne,
+                    new PromiseVersion(revision),
+                    CommitmentTestData.Projection(),
+                    CommitmentTestData.Projection(),
+                    new ThreeWayPromiseDelta(
+                        CommitmentVector.Zero,
+                        delta,
+                        delta),
+                    CommitmentBudgetBasis.DecisionInduced,
+                    revision + 1,
+                    new SimTime(1_000 + revision),
+                    "PROPERTY_REPLAN",
+                    revision + 1);
+
+                Assert.True(
+                    appended.IsSuccess,
+                    $"seed={seed}; revision={revision}; " +
+                    appended.Failure?.Message);
+                ledger = appended.Ledger!;
+                expected = expected.Add(delta).Value!;
+                var current = ledger.Histories[TestData.RequestOne].Current;
+                Assert.Equal(expected, current.BudgetAfter);
+                Assert.Equal(
+                    current.BudgetBefore.Add(delta).Value,
+                    current.BudgetAfter);
+            }
+
+            Assert.Single(initial.Histories[TestData.RequestOne].Entries);
+            Assert.Equal(
+                revisionsPerHistory + 1,
+                ledger.Histories[TestData.RequestOne].Entries.Count);
+        }
+    }
 }

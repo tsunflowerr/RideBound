@@ -159,3 +159,24 @@ Không nhảy từ tầng 2 lên tầng 6.
 - Paper mới sau ngày audit đã được tìm bổ sung chưa?
 
 Nếu một câu trả lời là “không”, dừng claim và cập nhật evidence log.
+
+## 8. Recheck trực tuyến khi đóng WP3 — 2026-08-02
+
+Browser trong ứng dụng đã được dùng để đọc lại publisher/DOI của năm nguồn bổ
+sung: Gaul–Klamroth–Stiglmayr 2021, Schulz–Pfeiffer 2026, Geržinič et al. 2023,
+Tiwari–Nassir–Lavieri 2024 và Ackermann–Rieck 2025. Bảng chi tiết nằm trong
+[21-paper-to-design-evidence.md](21-paper-to-design-evidence.md).
+
+Audit này làm hẹp, không mở rộng, claim:
+
+- rolling-horizon insertion, immediate response, forward slack, precomputation,
+  multiple-plan và least-commitment đều đã có tiền lệ;
+- weighted-sum, Pareto và lexicographic objective đều là kỹ thuật đã biết;
+- quan sát preference/survey chỉ là động lực đo bất ổn, không phải căn cứ đặt
+  budget số hoặc tuyên bố hài lòng người dùng;
+- RideBound tiếp tục chỉ bảo vệ tổ hợp per-rider, path-dependent, 10 chiều,
+  cumulative/switch ledger qua nhiều epoch và certificate máy kiểm tra được.
+
+Vì vậy WP3 không được gọi là “solver tối ưu mới”. Nó là correctness mechanism.
+Hiệu quả vận hành và các tối ưu plan-pool/slack/solver phải được kiểm chứng ở WP4+
+trên cùng candidate/compute budget trước khi nâng claim ladder.

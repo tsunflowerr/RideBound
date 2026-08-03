@@ -119,7 +119,7 @@ public sealed class ExactSmallDifferentialTests
                     maxRideTime: 2_000);
                 var accepted = incumbent.Accept(vehicleId).Value!;
                 var waiting = accepted.ConfirmWaitingPickup().Value!;
-                var onboard = waiting.Board(vehicleId, new SimTime(900)).Value!;
+                var onboard = waiting.Board(vehicleId, new SimTime(1_000)).Value!;
                 run = run.AddRequest(onboard).Value!;
                 acceptedIds.Add(onboard.Id);
                 onboardIds.Add(onboard.Id);

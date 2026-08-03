@@ -43,6 +43,61 @@ public sealed class EventReducerTests
     }
 
     [Fact]
+    public void Genesis_vehicle_cannot_preload_a_pending_request_into_its_route()
+    {
+        var time = new SimTime(1000);
+        var request = ApplicationTestData.Request();
+        var route = RoutePlan.Create(
+            new PlanVersion(0),
+            0,
+            [],
+            [
+                new RouteStop(
+                    new StopId("preloaded-pickup"),
+                    request.OriginNodeId,
+                    RouteStopKind.Pickup,
+                    request.Id,
+                    new Duration(0)),
+                new RouteStop(
+                    new StopId("preloaded-drop"),
+                    request.DestinationNodeId,
+                    RouteStopKind.DropOff,
+                    request.Id,
+                    new Duration(0)),
+            ]).Value!;
+        var vehicle = VehicleState.Create(
+            ApplicationTestData.VehicleId,
+            4,
+            0,
+            new NodePosition(ApplicationTestData.NodeZero),
+            [],
+            [],
+            route,
+            1).Value!;
+        var batch = new InternalEventBatch(
+            ApplicationTestData.RunId,
+            ApplicationTestData.ScenarioId,
+            1,
+            time,
+            [
+                new RideBound.Application.Events.TravelTimesUpdated(
+                    1,
+                    time,
+                    ApplicationTestData.Travel()),
+                new RequestArrived(2, time, request),
+                new VehicleAdvanced(3, time, vehicle),
+            ]);
+
+        var result = new EventReducer().Reduce(
+            ApplicationTestData.InitialState(),
+            batch);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(RunFailureCodes.VehicleRiderMismatch, result.Witness?.Code);
+        Assert.Equal(2, result.Witness?.EventIndex);
+    }
+
+    [Fact]
     public void Invalid_last_event_discards_every_prior_fold()
     {
         var initial = ApplicationTestData.InitialState();
@@ -61,6 +116,30 @@ public sealed class EventReducerTests
         Assert.Empty(initial.Run.Vehicles);
         Assert.Null(initial.TravelTimes);
         Assert.Equal(1, initial.NextEventSequence);
+    }
+
+    [Fact]
+    public void Canonical_event_sequence_exhaustion_is_rejected_before_folding()
+    {
+        var initial = ApplicationTestData.InitialState() with
+        {
+            NextEventSequence = DomainLimits.MaxCanonicalInteger,
+        };
+        var time = new SimTime(1000);
+        var batch = new InternalEventBatch(
+            ApplicationTestData.RunId,
+            ApplicationTestData.ScenarioId,
+            1,
+            time,
+            [new TimerTick(DomainLimits.MaxCanonicalInteger, time)]);
+
+        var result = new EventReducer().Reduce(initial, batch);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(
+            EventReductionFailureCodes.InvalidEventSequence,
+            result.Witness?.Code);
+        Assert.Equal(0, result.Witness?.EventIndex);
     }
 
     [Fact]

@@ -260,3 +260,23 @@ Rider A được accept với pickup ETA 18:30 và budget ETA tổng 10 phút.
 - Epoch 4: candidate mới đưa ETA 18:36 → delta 5 phút, tổng 12 phút.
 
 Dù 18:36 chỉ cách lời hứa đầu 6 phút, candidate epoch 4 vẫn vi phạm vì lịch sử đã dao động. Một constraint chỉ so với initial promise sẽ bỏ sót điều này.
+
+## 14. Biên executable đã đóng ở WP3
+
+- Normal operation chạy independent validator theo thứ tự state → physical →
+  projection → lock → budget → ledger; candidate không được tự khai delta/cost.
+- Initial/revision publication, route mới, ledger mới và certificate nằm trong cùng
+  pending transaction; sai ACK không commit, checkpoint bị cấm khi còn pending.
+- Certificate body phải có state hashes trùng containing decision và
+  `publicationIds` khớp đúng tập action `promisePublished`; decision hash bind cả
+  event input lẫn body/action.
+- Incident/breach là ledger riêng: breach chỉ gắn incident đang mở, rider/vehicle
+  bị ảnh hưởng, budget attempted bằng `before + chargedDelta`; resolve không xóa
+  incident, breach hoặc commitment history.
+- Checkpoint lưu full run/travel/commitment/incident/hash-chain state và restore chỉ
+  nhận exact canonical reachable state. Genesis-vs-restore suffix replay phải cho
+  decision bytes/hash giống nhau.
+
+Giới hạn: WP3 định nghĩa và kiểm tra breach record/action nhưng không triển khai
+solver incident-recovery policy; safe fallback optimization thuộc WP4. Vì vậy
+certificate do Runner WP3 phát trong normal operation luôn `normalOperation=true`.

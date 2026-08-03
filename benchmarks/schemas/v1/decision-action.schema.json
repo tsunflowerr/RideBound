@@ -28,6 +28,18 @@
     {
       "if": {
         "properties": {
+          "decisionType": { "const": "offerProposed" }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": { "$ref": "empty-action-payload.schema.json" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
           "decisionType": {
             "const": "requestAccepted"
           }
@@ -73,6 +85,30 @@
           "payload": {
             "$ref": "vehicle-plan-updated-action-payload.schema.json"
           }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "decisionType": { "const": "promisePublished" }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": { "$ref": "promise-published-action-payload.schema.json" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "decisionType": { "const": "commitmentBreachDeclared" }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": { "$ref": "commitment-breach-declared-action-payload.schema.json" }
         }
       }
     }

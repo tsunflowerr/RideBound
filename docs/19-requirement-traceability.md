@@ -10,18 +10,18 @@
 | R-004 | Layer 1 cùng codebase | `09` | B1/C1 chung RideBound engine; BeGo export adapter | paired runs | Planned |
 | R-005 | Layer 2 simulator chung | `09`, `12` | FleetPy adapter | Layer 2 gate | Planned |
 | R-006 | Layer 3 framework độc lập | `09`, `13` | RidePy/AMoD2 adapter | Layer 3 gate | Planned |
-| R-007 | Giới hạn cumulative revision | `04`, `07`, `28` | ledger/validator | property/mutation tests | Foundation implemented: vector/ledger/budget/lock; combined validator/Runner pending |
-| R-008 | Nhiều chiều promise | `04`, `07`, `28` | promise vector | golden fixtures | Foundation implemented: 10 dimensions, projection và three-way delta; wire golden pending |
-| R-009 | Certificate/witness | `07` | certificate DTO/validator | invalid-plan mutations | Planned |
+| R-007 | Giới hạn cumulative revision | `04`, `07`, `28` | ledger/validator | property/mutation tests | WP3 implemented: independent hard-vector recomputation + immutable ledger + certificate |
+| R-008 | Nhiều chiều promise | `04`, `07`, `28` | promise vector | golden fixtures | WP3 implemented: 10 dimensions, projection, three-way delta, strict wire actions và tiny replay |
+| R-009 | Certificate/witness | `07`, `28` | certificate DTO/validator | invalid-plan mutations | WP3 implemented: physical→lock→budget stages, normal/witness body và decision/publication cross-binding |
 | R-010 | Đánh giá bằng data rõ | `10` | manifests/data pipeline | checksums/validation | Planned |
 | R-011 | Metric/statistics rõ | `11` | analysis package | prereg/full report | Planned |
 | R-012 | Dùng paper nhưng không làm lại | `03`, `21` | claim ledger | novelty re-audit | Docs v1 |
 | R-013 | Nêu công nghệ và tối ưu | `05`, `08`, `12`–`14` | projects/adapters | build/performance | Docs v1 |
 | R-014 | Nêu thêm/bỏ gì | `02`, mục 2 dưới | migration plan | code review | Docs v1 |
-| R-015 | Agent sau biết tiếp tục | `00`, `17`, `18`, `23`–`28` | root `AGENTS.md` + ordered current-topic tickets | reading order + one unambiguous next ticket | Verified; `RB-WP3-008` next |
+| R-015 | Agent sau biết tiếp tục | `00`, `17`, `18`, `23`–`29` | root `AGENTS.md` + ordered current-topic tickets | reading order + one unambiguous current ticket | Verified; only `RB-WP4-001` refinement READY |
 | R-016 | Thuật ngữ dễ hiểu | `22` | glossary | doc review | Docs v1 |
 | R-017 | Không bias bằng dữ liệu giả | `01`, `10`, `11` | pilot/holdout | prereg audit | Planned |
-| R-018 | Tái lập | `06`, `15`, `24`, `26` | hashes/bundle | clean reproduction | WP1 transcript/hash + WP2 two-process tiny replay verified; experiment bundle planned |
+| R-018 | Tái lập | `06`, `15`, `24`, `26`, `28` | hashes/bundle | clean reproduction | WP1/WP2 verified; WP3 two-process commitment + checkpoint suffix equivalence verified; experiment bundle planned |
 
 ## 2. Những gì cần thêm
 
@@ -71,8 +71,9 @@ primitives/envelope, canonical JSON, schema/version policy, hello/init,
 event/decision/error shell, hash chain, NDJSON session và idempotent retry đều
 có code/test. WP2 hiện đã có typed online payload, vehicle/request state, route,
 atomic reducer, physical validator, deterministic candidate/B1 selection,
-independent exact-small oracle và online produced decision. Ledger, hard
-commitment certificate/C1 và adapter vẫn planned ở các package tiếp theo.
+independent exact-small oracle và online produced decision. WP3 đã thêm ledger,
+hard commitment validator/certificate, incident/breach và checkpoint trên cùng
+Runner boundary. C1 objective/solver và adapter vẫn thuộc WP4+.
 
 ### Product hoặc BeGo integration
 
@@ -107,11 +108,11 @@ Sau khi RideBound ổn định có thể deprecate benchmark claims quá mạnh 
 | F-002 | Advance/freeze vehicle state | Domain/reducer/route properties verified cho WP2-003..006 |
 | F-003 | Accept/reject/defer request | lifecycle + B1 typed actions/no-reassignment/ACK apply verified |
 | F-004 | Generate/evaluate route candidates | deterministic generation, independent physical validation và exact-small differential verified |
-| F-005 | Publish promise | Model/projection/ledger/ACK foundation verified; Runner publication pending `010–011` |
-| F-006 | Track cumulative/switch budgets | Implemented/verified cho immutable ledger + 10-dimension property/boundary tests |
-| F-007 | Reject candidate vượt budget | Budget/lock evaluator exact witness implemented; independent candidate gate pending `009` |
-| F-008 | Handle incident breach riêng | incident tests |
-| F-009 | Checkpoint/restore | replay equivalence |
+| F-005 | Publish promise | WP3 verified: initial/revision actions bind ledger, certificate, state hash và matching ACK |
+| F-006 | Track cumulative/switch budgets | WP3 verified: immutable ledger + 10-dimension property/boundary/mutation-killing tests |
+| F-007 | Reject candidate vượt budget | WP3 verified: candidate filter + independent physical/lock/budget recomputation and witness |
+| F-008 | Handle incident breach riêng | WP3 verified: typed open/resolve, affected riders, immutable breach chronology/budget relation |
+| F-009 | Checkpoint/restore | WP3 verified: canonical hash/tamper/reachable-state checks + genesis-suffix process equivalence |
 | F-010 | Export transcript/metrics | bundle validation |
 
 ## 5. Non-functional requirements
@@ -342,17 +343,29 @@ Evidence ngày 2026-07-30:
 | RB-WP3-005 | R-007/R-008, F-005/F-006, N-003/N-004 | DONE: initial/revision ledger, P1 conservation, pending/ACK atomicity |
 | RB-WP3-006 | R-007/R-009, F-006/F-007, N-003 | DONE: exact boundary cho 10 dimensions, zero/unbounded, 441 monotonic samples |
 | RB-WP3-007 | R-007/R-009, F-007, N-003 | DONE: accepted/onboard/freeze/final-confirmation lock witnesses |
-| RB-WP3-008 | R-009, F-008, N-003/N-004 | READY: incident lifecycle/breach separation |
-| RB-WP3-009 | R-007–R-009, F-007, N-003 | PROPOSED: independent combined validator |
-| RB-WP3-010 | R-009, F-005/F-007/F-008, N-001/N-009 | PROPOSED: certificate/action contracts/schemas |
-| RB-WP3-011 | R-003/R-007–R-009, F-005–F-008, N-001/N-004/N-009 | PROPOSED: Runner atomic publication/hash/ACK |
-| RB-WP3-012 | F-009, N-001/N-004/N-007/N-009 | PROPOSED: checkpoint/restore |
-| RB-WP3-013 | R-007–R-009/R-018, F-005–F-009, N-001/N-003/N-007 | PROPOSED: mutation/property/oracle/replay bundle |
-| RB-WP3-014 | R-007–R-009/R-015/R-018, F-005–F-009 | PROPOSED: closure/WP4 refinement |
+| RB-WP3-008 | R-009, F-008, N-003/N-004 | DONE: incident lifecycle, affected-rider derivation, immutable breach ledger/chronology |
+| RB-WP3-009 | R-007–R-009, F-007, N-003 | DONE: independent physical→state-boundary→lock→budget validator and candidate filter |
+| RB-WP3-010 | R-009, F-005/F-007/F-008, N-001/N-009 | DONE: strict certificate/action codecs and schemas with cross-binding checks |
+| RB-WP3-011 | R-003/R-007–R-009, F-005–F-008, N-001/N-004/N-009 | DONE: commitment mode, named policy hash, atomic publication/state/hash/ACK |
+| RB-WP3-012 | F-009, N-001/N-004/N-007/N-009 | DONE: canonical checkpoint/restore, hash/tamper/reachable-state validation |
+| RB-WP3-013 | R-007–R-009/R-018, F-005–F-009, N-001/N-003/N-007 | DONE: all-dimension mutations, 64×12 ledger histories, 16-seed exact-small P2/P3, clean replay |
+| RB-WP3-014 | R-007–R-009/R-015/R-018, F-005–F-009 | DONE: ADR-022 closure, code/research review and `RB-WP4-001 READY` |
 
-Evidence nửa đầu ngày 2026-07-31: current-tree suite 378/378 — Contracts 128,
-Domain 126, Application 23, Algorithms 45, Runner 49, Architecture 7. Khi
-full-suite process bị Windows Application Control chặn trước assertion, suite
-được chạy tách và giữ đúng tổng trên; chi tiết ở `18`. P1
-foundation/budget/lock/delta tests pass; P2 chưa là guarantee vì `009–013` chưa
-hoàn thành. Mức O-002/O-003 vẫn để WP8, không có runtime default giả.
+Evidence đóng ngày 2026-08-02: inventory 414 — Contracts 133, Domain 134,
+Application 34, Algorithms 48, Runner 58, Architecture 7. Assertion evidence đủ
+414 bằng từng suite và policy-safe 54 Runner non-process methods + bốn
+clean-process cases; required full-solution attempt bị host policy `0x800711C7`
+chặn một số fresh DLL và không được gọi là full-solution pass. Release build
+`--warnaserror`, format, WP1/WP2/WP3 exact replay, checkpoint suffix, schema/link/
+dependency/diff audit được ghi trong `18`. O-002/O-003 vẫn để WP8; không có
+runtime user-default giả.
+
+## 11. WP4 refinement traceability
+
+| Ticket | Requirement chính | Trạng thái/evidence dự kiến |
+|---|---|---|
+| RB-WP4-001 | R-003/R-004/R-007–R-009/R-012/R-013/R-015, F-004–F-007, N-001–N-005/N-007/N-009 | READY: khóa schedule/candidate fairness, multiple-plan, objective, solver/fallback/equivalence; không production code trước ADR-023 |
+
+Các workstream B2–B5/C1/C2/OR-Tools trong `29` là input refinement, chưa phải
+ticket READY và chưa được ghi là implementation. WP3 validator/certificate tiếp
+tục là publication gate độc lập cho mọi policy WP4.

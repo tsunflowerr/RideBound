@@ -1,6 +1,7 @@
 using RideBound.Application.Travel;
 using RideBound.Domain.Commitments;
 using RideBound.Domain.Common;
+using RideBound.Domain.Incidents;
 using RideBound.Domain.Runs;
 
 namespace RideBound.Application.State;
@@ -10,8 +11,25 @@ public sealed record OnlineState(
     TravelTimeSnapshot? TravelTimes,
     long NextEventSequence,
     string ExpectedInitialTravelTimeSnapshotHash,
-    CommitmentLedger Commitments)
+    CommitmentLedger Commitments,
+    OperationalIncidentLedger Incidents)
 {
+    public OnlineState(
+        RideBoundRun run,
+        TravelTimeSnapshot? travelTimes,
+        long nextEventSequence,
+        string expectedInitialTravelTimeSnapshotHash,
+        CommitmentLedger commitments)
+        : this(
+            run,
+            travelTimes,
+            nextEventSequence,
+            expectedInitialTravelTimeSnapshotHash,
+            commitments,
+            OperationalIncidentLedger.Empty)
+    {
+    }
+
     public static OnlineState Create(
         RideBoundRun run,
         string expectedInitialTravelTimeSnapshotHash)
@@ -33,7 +51,8 @@ public sealed record OnlineState(
             null,
             1,
             expectedInitialTravelTimeSnapshotHash,
-            CommitmentLedger.Empty);
+            CommitmentLedger.Empty,
+            OperationalIncidentLedger.Empty);
     }
 }
 

@@ -103,6 +103,22 @@ Full text cục bộ được đọc lại cho ba nguồn liên quan trực ti�
   one-step no-worse làm novelty.
 
 Ảnh trang đầu của hai paper va chạm chính và text abstract/model/conclusion đã
-được đối chiếu. Kho hiện không có DOCX; Browser trong ứng dụng không khả dụng,
-nhưng tra mạng là tùy chọn và direct local PDFs đủ để giữ nguyên claim boundary.
-Quyết định implementation tương ứng nằm trong ADR-021 và execution plan `28`.
+được đối chiếu. Kho hiện không có DOCX. Audit bổ sung ngày 2026-08-02 đã dùng
+Browser trong ứng dụng để kiểm tra lại nguồn publisher/DOI; kết quả nằm ở mục 10.
+Quyết định implementation tương ứng nằm trong ADR-021/ADR-022 và execution plan
+`28`/`29`.
+
+## 10. Browser recheck phục vụ đóng WP3 — 2026-08-02
+
+| Nguồn bổ sung | Kết quả đọc | Tác động thực thi |
+|---|---|---|
+| [Gaul, Klamroth & Stiglmayr 2021](https://doi.org/10.4230/OASIcs.ATMOS.2021.8) | Rolling-horizon event-based MILP; thực nghiệm báo 99,5% insertion tối ưu đối với schedule hiện tại trong giới hạn 30 giây, trung bình 2,8 giây | Xác nhận B1 exhaustive-small là oracle correctness, không phải scale claim; WP4 cần deadline/performance evidence và bounded generation |
+| [Schulz & Pfeiffer 2026](https://doi.org/10.1007/s00291-026-00847-0) | Immediate response, relative detour acceptance, forward slack, tái sử dụng feasible reinsertion và future potential | Đưa slack/precomputation/caching sang WP4; không sao chép khuyến nghị horizon 10–15 phút thành default vì phụ thuộc instance; không mở reassignment O-001 |
+| [Geržinič et al. 2023](https://doi.org/10.1016/j.tbs.2023.100616) | Survey 936 người cho thấy unexpected wait, bất đối xứng sớm/muộn, cancellation và trải nghiệm gần nhất đều quan trọng | Chỉ dùng làm động lực cho history/material-revision; không suy ra budget số hay “user satisfaction” từ survey |
+| [Tiwari, Nassir & Lavieri 2024](https://www.mdpi.com/2071-1050/16/13/5788/html) | Review phân loại weighted-sum, Pareto và lexicographic objectives trong ridepooling | Giữ hard vector gate tách khỏi objective; WP4 ưu tiên lexicographic/Pareto có thể audit, không dùng trọng số tùy ý để che vi phạm |
+| [Ackermann & Rieck 2025](https://link.springer.com/article/10.1007/s00291-025-00809-y) | Multiple-plan pool, insertion rồi idle-time improvement; thêm tối ưu có thể làm giảm flexibility, một số cơ chế remove/reinsert không luôn có lợi ở mức động cao | B5/multiple-plan và distinguished plan thuộc WP4; phải đo candidate loss/flexibility, không mặc định “tối ưu lâu hơn luôn tốt hơn” |
+
+Kết luận thiết kế: WP3 đúng khi chỉ làm **cổng khả thi cam kết độc lập** và bằng
+chứng ledger/certificate. Các kỹ thuật plan pool, slack, precomputation, modified
+dynamic wait và lexicographic objective là tối ưu policy/solver của WP4; đưa chúng
+vào validator WP3 sẽ trộn objective với correctness và làm hỏng so sánh B1/C1.

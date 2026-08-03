@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/tsunflowerr/RideBound/main/benchmarks/schemas/v1/checkpoint-content.schema.json",
+  "title": "RideBound checkpoint content v1",
+  "type": "object",
+  "required": [
+    "manifestHash", "stateHash", "previousDecisionHash", "appliedEpoch",
+    "nextEventSeq", "simTimeMs", "onlineState"
+  ],
+  "properties": {
+    "manifestHash": { "$ref": "definitions.schema.json#/$defs/sha256Hex" },
+    "stateHash": { "$ref": "definitions.schema.json#/$defs/sha256Hex" },
+    "previousDecisionHash": { "$ref": "definitions.schema.json#/$defs/sha256Hex" },
+    "appliedEpoch": { "$ref": "definitions.schema.json#/$defs/canonicalNonNegativeInteger" },
+    "nextEventSeq": { "$ref": "definitions.schema.json#/$defs/canonicalPositiveInteger" },
+    "simTimeMs": { "$ref": "definitions.schema.json#/$defs/canonicalNonNegativeInteger" },
+    "onlineState": { "type": "object" }
+  },
+  "additionalProperties": false
+}

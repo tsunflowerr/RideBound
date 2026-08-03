@@ -152,6 +152,76 @@ public sealed record RideRequest
                 null));
     }
 
+    public static DomainResult<RideRequest> Rehydrate(
+        RequestId id,
+        SimTime arrivalTime,
+        NodeId originNodeId,
+        NodeId destinationNodeId,
+        SimTime earliestPickup,
+        SimTime latestPickup,
+        Duration maxRideTime,
+        long partySize,
+        string serviceClass,
+        string commitmentPolicyId,
+        RequestLifecycle lifecycle,
+        VehicleId? assignedVehicleId,
+        SimTime? actualPickupTime)
+    {
+        var pending = CreatePending(
+            id,
+            arrivalTime,
+            originNodeId,
+            destinationNodeId,
+            earliestPickup,
+            latestPickup,
+            maxRideTime,
+            partySize,
+            serviceClass,
+            commitmentPolicyId);
+
+        if (!pending.IsSuccess
+            || !Enum.IsDefined(lifecycle)
+            || (lifecycle is RequestLifecycle.Pending
+                    or RequestLifecycle.Rejected
+                    or RequestLifecycle.CancelledBeforeAcceptance)
+                && (assignedVehicleId is not null || actualPickupTime is not null)
+            || (lifecycle is RequestLifecycle.Accepted
+                    or RequestLifecycle.WaitingPickup
+                    or RequestLifecycle.CancelledAfterAcceptance)
+                && (assignedVehicleId is null || actualPickupTime is not null)
+            || (lifecycle is RequestLifecycle.Onboard
+                    or RequestLifecycle.Completed)
+                && (assignedVehicleId is null
+                    || actualPickupTime is null
+                    || actualPickupTime.Value.Milliseconds
+                        < earliestPickup.Milliseconds
+                    || actualPickupTime.Value.Milliseconds
+                        > latestPickup.Milliseconds))
+        {
+            return DomainResult<RideRequest>.Fail(
+                RequestFailureCodes.InvalidRequest,
+                "Checkpoint request lifecycle fields are inconsistent.",
+                id.Value,
+                "lifecycle");
+        }
+
+        return DomainResult<RideRequest>.Success(
+            new RideRequest(
+                id,
+                arrivalTime,
+                originNodeId,
+                destinationNodeId,
+                earliestPickup,
+                latestPickup,
+                maxRideTime,
+                partySize,
+                serviceClass,
+                commitmentPolicyId,
+                lifecycle,
+                assignedVehicleId,
+                actualPickupTime));
+    }
+
     public DomainResult<RideRequest> Accept(VehicleId vehicleId) =>
         Lifecycle == RequestLifecycle.Pending
             ? Success(RequestLifecycle.Accepted, vehicleId)
@@ -191,6 +261,16 @@ public sealed record RideRequest
                 "Passenger boarded a vehicle other than the accepted assignment.",
                 Id.Value,
                 "vehicleId");
+        }
+
+        if (pickupTime.Milliseconds < EarliestPickup.Milliseconds
+            || pickupTime.Milliseconds > LatestPickup.Milliseconds)
+        {
+            return DomainResult<RideRequest>.Fail(
+                RequestFailureCodes.PickupTimeOutsideWindow,
+                "Actual pickup time must remain inside the accepted pickup window.",
+                Id.Value,
+                "actualPickupTime");
         }
 
         return DomainResult<RideRequest>.Success(
@@ -257,4 +337,6 @@ public static class RequestFailureCodes
     public const string InvalidLifecycleTransition =
         "INVALID_REQUEST_LIFECYCLE_TRANSITION";
     public const string AssignmentMismatch = "ASSIGNMENT_MISMATCH";
+    public const string PickupTimeOutsideWindow =
+        "PICKUP_TIME_OUTSIDE_WINDOW";
 }

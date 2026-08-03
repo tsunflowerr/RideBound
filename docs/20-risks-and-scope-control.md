@@ -24,6 +24,9 @@
 | K-18 | Reproducibility drift | Trung bình | Cao | Tag/data/env không pin | Hash/digest/lockfile |
 | K-19 | Runtime không đáp ứng online | Trung bình | Cao | p95 vượt epoch deadline | safe fallback, cap, incremental eval |
 | K-20 | Dirty worktree/user files bị ghi đè | Trung bình | Cao | Untracked docs tồn tại | `git status`, scoped patches, no reset |
+| K-21 | Earliest-feasible/single-plan che lựa chọn linh hoạt hơn | Cao | Cao | C1 chỉ hơn/kém B1 do schedule convention | WP4 named wait/hold + multiple-plan baselines; report strategy separately |
+| K-22 | Candidate cap gây bias nhưng bị gọi là solver loss | Cao | Cao | exact mode tốt, bounded mode silent-omit | Tách candidate loss/solver loss; admissible bound và deterministic cap audit |
+| K-23 | Thêm solve time làm giảm future flexibility | Trung bình | Cao | current cost giảm nhưng future accept/revision xấu | B5 distinguished plan/pool, fixed deadline, measure future deviations; không giả monotonic quality |
 
 ## 2. Scope budget
 
@@ -55,7 +58,9 @@ Go nếu online baseline và deterministic replay đúng. Dừng nếu state/pro
 
 ### Sau WP4
 
-Go nếu exact-small/certificate pass. Không chuyển sang simulator nếu core có invalid decision.
+Go nếu exact-small/infinite-budget equivalence, candidate/solver loss accounting,
+certificate và deadline/fallback pass. Không chuyển sang simulator nếu core có
+invalid decision hoặc C1/B1 dùng compute/candidate boundary không công bằng.
 
 ### Sau WP7
 

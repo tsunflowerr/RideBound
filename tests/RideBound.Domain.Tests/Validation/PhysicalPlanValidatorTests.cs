@@ -374,6 +374,41 @@ public sealed class PhysicalPlanValidatorTests
     }
 
     [Fact]
+    public void Edge_progress_near_canonical_bound_returns_a_stable_witness()
+    {
+        var vehicle = VehicleState.Create(
+            TestData.VehicleOne,
+            4,
+            0,
+            new EdgeProgressPosition(
+                TestData.NodeZero,
+                TestData.NodeOne,
+                "edge-overflow",
+                1),
+            [],
+            [],
+            TestData.Route(),
+            0).Value!;
+        var run = TestData.EmptyRun().BootstrapVehicle(vehicle).Value!;
+
+        var result = Validate(
+            run,
+            vehicle.Route,
+            new DictionaryTravelLookup(
+                (
+                    TestData.NodeZero,
+                    TestData.NodeOne,
+                    DomainLimits.MaxCanonicalInteger)),
+            evaluationTimeMs: DomainLimits.MaxCanonicalInteger);
+
+        Assert.False(result.IsFeasible);
+        Assert.Equal(
+            PhysicalViolationCodes.ScheduleOverflow,
+            result.Witness?.Code);
+        Assert.Equal("simTimeMs", result.Witness?.Dimension);
+    }
+
+    [Fact]
     public void Same_invalid_candidate_returns_identical_machine_witness()
     {
         var state = WaitingRun(TestData.PendingRequest(partySize: 5));

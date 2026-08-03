@@ -29,18 +29,19 @@ public sealed class OnlineEventMapperTests
     }
 
     [Fact]
-    public void Unsupported_incident_returns_no_partial_batch()
+    public void Incident_fixture_maps_to_typed_internal_event()
     {
         var envelope = Decode(
             "golden/required/08-incident-override/input.json");
 
         var result = new OnlineEventMapper().Map(envelope);
 
-        Assert.False(result.IsSuccess);
-        Assert.Null(result.Batch);
-        Assert.Equal("UNSUPPORTED_EVENT_TYPE", result.Witness?.Code);
-        Assert.Equal(0, result.Witness?.EventIndex);
-        Assert.Equal(1, result.Witness?.EventSequence);
+        Assert.True(result.IsSuccess, result.Witness?.Message);
+        var opened = Assert.IsType<IncidentOpened>(
+            Assert.Single(result.Batch!.Events));
+        Assert.Equal("incident-08", opened.IncidentId.Value);
+        Assert.Equal("ROAD_CLOSED", opened.ReasonCode);
+        Assert.Equal(["v-08"], opened.VehicleIds.Select(value => value.Value));
     }
 
     [Fact]

@@ -49,7 +49,7 @@ mutable suffix và exhaustive fleet selection cho instance nhỏ:
 không prune commitment budget và không phát commitment certificate. Các phần đó
 bắt đầu ở WP3; C1/OR-Tools vẫn thuộc WP4.
 
-### 2.2. WP3 foundation sau `RB-WP3-001..007`
+### 2.2. WP3 commitment boundary sau `RB-WP3-001..014`
 
 - schedule candidate và promise cùng gọi `RouteScheduleProjector`;
 - `PromiseProjector` dựng promise active rider, gồm carry-forward realized pickup
@@ -58,12 +58,13 @@ bắt đầu ở WP3; C1/OR-Tools vẫn thuộc WP4.
   dimension;
 - ledger immutable/versioned nằm trong pending `OnlineState` và chỉ commit cùng
   matching ACK;
-- budget/phase-lock evaluator có exact witness nhưng chưa được nối vào candidate
-  pruning/Runner.
+- budget/phase-lock evaluator có exact witness; candidate filter early-prune và
+  Runner full-fleet validator recompute trước produced certificate.
 
-Vì independent combined validator, incident, certificate và Runner integration
-còn ở `RB-WP3-008..011`, B1 output hiện vẫn như WP2 và certificate vẫn
-`notProduced`. Không gọi foundation này là C1 hoặc P2 guarantee.
+Incident/breach, independent combined validator, strict certificate và Runner
+commitment mode đã executable. Tuy nhiên default online B1 vẫn là WP2 physical
+baseline và `conformance` vẫn là Q1 oracle; chỉ named `commitment` mode bật hard
+gate. Không gọi WP3 là C1 solver/effectiveness evidence.
 
 ## 3. Candidate plan
 
@@ -273,3 +274,37 @@ Sau v1:
 - rolling checkpoint.
 
 Không tối ưu performance trước khi golden replay và certificate soundness pass.
+
+## 14. Audit implementation sau WP3 và hướng tối ưu WP4
+
+WP3 đã nối cổng cam kết vào B1 theo hai lớp:
+
+1. `CommitmentCandidateFilter` dựng candidate state, accept đúng request mới và
+   loại candidate theo physical → projection → lock → vector budget.
+2. `CommitmentDecisionValidator` độc lập dựng lại toàn fleet trước publication;
+   Runner chỉ stage route + promise + ledger + certificate rồi commit khi ACK đúng.
+
+Đây là tối ưu tập khả thi thật: candidate vi phạm một trong 10 hard dimensions bị
+loại trước fleet selection, còn candidate hợp lệ vẫn được B1 xếp hạng theo
+accepted-count/cost. Hard gate không bị nén thành một `if` trên ETA hay một weighted
+score. Exact-small oracle 16 seed và tính đơn điệu khi nới ETA limit kiểm tra tập
+candidate, không chỉ kiểm tra output cuối.
+
+Ranh giới cần nói rõ:
+
+- B1 hiện chỉ chèn request mới và giữ nguyên thứ tự incumbent, nên
+  `incumbent_order_inversion_count` bằng 0 cho candidate do B1 sinh; dimension vẫn
+  được validator/delta/test thực thi để dùng cho policy có repair/reorder ở WP4.
+- Request v1 có origin/destination cố định, nên relocation khác node không được B1
+  sinh; calculator và distance port đã kiểm chứng nhưng cần meeting-point policy
+  riêng mới kích hoạt runtime.
+- O-001 khóa reassignment, nên `vehicle_switch_count` là hard-zero trong normal
+  operation; không được gọi phần này là tối ưu reassignment.
+- non-exact generator chỉ xét 4 pending request đầu và cap theo candidate ID, chưa
+  phải best-first/dominance/slack pruning; fleet selector còn exhaustive Cartesian.
+- schedule là earliest-feasible và single-plan; chưa có modified dynamic wait,
+  plan pool, distinguished plan, future-potential hoặc idle-time improvement.
+
+Các giới hạn cuối là backlog tối ưu WP4, không phải lý do nới validator WP3. WP4
+phải giữ cùng physical/commitment validator, cùng canonical runner và cùng
+exact-small oracle để đo candidate loss, solver loss và deadline riêng.

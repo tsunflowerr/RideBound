@@ -24,6 +24,9 @@ WP2 đã đóng; WP3 refinement trong
 [27-wp3-ledger-certificate-refinement.md](tasks/27-wp3-ledger-certificate-refinement.md)
 đã tạo ordered queue
 [28-wp3-ledger-certificate-ticket-plan.md](tasks/28-wp3-ledger-certificate-ticket-plan.md).
+WP3 đã đóng; WP4 bắt đầu bằng refinement
+[29-wp4-algorithms-solver-refinement.md](tasks/29-wp4-algorithms-solver-refinement.md),
+chưa có implementation ticket WP4 nào được phép chạy.
 
 ## WP0 — Freeze baseline và scaffold
 
@@ -108,10 +111,10 @@ pass qua policy-safe bundles/process checks. Exception nằm trong `18`, không
 
 ## WP3 — Ledger và certificate
 
-**Trạng thái:** In progress; `RB-WP3-001..007` DONE (7/14). Đã có foundation
-promise/projection/three-way delta/append-only ledger/budget/locks; chưa có
-incident, combined validator, certificate `produced`, Runner integration hoặc
-checkpoint. Ticket kế tiếp duy nhất: `RB-WP3-008`.
+**Trạng thái:** Complete ngày 2026-08-02; `RB-WP3-001..014` DONE. Promise,
+three-way delta, immutable ledger, vector budget/locks, incident breach,
+independent validator, certificate, atomic Runner publication và canonical
+checkpoint/restore đều nằm trên cùng state/hash/ACK boundary.
 
 ### Deliverable
 
@@ -131,6 +134,12 @@ checkpoint. Ticket kế tiếp duy nhất: `RB-WP3-008`.
 - P1/P2/P3 test evidence.
 
 ## WP4 — RideBound policies và OR-Tools
+
+**Trạng thái:** Refinement READY; chỉ `RB-WP4-001` được READY. Chưa có production
+WP4 code cho tới khi ADR-023 và ordered implementation queue được khóa.
+
+Refinement hiện hành:
+[29-wp4-algorithms-solver-refinement.md](tasks/29-wp4-algorithms-solver-refinement.md).
 
 ### Deliverable
 
@@ -332,8 +341,10 @@ người dùng. Sau khi WP0 qua exit gate:
 1. WP0, WP1/Q1 và ordered queue `RB-WP2-001..012` đã hoàn thành.
 2. WP2 đã cung cấp typed online state, immutable route/reducer, independent
    physical validator, deterministic B1, exact-small oracle và tiny replay.
-3. WP3 refinement đã khóa ADR-021 và queue `RB-WP3-001..014`.
-4. Nửa đầu `001..007` đã hoàn thành; thực hiện đúng một ticket `READY` tiếp theo:
-   `RB-WP3-008` incident lifecycle và breach ledger.
-5. Không tự chọn mức O-002/O-003, không gọi P2 là guarantee và không kéo
-   C1/OR-Tools WP4 hoặc adapter WP5+ vào nửa còn lại WP3.
+3. WP3 đã hoàn thành `RB-WP3-001..014`, đóng correctness boundary bằng ADR-022
+   và handoff review chi tiết WP1–WP3.
+4. Thực hiện đúng một ticket `READY` tiếp theo: `RB-WP4-001` refinement schedule,
+   candidate fairness/loss, multiple-plan, lexicographic objective, solver và
+   safe fallback.
+5. Không viết production WP4 trước refinement, không tự chọn O-002/O-003/O-004,
+   không mở O-001 reassignment và không kéo adapter WP5+ vào WP4.

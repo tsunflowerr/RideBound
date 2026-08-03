@@ -32,7 +32,7 @@ public sealed class CommitmentLockEvaluatorTests
         var request = TestData.PendingRequest()
             .Accept(TestData.VehicleOne).Value!
             .ConfirmWaitingPickup().Value!
-            .Board(TestData.VehicleOne, new SimTime(10_000)).Value!;
+            .Board(TestData.VehicleOne, new SimTime(1_200)).Value!;
         var previous = Published(CommitmentTestData.Projection());
         var candidate = CommitmentTestData.Projection(
             pickupEta: 10_001,

@@ -6,7 +6,8 @@
 > Topic đã ticket hóa: [WP1 Contracts](24-wp1-contracts-ticket-plan.md) và
 > [WP2 Online baseline](26-wp2-online-baseline-ticket-plan.md) và
 > [WP3 ledger/certificate](28-wp3-ledger-certificate-ticket-plan.md) và
-> [WP4 refinement](29-wp4-algorithms-solver-refinement.md)
+> [WP4 refinement](29-wp4-algorithms-solver-refinement.md) và
+> [WP4 ordered queue](30-wp4-algorithms-solver-ticket-plan.md)
 
 ## 1. Mục đích
 
@@ -120,9 +121,9 @@ Ticket tài liệu phải:
 | WP11 Product UX | UI/audit có rollback, không overclaim | product gate | WP5 |
 | WP12 Paper/release | Claim traceable và artifact tái lập | Q6 | WP9, WP10 |
 
-WP5–WP12 **chưa có ticket**. WP2 đã đóng physical/B1; WP3 đã hoàn thành ordered
-queue `RB-WP3-001..014`. WP4 hiện chỉ có refinement ticket `RB-WP4-001 READY`;
-12 workstream trong ticket đó chưa phải implementation ticket.
+WP6–WP12 **chưa có ticket**. WP2 đã đóng physical/B1; WP3 đã hoàn thành ordered
+queue `RB-WP3-001..014`; WP4 đã hoàn thành `RB-WP4-001..014` bằng ADR-024.
+WP5 hiện chỉ có refinement-only `RB-WP5-001 READY`; chưa có implementation queue.
 
 WP11 không nằm trên critical path nghiên cứu và không được làm chậm WP8–WP10.
 
@@ -141,13 +142,14 @@ WP3 `RB-WP3-001..014` đã hoàn thành theo
 Correctness boundary gồm incident separation, independent validator,
 certificate/hash/ACK và checkpoint/restore; không bao gồm C1 solver quality.
 
-Ticket refinement duy nhất hiện `READY`:
+Ticket duy nhất hiện `READY`:
 
-> **RB-WP4-001 — refinement RideBound policies và solver**
+> **RB-WP5-001 — refinement BeGo adapter và persistence**
 
-Ticket này khóa schedule strategy, candidate/compute fairness, objective,
-multiple-plan, exact-small equivalence, OR-Tools ownership và fallback trước khi
-tạo production queue. Không chọn số O-002/O-003/O-004 và không mở O-001.
+ADR-023/024 và `tasks/30` đã đóng WP4 với required suite 557/557, exact-small/
+actual-solver differential và final review. `tasks/31` phải khóa source provenance,
+Runner ownership, persistence transaction/recovery, feature-flag rollback và paired
+Layer-1 evidence trước khi tạo migration/endpoint/adapter implementation.
 
 ## 9. Template refinement cho topic kế tiếp
 
@@ -173,5 +175,5 @@ Không copy BDD của WP1 sang topic khác nếu semantics khác.
 5. Chỉ chuyển ticket kế tiếp sau khi evidence của ticket hiện tại được review.
 6. Chỉ đóng topic khi toàn bộ exit gate trong `16` đạt.
 
-Theo trạng thái ngày 2026-08-02, ticket tiếp theo phải thực hiện là
-**RB-WP4-001**; chưa có implementation WP4 nào khác được READY.
+Theo trạng thái ngày 2026-08-03, ticket tiếp theo phải thực hiện là
+**RB-WP5-001**; chưa có WP5 implementation ticket nào được READY.

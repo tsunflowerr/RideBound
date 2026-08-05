@@ -16,6 +16,18 @@ internal static class CandidateIdentity
     private static readonly byte[] StopDomain =
         "RideBound.GeneratedStop.v1\0"u8.ToArray();
 
+    private static readonly byte[] RouteDomain =
+        "RideBound.ScheduleRoute.v1\0"u8.ToArray();
+
+    private static readonly byte[] HoldStopDomain =
+        "RideBound.OriginHoldStop.v1\0"u8.ToArray();
+
+    private static readonly byte[] OmissionDomain =
+        "RideBound.CandidateOmission.v1\0"u8.ToArray();
+
+    private static readonly byte[] SearchNodeDomain =
+        "RideBound.CandidateSearchNode.v1\0"u8.ToArray();
+
     public static string Create(
         OnlineState state,
         VehicleId vehicleId,
@@ -79,6 +91,74 @@ internal static class CandidateIdentity
         return new StopId(
             $"{prefix}{Convert.ToHexStringLower(
                 SHA256.HashData(buffer.WrittenSpan))}");
+    }
+
+    public static string CreateRouteFingerprint(RoutePlan route)
+    {
+        ArgumentNullException.ThrowIfNull(route);
+        var buffer = new ArrayBufferWriter<byte>();
+        buffer.Write(RouteDomain);
+        WriteFrame(
+            buffer,
+            "planVersion",
+            route.Version.Value.ToString(
+                System.Globalization.CultureInfo.InvariantCulture));
+        WriteFrame(
+            buffer,
+            "executedStopCount",
+            route.ExecutedStopCount.ToString(
+                System.Globalization.CultureInfo.InvariantCulture));
+
+        foreach (var stop in route.FrozenPrefix)
+        {
+            WriteStop(buffer, "frozenStop", stop);
+        }
+
+        foreach (var stop in route.MutableSuffix)
+        {
+            WriteStop(buffer, "mutableStop", stop);
+        }
+
+        return Convert.ToHexStringLower(SHA256.HashData(buffer.WrittenSpan));
+    }
+
+    public static StopId CreateHoldStopId(string sourceCandidateId)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(sourceCandidateId);
+        var buffer = new ArrayBufferWriter<byte>();
+        buffer.Write(HoldStopDomain);
+        WriteFrame(buffer, "sourceCandidateId", sourceCandidateId);
+        return new StopId(
+            $"rb-h-{Convert.ToHexStringLower(
+                SHA256.HashData(buffer.WrittenSpan))}");
+    }
+
+    public static string CreateOmissionDigest(IEnumerable<string> stableIds)
+    {
+        ArgumentNullException.ThrowIfNull(stableIds);
+        var buffer = new ArrayBufferWriter<byte>();
+        buffer.Write(OmissionDomain);
+
+        foreach (var stableId in stableIds.Order(StringComparer.Ordinal))
+        {
+            WriteFrame(buffer, "omittedId", stableId);
+        }
+
+        return Convert.ToHexStringLower(SHA256.HashData(buffer.WrittenSpan));
+    }
+
+    public static string CreateSearchNodeDigest(IEnumerable<string> orderedTokens)
+    {
+        ArgumentNullException.ThrowIfNull(orderedTokens);
+        var buffer = new ArrayBufferWriter<byte>();
+        buffer.Write(SearchNodeDomain);
+
+        foreach (var token in orderedTokens)
+        {
+            WriteFrame(buffer, "orderedToken", token);
+        }
+
+        return Convert.ToHexStringLower(SHA256.HashData(buffer.WrittenSpan));
     }
 
     private static void WriteStop(

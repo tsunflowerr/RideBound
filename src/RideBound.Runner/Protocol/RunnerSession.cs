@@ -5,13 +5,16 @@ using RideBound.Algorithms.Candidates;
 using RideBound.Algorithms.Commitments;
 using RideBound.Algorithms.Policies;
 using RideBound.Application.Commitments;
+using RideBound.Application.Optimization;
 using RideBound.Application.State;
 using RideBound.Contracts.Protocol;
 using RideBound.Contracts.Serialization;
 using RideBound.Domain.Common;
 using RideBound.Domain.Runs;
 using RideBound.Domain.Validation;
+using RideBound.Runner.Configuration;
 using RideBound.Runner.Online;
+using RideBound.Solvers.OrTools;
 
 namespace RideBound.Runner.Protocol;
 
@@ -49,6 +52,9 @@ public sealed class RunnerSession
     private readonly IStopDistanceLookup? _stopDistances;
     private readonly Sha256Hex? _commitmentPolicyConfigurationHash;
     private readonly CommitmentDecisionValidator _commitmentValidator;
+    private readonly Wp4RunnerConfiguration? _wp4Configuration;
+    private readonly SolverBackedRidePoolingPolicy? _solverBackedPolicy;
+    private readonly MultiplePlanConsensusPolicy _multiplePlanPolicy;
     private HelloPayload? _hello;
     private HelloAckPayload? _helloAcknowledgement;
     private InitializedSessionIdentity? _identity;
@@ -72,14 +78,18 @@ public sealed class RunnerSession
         ICommitmentPolicyProvider? commitmentPolicies = null,
         IStopDistanceLookup? stopDistances = null,
         Sha256Hex? commitmentPolicyConfigurationHash = null,
-        CommitmentDecisionValidator? commitmentValidator = null)
+        CommitmentDecisionValidator? commitmentValidator = null,
+        Wp4RunnerConfiguration? wp4Configuration = null,
+        SolverBackedRidePoolingPolicy? solverBackedPolicy = null,
+        MultiplePlanConsensusPolicy? multiplePlanPolicy = null)
     {
         ArgumentNullException.ThrowIfNull(requirements);
         _requirements = requirements;
         _executionMode = executionMode;
         _onlineEventMapper = onlineEventMapper ?? new OnlineEventMapper();
         _rollingCostPolicy = rollingCostPolicy ?? new RollingCostPolicy();
-        _candidateOptions = candidateOptions
+        _candidateOptions = wp4Configuration?.CandidateGeneration
+            ?? candidateOptions
             ?? new CandidateGenerationOptions(
                 maximumCandidatesPerVehicle: 10_000,
                 maximumNewRequestsPerVehicle: 4,
@@ -89,6 +99,16 @@ public sealed class RunnerSession
         _commitmentPolicyConfigurationHash = commitmentPolicyConfigurationHash;
         _commitmentValidator = commitmentValidator
             ?? new CommitmentDecisionValidator();
+        _wp4Configuration = wp4Configuration;
+        _solverBackedPolicy = wp4Configuration is not null
+                && wp4Configuration.SolverPolicyOptions is not null
+            ? solverBackedPolicy
+                ?? new SolverBackedRidePoolingPolicy(
+                    new OrToolsCandidateSelectionSolver(),
+                    commitmentValidator: _commitmentValidator)
+            : null;
+        _multiplePlanPolicy = multiplePlanPolicy
+            ?? new MultiplePlanConsensusPolicy();
 
         if (executionMode == RunnerExecutionMode.OnlineCommitment
             && (commitmentPolicies is null
@@ -98,6 +118,14 @@ public sealed class RunnerSession
             throw new ArgumentException(
                 "Commitment mode requires an explicit policy catalog, " +
                 "stop-distance lookup, and canonical configuration hash.");
+        }
+
+        if (wp4Configuration is not null
+            && executionMode != RunnerExecutionMode.OnlineCommitment)
+        {
+            throw new ArgumentException(
+                "A WP4 policy configuration requires commitment execution mode.",
+                nameof(wp4Configuration));
         }
     }
 
@@ -265,6 +293,21 @@ public sealed class RunnerSession
                 ProtocolFailureDisposition.FailSession,
                 "Manifest policyConfigurationHash does not match the " +
                 "loaded commitment policy configuration.",
+                envelope);
+        }
+
+        if (_wp4Configuration is not null
+            && (!StringComparer.Ordinal.Equals(
+                    payloadResult.Value!.Manifest.PolicyId,
+                    _wp4Configuration.PolicyId)
+                || !StringComparer.Ordinal.Equals(
+                    payloadResult.Value.Manifest.PolicyVersion,
+                    _wp4Configuration.PolicyVersion)))
+        {
+            return Error(
+                "HASH_MISMATCH",
+                ProtocolFailureDisposition.FailSession,
+                "Manifest policyId/policyVersion does not match the loaded WP4 policy configuration.",
                 envelope);
         }
 
@@ -436,7 +479,7 @@ public sealed class RunnerSession
                 online.ReasonCode!,
                 online.Actions!,
                 online.Certificate!,
-                new SolverStatusShell(SolverStatus.NotRun),
+                online.Solver!,
                 _stateHash,
                 stateAfterHash,
                 _previousDecisionHash,
@@ -772,22 +815,95 @@ public sealed class RunnerSession
         }
 
         CommitmentCandidateFilter? commitmentFilter = null;
+        ICommitmentPolicyProvider validationPolicies = _commitmentPolicies!;
+        RollingCostDecisionResult decision;
 
-        if (_executionMode == RunnerExecutionMode.OnlineCommitment)
+        var publicationScope = CalculateCanonicalBatchHash(envelope);
+        var sourceEventSequence = mapped.Batch!.Events[^1].EventSequence;
+
+        if (_wp4Configuration is not null)
         {
-            commitmentFilter = new CommitmentCandidateFilter(
+            var context = new CommitmentMechanismContext(
                 beforeEventState,
+                reduced.ProposedState!,
                 _commitmentPolicies!,
                 _stopDistances!,
-                CalculateCanonicalBatchHash(envelope),
-                mapped.Batch!.Events[^1].EventSequence,
-                _commitmentValidator);
-        }
+                publicationScope,
+                sourceEventSequence);
 
-        var decision = _rollingCostPolicy.Decide(
-            reduced.ProposedState!,
-            _candidateOptions,
-            commitmentFilter);
+            if (_wp4Configuration.MultiplePlanOptions is not null)
+            {
+                validationPolicies = MechanismCommitmentPolicyProvider
+                    .RevisionPenalty(_commitmentPolicies!);
+                commitmentFilter = new CommitmentCandidateFilter(
+                    beforeEventState,
+                    validationPolicies,
+                    _stopDistances!,
+                    publicationScope,
+                    sourceEventSequence,
+                    _commitmentValidator);
+                var multiple = _multiplePlanPolicy.Decide(
+                    reduced.ProposedState!,
+                    _candidateOptions,
+                    _wp4Configuration.MultiplePlanOptions,
+                    commitmentFilter);
+
+                if (!multiple.IsSuccess)
+                {
+                    _onlineCoordinator.DiscardPendingProposal();
+                    return OnlineDecisionBuildResult.Fail(
+                        "INTERNAL_ERROR",
+                        ProtocolFailureDisposition.FailSession,
+                        multiple.Witness!.Message);
+                }
+
+                decision = RollingCostDecisionResult.Success(
+                    multiple.Decision!.DistinguishedDecision with
+                    {
+                        GenerationDiagnostics =
+                            multiple.Decision.GenerationDiagnostics,
+                    });
+            }
+            else
+            {
+                var solved = _solverBackedPolicy!.Decide(
+                    context,
+                    _candidateOptions,
+                    _wp4Configuration.SolverPolicyOptions!,
+                    _wp4Configuration);
+
+                if (!solved.IsSuccess)
+                {
+                    _onlineCoordinator.DiscardPendingProposal();
+                    return OnlineDecisionBuildResult.Fail(
+                        "INTERNAL_ERROR",
+                        ProtocolFailureDisposition.FailSession,
+                        solved.Witness!.Message);
+                }
+
+                decision = RollingCostDecisionResult.Success(
+                    solved.Decision!.Decision);
+                validationPolicies = solved.Decision.EffectivePolicies;
+            }
+        }
+        else
+        {
+            if (_executionMode == RunnerExecutionMode.OnlineCommitment)
+            {
+                commitmentFilter = new CommitmentCandidateFilter(
+                    beforeEventState,
+                    _commitmentPolicies!,
+                    _stopDistances!,
+                    publicationScope,
+                    sourceEventSequence,
+                    _commitmentValidator);
+            }
+
+            decision = _rollingCostPolicy.Decide(
+                reduced.ProposedState!,
+                _candidateOptions,
+                commitmentFilter);
+        }
 
         if (!decision.IsSuccess)
         {
@@ -809,10 +925,10 @@ public sealed class RunnerSession
                     beforeEventState,
                     reduced.ProposedState!,
                     decision.Decision.ProposedState,
-                    _commitmentPolicies!,
+                    validationPolicies,
                     _stopDistances!,
-                    CalculateCanonicalBatchHash(envelope),
-                    mapped.Batch!.Events[^1].EventSequence));
+                    publicationScope,
+                    sourceEventSequence));
 
             if (!validation.IsValid)
             {
@@ -870,12 +986,25 @@ public sealed class RunnerSession
             || decision.Decision.RequestActions.Count == 0
                 ? DecisionReasonCodes.Accepted
                 : DecisionReasonCodes.NoFeasibleInsertion;
+        var solverStatus = decision.Decision.SelectionExecution?.SolveResult.Status
+            switch
+        {
+            CandidateSelectionSolveStatus.SafeFallback =>
+                SolverStatus.SafeFallback,
+            CandidateSelectionSolveStatus.Optimal
+                or CandidateSelectionSolveStatus.Feasible =>
+                SolverStatus.Completed,
+            _ when _wp4Configuration?.MultiplePlanOptions is not null =>
+                SolverStatus.Completed,
+            _ => SolverStatus.NotRun,
+        };
         return OnlineDecisionBuildResult.Success(
             OnlineStateCanonicalizer.CalculateHash(
                 stateToStage),
             reasonCode,
             actions,
-            certificate);
+            certificate,
+            new SolverStatusShell(solverStatus));
     }
 
     private RunnerSessionResult PayloadError(
@@ -980,20 +1109,23 @@ public sealed class RunnerSession
         string? ReasonCode,
         IReadOnlyList<JsonElement>? Actions,
         CertificateShell? Certificate,
+        SolverStatusShell? Solver,
         OnlineDecisionBuildError? Error)
     {
         public static OnlineDecisionBuildResult Success(
             Sha256Hex stateAfterHash,
             string reasonCode,
             IReadOnlyList<JsonElement> actions,
-            CertificateShell certificate) =>
-            new(stateAfterHash, reasonCode, actions, certificate, null);
+            CertificateShell certificate,
+            SolverStatusShell solver) =>
+            new(stateAfterHash, reasonCode, actions, certificate, solver, null);
 
         public static OnlineDecisionBuildResult Fail(
             string code,
             ProtocolFailureDisposition disposition,
             string message) =>
             new(
+                null,
                 null,
                 null,
                 null,

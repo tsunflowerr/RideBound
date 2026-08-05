@@ -516,3 +516,6 @@ WP3 chứng minh cơ chế correctness trong published small bound; chưa claim 
 effectiveness, solver optimality hoặc user satisfaction. Ticket kế tiếp duy nhất là
 `RB-WP4-001` trong
 [29-wp4-algorithms-solver-refinement.md](29-wp4-algorithms-solver-refinement.md).
+
+Revalidation ngày 2026-08-03: required `dotnet test RideBound.slnx` pass 414/414;
+Windows Application Control không còn là blocker hiện tại.

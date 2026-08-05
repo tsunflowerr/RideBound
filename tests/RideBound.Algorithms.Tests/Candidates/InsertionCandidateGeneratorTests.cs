@@ -202,5 +202,215 @@ public sealed class InsertionCandidateGeneratorTests
         Assert.Equal(
             6,
             candidates.Count(value => value.NewRequestIds.Count == 2));
+        var loss = Assert.Single(result.Diagnostics!.VehicleLosses);
+        Assert.Equal(8, loss.EvaluatedCandidatePathCount);
+        Assert.Equal(9, loss.UniqueFeasibleCandidateCountBeforeCap);
+        Assert.True(result.Diagnostics.IsComplete);
+    }
+
+    [Fact]
+    public void Bounded_request_selection_uses_deadline_arrival_and_id_priority()
+    {
+        var lateAlphabeticallyFirst = AlgorithmTestData.PendingRequest(
+            "a-late",
+            latestPickup: 9_000);
+        var urgentAlphabeticallyLast = AlgorithmTestData.PendingRequest(
+            "z-urgent",
+            latestPickup: 2_000);
+        var state = AlgorithmTestData.CreateState(
+            [lateAlphabeticallyFirst, urgentAlphabeticallyLast],
+            [AlgorithmTestData.Vehicle()]);
+
+        var result = _generator.Generate(
+            state,
+            new CandidateGenerationOptions(
+                100,
+                1,
+                exactSmallMode: false));
+
+        Assert.True(result.IsSuccess, result.Witness?.Message);
+        Assert.All(
+            result.VehicleCandidates!.Single().Candidates
+                .Where(candidate => !candidate.IsNoOp),
+            candidate => Assert.Equal(
+                [urgentAlphabeticallyLast.Id],
+                candidate.NewRequestIds));
+        Assert.Equal(2, result.Diagnostics!.TotalPendingRequestCount);
+        Assert.Equal(1, result.Diagnostics.ConsideredRequestCount);
+        Assert.Equal(1, result.Diagnostics.OmittedRequestCount);
+        var omission = Assert.Single(
+            result.Diagnostics.Omissions,
+            witness => witness.Code
+                == CandidateGenerationFailureCodes.RequestBoundOmission);
+        Assert.Equal([lateAlphabeticallyFirst.Id], omission.RequestIds);
+        Assert.True(result.VehicleCandidates!.Single().WasTruncated);
+    }
+
+    [Fact]
+    public void Exact_mode_fails_when_deterministic_work_cap_would_omit_a_path()
+    {
+        var state = AlgorithmTestData.CreateState(
+            [AlgorithmTestData.PendingRequest()],
+            [AlgorithmTestData.Vehicle()]);
+
+        var result = _generator.Generate(
+            state,
+            new CandidateGenerationOptions(
+                100,
+                1,
+                exactSmallMode: true,
+                maximumExplorationWorkUnits: 1));
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(
+            CandidateGenerationFailureCodes.ExactSmallWorkCapExceeded,
+            result.Witness?.Code);
+        Assert.Equal(
+            "maximumExplorationWorkUnits",
+            result.Witness?.Dimension);
+    }
+
+    [Fact]
+    public void Bounded_best_first_work_keeps_higher_acceptance_and_counts_unknown_paths()
+    {
+        var first = AlgorithmTestData.PendingRequest("request-1");
+        var second = AlgorithmTestData.PendingRequest(
+            "request-2",
+            AlgorithmTestData.NodeTwo,
+            AlgorithmTestData.NodeThree);
+        var state = AlgorithmTestData.CreateState(
+            [first, second],
+            [AlgorithmTestData.Vehicle()]);
+        var options = new CandidateGenerationOptions(
+            100,
+            2,
+            exactSmallMode: false,
+            maximumExplorationWorkUnits: 3);
+
+        var firstRun = _generator.Generate(state, options);
+        var secondRun = _generator.Generate(state, options);
+
+        Assert.True(firstRun.IsSuccess, firstRun.Witness?.Message);
+        var set = Assert.Single(firstRun.VehicleCandidates!);
+        var accepted = Assert.Single(set.Candidates, candidate => !candidate.IsNoOp);
+        Assert.Equal(2, accepted.NewRequestIds.Count);
+        Assert.True(set.WasTruncated);
+        var loss = Assert.Single(firstRun.Diagnostics!.VehicleLosses);
+        Assert.Equal(3, loss.ExplorationWorkUnits);
+        Assert.Equal(1, loss.EvaluatedCandidatePathCount);
+        Assert.Equal(7, loss.OmittedUnexpandedCandidatePathCount);
+        Assert.Equal(
+            8,
+            loss.EvaluatedCandidatePathCount
+                + loss.OmittedUnexpandedCandidatePathCount);
+        Assert.True(loss.WorkBudgetExhausted);
+        var omission = Assert.Single(
+            firstRun.Diagnostics.Omissions,
+            witness => witness.Code
+                == CandidateGenerationFailureCodes.WorkBoundOmission);
+        Assert.Equal(7, omission.Count);
+        Assert.False(omission.CountWasSaturated);
+        Assert.Equal(
+            omission.StableDigest,
+            Assert.Single(
+                secondRun.Diagnostics!.Omissions,
+                witness => witness.Code
+                    == CandidateGenerationFailureCodes.WorkBoundOmission)
+                .StableDigest);
+    }
+
+    [Fact]
+    public void Candidate_cap_prefers_acceptance_then_cost_and_reports_feasible_loss()
+    {
+        var first = AlgorithmTestData.PendingRequest("request-1");
+        var second = AlgorithmTestData.PendingRequest(
+            "request-2",
+            AlgorithmTestData.NodeTwo,
+            AlgorithmTestData.NodeThree);
+        var state = AlgorithmTestData.CreateState(
+            [first, second],
+            [AlgorithmTestData.Vehicle()]);
+        var full = _generator.Generate(
+            state,
+            new CandidateGenerationOptions(100, 2, exactSmallMode: true));
+        var boundedOptions = new CandidateGenerationOptions(
+            2,
+            2,
+            exactSmallMode: false);
+        var bounded = _generator.Generate(state, boundedOptions);
+        var repeated = _generator.Generate(state, boundedOptions);
+
+        Assert.True(full.IsSuccess, full.Witness?.Message);
+        Assert.True(bounded.IsSuccess, bounded.Witness?.Message);
+        var fullTwoRequest = full.VehicleCandidates!.Single().Candidates
+            .Where(candidate => candidate.NewRequestIds.Count == 2)
+            .OrderBy(candidate => candidate.Schedule.OperationalCost)
+            .ThenBy(candidate => candidate.CertifiedForwardSlackMilliseconds is null ? 0 : 1)
+            .ThenByDescending(candidate => candidate.CertifiedForwardSlackMilliseconds ?? 0)
+            .ThenBy(candidate => candidate.CandidateId, StringComparer.Ordinal)
+            .First();
+        var boundedSet = Assert.Single(bounded.VehicleCandidates!);
+        var retained = Assert.Single(
+            boundedSet.Candidates,
+            candidate => !candidate.IsNoOp);
+        Assert.Equal(2, retained.NewRequestIds.Count);
+        Assert.Equal(fullTwoRequest.CandidateId, retained.CandidateId);
+        var loss = Assert.Single(bounded.Diagnostics!.VehicleLosses);
+        Assert.Equal(9, loss.UniqueFeasibleCandidateCountBeforeCap);
+        Assert.Equal(2, loss.RetainedCandidateCount);
+        Assert.Equal(7, loss.OmittedFeasibleCandidateCountByCap);
+        Assert.Equal(
+            loss.UniqueFeasibleCandidateCountBeforeCap,
+            loss.RetainedCandidateCount
+                + loss.OmittedFeasibleCandidateCountByCap);
+        Assert.True(loss.CandidateCapApplied);
+        var omission = Assert.Single(
+            bounded.Diagnostics.Omissions,
+            witness => witness.Code
+                == CandidateGenerationFailureCodes.CandidateCapOmission);
+        Assert.Equal(7, omission.Count);
+        Assert.Equal(
+            omission.StableDigest,
+            Assert.Single(
+                repeated.Diagnostics!.Omissions,
+                witness => witness.Code
+                    == CandidateGenerationFailureCodes.CandidateCapOmission)
+                .StableDigest);
+    }
+
+    [Fact]
+    public void More_search_work_never_loses_an_already_generated_acceptance_level()
+    {
+        var first = AlgorithmTestData.PendingRequest("request-1");
+        var second = AlgorithmTestData.PendingRequest(
+            "request-2",
+            AlgorithmTestData.NodeTwo,
+            AlgorithmTestData.NodeThree);
+        var state = AlgorithmTestData.CreateState(
+            [second, first],
+            [AlgorithmTestData.Vehicle()]);
+        var previousMaximumAccepted = 0;
+
+        for (var work = 1L; work <= 20; work++)
+        {
+            var result = _generator.Generate(
+                state,
+                new CandidateGenerationOptions(
+                    100,
+                    2,
+                    exactSmallMode: false,
+                    maximumExplorationWorkUnits: work));
+
+            Assert.True(result.IsSuccess, result.Witness?.Message);
+            var maximumAccepted = result.VehicleCandidates!.Single().Candidates
+                .Max(candidate => candidate.NewRequestIds.Count);
+            Assert.True(
+                maximumAccepted >= previousMaximumAccepted,
+                $"work {work} reduced accepted level from " +
+                $"{previousMaximumAccepted} to {maximumAccepted}.");
+            previousMaximumAccepted = maximumAccepted;
+        }
+
+        Assert.Equal(2, previousMaximumAccepted);
     }
 }

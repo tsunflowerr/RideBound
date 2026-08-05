@@ -81,7 +81,10 @@ public sealed class EventReducer
                 nextSequence,
                 state.ExpectedInitialTravelTimeSnapshotHash,
                 state.Commitments,
-                incidents));
+                incidents)
+            {
+                PlanPool = state.PlanPool,
+            });
     }
 
     private static EventReductionWitness? ValidateBatch(

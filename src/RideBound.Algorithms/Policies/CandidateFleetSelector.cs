@@ -90,6 +90,11 @@ public sealed class CandidateFleetSelector
             {
                 nextCost = checked(
                     operationalCost + candidate.Schedule.OperationalCost);
+
+                if (nextCost > DomainLimits.MaxCanonicalInteger)
+                {
+                    throw new OverflowException();
+                }
             }
             catch (OverflowException)
             {

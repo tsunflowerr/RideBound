@@ -102,9 +102,10 @@ public sealed record CommitmentVector
         for (var index = 0; index < values.Length; index++)
         {
             var dimension = CommitmentDimensionVocabulary.Ordered[index];
-            values[index] = checked(Get(dimension) + delta.Get(dimension));
+            var before = Get(dimension);
+            var addition = delta.Get(dimension);
 
-            if (values[index] > DomainLimits.MaxCanonicalInteger)
+            if (before > DomainLimits.MaxCanonicalInteger - addition)
             {
                 return DomainResult<CommitmentVector>.Fail(
                     CommitmentFailureCodes.VectorOverflow,
@@ -112,6 +113,8 @@ public sealed record CommitmentVector
                     dimension: CommitmentDimensionVocabulary.ToProtocolValue(
                         dimension));
             }
+
+            values[index] = before + addition;
         }
 
         return DomainResult<CommitmentVector>.Success(

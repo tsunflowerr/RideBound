@@ -37,6 +37,7 @@ public sealed class CommitmentPolicyConfiguration :
         "toNodeId",
         "distanceMm");
     private readonly CommitmentPolicyCatalog _policies;
+    private readonly IReadOnlyList<string> _policyIds;
     private readonly IReadOnlyDictionary<StopArc, long> _stopDistances;
 
     private CommitmentPolicyConfiguration(
@@ -45,11 +46,19 @@ public sealed class CommitmentPolicyConfiguration :
         IReadOnlyDictionary<StopArc, long> stopDistances)
     {
         ContentHash = contentHash;
-        _policies = new CommitmentPolicyCatalog(policies);
+        var materializedPolicies = policies.ToArray();
+        _policies = new CommitmentPolicyCatalog(materializedPolicies);
+        _policyIds = Array.AsReadOnly(
+            materializedPolicies
+                .Select(value => value.PolicyId)
+                .Order(StringComparer.Ordinal)
+                .ToArray());
         _stopDistances = stopDistances;
     }
 
     public Sha256Hex ContentHash { get; }
+
+    public IReadOnlyList<string> PolicyIds => _policyIds;
 
     public static CommitmentPolicyConfiguration Decode(
         ReadOnlySpan<byte> utf8Json)

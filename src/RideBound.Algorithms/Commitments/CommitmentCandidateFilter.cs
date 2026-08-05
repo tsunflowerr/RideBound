@@ -50,7 +50,7 @@ public sealed class CommitmentCandidateFilter
 
             foreach (var candidate in set.Candidates)
             {
-                var updated = ApplyCandidate(
+                var updated = CandidateStateApplicator.Apply(
                     reducedState.Run,
                     candidate);
 
@@ -101,13 +101,18 @@ public sealed class CommitmentCandidateFilter
                     pruned
                         .OrderBy(value => value.CandidateId, StringComparer.Ordinal)
                         .ToArray(),
-                    set.WasTruncated));
+                    set.WasTruncated,
+                    set.Loss));
         }
 
         return result.AsReadOnly();
     }
 
-    private static DomainResult<RideBoundRun> ApplyCandidate(
+}
+
+internal static class CandidateStateApplicator
+{
+    public static DomainResult<RideBoundRun> Apply(
         RideBoundRun reducedRun,
         InsertionCandidate candidate)
     {

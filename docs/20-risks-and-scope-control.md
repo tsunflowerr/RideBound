@@ -27,6 +27,9 @@
 | K-21 | Earliest-feasible/single-plan che lựa chọn linh hoạt hơn | Cao | Cao | C1 chỉ hơn/kém B1 do schedule convention | WP4 named wait/hold + multiple-plan baselines; report strategy separately |
 | K-22 | Candidate cap gây bias nhưng bị gọi là solver loss | Cao | Cao | exact mode tốt, bounded mode silent-omit | Tách candidate loss/solver loss; admissible bound và deterministic cap audit |
 | K-23 | Thêm solve time làm giảm future flexibility | Trung bình | Cao | current cost giảm nhưng future accept/revision xấu | B5 distinguished plan/pool, fixed deadline, measure future deviations; không giả monotonic quality |
+| K-24 | Cache/slack stale làm prune sai | Trung bình | Rất cao | cached và uncached khác feasible set | Full route/position/time/travel key, mutation/invalidation tests, validator cuối |
+| K-25 | Plan pool không replay/checkpoint | Trung bình | Rất cao | restore chọn distinguished plan khác | Pool trong canonical online/checkpoint state, compatibility filter và suffix equivalence |
+| K-26 | Solver status/objective bị overclaim | Trung bình | Cao | FEASIBLE/UNKNOWN ghi optimal hoặc gap sai | Typed status/bound/gap, exact enumerator differential và validator-pass fallback |
 
 ## 2. Scope budget
 
@@ -61,6 +64,12 @@ Go nếu online baseline và deterministic replay đúng. Dừng nếu state/pro
 Go nếu exact-small/infinite-budget equivalence, candidate/solver loss accounting,
 certificate và deadline/fallback pass. Không chuyển sang simulator nếu core có
 invalid decision hoặc C1/B1 dùng compute/candidate boundary không công bằng.
+
+**Kết quả 2026-08-03:** mechanical go gate pass bằng ADR-024 và required suite
+557/557. K-22/K-24/K-25/K-26 có executable controls và independent evidence;
+chúng không bị xóa khỏi register vì demand-scale behavior vẫn chưa đo. Handoff chỉ
+sang WP5 refinement, chưa sang simulator/main experiment và chưa đóng K-02/K-03/
+K-04/K-16/K-19/K-23.
 
 ### Sau WP7
 

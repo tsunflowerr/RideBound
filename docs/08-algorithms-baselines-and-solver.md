@@ -23,7 +23,7 @@ Khác biệt chính chỉ là commitment mechanism. Nếu RideBound được th�
 | B1 | `rolling-cost` | Rolling insertion/reoptimization, chỉ hard service constraints |
 | B2 | `rolling-penalty` | Phạt revision trong objective nhưng không có hard cumulative budget |
 | B3 | `fixed-freeze-horizon` | Khóa thay đổi trong một khoảng thời gian cố định trước pickup |
-| B4 | `no-reassignment` | Sau accept không đổi vehicle; route suffix vẫn có thể đổi |
+| B4 | `no-reassignment-repair` | Sau accept không đổi vehicle; route suffix có bounded same-vehicle repair |
 | B5 | `least-commitment-consensus` | Multiple-plan/consensus khi triển khai khả thi |
 | C1 | `ridebound-hard-vector` | RideBound hard vector budget |
 | C2 | `commit-soft-hard-hybrid` | Warning/penalty trước, hard gate tại limit |
@@ -195,6 +195,14 @@ Theo thứ tự:
 
 Không publish solver incumbent chưa qua validator.
 
+Sau `RB-WP4-011`, rule này executable trong
+`SafeCandidateSelectionExecutor`: primary solution luôn qua injected independent
+semantic validator; fallback thử canonical no-op rồi single-request solution theo
+objective/ID order. Mỗi lần thử tiêu một validation work unit. Nếu hết budget
+hoặc mọi phương án bị bác, kết quả là `UNKNOWN` không solution. Solver-neutral
+executor không có API tạo incident; incident recovery chỉ được Runner mở khi state
+có typed incident hợp lệ.
+
 ## 9. OR-Tools
 
 OR-Tools hiện có trong repo, nhưng RideBound phải đặt dependency trong `RideBound.Solvers.OrTools`.
@@ -218,9 +226,28 @@ Mọi run ghi:
 
 `FEASIBLE` không được báo thành `OPTIMAL`.
 
+Sau `RB-WP4-010`, CP-SAT adapter pin `Google.OrTools 9.15.6755`, one worker và
+explicit seed/conflict/deterministic-time limits. Lexicographic pass chỉ khóa
+objective trước khi pass đó đã `OPTIMAL`; status/bound giữ nguyên semantics và
+solution được canonical revalidation.
+
+Sau `RB-WP4-012`, B1–B4/C1/C2 dùng production mapper sang chính model này.
+Mapper biểu diễn accepted → policy vector → cost → candidate-ID vector bằng
+ordered objective levels; ID tie-break là một rank objective riêng cho từng
+vehicle canonical, không dựa vào thứ tự native solver. B5 tiếp tục dùng bounded
+multiple-plan enumerator vì output của nó là cả pool, không chỉ một assignment.
+Strict WP4 config được bind cùng commitment config vào manifest hash và Runner
+đưa `completed`/`safeFallback` vào solver shell của hashed decision.
+
 ## 10. Compute budget
 
-Hai budget tách biệt:
+Deterministic selection có ba work budget tách biệt:
+
+- candidate generation work;
+- semantic validation work;
+- solver conflict/deterministic-time work.
+
+Ngoài ra deployment có hai lớp thời gian:
 
 - decision deadline từ simulator/product;
 - solver budget nội bộ.
@@ -234,6 +261,9 @@ Candidate generation và validation cũng tiêu thời gian, nên report:
 - total wall/process ms.
 
 Performance runs dùng machine fingerprint và warm-up. Regression determinism có thể single-thread.
+Wall/process time chỉ là metric; deterministic work exhaustion mới được thay đổi
+replay outcome. Candidate omission count/digest/saturation được report riêng với
+solver status/bound để không nhập candidate loss thành solver loss.
 
 ## 11. Ablation
 
@@ -275,7 +305,7 @@ Sau v1:
 
 Không tối ưu performance trước khi golden replay và certificate soundness pass.
 
-## 14. Audit implementation sau WP3 và hướng tối ưu WP4
+## 14. Historical audit sau WP3 đã dẫn đến WP4
 
 WP3 đã nối cổng cam kết vào B1 theo hai lớp:
 
@@ -300,11 +330,47 @@ Ranh giới cần nói rõ:
   riêng mới kích hoạt runtime.
 - O-001 khóa reassignment, nên `vehicle_switch_count` là hard-zero trong normal
   operation; không được gọi phần này là tối ưu reassignment.
-- non-exact generator chỉ xét 4 pending request đầu và cap theo candidate ID, chưa
-  phải best-first/dominance/slack pruning; fleet selector còn exhaustive Cartesian.
-- schedule là earliest-feasible và single-plan; chưa có modified dynamic wait,
-  plan pool, distinguished plan, future-potential hoặc idle-time improvement.
+- Tại mốc WP3, non-exact generator chỉ xét request bound và cap theo candidate ID,
+  chưa có best-first/slack/loss accounting; WP4 đã thay boundary production bằng
+  deterministic best-first + portable solver nhưng giữ exact enumerator làm oracle.
+- Tại mốc WP3, schedule là earliest-feasible và single-plan; WP4 đã thêm named
+  executable origin-hold, repair và checkpointable multiple-plan pool.
 
-Các giới hạn cuối là backlog tối ưu WP4, không phải lý do nới validator WP3. WP4
-phải giữ cùng physical/commitment validator, cùng canonical runner và cùng
-exact-small oracle để đo candidate loss, solver loss và deadline riêng.
+Các giới hạn lịch sử không phải lý do nới validator WP3. WP4 đã giữ cùng physical/
+commitment validator, canonical Runner và exact-small oracle để đo candidate loss,
+solver loss và deadline riêng.
+
+## 15. Semantics đã khóa cho WP4 bởi ADR-023
+
+- Raw physical candidate pool/cap được tạo một lần và chia sẻ cho B1–B5/C1/C2;
+  hard gate C1/C2 chạy sau common cap. Omission, physical prune, commitment prune
+  và solver loss là bốn số riêng.
+- Exact mode không omit. Bounded mode ưu tiên request theo deadline/arrival/ID và
+  candidate theo acceptance, operational lower bound, forward slack, stable ID.
+- Main schedule vẫn earliest-feasible. Wait control chỉ relocate waiting slack
+  thành current-node waypoint có service duration, nên action có thể thi hành.
+- B4 là same-vehicle remove/reinsert repair, không reassignment. B5 giữ versioned
+  canonical pool và chỉ publish distinguished plan.
+- C1 multi-pass: accepted → worst normalized utilization → 10 revision dimensions
+  → cost → ID. C2 thêm explicit warning excess nhưng hard gate không đổi.
+- OR-Tools chỉ nhận solver-neutral Application model. Regression dùng one worker,
+  explicit seed/deterministic-time; status/bound/gap/fallback giữ nguyên nghĩa.
+
+Chi tiết ticket, published exact-small bound và rollback nằm trong
+[30-wp4-algorithms-solver-ticket-plan.md](tasks/30-wp4-algorithms-solver-ticket-plan.md).
+
+## 16. WP4 closure evidence
+
+`RB-WP4-001..014` và ADR-024 đã đóng các semantics trên. Production B1–B4/C1/C2
+dùng shared generation, exact objective mapper, pinned OR-Tools và independently
+validated fallback; B5 dùng bounded canonical plan pool và chỉ publish
+distinguished plan. Runner full-validate lại rồi giữ ledger/certificate/hash/ACK
+transaction của WP3.
+
+Required suite pass 557/557. B1 generator/selector khớp independent oracle trên
+64 fixtures; C1 production mapper + actual OR-Tools khớp independent enumerator
+trên 64 fixtures với mọi level optimal/gap 0. Hard-gate mutation, actual bounded
+loss propagation, cache/infinite-budget/plan-pool/deadline gates pass. Synthetic
+4–128 Boolean-option curve chỉ là machine-local promising signal; không phải
+evidence scale, service improvement hoặc user satisfaction. Final walkthrough ở
+[reviews/wp1-wp4-final/README.md](reviews/wp1-wp4-final/README.md).

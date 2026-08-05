@@ -1,5 +1,7 @@
 using RideBound.Algorithms.Candidates;
+using RideBound.Application.Optimization;
 using RideBound.Application.State;
+using RideBound.Domain.Commitments;
 using RideBound.Domain.Common;
 
 namespace RideBound.Algorithms.Policies;
@@ -25,7 +27,10 @@ public sealed record SelectedVehiclePlan(
 public sealed record FleetSelection(
     IReadOnlyList<SelectedVehiclePlan> VehiclePlans,
     int AcceptedRequestCount,
-    long OperationalCost);
+    long OperationalCost,
+    CommitmentVector? DecisionInducedRevision = null,
+    long? WorstHardUtilizationPartsPerMillion = null,
+    CommitmentVector? WarningExcess = null);
 
 public sealed record FleetSelectionResult
 {
@@ -56,7 +61,12 @@ public sealed record RollingCostDecision(
     IReadOnlyList<RequestDecisionAction> RequestActions,
     IReadOnlyList<CandidatePruneWitness> PrunedCandidates,
     int AcceptedRequestCount,
-    long OperationalCost);
+    long OperationalCost,
+    CommitmentVector? DecisionInducedRevision = null,
+    long? WorstHardUtilizationPartsPerMillion = null,
+    CommitmentVector? WarningExcess = null,
+    CandidateSelectionExecutionResult? SelectionExecution = null,
+    CandidateGenerationDiagnostics? GenerationDiagnostics = null);
 
 public sealed record RollingCostDecisionResult
 {
@@ -99,6 +109,8 @@ public static class RollingCostFailureCodes
     public const string OperationalCostOverflow = "OPERATIONAL_COST_OVERFLOW";
     public const string SelectedCandidateInvalid = "SELECTED_CANDIDATE_INVALID";
     public const string DecisionApplyFailed = "DECISION_APPLY_FAILED";
+    public const string CommitmentAssessmentFailed =
+        "COMMITMENT_ASSESSMENT_FAILED";
 }
 
 public static class RollingCostReasonCodes

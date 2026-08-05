@@ -24,9 +24,13 @@ WP2 đã đóng; WP3 refinement trong
 [27-wp3-ledger-certificate-refinement.md](tasks/27-wp3-ledger-certificate-refinement.md)
 đã tạo ordered queue
 [28-wp3-ledger-certificate-ticket-plan.md](tasks/28-wp3-ledger-certificate-ticket-plan.md).
-WP3 đã đóng; WP4 bắt đầu bằng refinement
+WP3 đã đóng; WP4 refinement
 [29-wp4-algorithms-solver-refinement.md](tasks/29-wp4-algorithms-solver-refinement.md),
-chưa có implementation ticket WP4 nào được phép chạy.
+đã Done và tạo ordered queue
+[30-wp4-algorithms-solver-ticket-plan.md](tasks/30-wp4-algorithms-solver-ticket-plan.md).
+WP4 đã đóng bằng ADR-024; WP5 chỉ mở refinement
+[31-wp5-bego-integration-refinement.md](tasks/31-wp5-bego-integration-refinement.md),
+chưa mở implementation.
 
 ## WP0 — Freeze baseline và scaffold
 
@@ -135,11 +139,14 @@ checkpoint/restore đều nằm trên cùng state/hash/ACK boundary.
 
 ## WP4 — RideBound policies và OR-Tools
 
-**Trạng thái:** Refinement READY; chỉ `RB-WP4-001` được READY. Chưa có production
-WP4 code cho tới khi ADR-023 và ordered implementation queue được khóa.
+**Trạng thái:** Complete ngày 2026-08-03; `RB-WP4-001..014` Done, ADR-023/024
+Accepted. Required suite 557/557; independent exact-small/solver evidence và
+synthetic microbenchmark đã ghi, chưa nâng effectiveness/scale claim.
 
 Refinement hiện hành:
 [29-wp4-algorithms-solver-refinement.md](tasks/29-wp4-algorithms-solver-refinement.md).
+Execution plan hiện hành:
+[30-wp4-algorithms-solver-ticket-plan.md](tasks/30-wp4-algorithms-solver-ticket-plan.md).
 
 ### Deliverable
 
@@ -158,6 +165,10 @@ Refinement hiện hành:
 - small Pareto examples.
 
 ## WP5 — BeGo adapter và persistence
+
+**Trạng thái:** Refinement ready; chỉ `RB-WP5-001` Ready, không có implementation
+ticket. Xem
+[31-wp5-bego-integration-refinement.md](tasks/31-wp5-bego-integration-refinement.md).
 
 ### Deliverable
 
@@ -343,8 +354,11 @@ người dùng. Sau khi WP0 qua exit gate:
    physical validator, deterministic B1, exact-small oracle và tiny replay.
 3. WP3 đã hoàn thành `RB-WP3-001..014`, đóng correctness boundary bằng ADR-022
    và handoff review chi tiết WP1–WP3.
-4. Thực hiện đúng một ticket `READY` tiếp theo: `RB-WP4-001` refinement schedule,
-   candidate fairness/loss, multiple-plan, lexicographic objective, solver và
-   safe fallback.
-5. Không viết production WP4 trước refinement, không tự chọn O-002/O-003/O-004,
-   không mở O-001 reassignment và không kéo adapter WP5+ vào WP4.
+4. ADR-023/024 và `RB-WP4-001..014` đã đóng schedule, candidate fairness/loss,
+   multiple-plan, lexicographic objective, OR-Tools, fallback, Runner integration,
+   independent evidence và final review WP1–WP4.
+5. Tín hiệu WP4 hiện chỉ là exact-small agreement/gap 0 và synthetic runtime
+   curve; paired demand/effectiveness thuộc WP5–WP9.
+6. Thực hiện đúng một ticket `READY`: refinement-only `RB-WP5-001`. Không tự chọn
+   O-002/O-003/O-004, không mở O-001 reassignment và không viết adapter/migration
+   trước khi refinement khóa ownership/transaction/provenance/rollback.

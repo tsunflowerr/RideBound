@@ -1,5 +1,6 @@
 using RideBound.Algorithms.Candidates;
 using RideBound.Algorithms.Commitments;
+using RideBound.Algorithms.Policies;
 using RideBound.Application.Commitments;
 using RideBound.Application.State;
 using RideBound.Application.Travel;
@@ -12,6 +13,128 @@ namespace RideBound.Algorithms.Tests.Oracle;
 
 public sealed class ExactSmallCommitmentDifferentialTests
 {
+    [Fact]
+    public void B2_assesses_every_raw_candidate_without_hard_budget_pruning()
+    {
+        var fixture = CreateState(seed: 0);
+        var generated = new InsertionCandidateGenerator().Generate(
+            fixture.State,
+            CandidateGenerationOptions.ExactSmall);
+        Assert.True(generated.IsSuccess, generated.Witness?.Message);
+        var raw = generated.VehicleCandidates!;
+        var rawIds = raw.Single().Candidates
+            .Select(candidate => candidate.CandidateId)
+            .ToArray();
+        var context = MechanismContext(fixture, "b2-assessment");
+
+        var assessed = new CommitmentCandidateAssessor()
+            .AssessRevisionPenalty(context, raw);
+        var hardFiltered = new CommitmentCandidateFilter(
+            fixture.BeforeEventState,
+            new CommitmentPolicyCatalog([fixture.Policy]),
+            NoDistances.Instance,
+            "hard-reference",
+            1).Filter(fixture.State, raw);
+
+        Assert.True(assessed.IsSuccess, assessed.Witness?.Message);
+        Assert.Equal(rawIds.Length, assessed.Assessments!.Count);
+        Assert.Contains(
+            assessed.Assessments.Values,
+            assessment => assessment.DecisionInducedRevision
+                != CommitmentVector.Zero);
+        Assert.True(hardFiltered.Single().Candidates.Count < rawIds.Length);
+        Assert.Equal(
+            rawIds,
+            raw.Single().Candidates.Select(candidate => candidate.CandidateId));
+
+        var decision = new RevisionPenaltyPolicy().Decide(
+            context,
+            CandidateGenerationOptions.ExactSmall);
+        Assert.True(decision.IsSuccess, decision.Witness?.Message);
+        Assert.NotNull(decision.Decision!.DecisionInducedRevision);
+    }
+
+    [Fact]
+    public void B2_preserves_the_raw_candidate_set_across_published_small_seeds()
+    {
+        const int publishedSeedCount = 16;
+
+        for (var seed = 0; seed < publishedSeedCount; seed++)
+        {
+            var fixture = CreateState(seed);
+            var generated = new InsertionCandidateGenerator().Generate(
+                fixture.State,
+                CandidateGenerationOptions.ExactSmall);
+            Assert.True(
+                generated.IsSuccess,
+                $"seed={seed}; {generated.Witness?.Message}");
+            var raw = generated.VehicleCandidates!;
+
+            var assessed = new CommitmentCandidateAssessor()
+                .AssessRevisionPenalty(
+                    MechanismContext(fixture, $"b2-seed-{seed}"),
+                    raw);
+
+            Assert.True(
+                assessed.IsSuccess,
+                $"seed={seed}; {assessed.Witness?.Message}");
+            Assert.Equal(
+                raw.Sum(set => set.Candidates.Count),
+                assessed.Assessments!.Count);
+        }
+    }
+
+    [Fact]
+    public void B3_freezes_only_inside_explicit_horizon_and_never_uses_source_budgets()
+    {
+        var fixture = CreateState(seed: 0);
+        var generated = new InsertionCandidateGenerator().Generate(
+            fixture.State,
+            CandidateGenerationOptions.ExactSmall);
+        Assert.True(generated.IsSuccess, generated.Witness?.Message);
+        var raw = generated.VehicleCandidates!;
+        var context = MechanismContext(fixture, "b3-freeze");
+        var timeToPickup = fixture.BaselinePickup.Milliseconds
+            - fixture.State.Run.SimulationTime.Milliseconds;
+        Assert.True(timeToPickup > 1);
+        var outsidePolicies = MechanismCommitmentPolicyProvider.FixedFreeze(
+            context.Policies,
+            new Duration(timeToPickup - 1),
+            PromiseLock.PickupEta | PromiseLock.DropEta);
+        var insidePolicies = MechanismCommitmentPolicyProvider.FixedFreeze(
+            context.Policies,
+            new Duration(timeToPickup),
+            PromiseLock.PickupEta | PromiseLock.DropEta);
+        var outside = new CommitmentCandidateFilter(
+            fixture.BeforeEventState,
+            outsidePolicies,
+            NoDistances.Instance,
+            "b3-outside",
+            1).Filter(fixture.State, raw);
+        var inside = new CommitmentCandidateFilter(
+            fixture.BeforeEventState,
+            insidePolicies,
+            NoDistances.Instance,
+            "b3-inside",
+            1).Filter(fixture.State, raw);
+
+        Assert.Equal(
+            raw.Single().Candidates.Count,
+            outside.Single().Candidates.Count);
+        Assert.True(
+            inside.Single().Candidates.Count < raw.Single().Candidates.Count);
+        Assert.Contains(
+            inside.Single().PrunedCandidates,
+            witness => witness.Code == CommitmentFailureCodes.PhaseLock);
+
+        var decision = new FixedFreezeHorizonPolicy(
+            new Duration(timeToPickup),
+            PromiseLock.PickupEta | PromiseLock.DropEta).Decide(
+                context,
+                CandidateGenerationOptions.ExactSmall);
+        Assert.True(decision.IsSuccess, decision.Witness?.Message);
+    }
+
     [Fact]
     public void Production_commitment_filter_matches_independent_small_oracle()
     {
@@ -90,6 +213,199 @@ public sealed class ExactSmallCommitmentDifferentialTests
         }
     }
 
+    [Fact]
+    public void C1_assessor_matches_independent_filter_and_kills_hard_gate_removal_mutation()
+    {
+        var fixture = CreateState(seed: 3);
+        var generated = new InsertionCandidateGenerator().Generate(
+            fixture.State,
+            CandidateGenerationOptions.ExactSmall);
+        Assert.True(generated.IsSuccess, generated.Witness?.Message);
+        var raw = generated.VehicleCandidates!;
+        var context = MechanismContext(fixture, "c1-assessment");
+
+        var assessed = new HardVectorCandidateAssessor().AssessAndFilter(
+            context,
+            raw);
+        var reference = new CommitmentCandidateFilter(
+            fixture.BeforeEventState,
+            context.Policies,
+            context.StopDistances,
+            "c1-reference",
+            1).Filter(fixture.State, raw);
+
+        Assert.True(assessed.IsSuccess, assessed.Witness?.Message);
+        Assert.True(
+            raw.Single().Candidates.Count
+                > assessed.Batch!.FeasibleCandidateSets.Single().Candidates.Count,
+            "The published fixture must contain a hard-invalid candidate so removing the hard gate is killed.");
+        Assert.Equal(
+            reference.Single().Candidates.Select(value => value.CandidateId),
+            assessed.Batch.FeasibleCandidateSets.Single().Candidates
+                .Select(value => value.CandidateId));
+        Assert.All(
+            assessed.Batch.Assessments.Values,
+            value => Assert.InRange(
+                value.WorstHardUtilizationPartsPerMillion,
+                0,
+                HardVectorCandidateAssessor.PartsPerMillion));
+        Assert.Contains(
+            assessed.Batch.Assessments.Values,
+            value => value.WorstHardUtilizationPartsPerMillion > 0);
+
+        var decision = new RideBoundHardVectorPolicy().Decide(
+            context,
+            CandidateGenerationOptions.ExactSmall);
+        Assert.True(decision.IsSuccess, decision.Witness?.Message);
+        Assert.NotNull(decision.Decision!.WorstHardUtilizationPartsPerMillion);
+    }
+
+    [Fact]
+    public void C1_normalization_uses_exact_ceiling_without_long_overflow()
+    {
+        Assert.Equal(
+            333_334,
+            HardVectorCandidateAssessor.CeilingPartsPerMillion(1, 3));
+        Assert.Equal(
+            1_000_000,
+            HardVectorCandidateAssessor.CeilingPartsPerMillion(
+                DomainLimits.MaxCanonicalInteger - 1,
+                DomainLimits.MaxCanonicalInteger));
+        Assert.Equal(
+            1_000_000,
+            HardVectorCandidateAssessor.CeilingPartsPerMillion(0, 0));
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => HardVectorCandidateAssessor.CeilingPartsPerMillion(2, 1));
+    }
+
+    [Fact]
+    public void C1_with_unbounded_limits_and_no_locks_is_semantically_equal_to_B1()
+    {
+        var fixture = CreateState(seed: 2);
+        var policy = new CommitmentPolicy(
+            "uniform-v1",
+            CommitmentBudgetBasis.DecisionInduced,
+            CommitmentDimensionVocabulary.Ordered.Select(
+                dimension => new CommitmentDimensionLimit(
+                    dimension,
+                    null,
+                    CommitmentPhase.AllActive)),
+            new MaterialRevisionRule(1_000, null));
+        var context = new CommitmentMechanismContext(
+            fixture.BeforeEventState,
+            fixture.State,
+            new CommitmentPolicyCatalog([policy]),
+            NoDistances.Instance,
+            "c1-unbounded-equivalence",
+            1);
+
+        var b1 = new RollingCostPolicy().Decide(
+            fixture.State,
+            CandidateGenerationOptions.ExactSmall);
+        var c1 = new RideBoundHardVectorPolicy().Decide(
+            context,
+            CandidateGenerationOptions.ExactSmall);
+
+        Assert.True(b1.IsSuccess, b1.Witness?.Message);
+        Assert.True(c1.IsSuccess, c1.Witness?.Message);
+        Assert.Equal(b1.Decision!.RequestActions, c1.Decision!.RequestActions);
+        Assert.Equal(
+            b1.Decision.VehiclePlans.Select(value => value.Candidate.CandidateId),
+            c1.Decision.VehiclePlans.Select(value => value.Candidate.CandidateId));
+        Assert.All(
+            b1.Decision.VehiclePlans.Zip(c1.Decision.VehiclePlans),
+            pair => Assert.True(
+                pair.First.Candidate.Route.IsSemanticallyEqual(
+                    pair.Second.Candidate.Route)));
+    }
+
+    [Fact]
+    public void C2_keeps_the_exact_C1_hard_feasible_set_and_computes_warning_excess()
+    {
+        var fixture = CreateState(seed: 3);
+        var context = MechanismContext(fixture, "c2-warning");
+        var generated = new InsertionCandidateGenerator().Generate(
+            fixture.State,
+            CandidateGenerationOptions.ExactSmall);
+        Assert.True(generated.IsSuccess, generated.Witness?.Message);
+        var raw = generated.VehicleCandidates!;
+        var warnings = new CommitmentWarningProfileCatalog(
+            [WarningProfile(10)]);
+
+        var c1 = new HardVectorCandidateAssessor().AssessAndFilter(context, raw);
+        var c2 = new HardVectorCandidateAssessor().AssessAndFilter(
+            context,
+            raw,
+            warnings);
+
+        Assert.True(c1.IsSuccess, c1.Witness?.Message);
+        Assert.True(c2.IsSuccess, c2.Witness?.Message);
+        Assert.Equal(
+            c1.Batch!.FeasibleCandidateSets.Single().Candidates
+                .Select(value => value.CandidateId),
+            c2.Batch!.FeasibleCandidateSets.Single().Candidates
+                .Select(value => value.CandidateId));
+        Assert.Contains(
+            c2.Batch.Assessments.Values,
+            value => value.WarningExcess != CommitmentVector.Zero);
+
+        var decision = new CommitSoftHardHybridPolicy(warnings).Decide(
+            context,
+            CandidateGenerationOptions.ExactSmall);
+        Assert.True(decision.IsSuccess, decision.Witness?.Message);
+        Assert.NotNull(decision.Decision!.WarningExcess);
+    }
+
+    [Fact]
+    public void C2_with_all_warnings_disabled_is_semantically_equal_to_C1()
+    {
+        var fixture = CreateState(seed: 3);
+        var context = MechanismContext(fixture, "c2-disabled");
+        var disabled = new CommitmentWarningProfileCatalog(
+            [WarningProfile(null)]);
+
+        var c1 = new RideBoundHardVectorPolicy().Decide(
+            context,
+            CandidateGenerationOptions.ExactSmall);
+        var c2 = new CommitSoftHardHybridPolicy(disabled).Decide(
+            context,
+            CandidateGenerationOptions.ExactSmall);
+
+        Assert.True(c1.IsSuccess, c1.Witness?.Message);
+        Assert.True(c2.IsSuccess, c2.Witness?.Message);
+        Assert.Equal(c1.Decision!.RequestActions, c2.Decision!.RequestActions);
+        Assert.Equal(
+            c1.Decision.VehiclePlans.Select(value => value.Candidate.CandidateId),
+            c2.Decision.VehiclePlans.Select(value => value.Candidate.CandidateId));
+        Assert.Equal(
+            c1.Decision.WorstHardUtilizationPartsPerMillion,
+            c2.Decision.WorstHardUtilizationPartsPerMillion);
+        Assert.Null(c2.Decision.WarningExcess);
+    }
+
+    [Fact]
+    public void C2_rejects_warning_above_its_finite_hard_limit()
+    {
+        var fixture = CreateState(seed: 3);
+        var context = MechanismContext(fixture, "c2-invalid-warning");
+        var generated = new InsertionCandidateGenerator().Generate(
+            fixture.State,
+            CandidateGenerationOptions.ExactSmall);
+        Assert.True(generated.IsSuccess, generated.Witness?.Message);
+        var invalid = new CommitmentWarningProfileCatalog(
+            [WarningProfile(fixture.HardEtaLimit + 1)]);
+
+        var assessed = new HardVectorCandidateAssessor().AssessAndFilter(
+            context,
+            generated.VehicleCandidates!,
+            invalid);
+
+        Assert.False(assessed.IsSuccess);
+        Assert.Equal(
+            "INVALID_COMMITMENT_WARNING_LIMIT",
+            assessed.Witness!.Code);
+    }
+
     private static IReadOnlySet<string> RetainedKeys(
         Fixture fixture,
         IReadOnlyList<VehicleCandidateSet> candidates,
@@ -121,6 +437,28 @@ public sealed class ExactSmallCommitmentDifferentialTests
                         : null,
                     CommitmentPhase.AllActive)),
             new MaterialRevisionRule(1_000, null));
+
+    private static CommitmentWarningProfile WarningProfile(long? etaWarning) =>
+        new(
+            "uniform-v1",
+            CommitmentDimensionVocabulary.Ordered.Select(
+                dimension => new CommitmentWarningLimit(
+                    dimension,
+                    dimension is CommitmentDimension.PickupEtaTotalMs
+                        or CommitmentDimension.DropEtaTotalMs
+                        ? etaWarning
+                        : null)));
+
+    private static CommitmentMechanismContext MechanismContext(
+        Fixture fixture,
+        string scope) =>
+        new(
+            fixture.BeforeEventState,
+            fixture.State,
+            new CommitmentPolicyCatalog([fixture.Policy]),
+            NoDistances.Instance,
+            scope,
+            1);
 
     private static Fixture CreateState(int seed)
     {

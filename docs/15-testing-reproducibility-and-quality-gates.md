@@ -276,9 +276,16 @@ xUnit bị Windows Application Control chặn fresh unsigned DLL bằng `0x80071
 ở ba suite, nhưng đúng artifacts đó pass qua policy-safe bundles/process checks.
 Exception nằm trong `18` và không được tính là Release full-solution xUnit pass.
 
-Q2 tổng thể **chưa đóng** vì WP4 còn exact-small/infinite-budget/solver
-equivalence cho C1/OR-Tools. WP3 nay đã đóng phần P1/P2/P3 commitment correctness;
+Q2 core correctness được đóng ngày 2026-08-03 bởi WP4 sau exact-small/infinite-
+budget/actual-solver equivalence. WP3 đã đóng P1/P2/P3 commitment correctness;
 điều đó không biến WP2 B1 thành treatment và không chứng minh effectiveness.
+
+ADR-023 đã khóa WP4 exact-small bound: tối đa 2 vehicle, 2 pending request,
+1 waiting incumbent repair/vehicle, plan-pool cap 4 và ít nhất 64 deterministic
+seeds. Báo riêng raw/exact feasible candidates, bounded retained/hard-pruned,
+enumerator optimum, solver incumbent/bound/gap và final semantic decision.
+Cache on/off, route/position/time/travel invalidation, origin-hold equivalence,
+infinite-budget B1 degeneration, OR-Tools status và fallback đều là gate bắt buộc.
 
 Tại checkpoint lịch sử sau `RB-WP3-001..007`, logical inventory là 378:
 Contracts 128, Domain 126,
@@ -316,15 +323,54 @@ WP3 bổ sung các gate sau ngoài suite thông thường:
 - dependency/build/format/schema/diff checks ở closure audit.
 
 Inventory closure là 414: Contracts 133, Domain 134, Application 34, Algorithms
-48, Runner 58 và Architecture 7. Required full-solution command trên host hiện
-tại bị Windows Application Control `0x800711C7`; `18` tách rõ unaffected suites,
-54 Runner non-process xUnit methods chạy qua self-contained harness và bốn
-clean-process cases. Không được đổi evidence ghép này thành tuyên bố
-full-solution xUnit pass.
+48, Runner 58 và Architecture 7. Required `dotnet test RideBound.slnx` pass
+414/414 ngày 2026-08-03. Policy-safe harness và bốn clean-process cases vẫn là
+evidence bổ sung; Windows Application Control `0x800711C7` chỉ còn là historical
+host-policy record trong `18`.
 
 Các test “mutation” ở đây là explicit mutation-killing cases source-controlled,
 không phải một mutation-score phần trăm từ công cụ ngoài. Không được ghi một điểm
 mutation giả khi chưa chạy tool đo độc lập.
+
+Mốc WP4 sau `RB-WP4-011`: logical inventory 507 — Contracts 133, Domain 135,
+Application 69, Algorithms 94, Solvers.OrTools 5, Runner 62 và Architecture 9.
+Required `dotnet test RideBound.slnx` pass 507/507 ngày 2026-08-03; format pass.
+Evidence mới gồm truthful CP-SAT status/bound/replay và deterministic fallback
+không dùng unvalidated incumbent, nhưng Q2 vẫn chưa đóng trước oracle/performance
+ticket `RB-WP4-013`.
+
+Mốc sau `RB-WP4-012`: logical inventory 523 — Contracts 133, Domain 135,
+Application 69, Algorithms 101, Solvers.OrTools 5, Runner 71, Architecture 9.
+Required suite pass 523/523. Bổ sung objective-mapping equivalence cases, actual
+OR-Tools Runner decision, UNKNOWN→validated fallback, manifest/config binding,
+wrong-ACK atomicity, B5 checkpoint restore và child-process `--wp4-config` smoke.
+Đây vẫn là mechanical/integration evidence; scale curve và 64+ seed independent
+oracle được bổ sung ở `RB-WP4-013`.
+
+### WP4 closure và Q2 gate
+
+Inventory closure là 557 — Contracts 133, Domain 135, Application 69,
+Algorithms 134, Solvers.OrTools 6, Runner 71, Architecture 9. Required
+`dotnet test RideBound.slnx` pass 557/557 ngày 2026-08-03, 0 failed/skipped.
+Release warning-as-error 0 warning/error, format verify pass, vulnerability audit
+không báo direct/transitive package và diff check pass.
+
+Evidence ngoài expected-case suite:
+
+- B1 generator/selector khớp independent enumerator trên 64 fixtures;
+- C1 production mapper + actual OR-Tools khớp independent oracle trên 64 fixtures,
+  mọi objective level `OPTIMAL`, exact gap numerator 0;
+- hard-gate removal mutation bị giết trên fixture có raw > hard-feasible set;
+- actual bounded request omission truyền count/digest đến execution diagnostics
+  tách solver `UNKNOWN` và validated safe fallback;
+- cache equivalence/invalidation, infinite C1=B1, C2-disabled=C1, plan-pool
+  checkpoint/tamper và deadline/fallback gates pass;
+- synthetic 4/16/32/128-variable curve đều exact optimal, p50 wall quan sát
+  2.389/12.160/21.406/91.004 ms trên máy audit.
+
+Q2 được đóng cho **core mechanical correctness**. Synthetic timing không đóng
+Q3–Q6, không chứng minh demand-scale performance, service effectiveness hoặc
+user satisfaction; các claim đó vẫn cần paired replay/preregistration.
 
 ### Q3 — BeGo
 
@@ -342,7 +388,8 @@ mutation giả khi chưa chạy tool đo độc lập.
 
 - preregistered runs, stats và artifact release.
 
-Không bắt đầu full experiments khi Q2 chưa đạt.
+Q2 đã đạt mechanical gate; vẫn không bắt đầu full confirmatory experiments trước
+WP5–WP8 adapter, harness, pilot và preregistration gates.
 
 ## 14. Definition of done cho một code task
 

@@ -1,7 +1,7 @@
 # RideBound — bản đồ tài liệu
 
-> Trạng thái: đặc tả v1 + WP0/WP1/WP2/WP3 hoàn thành; WP4 refinement READY
-> Cập nhật: 2026-08-02
+> Trạng thái: đặc tả v1 + WP0–WP4 hoàn thành; WP5 refinement READY
+> Cập nhật: 2026-08-03
 > Nguồn sự thật về tiến độ: [18-status-and-decision-log.md](18-status-and-decision-log.md)
 
 ## 1. Mục đích của bộ tài liệu
@@ -111,7 +111,10 @@ Bộ tài liệu này trả lời năm câu hỏi:
 | [27-wp3-ledger-certificate-refinement.md](tasks/27-wp3-ledger-certificate-refinement.md) | Ticket refinement WP3; khóa promise/ledger/budget/lock/certificate/checkpoint trước code |
 | [28-wp3-ledger-certificate-ticket-plan.md](tasks/28-wp3-ledger-certificate-ticket-plan.md) | Ordered queue 14 ticket WP3; trạng thái/evidence promise, ledger, budget, lock, incident, certificate và checkpoint |
 | [29-wp4-algorithms-solver-refinement.md](tasks/29-wp4-algorithms-solver-refinement.md) | Ticket refinement WP4; khóa schedule/candidate/objective/solver/fallback trước production code |
+| [30-wp4-algorithms-solver-ticket-plan.md](tasks/30-wp4-algorithms-solver-ticket-plan.md) | Ordered queue WP4 `002..014`; source hiện hành cho policies/solver implementation |
+| [31-wp5-bego-integration-refinement.md](tasks/31-wp5-bego-integration-refinement.md) | Refinement-only WP5; khóa adapter/persistence/transaction/paired Layer-1 trước implementation |
 | [reviews/wp1-wp3/README.md](reviews/wp1-wp3/README.md) | Review chi tiết code, invariant, tối ưu thật và khoảng trống WP1–WP3 |
+| [reviews/wp1-wp4-final/README.md](reviews/wp1-wp4-final/README.md) | Final logic/code/paper/evidence review WP1–WP4; thay thế trạng thái cũ của review WP1–WP3 |
 | [research/README.md](research/README.md) | Archive báo cáo, audit và evidence matrix nền |
 
 ## 6. Kiến trúc bằng một hình
@@ -150,12 +153,10 @@ không chép lại thuật toán RideBound bằng Python hoặc C++.
 - WP0 hoàn thành với `RideBound.slnx`; repository hiện có 7 source project và
   6 test project sau khi WP2 thêm Application và Algorithms test boundary.
 - Logical inventory hiện tại có 133 Contracts, 134 Domain, 34 Application,
-  48 Algorithms, 58 Runner và 7 Architecture test: tổng **414**.
-  Required `dotnet test RideBound.slnx` được chạy lại ngày 2026-08-02; host
-  Windows Application Control `0x800711C7` chặn fresh Contracts/Runner/
-  Application DLL sau khi 223 assertion khác đã pass. Từng suite/bundle và bốn
-  clean-process case giữ đủ evidence 414/414; đây là environment exception,
-  không được ghi thành full-solution xUnit pass.
+  48 Algorithms, 58 Runner và 7 Architecture test: tổng **414**. Required
+  `dotnet test RideBound.slnx` pass **414/414** ngày 2026-08-03 sau khi Smart App
+  Control không còn chặn các fresh DLL. Các lần `0x800711C7` trước đó được giữ
+  trong `18` như historical environment evidence, không còn là blocker hiện tại.
 - BeGo độc lập vẫn đạt 25/25 backend và 7/7 frontend test.
 - Đã có protocol/schema v1, canonical unit/JSON/hash, long-lived NDJSON runner,
   hello/init/event/error lifecycle, idempotent retry, đúng 10 golden fixture và
@@ -182,9 +183,14 @@ không chép lại thuật toán RideBound bằng Python hoặc C++.
   genesis route, integer exhaustion, certificate/publication binding, breach/
   ledger relation, pickup window và checkpoint reachability. Review chi tiết ở
   [reviews/wp1-wp3/README.md](reviews/wp1-wp3/README.md).
-- WP3 là correctness/feasibility boundary, chưa phải chứng minh C1 hiệu quả hoặc
-  tối ưu ở quy mô lớn. B1 vẫn earliest-feasible, single-plan, cap theo canonical
-  identity và giữ incumbent order. Bước duy nhất tiếp theo là refinement
-  `RB-WP4-001` trong
-  [29-wp4-algorithms-solver-refinement.md](tasks/29-wp4-algorithms-solver-refinement.md);
-  chưa được viết production solver trước khi refinement DONE.
+- ADR-023/024 và `RB-WP4-001..014` đã đóng WP4: shared bounded generation,
+  slack/cache/hold/repair/plan-pool, B1–B5/C1/C2, portable multi-pass OR-Tools,
+  validated fallback và Runner publication path. Independent evidence gồm
+  64-seed B1 oracle, 64-seed actual OR-Tools differential và required suite
+  557/557; synthetic performance chỉ là promising signal, chưa phải scale hay
+  effectiveness claim. Final review ở
+  [reviews/wp1-wp4-final/README.md](reviews/wp1-wp4-final/README.md).
+- Ticket duy nhất `READY` là refinement-only `RB-WP5-001`; chưa có migration,
+  endpoint hay BeGo adapter implementation được phép trước khi ownership,
+  transaction/recovery, provenance và paired Layer-1 evidence được khóa trong
+  [31-wp5-bego-integration-refinement.md](tasks/31-wp5-bego-integration-refinement.md).

@@ -14,13 +14,24 @@ public sealed record CandidateSchedule(
     IReadOnlyList<ScheduledStop> Stops,
     long OperationalCost);
 
+public enum CandidateScheduleStrategy
+{
+    EarliestFeasible,
+    OriginHoldRelocatedWait,
+}
+
 public sealed record InsertionCandidate(
     string CandidateId,
     VehicleId VehicleId,
     RoutePlan Route,
     IReadOnlyList<RequestId> NewRequestIds,
     CandidateSchedule Schedule,
-    bool IsNoOp);
+    bool IsNoOp,
+    CandidateScheduleStrategy ScheduleStrategy =
+        CandidateScheduleStrategy.EarliestFeasible,
+    long RelocatedWaitMilliseconds = 0,
+    long? CertifiedForwardSlackMilliseconds = null,
+    RequestId? RepairedIncumbentRequestId = null);
 
 public sealed record CandidatePruneWitness(
     string CandidateId,
@@ -34,15 +45,56 @@ public sealed record VehicleCandidateSet(
     VehicleId VehicleId,
     IReadOnlyList<InsertionCandidate> Candidates,
     IReadOnlyList<CandidatePruneWitness> PrunedCandidates,
-    bool WasTruncated);
+    bool WasTruncated,
+    VehicleCandidateLoss? Loss = null);
+
+public sealed record CandidateOmissionWitness(
+    string Code,
+    long Count,
+    string StableDigest,
+    string Message,
+    VehicleId? VehicleId = null,
+    IReadOnlyList<RequestId>? RequestIds = null,
+    bool CountWasSaturated = false);
+
+public sealed record VehicleCandidateLoss(
+    long ExplorationWorkUnits,
+    long EvaluatedCandidatePathCount,
+    long UniqueFeasibleCandidateCountBeforeCap,
+    long RetainedCandidateCount,
+    long PhysicallyOrSchedulePrunedCount,
+    long OmittedUnexpandedCandidatePathCount,
+    long OmittedFeasibleCandidateCountByCap,
+    bool WorkBudgetExhausted,
+    bool CandidateCapApplied,
+    bool OmissionCountWasSaturated = false,
+    long EligibleRepairRequestCount = 0,
+    long ConsideredRepairRequestCount = 0,
+    long OmittedRepairRequestCount = 0);
+
+public sealed record CandidateGenerationDiagnostics(
+    long TotalPendingRequestCount,
+    long ConsideredRequestCount,
+    long OmittedRequestCount,
+    IReadOnlyList<VehicleCandidateLoss> VehicleLosses,
+    IReadOnlyList<CandidateOmissionWitness> Omissions)
+{
+    public bool IsComplete => OmittedRequestCount == 0
+        && VehicleLosses.All(
+            loss => loss.OmittedUnexpandedCandidatePathCount == 0
+                && loss.OmittedFeasibleCandidateCountByCap == 0
+                && loss.OmittedRepairRequestCount == 0);
+}
 
 public sealed record CandidateGenerationResult
 {
     private CandidateGenerationResult(
         IReadOnlyList<VehicleCandidateSet>? vehicleCandidates,
+        CandidateGenerationDiagnostics? diagnostics,
         CandidateGenerationWitness? witness)
     {
         VehicleCandidates = vehicleCandidates;
+        Diagnostics = diagnostics;
         Witness = witness;
     }
 
@@ -50,15 +102,18 @@ public sealed record CandidateGenerationResult
 
     public IReadOnlyList<VehicleCandidateSet>? VehicleCandidates { get; }
 
+    public CandidateGenerationDiagnostics? Diagnostics { get; }
+
     public CandidateGenerationWitness? Witness { get; }
 
     public static CandidateGenerationResult Success(
-        IReadOnlyList<VehicleCandidateSet> vehicleCandidates) =>
-        new(vehicleCandidates, null);
+        IReadOnlyList<VehicleCandidateSet> vehicleCandidates,
+        CandidateGenerationDiagnostics diagnostics) =>
+        new(vehicleCandidates, diagnostics, null);
 
     public static CandidateGenerationResult Failure(
         CandidateGenerationWitness witness) =>
-        new(null, witness);
+        new(null, null, witness);
 }
 
 public sealed record CandidateGenerationWitness(
@@ -73,7 +128,11 @@ public sealed record CandidateGenerationOptions
     public CandidateGenerationOptions(
         int maximumCandidatesPerVehicle,
         int maximumNewRequestsPerVehicle,
-        bool exactSmallMode)
+        bool exactSmallMode,
+        CandidateScheduleStrategy scheduleStrategy =
+            CandidateScheduleStrategy.EarliestFeasible,
+        long maximumExplorationWorkUnits = 100_000,
+        int maximumRepairRequestsConsideredPerVehicle = 0)
     {
         if (maximumCandidatesPerVehicle < 1)
         {
@@ -87,9 +146,31 @@ public sealed record CandidateGenerationOptions
                 nameof(maximumNewRequestsPerVehicle));
         }
 
+        if (!Enum.IsDefined(scheduleStrategy))
+        {
+            throw new ArgumentOutOfRangeException(nameof(scheduleStrategy));
+        }
+
+        if (maximumExplorationWorkUnits is < 1
+            or > DomainLimits.MaxCanonicalInteger)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(maximumExplorationWorkUnits));
+        }
+
+        if (maximumRepairRequestsConsideredPerVehicle < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(maximumRepairRequestsConsideredPerVehicle));
+        }
+
         MaximumCandidatesPerVehicle = maximumCandidatesPerVehicle;
         MaximumNewRequestsPerVehicle = maximumNewRequestsPerVehicle;
         ExactSmallMode = exactSmallMode;
+        ScheduleStrategy = scheduleStrategy;
+        MaximumExplorationWorkUnits = maximumExplorationWorkUnits;
+        MaximumRepairRequestsConsideredPerVehicle =
+            maximumRepairRequestsConsideredPerVehicle;
     }
 
     public int MaximumCandidatesPerVehicle { get; }
@@ -97,6 +178,25 @@ public sealed record CandidateGenerationOptions
     public int MaximumNewRequestsPerVehicle { get; }
 
     public bool ExactSmallMode { get; }
+
+    public CandidateScheduleStrategy ScheduleStrategy { get; }
+
+    public long MaximumExplorationWorkUnits { get; }
+
+    /// <summary>
+    /// Zero disables the B4 neighborhood. A positive value bounds how many
+    /// eligible waiting incumbents may each seed one atomic pair-repair move.
+    /// </summary>
+    public int MaximumRepairRequestsConsideredPerVehicle { get; }
+
+    public CandidateGenerationOptions WithRepairRequestCap(int maximumRequests) =>
+        new(
+            MaximumCandidatesPerVehicle,
+            MaximumNewRequestsPerVehicle,
+            ExactSmallMode,
+            ScheduleStrategy,
+            MaximumExplorationWorkUnits,
+            maximumRequests);
 
     public static CandidateGenerationOptions ExactSmall { get; } =
         new(
@@ -112,6 +212,18 @@ public static class CandidateGenerationFailureCodes
         "EXACT_SMALL_REQUEST_BOUND_EXCEEDED";
     public const string ExactSmallCandidateCapExceeded =
         "EXACT_SMALL_CANDIDATE_CAP_EXCEEDED";
+    public const string ExactSmallWorkCapExceeded =
+        "EXACT_SMALL_WORK_CAP_EXCEEDED";
     public const string PlanVersionOverflow = "PLAN_VERSION_OVERFLOW";
     public const string ScheduleEvaluationFailed = "SCHEDULE_EVALUATION_FAILED";
+    public const string SlackProfileFailed = "SLACK_PROFILE_FAILED";
+    public const string ScheduleStrategyEquivalenceFailed =
+        "SCHEDULE_STRATEGY_EQUIVALENCE_FAILED";
+    public const string RequestBoundOmission = "REQUEST_BOUND_OMISSION";
+    public const string WorkBoundOmission = "WORK_BOUND_OMISSION";
+    public const string CandidateCapOmission = "CANDIDATE_CAP_OMISSION";
+    public const string RepairRequestBoundOmission =
+        "REPAIR_REQUEST_BOUND_OMISSION";
+    public const string ExactSmallRepairRequestBoundExceeded =
+        "EXACT_SMALL_REPAIR_REQUEST_BOUND_EXCEEDED";
 }

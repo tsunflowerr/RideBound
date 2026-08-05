@@ -122,3 +122,38 @@ Kết luận thiết kế: WP3 đúng khi chỉ làm **cổng khả thi cam kế
 chứng ledger/certificate. Các kỹ thuật plan pool, slack, precomputation, modified
 dynamic wait và lexicographic objective là tối ưu policy/solver của WP4; đưa chúng
 vào validator WP3 sẽ trộn objective với correctness và làm hỏng so sánh B1/C1.
+
+## 11. Browser research phục vụ ADR-023 — 2026-08-03
+
+| Nguồn đọc thêm | Bằng chứng dùng | Quyết định WP4 |
+|---|---|---|
+| [Mitrović-Minić & Laporte 2004](https://doi.org/10.1016/j.trb.2003.09.002) | Drive-first, wait-first, dynamic và advanced dynamic waiting cho thấy vị trí phân bổ waiting time ảnh hưởng chất lượng online | `earliest-feasible` giữ làm main; thêm named origin-hold control thi hành bằng route waypoint, không claim waiting mới |
+| [Masson, Lehuédé & Péton 2013](https://doi.org/10.1016/j.orl.2013.01.007) | Forward-time-slack cho incremental insertion feasibility; preprocessing được cập nhật khi route đổi | Slack/cache chỉ early-prune với full key/invalidation; independent full validator vẫn bắt buộc |
+| [Gschwind 2019](https://doi.org/10.1007/s00291-018-0544-0) | Forward slack là công cụ tổng quát cho feasibility testing các insertion có temporal/synchronization constraints | Thêm cached/uncached equivalence và route/travel mutation; không giả slack đơn giản là proof cho toàn DARP |
+| [Ackermann & Rieck 2022](https://doi.org/10.1007/978-3-031-08623-6_42) | Distance guidance có thể lệch mục tiêu acceptance; future insertion potential là secondary guidance đã có | B5/plan diversity và slack reserve là baseline guidance, không novelty; phải đo future acceptance thay vì chỉ current cost |
+| [Google.OrTools 9.15.6755](https://www.nuget.org/packages/Google.OrTools/9.15.6755) và [CP-SAT status](https://developers.google.com/optimization/cp/cp_solver) | Package target .NET 8+; CP-SAT integer-only, status phân biệt OPTIMAL/FEASIBLE/INFEASIBLE/MODEL_INVALID/UNKNOWN | Pin package trong solver project; one worker/seed/deterministic limit; không báo FEASIBLE/UNKNOWN thành OPTIMAL |
+
+Browser cũng đọc lại full HTML/abstract của Gaul 2021, Schulz–Pfeiffer 2026,
+Tiwari et al. 2024 và Ackermann–Rieck 2025. ADR-023 không sao chép 30 giây,
+10–15 phút, pool size, survey coefficient hoặc paper weight thành default. Mọi
+con số test WP4 phải ghi `boundary-test`/`microbenchmark`; O-002/O-003/O-004 vẫn
+thuộc pilot/preregistration.
+
+## 12. Implementation audit sau WP4 — 2026-08-03
+
+Các mechanism từ mục 10–11 đã thành code/test, không còn chỉ là backlog:
+
+- forward slack, full-key cache/invalidation và executable origin-hold;
+- deterministic best-first generation với exact/bounded loss accounting;
+- B4 same-vehicle remove/reinsert và B5 canonical plan pool/consensus;
+- C1/C2 ordered hard/warning/revision objectives không scalarize;
+- pinned deterministic multi-pass OR-Tools với truthful status/bound/gap;
+- independent validation/fallback và Runner certificate/hash/ACK publication.
+
+Evidence closure gồm 64-seed B1 oracle, 64-seed production C1 + actual OR-Tools
+differential gap 0, hard-gate mutation, actual bounded-loss propagation và
+synthetic microbenchmark. Kết quả timing chỉ được gọi là machine-local promising
+signal. Không paper nào ở trên chứng minh RideBound scale, tăng acceptance, đạt
+non-inferiority hoặc tăng user satisfaction trên paired demand; các claim đó vẫn
+thuộc WP5–WP9. Mapping chi tiết ở
+[reviews/wp1-wp4-final/07-paper-to-code-audit.md](reviews/wp1-wp4-final/07-paper-to-code-audit.md).

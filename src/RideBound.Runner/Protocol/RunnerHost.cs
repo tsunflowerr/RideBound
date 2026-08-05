@@ -2,6 +2,7 @@ using System.Text.Json;
 using RideBound.Application.Commitments;
 using RideBound.Contracts.Protocol;
 using RideBound.Domain.Validation;
+using RideBound.Runner.Configuration;
 
 namespace RideBound.Runner.Protocol;
 
@@ -32,7 +33,8 @@ public static class RunnerHost
             RunnerExecutionMode.StructuralConformance,
         ICommitmentPolicyProvider? commitmentPolicies = null,
         IStopDistanceLookup? stopDistances = null,
-        Sha256Hex? commitmentPolicyConfigurationHash = null)
+        Sha256Hex? commitmentPolicyConfigurationHash = null,
+        Wp4RunnerConfiguration? wp4Configuration = null)
     {
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(output);
@@ -46,7 +48,8 @@ public static class RunnerHost
             commitmentPolicies: commitmentPolicies,
             stopDistances: stopDistances,
             commitmentPolicyConfigurationHash:
-                commitmentPolicyConfigurationHash);
+                commitmentPolicyConfigurationHash,
+            wp4Configuration: wp4Configuration);
 
         while (true)
         {

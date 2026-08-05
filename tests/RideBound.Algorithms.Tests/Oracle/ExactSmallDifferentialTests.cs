@@ -86,7 +86,7 @@ public sealed class ExactSmallDifferentialTests
     }
 
     public static IEnumerable<object[]> PublishedSeeds() =>
-        Enumerable.Range(0, 32).Select(value => new object[] { value });
+        Enumerable.Range(0, 64).Select(value => new object[] { value });
 
     private static OnlineState CreateGeneratedState(int seed)
     {

@@ -12,3 +12,8 @@ không phụ thuộc Windows PowerShell 5 hay PowerShell 7.
 policy config, so hai process byte-exact, certificate/promise/budget/final hashes
 và restore checkpoint ở process mới cho suffix giống uninterrupted replay; script
 không cài lại validator hay commitment logic và dùng cùng UTF-8 process boundary.
+
+`run-wp4-microbenchmark.ps1` chỉ chạy project tool
+`tools/RideBound.Wp4Microbenchmark`; solver/model logic vẫn nằm trong production
+projects. Output là JSON machine-local, wall time chỉ mô tả và không được dùng làm
+replay decision hoặc production SLA.

@@ -1,7 +1,7 @@
 # Trạng thái và decision log
 
 > Tệp sống — cập nhật ở cuối mọi task RideBound
-> Cập nhật gần nhất: 2026-08-02
+> Cập nhật gần nhất: 2026-08-03
 
 ## 1. Trạng thái tổng thể
 
@@ -9,8 +9,8 @@
 |---|---|
 | Research direction | `LOCKED_FOR_IMPLEMENTATION_PLANNING` |
 | Documentation | `MIGRATED_AND_VERIFIED_V1` |
-| Implementation | `WP1_Q1_COMPLETE; WP2_COMPLETE; WP3_COMPLETE_14_OF_14` |
-| Current work package | `WP4 POLICIES/SOLVER — RB-WP4-001 REFINEMENT READY; NO IMPLEMENTATION READY` |
+| Implementation | `WP1_Q1_COMPLETE; WP2_COMPLETE; WP3_COMPLETE_14_OF_14; WP4_COMPLETE_14_OF_14` |
+| Current work package | `WP5 BEGO — RB-WP5-001 REFINEMENT READY; NO IMPLEMENTATION READY` |
 | Repository | `https://github.com/tsunflowerr/RideBound` |
 | Main baseline | B1 `rolling-cost` |
 | Main treatment | C1 `ridebound-hard-vector` |
@@ -370,13 +370,22 @@ Logical source-controlled test inventory: 414
   Runner: 58
   Architecture: 7
 
-Required command on 2026-08-02:
+Required command revalidation on 2026-08-03:
   dotnet test RideBound.slnx
-  Result: host-policy blocked, not a full-solution pass.
-  Passed before/around the block: Architecture 7, Domain 134, Application 34,
-    Algorithms 48 and 5 Runner cases.
-  Contracts discovery and remaining Runner loads were blocked by Windows
-    Application Control 0x800711C7.
+  Result: 414/414 passed; exit code 0; 0 failed; 0 skipped.
+  Contracts: 133/133 passed.
+  Domain: 134/134 passed.
+  Application: 34/34 passed.
+  Algorithms: 48/48 passed.
+  Runner: 58/58 passed.
+  Architecture: 7/7 passed.
+  Windows Application Control 0x800711C7 is no longer a current blocker.
+
+Historical host-policy evidence on 2026-08-02:
+  required attempts were blocked while loading fresh unsigned Contracts,
+  Application and Runner DLLs. Code Integrity events 3033/3077 identified Smart
+  App Control policy {0283ac0f-fff1-49ae-ada1-8a933130cad6}. This remains an
+  environment record, not a current test failure.
 
 Supplemental same-tree assertion evidence:
   Contracts Release: 133/133 passed.
@@ -429,13 +438,541 @@ Browser research recheck using the in-app Browser:
   schedule strategy, bounded precompute and multiple-plan belong to WP4.
 
 Claim limit:
-  414 is logical assertion inventory, not a full-solution xUnit pass on this host.
-  WP3 proves mechanical correctness in published small bounds, not scale,
+  414/414 is now a full-solution Debug xUnit pass on this host.
+  WP3 still proves mechanical correctness in published small bounds, not scale,
   effectiveness, solver optimality or user satisfaction.
-Final recheck date: 2026-08-02
+Final recheck date: 2026-08-03
 ```
 
-### CI hardening task
+### RB-WP4-002 closure: solver-neutral selection boundary
+
+```text
+Logical source-controlled test inventory: 435
+  Contracts: 133
+  Domain: 134
+  Application: 54
+  Algorithms: 48
+  Runner: 58
+  Architecture: 8
+
+Required command on 2026-08-03:
+  dotnet test RideBound.slnx
+  Result: 435/435 passed; exit code 0; 0 failed; 0 skipped.
+
+Production boundary:
+  CandidateSelectionProblem canonicalizes vehicles/requests/options while
+  retaining declared lexicographic objective order.
+  Exactly one no-op is required per vehicle; a validated solution selects
+  exactly one option per vehicle and accepts each request at most once.
+  Sum/Maximum aggregation fails closed on canonical-integer overflow.
+  Deterministic work/time/seed budget is separate from observed wall time.
+  Bound direction, exact rational gap, bound order and incumbent/solution match
+  are validated before OPTIMAL/FEASIBLE may be reported.
+  OPTIMAL, FEASIBLE, INFEASIBLE, UNKNOWN, MODEL_INVALID and SAFE_FALLBACK remain
+  distinct; no Google.OrTools or other solver package entered Application.
+
+Adversarial evidence:
+  20 new Application test cases include missing/duplicate no-op, unknown entity,
+  duplicate request, invalid vector/range, aggregation overflow, lexicographic
+  dominance, reversed bound, exceeded deterministic budget, reordered bound and
+  false-optimal rejection. Architecture adds the Application port-location gate.
+```
+
+### RB-WP4-003 closure: executable scheduling and conservative slack
+
+```text
+Logical source-controlled test inventory: 444
+  Contracts: 133
+  Domain: 134
+  Application: 54
+  Algorithms: 57
+  Runner: 58
+  Architecture: 8
+
+Required command on 2026-08-03:
+  dotnet test RideBound.slnx
+  Result: 444/444 passed; exit code 0; 0 failed; 0 skipped.
+  dotnet format RideBound.slnx --verify-no-changes --no-restore: passed.
+
+Mechanism:
+  Backward slack combines pickup-arrival deadline, drop-off ride-time deadline,
+  waiting absorption and future-stop slack under a fixed projected schedule.
+  The value is named CertifiedDelay: delay <= certificate is sufficient for
+  time feasibility; delay > certificate is never treated as infeasibility.
+  Cache key binds exact immutable run snapshot, full vehicle snapshot and
+  position, structural route fingerprint, evaluation time, travel version/hash.
+  Cache is bounded and failures are not cached.
+  Cache may rank a frontier node but cannot admit it; PhysicalPlanValidator
+  always runs before a profile can enter a retained candidate.
+  origin-hold-relocated-wait moves only first-pickup waiting already present to
+  a current-node waypoint with real service duration; edge progress and
+  unexecuted frozen prefix are refused. The transformed route is fully
+  revalidated and must preserve original stop service/departure times and cost.
+
+Mutation/equivalence evidence:
+  9 new Algorithms tests cover backward arithmetic, every delay through the
+  certificate boundary, executable hold equivalence, edge refusal, independent
+  run/vehicle/position/route/time/travel invalidation, travel-duration mutation,
+  cached/uncached equality, cache-cannot-bypass-validator and repeated-build hits.
+```
+
+### RB-WP4-004 closure: bounded best-first generation and loss accounting
+
+```text
+Logical source-controlled test inventory: 449
+  Contracts: 133
+  Domain: 134
+  Application: 54
+  Algorithms: 62
+  Runner: 58
+  Architecture: 8
+
+Required command on 2026-08-03:
+  dotnet test RideBound.slnx
+  Result: 449/449 passed; exit code 0; 0 failed; 0 skipped.
+  dotnet format RideBound.slnx --verify-no-changes --no-restore: passed.
+
+Bounded semantics:
+  request priority = (latestPickup, arrivalTime, requestId);
+  global search priority = potential accepted count, mandatory-service lower
+  bound, conservative forward slack, stable digest;
+  one deterministic work unit = one best frontier node dequeued;
+  unexpanded frontier subtrees are counted combinatorially, with explicit
+  canonical saturation instead of overflow or a fabricated exact number;
+  cap retains the required safety no-op, then orders feasible candidates by
+  accepted count, exact operational cost, slack and candidate ID.
+
+Loss boundary:
+  REQUEST_BOUND_OMISSION identifies known omitted requests;
+  WORK_BOUND_OMISSION counts raw paths whose feasibility remains unknown;
+  CANDIDATE_CAP_OMISSION counts already validated feasible candidates;
+  every category has stable digest and count, separate from later solver loss;
+  exact mode fails if request/work/candidate omission would occur.
+
+Evidence:
+  5 new Algorithms tests cover urgent-request priority, exact work fail-closed,
+  exhaustive path conservation, best-first high-acceptance retention, feasible
+  cap conservation/digest stability and work-monotonic acceptance.
+```
+
+### RB-WP4-005 closure: B2 revision penalty and B3 fixed freeze
+
+```text
+Logical source-controlled test inventory: 458
+  Contracts: 133
+  Domain: 135
+  Application: 54
+  Algorithms: 70
+  Runner: 58
+  Architecture: 8
+
+Required command on 2026-08-03:
+  dotnet test RideBound.slnx
+  Result: 458/458 passed; exit code 0; 0 failed; 0 skipped.
+  dotnet format RideBound.slnx --verify-no-changes --no-restore: passed.
+
+B2 rolling-penalty:
+  mechanism provider replaces all ten cumulative hard limits with unbounded and
+  removes optional freeze/final-confirmation locks, while preserving material
+  rule, budget basis and the global O-001 accepted-assignment lock;
+  every raw candidate is assessed through the full validator; assessment does
+  not mutate/prune the shared raw pool;
+  selector order is accepted count, material ETA revision count, the stable ten
+  revision dimensions, canonical operational cost and candidate-ID vector.
+
+B3 fixed-freeze-horizon:
+  constructor requires a positive explicit horizon and non-empty valid lock mask;
+  all cumulative limits remain unbounded and no numeric default exists;
+  freeze activates inclusively at timeToPickup <= horizon and source hard budgets
+  cannot accidentally prune outside the configured horizon.
+
+Additional correctness fix:
+  CommitmentVector.Add and both exact fleet selectors now fail before canonical
+  overflow instead of allowing a non-canonical total or risking runtime overflow.
+
+Evidence:
+  8 new Algorithms cases include lexicographic precedence, dimension order,
+  explicit configuration, canonical cost, B2 raw-pool preservation over 16
+  seeds, and B3 exact horizon boundary; 1 Domain vector-overflow regression.
+```
+
+### RB-WP4-006 closure: B4 same-vehicle waiting-incumbent repair
+
+```text
+Logical source-controlled test inventory: 465
+  Contracts: 133
+  Domain: 135
+  Application: 54
+  Algorithms: 77
+  Runner: 58
+  Architecture: 8
+
+Required command on 2026-08-03:
+  dotnet test RideBound.slnx
+  Result: 465/465 passed; exit code 0; 0 failed; 0 skipped.
+  dotnet format RideBound.slnx --verify-no-changes --no-restore: passed.
+
+B4 repair boundary:
+  disabled by default so the B1 candidate set and choice remain unchanged;
+  an enabled positive cap admits only Accepted/WaitingPickup incumbents assigned
+  to the same vehicle, not onboard, with one pickup/drop pair wholly inside the
+  mutable suffix and no unexecuted frozen request stop;
+  a seed removes exactly that pair and enumerates every precedence-preserving
+  reinsertion; it never combines two repaired pairs or mutates source routes;
+  exact mode fails if the repair-request cap omits an eligible incumbent;
+  bounded mode reports repair omission count/digest separately and marks the
+  diagnostics incomplete;
+  every repaired route is physically revalidated and O-001 still prevents
+  cross-vehicle reassignment.
+
+Correctness defect found by adversarial testing:
+  the original frontier stable ID reused an order-insensitive omission digest,
+  so route permutations could collapse into one search identity;
+  search nodes now use an order-sensitive token digest while omission-set
+  digests remain canonical and order-insensitive.
+
+Evidence:
+  7 new Algorithms tests cover atomic pair reinsertion and input immutability,
+  frozen/onboard exclusion, exact cap failure, bounded loss stability, disabled
+  B1 equivalence, repaired route diversity and cheaper B4 selection without
+  reassignment.
+```
+
+### RB-WP4-007 closure: B5 canonical multiple-plan pool
+
+```text
+Logical source-controlled test inventory: 477
+  Contracts: 133
+  Domain: 135
+  Application: 57
+  Algorithms: 82
+  Runner: 62
+  Architecture: 8
+
+Required command on 2026-08-03:
+  dotnet test RideBound.slnx
+  Result: 477/477 passed; exit code 0; 0 failed; 0 skipped.
+  dotnet format RideBound.slnx --verify-no-changes --no-restore: passed.
+
+Canonical state/checkpoint boundary:
+  pool version zero is the only empty value; every non-empty replacement advances
+  the previous version exactly once;
+  exact plan SHA-256 binds source epoch, ordered vehicle IDs, route version,
+  progress, frozen/mutable order and every executable stop field;
+  checkpoint restore recomputes the ID and checks the exact vehicle set,
+  request-stop assignment membership, frozen/executed compatibility, physical
+  feasibility and distinguished-plan equality with the online run.
+
+B5 selection:
+  one shared generated candidate set feeds deterministic fleet enumeration;
+  pool size and combination work cap are explicit configuration, with exact
+  fail-closed and bounded truncation diagnostics;
+  alternatives must preserve the distinguished new-request assignment;
+  semantic duplicates are removed, Pareto dominance uses accepted count,
+  operational cost and conservative forward slack, then top-K uses greedy
+  max-min route distance;
+  distinguished control maximizes shared executable-prefix consensus before
+  operational/stable tie-breaks;
+  only distinguished request actions/routes are applied or exposed.
+
+Executable alternative correction:
+  adversarial review found that all candidates originate before publication, so
+  a non-distinguished route can have the old or same version after the chosen
+  route is applied;
+  every different retained alternative is therefore rebuilt at exactly
+  distinguished route version + 1 and physically validated against the proposed
+  run before it can survive checkpoint restore.
+
+Evidence:
+  3 Application identity/version/rehydration cases;
+  5 Algorithms dominance, stable diversity/consensus, exact/bounded work,
+  assignment compatibility and distinguished-only publication cases;
+  4 Runner canonical round-trip, forged-ID, forged-distinguished and actual
+  policy-output checkpoint cases.
+```
+
+### RB-WP4-008 closure: C1 hard-vector lexicographic policy
+
+```text
+Logical source-controlled test inventory: 483
+  Contracts: 133
+  Domain: 135
+  Application: 57
+  Algorithms: 88
+  Runner: 62
+  Architecture: 8
+
+Required command on 2026-08-03:
+  dotnet test RideBound.slnx
+  Result: 483/483 passed; exit code 0; 0 failed; 0 skipped.
+  dotnet format RideBound.slnx --verify-no-changes --no-restore: passed.
+
+C1 hard boundary:
+  the common raw physical pool is generated once;
+  each candidate is applied and full WP3 commitment validation both removes
+  hard-invalid candidates and returns the authoritative validated ledger in one
+  pass; C1 neither adds candidates nor repeats the validator as a separate filter;
+  feasibility remains exact per request/dimension/phase and never uses PPM.
+
+Lexicographic ranking:
+  maximize accepted requests;
+  minimize the worst cumulative BudgetAfter/hard-limit ceiling PPM across active
+  riders and applicable finite dimensions;
+  minimize the stable ten decision-induced revision dimensions in vocabulary
+  order, then canonical operational cost and candidate-ID vector;
+  UInt128 multiplication prevents overflow at the canonical integer maximum;
+  a feasible zero-limit/zero-usage dimension ranks as 1,000,000 ppm because it
+  has no reserve, while non-zero usage remains hard-invalid;
+  when no applicable finite hard limit exists, utilization and revision ranking
+  are disabled so C1 is semantically identical to B1.
+
+Evidence:
+  6 new Algorithms tests cover accepted/utilization/revision/cost dominance,
+  exact dimension order, one-pass retained-set equality with the reference hard
+  filter, 1/3 and canonical-maximum ceiling arithmetic, zero-limit semantics and
+  unbounded no-lock exact-small B1 equivalence.
+```
+
+### RB-WP4-009 closure: C2 warning/soft-hard hybrid
+
+```text
+Logical source-controlled test inventory: 489
+  Contracts: 133
+  Domain: 135
+  Application: 57
+  Algorithms: 94
+  Runner: 62
+  Architecture: 8
+
+Required command on 2026-08-03:
+  dotnet test RideBound.slnx
+  Result: 489/489 passed; exit code 0; 0 failed; 0 skipped.
+  dotnet format RideBound.slnx --verify-no-changes --no-restore: passed.
+
+C2 configuration and hard boundary:
+  every warning profile explicitly defines all ten dimensions once; null means
+  disabled and no numeric warning default exists;
+  an enabled warning requires a finite hard limit and warning <= hard;
+  C2 calls the same one-pass C1 validator/assessor, so warning never admits a
+  hard-invalid candidate or creates a candidate absent from the shared raw pool.
+
+Objective:
+  maximize accepted count, minimize worst hard PPM, then minimize the ordered
+  ten-dimension warning-excess vector, ordered decision-induced revision vector,
+  canonical operational cost and candidate-ID vector;
+  warning excess is accumulated per scoped vehicle/rider with checked canonical
+  arithmetic, preserving ms/count/mm dimensions instead of a weighted scalar;
+  if every warning is disabled, C2 delegates directly to the C1 selector and
+  produces no synthetic warning objective/output.
+
+Evidence:
+  6 new Algorithms tests cover warning-before-revision/cost dominance, explicit
+  ten-dimension profile shape, exact C1/C2 retained hard set, non-zero boundary
+  excess, warning-above-hard rejection and disabled-warning C1 equivalence.
+```
+
+### RB-WP4-010 closure: deterministic OR-Tools adapter
+
+```text
+Logical source-controlled test inventory: 495
+  Contracts: 133
+  Domain: 135
+  Application: 57
+  Algorithms: 94
+  Solvers.OrTools: 5
+  Runner: 62
+  Architecture: 9
+
+Required command on 2026-08-03:
+  dotnet test RideBound.slnx
+  Result: 495/495 passed; exit code 0; 0 failed; 0 skipped.
+  dotnet format RideBound.slnx --verify-no-changes --no-restore: passed.
+
+Adapter boundary and model:
+  Google.OrTools 9.15.6755 is pinned only in RideBound.Solvers.OrTools;
+  BoolVar selection enforces exactly one option per vehicle and at most one
+  assignment per request;
+  integer Sum objectives use weighted sums, Maximum objectives use an auxiliary
+  integer variable with AddMaxEquality;
+  canonical upper-bound arithmetic fails ModelInvalid before native model build
+  when an aggregate could exceed Int64.
+
+Lexicographic solve and diagnostics:
+  every objective pass rebuilds the model with equality constraints for prior
+  objective values proven OPTIMAL; a merely FEASIBLE pass is never fixed as if
+  optimal;
+  one worker, explicit seed, remaining conflict budget and deterministic-time
+  budget make the outcome independent of observed wall time;
+  OPTIMAL, FEASIBLE, UNKNOWN, INFEASIBLE and MODEL_INVALID remain distinct;
+  selected IDs are revalidated by CandidateSelectionSolution.Create and exact
+  bounds are rounded conservatively according to minimization/maximization.
+
+Evidence:
+  5 solver tests cover four-pass Sum/Maximum trade-offs plus request uniqueness,
+  acceptance-before-cost, eight identical deterministic repetitions, aggregate
+  overflow and diagnostic budget/version detail;
+  1 architecture test prevents the native package from leaking outside the
+  solver adapter project.
+```
+
+### RB-WP4-011 closure: deterministic deadline and safe fallback
+
+```text
+Logical source-controlled test inventory: 507
+  Contracts: 133
+  Domain: 135
+  Application: 69
+  Algorithms: 94
+  Solvers.OrTools: 5
+  Runner: 62
+  Architecture: 9
+
+Required command on 2026-08-03:
+  dotnet test RideBound.slnx
+  Result: 507/507 passed; exit code 0; 0 failed; 0 skipped.
+  dotnet format RideBound.slnx --no-restore: passed.
+
+Budget and loss boundary:
+  deterministic execution budget has independent generation-work,
+  semantic-validation-work and solver conflict/deterministic-time limits;
+  observed wall time remains a metric and cannot change replay selection;
+  pre-solve accounting preserves omitted candidate count, canonical lowercase
+  SHA-256 digest and saturation, separately from primary solver status/loss.
+
+Independent validation and fallback:
+  every primary solution, including OPTIMAL or FEASIBLE, must pass the injected
+  semantic/full-state validator before it can leave the executor;
+  fallback order is canonical no-op, then every one-request insertion sorted by
+  the exact objective vector and selected option IDs;
+  each attempted solution consumes one validation work unit and records a typed
+  rejection witness with path and selected IDs;
+  exhaustion or an entirely rejected portfolio returns UNKNOWN with no solution;
+  no incident result can be fabricated at this solver-neutral boundary;
+  primary bounds stay in audit diagnostics, while a fallback result has no
+  mismatched incumbent bounds.
+
+Evidence:
+  12 new Application cases cover validated optimal, truthful feasible, all three
+  no-solution statuses, rejected incumbent, ordered single-request rescue,
+  validation exhaustion, rejected portfolio, separate candidate/solver loss,
+  accounting contract and cross-budget misuse.
+```
+
+### RB-WP4-012 closure: named policy/solver Runner integration
+
+```text
+Logical source-controlled test inventory: 523
+  Contracts: 133
+  Domain: 135
+  Application: 69
+  Algorithms: 101
+  Solvers.OrTools: 5
+  Runner: 71
+  Architecture: 9
+
+Required command on 2026-08-03:
+  dotnet test RideBound.slnx
+  Result: 523/523 passed; exit code 0; 0 failed; 0 skipped.
+  dotnet format RideBound.slnx --no-restore: passed.
+
+Configuration and identity:
+  one canonical registry round-trips the seven published B1–B5/C1/C2 names;
+  strict WP4 JSON declares generation cap/work/schedule, solver stage budgets and
+  only the mechanism-specific B3 freeze, B4 repair, B5 pool or C2 warning fields;
+  C2 has one explicit ten-dimension profile per commitment policy and every
+  enabled warning is bounded by a finite hard limit;
+  WP4 config hash is domain-bound to the commitment config hash, and initialize
+  fails before state creation unless manifest policy ID/version/combined hash
+  match the loaded implementation exactly.
+
+Solver and publication path:
+  B1–B4/C1/C2 generate one shared physical pool and map their exact hierarchy to
+  candidate-selection objectives; vehicle-ordered ID ranks preserve the existing
+  deterministic final tie-break without weighted scalarization;
+  OR-Tools output and fallback pass full semantic validation with the baseline's
+  effective commitment provider; Runner independently validates again;
+  B5 keeps deterministic plan-pool enumeration and publishes only distinguished;
+  ledger, certificate, plan pool and state hash stay in the pending transaction,
+  and only matching ACK commits them; solver completed/safeFallback is part of
+  the hashed decision shell, so retry is byte-identical.
+
+Evidence:
+  7 Algorithms cases cover registry round-trip, B1 request uniqueness/cost, B2
+  material+dimension hierarchy, C1 maximum utilization, C2 warning hierarchy,
+  unbounded C1=B1 and semantic-validator fallback;
+  9 Runner cases cover strict variant config, warning/hard boundary, binding,
+  actual OR-Tools decision, retry/wrong ACK/commit, injected UNKNOWN fallback,
+  manifest mismatch, B5 ACK/checkpoint restore and real child-process CLI.
+```
+
+### RB-WP4-013 closure: independent evidence
+
+```text
+Logical source-controlled test inventory: 557
+  Contracts: 133
+  Domain: 135
+  Application: 69
+  Algorithms: 134
+  Solvers.OrTools: 6
+  Runner: 71
+  Architecture: 9
+
+Required command on 2026-08-03:
+  dotnet test RideBound.slnx
+  Result: 557/557 passed; exit code 0; 0 failed; 0 skipped.
+
+Independent correctness:
+  B1 production generator/selector matches an independent exact enumerator over
+  64 deterministic fixtures within the published 2-vehicle/2-request bound;
+  C1 production objective mapper plus actual OR-Tools matches a separately coded
+  enumerator over 64 fixtures, selecting identical candidate IDs with OPTIMAL
+  status and exact zero gap on every objective level;
+  the hard-gate mutation fixture proves the raw set is strictly larger than the
+  hard-feasible set, so deleting the gate is observably killed;
+  an actual bounded request omission reaches execution count/digest/saturation
+  accounting separately from an injected solver UNKNOWN and validated no-op.
+
+Cross-ticket evidence retained:
+  cache on/off and route/travel invalidation equivalence; infinite C1=B1 and
+  disabled C2=C1; plan-pool checkpoint/tamper; deterministic deadline and
+  fallback; ACK/retry publication gates.
+
+Synthetic performance signal:
+  4/16/32/128 Boolean-option models all reached exact OPTIMAL. Observed p50 wall
+  times were 2.389/12.160/21.406/91.004 ms on .NET 10.0.9, Windows 10.0.26200,
+  X64, 12 processors. This is machine-local candidate-selection evidence only;
+  it is not a demand-scale, service-quality or effectiveness claim.
+```
+
+### RB-WP4-014 closure: full audit and handoff
+
+```text
+Quality gates on 2026-08-03:
+  dotnet test RideBound.slnx: 557/557 passed
+  Release build --no-restore /warnaserror: 0 warnings, 0 errors
+  WP4 microbenchmark Release build: 0 warnings, 0 errors
+  dotnet format --verify-no-changes: passed
+  NuGet direct/transitive vulnerability audit: no vulnerable packages reported
+  JSON/Markdown internal-link/fence/diff/process gates: passed
+
+Logic audit:
+  reviewed contract/state/physical/commitment/candidate/policy/solver/Runner paths,
+  not only test summaries; no production TODO/placeholder or solver dependency
+  leak was found. Candidate loss, solver loss and publication failure stay
+  distinct. Every solver/fallback selection is independently validated, Runner
+  validates again, and only matching ACK commits route/ledger/pool/hash state.
+
+Artifacts:
+  ADR-024; tasks/30 complete; docs/reviews/wp1-wp4-final explains WP1-WP4 flow,
+  each important production file, paper-to-code optimization, test evidence,
+  synthetic curve and unproven claims. Historical wp1-wp3 review is preserved.
+
+Handoff:
+  WP4 is Complete and Q2 mechanical correctness is closed. The only READY ticket
+  is refinement-only RB-WP5-001; no BeGo implementation ticket exists yet.
+```
+
+### Historical CI hardening checkpoint — 2026-07-28
 
 ```text
 Release build: passed, 0 warnings, 0 errors
@@ -443,7 +980,7 @@ Whitespace format verification: passed
 NuGet vulnerability audit: no vulnerable direct/transitive packages
 Runner publish smoke: passed
 Architecture reference graph with normalized separators: passed
-Local xUnit execution: blocked by Windows Application Control (0x800711C7)
+Local xUnit execution at this historical checkpoint: blocked by Windows Application Control (0x800711C7)
 Linux CI confirmation: pending
 Date: 2026-07-28
 ```
@@ -469,22 +1006,19 @@ Date: 2026-07-28
 
 ## 5. Next action
 
-WP1, WP2 và WP3 đã Complete. WP3 đóng đủ `RB-WP3-001..014` bằng ADR-022;
-validator/certificate/checkpoint đã chạy trên cùng Runner/state/hash/ACK boundary.
-Review code chỉ ra WP4 phải xử lý schedule/candidate/solver quality, không mở rộng
-claim WP3.
+WP1–WP4 đã Complete. `RB-WP4-001..014` Done và ADR-024 đóng core mechanical
+correctness. WP3 validator/certificate/checkpoint tiếp tục là publication boundary
+cho mọi policy/solver WP4.
 
 Ticket duy nhất `READY`:
 
-> `RB-WP4-001` — refinement RideBound policies và solver; production WP4 code
-> chưa được phép trước khi ticket này DONE.
+> `RB-WP5-001` — refinement BeGo adapter và persistence; no implementation.
 
 Chi tiết:
-[29-wp4-algorithms-solver-refinement.md](tasks/29-wp4-algorithms-solver-refinement.md).
-Ticket phải khóa 12 quyết định về candidate fairness/loss, schedule strategy,
-slack/precompute, intra-route repair, multiple-plan, lexicographic/Pareto,
-C1/C2, OR-Tools, deadline/fallback, equivalence và publication. Không tự chọn
-O-002/O-003/O-004, không mở reassignment O-001 và không bắt đầu adapter WP5+.
+[31-wp5-bego-integration-refinement.md](tasks/31-wp5-bego-integration-refinement.md).
+Refinement phải khóa source provenance, Runner ownership, transaction/recovery,
+persistence, rollback và paired Layer-1 evidence. Không tạo migration/endpoint/
+adapter implementation, không tự chọn O-002/O-003/O-004 và không mở O-001.
 
 ## 6. Open decisions
 
@@ -992,10 +1526,13 @@ refund budget; triển khai OR-Tools ngay; gọi current B1 globally optimal; l�
 10–15 phút/99.5%/survey coefficients làm default.
 
 **Consequences:** WP3 Complete; logical inventory 414. Required full-solution
-command vẫn bị Windows Application Control `0x800711C7` chặn fresh DLL, nên
+command tại thời điểm chấp nhận ADR bị Windows Application Control `0x800711C7`
+chặn fresh DLL, nên
 evidence được tách minh bạch thành unaffected suites, 54/54 policy-safe Runner
 methods và bốn clean-process cases; không gọi đó là full-solution pass. Chỉ
 `RB-WP4-001` refinement READY, không production WP4 implementation nào READY.
+Revalidation sau đó ngày 2026-08-03 đã pass full solution 414/414; ADR không đổi
+claim boundary vì đây chỉ là thay đổi trạng thái host-policy evidence.
 
 **Evidence:** `Domain/Incidents`, `Application/Commitments`, commitment filter,
 strict Contracts/schema, `Runner/Configuration`, `OnlineStateCheckpointCodec`,
@@ -1007,6 +1544,107 @@ published replay hashes trong mục 4.
 đóng WP3; không supersede ADR-014/016/017 hash framing, ADR-018 O-001 hoặc
 ADR-020 physical B1 semantics. ADR-023 của WP4 chỉ được bổ sung sau refinement.
 
+### ADR-023 — 2026-08-03 — Accepted
+
+**Context:** Audit WP1–WP3 cho thấy hard-vector gate là correctness mechanism
+thật nhưng B1 vẫn dùng earliest-feasible, single plan, four-request/ID cap và
+Cartesian selector. Nếu C1 được cấp raw candidate khác, prune sau cap không được
+ghi, hoặc OR-Tools incumbent tự publish, đánh giá sẽ trộn commitment effect với
+compute/candidate bias. Multiple-plan/waiting/repair còn yêu cầu state và
+checkpoint semantics, không thể thêm bằng vài nhánh `if/else` trong B1.
+
+**Research evidence:** In-app Browser đọc lại Gaul et al. 2021, Schulz &
+Pfeiffer 2026, Tiwari et al. 2024 và Ackermann & Rieck 2025; đọc bổ sung
+Mitrović-Minić & Laporte 2004 về drive/wait/dynamic waiting, Masson–Lehuédé–
+Péton 2013 và Gschwind 2019 về forward-time-slack/incremental feasibility,
+Ackermann & Rieck 2022 về future insertion guidance, cùng official OR-Tools/
+NuGet. Evidence hỗ trợ mechanism/baseline, không cho universal horizon, pool
+size, weight, budget hoặc effectiveness target.
+
+**Decision:** Khóa đủ 12 quyết định trong `tasks/30`:
+
+1. B1–B5/C1/C2 dùng cùng raw physical candidate set và cap trước policy gate;
+   report request/candidate omission, hard-prune và solver loss riêng.
+2. Main schedule là `earliest-feasible`; named wait control chuyển waiting slack
+   có thật thành current-node hold waypoint, không chỉ sửa ETA nội bộ.
+3. Exact mode fail nếu omit. Bounded priority là latest pickup/arrival/ID; cap
+   theo accepted count, admissible operational key, slack reserve và stable ID.
+4. Slack/precompute cache bind full route/position/time/travel identity; chỉ
+   early-prune, cache miss khi key đổi và cached/uncached phải tương đương.
+5. Repair chỉ remove/reinsert waiting incumbent trong cùng vehicle, giữ O-001;
+   B4 được ghi rõ `no-reassignment-repair`.
+6. B5 plan pool/version/distinguished plan nằm trong canonical state/checkpoint;
+   alternative incompatible với executed/frozen decisions bị loại.
+7. Multi-pass lexicographic là accepted → policy utilization/warning → 10
+   revision dimensions → operational cost → candidate-ID vector; không scalar
+   hard vector. Normalized utilization chỉ là checked ranking ppm.
+8. C1/C2 cùng hard gate; C2 warning chỉ xếp hạng trong hard-feasible set.
+9. Solver-neutral port/model ở Application, policy ở Algorithms, package
+   `Google.OrTools 9.15.6755` chỉ ở Solvers.OrTools.
+10. Replay dùng deterministic work/CP deterministic-time budget, one worker và
+    explicit seed. Wall time chỉ metric; status/bound/gap/fallback truthful.
+11. Exact-small bound 2 vehicle/2 pending/1 repair incumbent/pool 4, ít nhất 64
+    seeds; infinite budget/locks off/earliest/no-repair/single-plan bằng B1.
+12. Solver/pool không publish trực tiếp; full WP3 validator, certificate, state
+    hash, pending transaction và matching ACK vẫn là gate cuối.
+
+**Alternatives considered:** hard gate thành weighted penalty; C1 sinh thêm raw
+candidate sau prune; cap bằng hash ID; cache không bind travel/version; latest ETA
+chỉ trên paper mà không có route hold; mở cross-vehicle reassignment; in-memory
+plan pool không checkpoint; CP-SAT nhiều thread; dùng wall-clock timeout làm
+replay outcome; báo FEASIBLE thành OPTIMAL; lấy số paper làm default.
+
+**Consequences:** `RB-WP4-001` Done, queue `RB-WP4-002..014` được phép thực hiện
+tuần tự và chỉ `002` Ready. WP4 vẫn ở claim Implemented/Mechanically valid cho
+từng ticket; hiệu quả chỉ được gọi là tín hiệu micro/exact-small trước paired
+Layer 1/2. O-001/O-002/O-003/O-004 không đổi.
+
+**Evidence:** `tasks/29`, `tasks/30`, Browser sources trong `21`; required suite
+baseline 414/414 trước production WP4.
+
+**Supersedes / superseded by:** Bổ sung ADR-020/022 cho policy/solver quality;
+không đổi protocol/hash, reassignment O-001 hay validator/certificate semantics.
+
+### ADR-024 — 2026-08-03 — Accepted
+
+**Context:** `RB-WP4-002..012` đã tạo đầy đủ mechanisms nhưng closure còn cần bằng
+chứng độc lập và audit source-level để tránh kết luận từ test happy path. Đặc biệt
+cần chứng minh hard gate thực sự loại candidate, mapper/OR-Tools không cùng lỗi với
+expected code, bounded omission đi xuyên diagnostics, và machine-local timing
+không bị nâng thành effectiveness claim.
+
+**Decision:** Đóng WP4 và Q2 core mechanical correctness vì:
+
+1. B1 generator/selector khớp independent enumeration trên 64 fixtures trong
+   published exact-small bound.
+2. Production C1 mapper + actual pinned OR-Tools khớp một enumerator độc lập khác
+   trên 64 fixtures; mọi objective level optimal với exact gap 0.
+3. Hard-gate mutation fixture có raw set lớn hơn hard-feasible set; actual bounded
+   omission truyền count/digest tách khỏi solver loss và validated fallback.
+4. Cache/infinite-equivalence/plan-pool/checkpoint/deadline/replay/publication gates
+   từ tickets trước vẫn pass trong full suite 557/557.
+5. Source audit xác nhận objective không scalarize hard vector, solver không tự
+   publish, candidate/solver/publication loss tách biệt và matching ACK là commit.
+6. Synthetic runtime curve chỉ được ghi là promising machine-local signal; paired
+   Layer 1/2, scale, service effect và user satisfaction vẫn unproven.
+7. Review `docs/reviews/wp1-wp4-final/` là handoff hiện hành; historical review
+   WP1–WP3 được giữ nguyên.
+
+**Alternatives considered:** đóng chỉ vì 523 tests pass; dùng production comparer
+làm oracle; ghi microbenchmark thành production SLA; mở luôn BeGo migration mà
+chưa khóa process/transaction ownership; xóa historical environment blocker.
+
+**Consequences:** `RB-WP4-001..014` Done, WP4 Complete. Windows Application Control
+`0x800711C7` không tái xuất hiện ở closure run nhưng historical record không bị
+xóa. Chỉ refinement-only `RB-WP5-001` Ready; không có WP5 implementation ticket.
+O-001/O-002/O-003/O-004 và protocol/hash/validator/certificate semantics không đổi.
+
+**Evidence:** closure blocks `RB-WP4-013/014`, `tasks/30`, `tasks/31`, final review,
+required suite 557/557, Release/format/vulnerability/JSON/Markdown/process/diff gates.
+
+**Supersedes / superseded by:** Đóng execution của ADR-023; không supersede
+ADR-014/016/017/020/022 hoặc claim boundary trong `03`/`21`.
+
 ## 8. Work package tracker
 
 | WP | Trạng thái | Bắt đầu | Kết thúc | Evidence |
@@ -1014,9 +1652,9 @@ ADR-020 physical B1 semantics. ADR-023 của WP4 chỉ được bổ sung sau re
 | WP0 Scaffold | Complete | 2026-07-28 | 2026-07-28 | build + 8 RideBound + 25 backend + 7 frontend tests |
 | WP1 Contracts | Complete; Q1 Release revalidated with host-policy exception | 2026-07-29 | 2026-07-29 | ADR-014–017 + 157/157 closure + WP1 revalidation 161/161 + replay/hash proof |
 | WP2 Online baseline | Complete; physical/B1 gate, Debug 333/333; Release host-policy exception recorded | 2026-07-29 | 2026-07-30 | ADR-018–020 + Debug 333/333 + Release bundles + two-process tiny replay |
-| WP3 Ledger/certificate | Complete; `001..014` DONE, host-policy exception recorded | 2026-07-31 | 2026-08-02 | ADR-021/022 + `tasks/28` + 414 logical assertions + WP3 process/checkpoint replay |
-| WP4 Algorithms/solver | Refinement ready; no implementation ready | — | — | `RB-WP4-001` in `tasks/29-wp4-algorithms-solver-refinement.md` |
-| WP5 BeGo integration | Not started | — | — | — |
+| WP3 Ledger/certificate | Complete; `001..014` DONE; Debug 414/414 | 2026-07-31 | 2026-08-02 | ADR-021/022 + `tasks/28` + full-solution 414/414 + WP3 process/checkpoint replay |
+| WP4 Algorithms/solver | Complete; `001..014` Done; Q2 mechanical gate closed | 2026-08-03 | 2026-08-03 | ADR-023/024 + independent oracles + named policy/solver/Runner path + 557/557 + final review |
+| WP5 BeGo integration | Refinement ready; only `RB-WP5-001`, no implementation | 2026-08-03 | — | `tasks/31-wp5-bego-integration-refinement.md` |
 | WP6 Benchmark harness | Not started | — | — | — |
 | WP7 FleetPy | Not started | — | — | — |
 | WP8 Pilot/prereg | Not started | — | — | — |
@@ -1027,6 +1665,97 @@ ADR-020 physical B1 semantics. ADR-023 của WP4 chỉ được bổ sung sau re
 
 ## 9. Change history
 
+- 2026-08-03: Hoàn thành `RB-WP4-013..014` và đóng WP4 bằng ADR-024. B1
+  generator/selector khớp independent oracle trên 64 fixtures; production C1
+  mapper + actual OR-Tools khớp independent enumerator trên 64 fixtures, mọi
+  objective optimal/gap 0. Thêm hard-gate mutation witness, actual bounded-loss
+  propagation và synthetic 4–128 option curve. Final source/config/Runner/claim
+  audit ở `reviews/wp1-wp4-final`; required suite 557/557, Release/format/package/
+  JSON/Markdown/process/diff gates pass. Windows Application Control 0x800711C7
+  không tái xuất hiện và chỉ còn historical record. Chỉ `RB-WP5-001` refinement Ready.
+- 2026-08-03: Hoàn thành `RB-WP4-012`. Thêm canonical B1–B5/C1/C2 registry,
+  strict WP4 configuration và domain-bound commitment+algorithm hash; manifest
+  phải khớp policy ID/version/hash. B1–B4/C1/C2 map exact hierarchy sang OR-Tools,
+  B5 giữ pool selector; Runner revalidate effective policy rồi stage
+  ledger/certificate/plan-pool/state/hash/ACK. Solver status nằm trong hashed
+  decision. 7 Algorithms + 9 Runner cases mới, gồm child-process CLI; format sạch,
+  required suite 523/523. Chỉ `RB-WP4-013` chuyển Ready.
+- 2026-08-03: Hoàn thành `RB-WP4-011`. Tách deterministic work budget cho
+  generation/validation/solver, giữ candidate omission digest/saturation độc lập
+  solver loss, và buộc mọi incumbent qua semantic validator injected. Portfolio
+  fallback thử no-op rồi single-request theo lexicographic/ID; hết validation
+  budget hoặc không pass trả Unknown không solution, không bịa incident. 12
+  Application cases mới, format sạch, required suite 507/507. Chỉ
+  `RB-WP4-012` chuyển Ready.
+- 2026-08-03: Hoàn thành `RB-WP4-010`. Thêm project adapter pin
+  `Google.OrTools 9.15.6755`, exact-one/at-most-one CP-SAT constraints,
+  Sum/Maximum integer objectives và multi-pass lexicographic optimum fixing.
+  Một worker/seed/conflict/deterministic-time budget explicit; status và bound
+  không bị nâng sai, solution được canonical revalidation. 5 solver cases + 1
+  architecture case mới, format sạch, required suite 495/495. Chỉ
+  `RB-WP4-011` chuyển Ready.
+- 2026-08-03: Hoàn thành `RB-WP4-009`. C2 dùng explicit 10-dimension warning
+  profile, cùng one-pass hard gate C1, ordered warning-excess vector trước raw
+  revision và không scalar hóa đơn vị. Warning phải finite-hard-bounded; toàn
+  warning tắt gọi đúng selector C1. 6 Algorithms cases mới, format sạch,
+  required suite 489/489. Chỉ `RB-WP4-010` chuyển Ready.
+- 2026-08-03: Hoàn thành `RB-WP4-008`. C1 assess+hard-filter trong cùng WP3
+  validator pass, rank accepted/worst exact ceiling PPM/ordered 10-vector/cost/
+  IDs; zero hard reserve rank saturated nhưng không đổi feasibility. Khi mọi
+  hard limit unbounded, bỏ treatment ranking để semantic decision đúng B1. 6
+  Algorithms cases mới, format sạch, required suite 483/483. Chỉ `RB-WP4-009`
+  chuyển Ready.
+- 2026-08-03: Hoàn thành `RB-WP4-007`. Thêm versioned canonical plan pool vào
+  Application state/checkpoint, exact semantic plan ID, shared-pool enumeration
+  với exact/bounded work semantics, Pareto dominance, max-min diversity và
+  executable-prefix consensus. Chỉ distinguished được apply; alternative khác
+  được rebase đúng next route version. Restore kiểm tra identity, assignment/
+  frozen/physical và run equality. 12 cases mới (3 Application, 5 Algorithms,
+  4 Runner), format sạch, required suite 477/477. Chỉ `RB-WP4-008` chuyển Ready.
+- 2026-08-03: Hoàn thành `RB-WP4-006`. Thêm B4 one-pair same-vehicle
+  remove/reinsert cho waiting incumbent hoàn toàn trong mutable suffix, explicit
+  cap và exact/bounded repair-loss accounting; frozen/onboard/assignment giữ
+  nguyên, mọi route qua physical validator. Tách order-sensitive search-node
+  digest khỏi order-insensitive omission-set digest sau khi differential case
+  phát hiện route permutations bị đồng nhất. 7 Algorithms cases mới; format
+  sạch, required suite 465/465. Chỉ `RB-WP4-007` chuyển Ready.
+- 2026-08-03: Hoàn thành `RB-WP4-005`. B2 đánh giá cùng raw pool với mọi
+  cumulative limit unbounded và chọn accepted/material/10-vector/cost/ID; B3 chỉ
+  hard-freeze theo horizon/lock explicit, inclusive boundary, không có numeric
+  default và không rò source budget. Sửa canonical overflow ở vector và fleet
+  cost. 8 Algorithms + 1 Domain cases mới, gồm B2 16-seed raw preservation;
+  format sạch, required suite 458/458. Chỉ `RB-WP4-006` chuyển Ready.
+- 2026-08-03: Hoàn thành `RB-WP4-004`. Thay request-ID/hash cap bằng global
+  deterministic best-first frontier; thêm work cap, tổ hợp count/saturation và
+  stable omission digest. Diagnostics tách request omission, unknown-feasibility
+  raw paths và known-feasible cap loss; exact mode fail-closed. 5 Algorithms
+  conservation/priority/monotonic cases mới, format sạch, required suite 449/449.
+  Chỉ `RB-WP4-005` chuyển Ready.
+- 2026-08-03: Hoàn thành `RB-WP4-003`. Thêm backward forward-slack certificate,
+  bounded cache bind run/vehicle/position/route/time/travel, executable
+  current-node origin hold và revalidation + exact service equivalence. Cache
+  không đảo vai validator; vượt certificate không bị suy thành infeasible. 9
+  Algorithms mutation/equivalence cases mới, format sạch và required suite
+  444/444. Chỉ `RB-WP4-004` chuyển Ready.
+- 2026-08-03: Hoàn thành `RB-WP4-002`. Thêm solver-neutral
+  `CandidateSelectionProblem`/solution/port trong Application: canonical model,
+  đúng một option/vehicle, request uniqueness, ordered lexicographic
+  Sum/Maximum, deterministic budget, exact bound/gap diagnostics và status
+  truthful tách OPTIMAL/FEASIBLE/INFEASIBLE/UNKNOWN/MODEL_INVALID/SAFE_FALLBACK.
+  20 Application adversarial cases + một Architecture boundary case; required
+  `dotnet test RideBound.slnx` pass 435/435. Chỉ `RB-WP4-003` chuyển Ready.
+- 2026-08-03: Hoàn thành `RB-WP4-001` refinement bằng ADR-023 và ordered queue
+  `RB-WP4-002..014`. In-app Browser đọc lại nguồn bắt buộc và bổ sung waiting,
+  forward-slack/feasibility, future-guidance cùng official OR-Tools/NuGet. Khóa
+  common raw candidate/cap, executable origin hold, same-vehicle repair,
+  canonical plan pool, multi-pass objective, deterministic solver budget,
+  exact-small equivalence và WP3 publication gate. Chỉ `RB-WP4-002` Ready;
+  chưa claim hay ghi production WP4 implemented tại mốc refinement.
+- 2026-08-03: Re-run đúng required `dotnet test RideBound.slnx` sau khi Smart App
+  Control không còn chặn fresh DLL: full solution pass 414/414 — Contracts 133,
+  Domain 134, Application 34, Algorithms 48, Runner 58, Architecture 7; exit 0,
+  không failed/skipped. Chuyển `0x800711C7` thành historical environment record,
+  không còn là current blocker.
 - 2026-08-02: Hoàn thành `RB-WP3-008..014` và đóng WP3 bằng ADR-022. Thêm
   incident/breach separation, independent full-state commitment validator,
   strict certificate/action/schema cross-binding, named configuration hash,

@@ -18,7 +18,7 @@
 | R-012 | Dùng paper nhưng không làm lại | `03`, `21` | claim ledger | novelty re-audit | Docs v1 |
 | R-013 | Nêu công nghệ và tối ưu | `05`, `08`, `12`–`14` | projects/adapters | build/performance | Docs v1 |
 | R-014 | Nêu thêm/bỏ gì | `02`, mục 2 dưới | migration plan | code review | Docs v1 |
-| R-015 | Agent sau biết tiếp tục | `00`, `17`, `18`, `23`–`29` | root `AGENTS.md` + ordered current-topic tickets | reading order + one unambiguous current ticket | Verified; only `RB-WP4-001` refinement READY |
+| R-015 | Agent sau biết tiếp tục | `00`, `17`, `18`, `23`–`31` | root `AGENTS.md` + ordered current-topic tickets | reading order + one unambiguous current ticket | Verified; WP4 `001..014` DONE, only refinement `RB-WP5-001` READY |
 | R-016 | Thuật ngữ dễ hiểu | `22` | glossary | doc review | Docs v1 |
 | R-017 | Không bias bằng dữ liệu giả | `01`, `10`, `11` | pilot/holdout | prereg audit | Planned |
 | R-018 | Tái lập | `06`, `15`, `24`, `26`, `28` | hashes/bundle | clean reproduction | WP1/WP2 verified; WP3 two-process commitment + checkpoint suffix equivalence verified; experiment bundle planned |
@@ -351,21 +351,56 @@ Evidence ngày 2026-07-30:
 | RB-WP3-013 | R-007–R-009/R-018, F-005–F-009, N-001/N-003/N-007 | DONE: all-dimension mutations, 64×12 ledger histories, 16-seed exact-small P2/P3, clean replay |
 | RB-WP3-014 | R-007–R-009/R-015/R-018, F-005–F-009 | DONE: ADR-022 closure, code/research review and `RB-WP4-001 READY` |
 
-Evidence đóng ngày 2026-08-02: inventory 414 — Contracts 133, Domain 134,
-Application 34, Algorithms 48, Runner 58, Architecture 7. Assertion evidence đủ
-414 bằng từng suite và policy-safe 54 Runner non-process methods + bốn
-clean-process cases; required full-solution attempt bị host policy `0x800711C7`
-chặn một số fresh DLL và không được gọi là full-solution pass. Release build
-`--warnaserror`, format, WP1/WP2/WP3 exact replay, checkpoint suffix, schema/link/
-dependency/diff audit được ghi trong `18`. O-002/O-003 vẫn để WP8; không có
-runtime user-default giả.
+Evidence closure: inventory 414 — Contracts 133, Domain 134, Application 34,
+Algorithms 48, Runner 58, Architecture 7. Required `dotnet test RideBound.slnx`
+pass 414/414 ngày 2026-08-03; policy-safe 54 Runner non-process methods và bốn
+clean-process cases vẫn là evidence bổ sung. Release build `--warnaserror`,
+format, WP1/WP2/WP3 exact replay, checkpoint suffix, schema/link/dependency/diff
+audit được ghi trong `18`. O-002/O-003 vẫn để WP8; không có runtime user-default
+giả. Các lần `0x800711C7` trước đó chỉ là historical host-policy record.
 
-## 11. WP4 refinement traceability
+## 11. WP4 traceability
 
 | Ticket | Requirement chính | Trạng thái/evidence dự kiến |
 |---|---|---|
-| RB-WP4-001 | R-003/R-004/R-007–R-009/R-012/R-013/R-015, F-004–F-007, N-001–N-005/N-007/N-009 | READY: khóa schedule/candidate fairness, multiple-plan, objective, solver/fallback/equivalence; không production code trước ADR-023 |
+| RB-WP4-001 | R-003/R-004/R-007–R-009/R-012/R-013/R-015, F-004–F-007, N-001–N-005/N-007/N-009 | DONE: Browser research + ADR-023 + ordered queue `30`; không production code trong refinement |
+| RB-WP4-002 | F-004, N-001/N-002/N-005/N-009 | DONE: canonical solver-neutral problem/solution/port; exact assignment/request constraints, ordered Sum/Maximum objectives, deterministic budget, truthful bound/gap/status; 435/435 |
+| RB-WP4-003 | F-004, N-001/N-005 | DONE: conservative backward slack, full cache key/invalidation, executable current-node hold + physical/exact-service revalidation; 444/444 |
+| RB-WP4-004 | F-004, N-001/N-005 | DONE: deterministic best-first/work cap, exact fail-closed, request/raw-unknown/feasible-cap loss count+digest; 449/449 |
+| RB-WP4-005 | R-007/R-008, F-003/F-004, N-001/N-003 | DONE: B2 non-pruning revision lexicographic + B3 explicit inclusive freeze/unbounded cumulative; 16-seed raw preservation; 458/458 |
+| RB-WP4-006 | R-007/R-008, F-003/F-004, N-001/N-003 | DONE: B4 atomic one-pair same-vehicle waiting-incumbent repair, exact/bounded repair-loss accounting, order-sensitive search identity; 465/465 |
+| RB-WP4-007 | R-007/R-008, F-003–F-007, N-001/N-003/N-005 | DONE: versioned canonical B5 pool, dominance/diversity/consensus, executable alternative rebase, checkpoint tamper gates; 477/477 |
+| RB-WP4-008 | R-007/R-008, F-003–F-007, N-001/N-003 | DONE: one-pass hard gate + exact cumulative worst PPM + ordered revision/cost/ID; unbounded C1=B1; 483/483 |
+| RB-WP4-009 | R-007/R-008, F-003–F-007, N-001/N-003 | DONE: explicit 10-vector warning profile/excess before revision, same C1 hard set, disabled C2=C1; 489/489 |
+| RB-WP4-010 | R-003/R-013, F-004, N-001/N-002/N-005/N-009 | DONE: isolated pinned OR-Tools 9.15.6755 CP-SAT adapter, exact constraints, multi-pass optimum fixing, deterministic budgets, truthful status/bounds; 495/495 |
+| RB-WP4-011 | R-003/R-013, F-003–F-007, N-001–N-005/N-009 | DONE: separate stage work budgets/loss, independent incumbent validation, no-op→single-request fallback, fail-closed exhaustion; 507/507 |
+| RB-WP4-012 | R-003/R-013, F-003–F-007, N-001–N-005/N-009 | DONE: seven-name registry, manifest/config hash binding, exact solver objective mapper, Runner validator/certificate/hash/ACK/checkpoint/CLI integration; 523/523 |
+| RB-WP4-013 | R-012/R-015/R-018, N-001/N-003/N-005/N-007 | DONE: 64-seed B1 oracle; 64-seed production C1 mapper + actual OR-Tools independent differential, all levels optimal/gap 0; hard-gate mutation, actual bounded-loss propagation, synthetic 4–128 option curve; 557/557 |
+| RB-WP4-014 | R-012/R-015/R-018, N-001/N-003/N-005/N-007 | DONE: ADR-024, source/config/Runner/claim audit, final WP1–WP4 review, all quality gates và only `RB-WP5-001 READY` |
+| RB-WP5-001 | R-003/R-013/R-015/R-018, N-001/N-003/N-007/N-009 | READY refinement-only: khóa BeGo source/provenance, Runner ownership, transaction/recovery, persistence, rollback và paired Layer-1 evidence; no implementation |
 
-Các workstream B2–B5/C1/C2/OR-Tools trong `29` là input refinement, chưa phải
-ticket READY và chưa được ghi là implementation. WP3 validator/certificate tiếp
-tục là publication gate độc lập cho mọi policy WP4.
+Queue `30` đã complete và ADR-024 đóng exit gate. WP3 validator/certificate tiếp
+tục là publication gate độc lập cho mọi policy WP4. Queue implementation kế tiếp
+chưa được tạo; chỉ refinement `31` Ready.
+
+WP4 closure evidence: required `dotnet test RideBound.slnx` pass 557/557 ngày
+2026-08-03 — Contracts 133, Domain 135, Application 69, Algorithms 134, Solver 6,
+Runner 71, Architecture 9. `RB-WP4-002` thêm 20 Application adversarial cases + một
+Architecture boundary case; `003` thêm 9 slack/cache/hold mutation-equivalence
+cases; `004` thêm 5 priority/conservation/loss/monotonic cases; `005` thêm 8
+B2/B3 cases và 1 Domain overflow regression; `006` thêm 7 B4 repair/exclusion/
+loss/equivalence cases; `007` thêm 3 Application + 5 Algorithms + 4 Runner cases
+cho plan identity/version, dominance/diversity/consensus, work bound,
+distinguished-only publication và checkpoint/tamper. Observed wall time không
+tham gia deterministic key. `008` thêm 6 Algorithms cases cho C1 objective,
+one-pass hard-filter equivalence, exact PPM và unbounded B1 equivalence; `009`
+thêm 6 Algorithms cases cho warning ordering/config/hard-set/excess/equivalence;
+`010` thêm 5 solver cases cho constraints/objective/status/replay/overflow/budget
+và 1 architecture case khóa package vào đúng adapter project; `011` thêm 12
+Application cases cho stage accounting, truthful incumbent status, independent
+validation, ordered no-op/single-request fallback, exhaustion và loss separation;
+`012` thêm 7 Algorithms + 9 Runner cases cho objective mapper, config/hash/manifest
+binding, actual OR-Tools/fallback status, ACK transaction, B5 restore và child CLI.
+`013` mở B1 oracle lên 64 cases, thêm một 64-seed actual OR-Tools C1 differential,
+hard-gate mutation witness, actual bounded omission propagation và synthetic
+microbenchmark; `014` audit source/claim/gates và tạo final review folder.

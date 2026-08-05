@@ -1,8 +1,10 @@
 # RB-WP4-001 — refinement RideBound policies và solver
 
-> Trạng thái: `READY`
+> Trạng thái: `DONE`
 > Work package: `WP4`
 > Implementation WP4 được phép trước khi ticket này DONE: `NONE`
+> Kết quả: ADR-023 + ordered queue
+> [30-wp4-algorithms-solver-ticket-plan.md](30-wp4-algorithms-solver-ticket-plan.md)
 > Nguồn trạng thái: [18-status-and-decision-log.md](../18-status-and-decision-log.md)
 
 ## 1. Mục tiêu
@@ -156,3 +158,15 @@ implementation trước khi ADR-023 khóa dependency:
 Nếu refinement không khóa được fairness, objective dominance hoặc exact-small
 equivalence, giữ WP4 `REFINEMENT_IN_PROGRESS`, không tạo solver code và để B1 +
 WP3 validator/certificate làm executable reference.
+
+## 11. Completion evidence — 2026-08-03
+
+- In-app Browser đọc lại bốn nguồn bắt buộc và bổ sung Mitrović-Minić & Laporte
+  (waiting strategies), Masson–Lehuédé–Péton (forward-time-slack insertion),
+  Gschwind (route feasibility/slack) và Ackermann–Rieck 2022 (future insertion
+  guidance), cùng official NuGet/OR-Tools CP-SAT status/deadline documentation.
+- ADR-023 trả lời đủ 12 quyết định với owner, test và rollback; O-001 giữ nguyên,
+  O-002/O-003/O-004 không bị tự chọn.
+- Queue `RB-WP4-002..014` có đúng một next implementation ticket `002 READY`.
+- Research không cấp default số: test configuration phải gắn nhãn boundary hoặc
+  microbenchmark, không phải user preference/production recommendation.

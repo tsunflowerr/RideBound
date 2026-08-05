@@ -23,4 +23,26 @@ public sealed class CommitmentVectorTests
                 0,
                 0));
     }
+
+    [Fact]
+    public void Addition_fails_closed_before_runtime_or_canonical_overflow()
+    {
+        var nearLimit = new CommitmentVector(
+            DomainLimits.MaxCanonicalInteger,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0);
+        var one = new CommitmentVector(1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+        var result = nearLimit.Add(one);
+
+        Assert.Equal(CommitmentFailureCodes.VectorOverflow, result.Failure?.Code);
+        Assert.Equal("pickup_eta_total_ms", result.Failure?.Dimension);
+    }
 }

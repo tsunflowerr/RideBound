@@ -24,6 +24,8 @@ public sealed class RollingCostPolicy
         _validator = validator ?? new PhysicalPlanValidator();
     }
 
+    public string PolicyId => RidePoolingPolicyRegistry.RollingCost;
+
     public RollingCostDecisionResult Decide(
         OnlineState state,
         CandidateGenerationOptions options,
@@ -57,7 +59,8 @@ public sealed class RollingCostPolicy
 
         var validationFailure = ValidateSelection(
             state,
-            selection.Selection!);
+            selection.Selection!,
+            _validator);
 
         if (validationFailure is not null)
         {
@@ -74,13 +77,14 @@ public sealed class RollingCostPolicy
             : RollingCostDecisionResult.Failure(applied.Witness!);
     }
 
-    private RollingCostWitness? ValidateSelection(
+    internal static RollingCostWitness? ValidateSelection(
         OnlineState state,
-        FleetSelection selection)
+        FleetSelection selection,
+        PhysicalPlanValidator validator)
     {
         foreach (var plan in selection.VehiclePlans)
         {
-            var validation = _validator.Validate(
+            var validation = validator.Validate(
                 new PhysicalValidationContext(
                     state.Run,
                     plan.VehicleId,
@@ -103,7 +107,7 @@ public sealed class RollingCostPolicy
         return null;
     }
 
-    private static RollingCostDecisionResult ApplySelection(
+    internal static RollingCostDecisionResult ApplySelection(
         OnlineState state,
         FleetSelection selection,
         IReadOnlyList<VehicleCandidateSet> generated)
@@ -229,7 +233,10 @@ public sealed class RollingCostPolicy
                 actions.AsReadOnly(),
                 pruned,
                 selection.AcceptedRequestCount,
-                selection.OperationalCost));
+                selection.OperationalCost,
+                selection.DecisionInducedRevision,
+                selection.WorstHardUtilizationPartsPerMillion,
+                selection.WarningExcess));
     }
 
     private static string FindRejectionReason(

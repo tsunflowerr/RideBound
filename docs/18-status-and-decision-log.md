@@ -1,7 +1,7 @@
 # Trạng thái và decision log
 
 > Tệp sống — cập nhật ở cuối mọi task RideBound
-> Cập nhật gần nhất: 2026-08-03
+> Cập nhật gần nhất: 2026-08-09
 
 ## 1. Trạng thái tổng thể
 
@@ -9,8 +9,8 @@
 |---|---|
 | Research direction | `LOCKED_FOR_IMPLEMENTATION_PLANNING` |
 | Documentation | `MIGRATED_AND_VERIFIED_V1` |
-| Implementation | `WP1_Q1_COMPLETE; WP2_COMPLETE; WP3_COMPLETE_14_OF_14; WP4_COMPLETE_14_OF_14` |
-| Current work package | `WP5 BEGO — RB-WP5-001 REFINEMENT READY; NO IMPLEMENTATION READY` |
+| Implementation | `WP1_Q1_COMPLETE; WP2_COMPLETE; WP3_COMPLETE_14_OF_14; WP4_COMPLETE_14_OF_14; WP5_COMPLETE_14_OF_14; Q3_MECHANICAL_COMPLETE` |
+| Current work package | `WP6 HARNESS — RB-WP6-001 READY (REFINEMENT-ONLY)` |
 | Repository | `https://github.com/tsunflowerr/RideBound` |
 | Main baseline | B1 `rolling-cost` |
 | Main treatment | C1 `ridebound-hard-vector` |
@@ -150,21 +150,109 @@
   checkpoint suffix equivalence.
 - Hoàn thành `RB-WP3-014`: audit toàn code WP1–WP3, Browser research recheck,
   ADR-022, review giải thích chi tiết và chỉ `RB-WP4-001` refinement READY.
+- Hoàn thành `RB-WP5-001`: khóa BeGo/RideBound source provenance, NDJSON Runner
+  ownership, append-only schema, idempotency fingerprint, short local transaction,
+  outbox, per-run claim/lease, crash recovery qua checkpoint + replay + exact hash,
+  bootstrap field provenance, privacy/feature flag và paired B1/C1 Layer-1 protocol
+  bằng ADR-025. In-app Browser đọc paper/tài liệu primary; queue `RB-WP5-002..014`
+  có đúng một implementation ticket `002 READY`, chưa có WP5 production code.
+- Hoàn thành `RB-WP5-002`: BeGo Application có immutable validated contract/port
+  cho run/operation/idempotency/Runner/timeline; exhaustive operation/run state
+  transition, monotonic revision/time, contiguous epoch/event cursor, strict UTF-8
+  hash và actor/resource/payload-bound idempotency. Runner frame phải single-line,
+  duplicate-free và embedded `messageType` khớp declaration; decision/certificate/
+  outbox hash/order bị guard, T3 contract bắt buộc checkpoint proof sau ACK. Ba
+  architecture tests giữ Application khỏi EF/Npgsql/ASP.NET/SignalR/RideBound.
+- Hoàn thành `RB-WP5-005`: BeGo Infrastructure có pinned long-lived Runner
+  supervisor, một session/process mỗi run và pool bounded. Strict UTF-8 NDJSON,
+  line/stderr/time bounds, exact schema/capability/manifest/context binding,
+  atomic ACK+checkpoint và process-tree cleanup đều fail closed. Lifecycle audit
+  sửa race dispose/start và orphan child. Stub process gate cover adversarial
+  framing/lifecycle; published RideBound Runner Release thật hoàn tất online
+  bootstrap/decision/ACK/checkpoint cycle.
+- Hoàn thành `RB-WP5-006`: mapper chụp immutable BeGo bootstrap source trước
+  external I/O, pseudonym HMAC run-local, E7/ms ties-to-even, complete directed
+  matrix có node cap, field provenance và exact negotiated manifest/domain hash.
+  Old assignment/snapshot chỉ là hashed provenance; generated bootstrap chạy
+  xuyên published Runner thật và full BeGo Release pass 98/98 không skip.
+- Hoàn thành `RB-WP5-007`: authenticated host/member HTTP service, strict bounded
+  DTO, RFC Problem Details, stable idempotent response và explicit write rate
+  limit. Sửa request fingerprint để không chứa server-owned sequence, serialize
+  create bằng composite advisory lock và pin patched `Microsoft.OpenApi 2.7.5`.
+  Full Release PostgreSQL + Runner thật pass 116/116, vulnerability audit sạch.
+- Hoàn thành `RB-WP5-008`: T2 ghi exact decision/certificate/projection/timeline/
+  outbox atomically; T3 chỉ ghi matching ACK/checkpoint dưới owner+revision+DB-time
+  fence. Fresh reconstruction phát lại hello/init/checkpoint/event và yêu cầu exact
+  decision bytes/hash; mismatch fail closed `Diverged`. Audit bổ sung semantic
+  binding cho promise service order. Tám crash windows chạy với PostgreSQL 17 và
+  published Runner thật khớp clean oracle, không duplicate committed effect;
+  full BeGo Debug/Release đều 125/125, frontend 7/7, RideBound 557/557.
+- Hoàn thành `RB-WP5-009`: outbox claim exact per-run head bằng DB-time lease và
+  monotonic attempt fence, commit trước external I/O, mark chỉ sau SignalR send,
+  retry bounded và stale completion bị từ chối. Exact user-safe allowlist không
+  phát route/node/budget/certificate witness/raw identity. Source audit phát hiện
+  late sender có thể tạo stale duplicate sau lease takeover; stable wire
+  `aggregateSequence`/message/hash cùng frontend monotonic delivery gate chặn
+  callback cũ. Real PostgreSQL cover crash/reclaim/order/cross-run/T2 rollback;
+  full BeGo Debug/Release 131/131, frontend 9/9 + production build, RideBound
+  557/557 và NuGet/npm vulnerability audits sạch.
+- Hoàn thành `RB-WP5-010`: exact `(sequence,id)` audit keyset, server-owned member
+  scope, operator-only raw evidence, repeatable-read append-log rebuild/live hash
+  và fail-closed pseudonymous export. Source audit phát hiện/sửa cross-member
+  request access, JSONB canonical/hash mismatch, prefix cursor plan, partial
+  migration downgrade, eager policy dependency và message-controlled exception
+  classification. Real PostgreSQL cover concurrent append, drift/mutation,
+  authorization, migration up/down/re-up và 12.000-row indexed `EXPLAIN`; full
+  BeGo Debug/Release 138/138, frontend 9/9 + production build, RideBound 557/557.
+- Hoàn thành `RB-WP5-011`: default Disabled không đăng ký COMMIT hosted worker;
+  Shadow chỉ decision, Live mới relay. Exact Runner artifact preflight chặn claim/
+  member API khi unhealthy. Durable immutable namespace lọc decision và hard-code
+  outbox Live-only, nên shadow không publish sau restart/chuyển mode. PostgreSQL
+  kiểm lease reclaim, shadow/live separation, old Session route snapshots và
+  guarded rollback; full BeGo Debug/Release 147/147, frontend 9/9, RideBound 557/557.
+- Hoàn thành `RB-WP5-012`: source-controlled BeGo-domain-shaped pseudonymous
+  fixture bind raw/canonical workload, provenance, common policy và exact B1/C1
+  config. Chỉ `policyId` được allowlist; effective config hash bind cả policy catalog
+  và arm config. Harness stage exact copies để tránh preflight/use TOCTOU, rồi chạy
+  hai clean process mỗi arm bằng cùng Runner DLL/work budgets. Exact materializer
+  kiểm decision/certificate, checkpoint validator tính lại state/hash chain;
+  normalized inputs giống nhau và repeat input/output/decision/checkpoint hash exact.
+  Self-verifying bundle bind mọi file, harness source và executing BeGo assemblies;
+  final manifest SHA-256 `b843bd20cbe9bf887d00998d4eaad54258848eb41d87ae49fd18a2142a0cb807`.
+  BeGo Debug/Release 152/152, 0 skip; RideBound 557/557.
+- Hoàn thành `RB-WP5-013`: independent test-owned transition oracle chạy 256×64
+  bước, exact-set claim dưới 2/3/4 PostgreSQL worker, hard process crash tại đủ 8
+  decision + 4 outbox durable boundary và fresh-Runner recovery exact. Năm mutant
+  correctness bắt buộc đều bị phát hiện; queue 8/32/64 × worker 1/2/4 giữ raw
+  warm-up/repetition/machine/row-count evidence. Self-verifying manifest SHA-256
+  `e21fb0877fbc6d61bf6f1e24adcda24e09a29fea95a9f44d1b61bf4fc1061ca2`;
+  BeGo Debug/Release 153/153, 0 skip; RideBound 557/557. Đây không phải LDFI/Elle/
+  QuickCheck execution, mutation percentage, production SLA hoặc effectiveness.
+- Hoàn thành `RB-WP5-014`: source-level WP1–WP5 audit phát hiện và sửa ba boundary
+  thật: `commit_subject_links` trở thành append-only authorization evidence;
+  `commit_outbox.operation_id` bắt buộc, chọn absolute head trước và chỉ claim khi
+  exact same-run operation của head đã `Applied` (không skip head chưa T3); outbox
+  batch tạo scope/DbContext độc lập theo run để run chậm không
+  chặn run khác. Real PostgreSQL regression kiểm migration/immutability/pre-T3 claim,
+  coordinated relay regression kiểm cross-run progress. BeGo Debug/Release trên hai
+  fresh database + published Runner đạt 154/154, 0 skip; frontend 9/9, lint,
+  TypeScript/build; full format và vulnerability audits sạch. Review WP1–WP5 kết
+  luận GO chỉ cho refinement WP6, NO-GO cho main experiment/SLA/effectiveness.
 
 ## 3. Chưa làm
 
-- Chưa có C1/C2 objective, B2–B5 behavior hoặc OR-Tools solver. WP3 mới khóa
-  feasibility/correctness và publication certificate, không chứng minh treatment
-  hiệu quả hơn B1.
-- B1 hiện dùng earliest-feasible schedule, một plan/vehicle và giữ incumbent
-  service order. Bounded generator chỉ xét bốn pending request đầu và cap theo
-  canonical candidate identity; candidate loss/solver loss chưa được đo.
-- Inversion/relocation/vehicle-switch dimensions là validator vocabulary thật,
-  nhưng B1 hiện không sinh inversion/relocation và O-001 khóa vehicle switch;
-  chúng không được báo là active optimization.
+- WP4 đã có B1–B5/C1/C2 và pinned OR-Tools mechanical evidence; chưa có paired
+  BeGo/FleetPy demand replay nên chưa chứng minh treatment hiệu quả hơn B1.
+- O-001 vẫn khóa cross-vehicle reassignment. B4 chỉ là same-vehicle waiting-
+  incumbent repair; không được báo thành reassignment optimizer.
 - Incident recovery optimizer chưa có; WP3 chỉ đảm bảo breach được ghi đúng và
   không bị certificate normal-operation che lấp.
-- Chưa có BeGo/FleetPy/RidePy adapter.
+- WP5 đã complete mechanical integration gate. WP6 chỉ có refinement ticket
+  `RB-WP6-001 READY`; common harness chưa được hiện thực và FleetPy/RidePy adapter
+  chưa có.
+- Full BeGo format audit đã sạch sau khi ba whitespace-only legacy file
+  `FindMeetPointHandler`, `WeightedGeometricMedianCalculator` và
+  `MapboxTransportModeMapper` được format cơ học; không có logic change ở chúng.
 - Chưa tải/freeze dataset cho experiment.
 - Chưa pilot hoặc preregister.
 - Chưa có bất kỳ kết quả chứng minh RideBound tốt hơn baseline.
@@ -992,7 +1080,7 @@ Date: 2026-07-28
 Passed: 25
 Failed: 0
 Skipped: 0
-Date: 2026-07-28
+Date: 2026-08-05 (WP5 refinement recheck)
 ```
 
 ### BeGo frontend
@@ -1001,24 +1089,360 @@ Date: 2026-07-28
 Passed: 7
 Failed: 0
 Warning: package type/module performance warning
-Date: 2026-07-28
+Date: 2026-08-05 (WP5 refinement recheck)
+```
+
+### RB-WP5-001 BeGo integration refinement
+
+```text
+RideBound checkout: 44ef6a7cacdc58e7c6c0576430fcd7bb02e76c7a
+BeGo checkout: ebe0d34365ec4751bd5c629677733032490a1a0d
+dotnet test RideBound.slnx: 557/557 passed
+BeGo dotnet test src\OptiGo.slnx --no-restore --verbosity minimal: 25/25 passed
+BeGo frontend npm test: 7/7 passed
+Browser research: Saltzer/Reed/Clark; Helland; transactional outbox; EF
+  transactions/concurrency; PostgreSQL SKIP LOCKED; hosted services; expired
+  IETF Idempotency-Key draft (prior art only)
+Artifacts: ADR-025, tasks/32, research/wp5-distributed-integration-evidence...
+Implementation at this checkpoint: none; only RB-WP5-002 READY
+Date: 2026-08-05
+```
+
+### RB-WP5-002 Application boundary và durable state invariants
+
+```text
+Targeted Debug integration tests: 32/32 passed
+Targeted Release build /warnaserror: 0 warnings, 0 errors
+Targeted Release integration tests: 32/32 passed
+Full BeGo backend: 57/57 passed
+Required RideBound solution: 557/557 passed
+Targeted dotnet format --verify-no-changes: passed
+Logic audit: exhaustive transition pair matrix; terminal/revision/time/sequence/
+  canonical-range/default-invalid/UTF-8/frame/payload-conflict/hash/order/checkpoint
+  boundaries covered; no TODO/framework/core dependency leak
+Full BeGo Release /warnaserror: NOT PASSED — pre-existing transitive
+  Microsoft.OpenApi 2.0.0 high-severity advisory through
+  Microsoft.AspNetCore.OpenApi 10.0.1. Assemblies compiled, build exit 1 on NU1903.
+Date: 2026-08-05
+```
+
+### RB-WP5-003 append-only EF/PostgreSQL persistence foundation
+
+```text
+Migration: 20260805155554_AddCommitIntegrationPersistence
+Schema: 11 commit_* tables; five append-only evidence triggers
+Real PostgreSQL: postgres:17-alpine, 1/1 Debug and 38/38 targeted Release passed
+Real DB cases: guarded empty up/down/re-up; data-loss rollback refusal; duplicate
+  event sequence/decision epoch/idempotency; one active op/run; cross-run FK;
+  optimistic revision conflict; Session SET NULL without evidence loss
+Full BeGo backend: 62 passed, 1 opt-in PostgreSQL test explicitly skipped
+Required RideBound solution: 557/557 passed
+Targeted dotnet format --verify-no-changes: passed
+Date: 2026-08-05
+```
+
+### RB-WP5-004 durable T1 intake/lease store
+
+```text
+Store: PostgresCommitIntakeStore implements narrow ICommitIntakeStore
+T1: run row lock + exact frame binding + idempotency + event/op/run atomic commit
+Claim: ordered FOR UPDATE SKIP LOCKED; DB timestamp lease; transaction committed
+  before returning work; expired lease reclaim increments revision/attempt
+Backpressure: short transaction advisory lock + bounded pending count
+Canonical replay: exact bytea, never jsonb-rendered text
+Real PostgreSQL clean-run stress: 5/5 passed
+Targeted Release with PostgreSQL: 40/40 passed
+Full BeGo backend: 64 passed, 1 opt-in PostgreSQL test explicitly skipped
+Required RideBound solution: 557/557 passed
+Date: 2026-08-05
+```
+
+### RB-WP5-005 pinned long-lived Runner process supervisor
+
+```text
+Runtime: one long-lived process/session per run; bounded configurable pool
+Pinning: absolute command/artifact path + exact artifact SHA-256 + core commit
+Protocol: strict UTF-8 NDJSON input/output bound; bounded stderr drain; exact
+  hello schema/capability and initialize manifest/provenance binding
+Failure semantics: timeout/cancellation/malformed/context mismatch discards
+  session and kills the owned process tree; uncertain process is never reused
+Atomic client step: decisionApplied write + checkpoint write/read under one gate
+Adversarial process tests: 16/16 non-opt-in passed
+Published RideBound Runner Release online cycle: 1/1 passed
+Targeted Debug/Release /warnaserror with actual Runner: 17/17 passed
+Full BeGo Debug without opt-ins: 80 passed, 2 explicit integration skips
+Full BeGo Release with PostgreSQL 17 + published Runner: 82/82, 0 skip
+BeGo frontend: 7/7 passed (existing module-type performance warning retained)
+Required RideBound solution: 557/557 passed
+Targeted dotnet format and git diff --check: passed
+Date: 2026-08-05
+```
+
+### RB-WP5-006 deterministic BeGo bootstrap mapper
+
+```text
+Capture boundary: immutable semantic preparation completes before travel/Runner I/O
+Privacy: run-local HMAC-SHA256 pseudonyms; restricted subject links; secret buffers zeroed
+Mapping: only necessary venue/eligible-vehicle/active-passenger nodes; no legacy
+  assignment, route, ledger, raw name/email/account ID enters Runner protocol
+Units: WGS84 -> E7 and seconds -> milliseconds with round-ties-to-even evidence
+Travel: exact square directed matrix; finite/range/sentinel/diagonal/off-diagonal
+  reachability validation; configurable <=4096 node cap checked before O(n²) I/O
+Determinism: ordinal semantic order, contiguous events, canonical JSON/hash stable
+Negotiation: manifest binds exact helloAck selection; domain-separated manifest hash
+Mapper tests with actual Runner enabled: 16/16 passed
+Supervisor + mapper targeted Release: 31/31 passed
+Full BeGo Release, fresh PostgreSQL 17 + published Runner: 98/98, 0 skip
+Required RideBound solution: 557/557 passed
+Date: 2026-08-05
+```
+
+### RB-WP5-007 authenticated idempotent HTTP boundary
+
+```text
+Authorization: authenticated fallback; host create/finalize; current member read/event
+Input: strict unknown-field rejection; <=32 KiB writes; no client sequence/raw frame/
+  route/ledger/certificate; member v1 event allowlist is exact timerTick only
+Idempotency: HMAC actor scope + resource/scope/key + canonical HTTP semantics;
+  server-owned epoch/eventSeq excluded from fingerprint and allocated in T1
+Create race: composite advisory transaction lock before lookup/insert; run/event/
+  operation/subject-links/provenance commit atomically
+HTTP replay: pending returns stable 202 operation; completed returns exact cached bytes;
+  changed semantic payload is RFC Problem Details 422
+Rate limit: explicit 30 writes/min; action policy precedence exercised through TestServer
+Security remediation: Microsoft.OpenApi 2.7.5; direct/transitive vulnerability audit clean
+Targeted Application/controller/TestServer/PostgreSQL/Runner: 28/28 + 19/19 passed
+Full BeGo Release /warnaserror, fresh PostgreSQL 17 + published Runner: 116/116
+BeGo frontend: 7/7 passed; required RideBound: 557/557 passed
+Date: 2026-08-05
+```
+
+### RB-WP5-008 decision transaction, ACK/checkpoint và crash recovery
+
+```text
+Migration: 20260809032051_AddCommitRecoveryFencing
+T2: exact decision + certificate + user-safe projection + timeline + outbox atomic
+T3: matching decisionApplied + independently validated checkpoint under live fence
+Fencing: database UTC + lease owner + revision; stale T2/T3 rejected after takeover
+Recovery: fresh pinned Runner + exact hello/init/checkpoint/event reconstruction;
+  pending decision must match persisted canonical bytes/hash before ACK
+Failure injection: before/after Runner, T2, ACK and T3 all exercised against a
+  clean-replay oracle on real PostgreSQL 17 + published RideBound.Runner
+Mutation gates: wrong stored decision hash never ACK; replay mismatch Diverged;
+  missing/invalid certificate never publishes; nested promise order must preserve
+  unique stops, exact request/stop binding and pickup-before-drop semantics
+Full BeGo Debug: 125/125 passed, 0 skipped
+Full BeGo Release /warnaserror: 125/125 passed, 0 skipped
+BeGo frontend: 7/7 passed
+Required RideBound command: 557/557 passed, exit code 0
+Targeted format verify: passed; vulnerability audit: no vulnerable packages
+Published Runner SHA-256:
+  EC5F224C058D69F6121E127A39F447F421C36E94094E6106517294CE222AD9BC
+Research mapping: RIFL unique request/completion records support durable idempotent
+  retry; Gray-Cheriton leases support bounded liveness, while correctness remains
+  in revision/owner fencing and exact replay. No exactly-once delivery claim.
+Date: 2026-08-09
+```
+
+### RB-WP5-009 transactional outbox và SignalR relay
+
+```text
+Claim: exact unpublished head per run; DISTINCT ON + ordered FOR UPDATE SKIP LOCKED
+Lease/fence: PostgreSQL transaction time + owner + incremented attempt_count
+I/O boundary: claim transaction commits before SignalR; mark only after send;
+  failed send reschedules exponential bounded backoff without holding row lock
+Wire: schema v1, stable messageId/runId/aggregateSequence/payloadHash + exact
+  nested canonical user-safe payload; retry attempt/owner never leaks into wire
+Privacy/auth: exact event/data allowlist; no route/node/budget/certificate witness/
+  raw identity; canonical Session GUID group; authenticated member join required
+Failure evidence: crash after send -> same ID/payload/hash; expired claim reclaims;
+  stale attempt cannot mark; run B progresses while run A leased; run-local order;
+  failed send retry; no-audience row not published; T2 rollback leaves no outbox
+Late-side-effect audit: lease cannot stop an already-started send. Stable sequence
+  plus frontend per-run monotonic/recent-ID gate discards stale duplicate callback;
+  disconnected-client catch-up remains RB-WP5-010, not an exactly-once claim
+Full BeGo Debug, fresh PostgreSQL + published Runner: 131/131, 0 skipped
+Full BeGo Release /warnaserror, separate fresh DB + Runner: 131/131, 0 skipped
+Frontend: 9/9; lint, tsc --noEmit and Next 16.3.0 production build passed
+Security: Microsoft.OpenApi 2.7.5 retained; Next 16.3.0, NextAuth beta.32 and
+  transitive patches; NuGet and npm audits report 0 vulnerable packages
+Required RideBound command: 557/557 passed, exit code 0
+Targeted format, TypeScript, Markdown/link/fence/diff gates: passed
+Date: 2026-08-09
+```
+
+### RB-WP5-010 rebuildable audit timeline, privacy và observability
+
+```text
+Query contract: strict canonical (sequence,id), UTF-8/limit bounds, deterministic
+  order; production PostgreSQL row-value keyset, not OR/prefix pagination
+Authorization: server-owned member scope maps own pickup requests through restricted
+  raw-subject links; cross-request denied; operator raw policy default deny
+Evidence boundary: member timeline is exact canonical user-safe payload only;
+  operator endpoint separately returns exact decision/certificate bytes + hashes
+Rebuild: repeatable-read snapshot over append-only decision/certificate/operation;
+  contiguous epoch, previous hash, input/output state and materializer/certificate
+  bindings checked before canonical rebuilt/live projection+timeline hash comparison
+Drift/export: mismatch is explicit and blocks pseudonymous export; recursive guard
+  rejects subject/token/coordinates/route/witness/budget/manifest/raw fields
+Plan evidence: composite (run,sequence,id) and (run,request,sequence,id) indexes;
+  PostgreSQL EXPLAIN on 12,000 representative rows uses index + row tuple condition
+Migration evidence: up/down/re-up pass; guarded Down refuses before any drop when
+  commit data exists, so failed rollback cannot leave a partial downgrade
+Privacy/log evidence: commit exceptions do not log/echo raw details; mutation covers
+  secret, subject and coordinate; telemetry carries only stable safe metadata
+Full BeGo Debug, fresh PostgreSQL + published Runner: 138/138, 0 skipped
+Full BeGo Release /warnaserror, separate fresh DB + Runner: 138/138, 0 skipped
+Frontend: 9/9; lint, tsc --noEmit and Next production build passed
+Security: NuGet and npm audits report 0 vulnerable packages
+Required RideBound command: 557/557 passed, exit code 0; WAC did not recur
+Published Runner SHA-256:
+  EC5F224C058D69F6121E127A39F447F421C36E94094E6106517294CE222AD9BC
+Claim: correctness/rebuildability/privacy only; no exactly-once, production SLA,
+  throughput or ridepooling-effectiveness claim
+Date: 2026-08-09
+```
+
+### RB-WP5-011 default-off rollout, compatibility và rollback
+
+```text
+Default: RideBound:Commit:Rollout:Mode = Disabled; no COMMIT hosted service
+Activation: Shadow = decision worker only; Live = decision + live-only outbox relay
+Preflight: exact pinned Runner artifact SHA-256; no process start; cached bounded
+  refresh; unhealthy -> /api/health/commit 503 and no claim/member service resolution
+Durable namespace: commit_runs.rollout_namespace IN (Shadow,Live), immutable trigger;
+  active uniqueness is (session,policy,namespace); existing rows backfilled Shadow
+Claim boundary: decision runner/ACK SQL joins exact namespace; outbox SQL can only
+  claim Live rows. Shadow outbox remains unpublished/attempt_count=0 across mode switch
+Shutdown/restart: cancellation stops new cycles; inflight lease remains durable and
+  same-namespace worker reclaims after DB-time expiry using existing revision fence
+Compatibility: old /api/health exact shape and Session latest/final route snapshots
+  unchanged; operator audit evidence remains available; no append log is deleted
+Migration: up/down/re-up real PostgreSQL; Down guard precedes drop and preserves
+  rollout column/index/trigger when data exists
+Logic fix: renamed active-run unique constraint is mapped back to typed RunUnavailable
+Full BeGo Debug fresh PostgreSQL + published Runner: 147/147, 0 skipped
+Full BeGo Release /warnaserror separate fresh DB + Runner: 147/147, 0 skipped
+Frontend: 9/9; lint, tsc --noEmit and Next production build passed
+Security: NuGet and npm audits report 0 vulnerable packages
+Required RideBound command: 557/557 passed; WAC did not recur
+Repository format: WP5-targeted clean; three pre-existing non-WP5 whitespace files
+  remain recorded for RB-WP5-014, so no false full-format claim
+Claim: rollout/recovery/compatibility correctness only; no effectiveness/SLA claim
+Date: 2026-08-09
+```
+
+### RB-WP5-012 paired B1/C1 Layer-1 replay artifact
+
+```text
+Fixture: BeGo-domain-shaped pseudonymous source fixture; explicit provenance says
+  no production/account/raw-coordinate data; raw + canonical file hashes pinned
+Pairing: B1 rolling-cost vs C1 ridebound-hard-vector; same Runner DLL/core commit,
+  workload/seed/graph/travel, candidate caps, OR-Tools adapter and deterministic
+  generation/validation/solver work limits; only config /policyId allowlisted
+Effective config: domain-separated hash binds common commitment policy + exact arm
+  config; initialize may differ only policyId/effective config hash
+TOCTOU: exact validated config bytes staged once; hash checked before/after every
+  process; Runner independently rejects an inconsistent effective config
+Execution: B1 x2 + C1 x2 clean processes; each 2 decisions, 2 produced certificates,
+  2 checkpoints, exit 0 and empty stderr
+Validation: BeGo exact decision/certificate materializer + independent checkpoint
+  content/state/hash validator; normalized protocol input identical across arms
+Repeat hashes: B1 output 88ffde16... x2; C1 output 13b32d81... x2
+Artifact: every payload file enumerated with byte count/SHA-256; manifest sidecar,
+  unmanifested-file rejection and transcript tamper test; exact harness source and
+  executing BeGo assembly hashes included
+Final bundle: E:\Code\BeGo\artifacts\ridebound\layer1-paired-v1\wp5-012-20260809-final
+Artifact manifest SHA-256:
+  b843bd20cbe9bf887d00998d4eaad54258848eb41d87ae49fd18a2142a0cb807
+Full BeGo Debug fresh PostgreSQL + published Runner: 152/152, 0 skipped
+Full BeGo Release /warnaserror separate fresh DB + Runner: 152/152, 0 skipped
+Security/quality: targeted changed-code format clean; NuGet vulnerability audit 0;
+  git diff --check clean (line-ending notices only)
+Required RideBound command: 557/557 passed; WAC did not recur
+Claim: Layer-1 mechanical/correctness/reproducibility evidence only; no
+  effectiveness, non-inferiority, production SLA or novelty claim
+Date: 2026-08-09
+```
+
+### RB-WP5-013 independent failure/concurrency/mutation/performance evidence
+
+```text
+Method sources: LDFI, Elle, QuickCheck, DeMillo-Lipton-Sayward mutation testing,
+  Georges-Buytaert-Eeckhout performance evaluation; mechanisms applied with explicit
+  limits, no claim that the external tools/formal analyses themselves were run
+Transition oracle: test-owned table, no production transition call; 256 histories x
+  64 steps = 16,384; accepted 12,261, rejected 4,123; exact seed/step trace retained
+Contention: real PostgreSQL exact expected/observed operation sets; 2/3/4 workers,
+  queue depths 24/36/48; every worker claimed a bounded share; lost/duplicate = 0
+Decision faults: separate OS process Environment.FailFast at all 8 worker failpoints;
+  nonzero exit + exact marker + fresh Runner reconstruction + decision/certificate/
+  checkpoint equality + stale T2/T3 fence rejection
+Outbox faults: separate OS process Environment.FailFast at all 4 relay failpoints;
+  BeforePublish invokes once; AfterPublish/BeforeMark retries the same stable delivery;
+  AfterMark remains once; exactly one committed outbox row becomes published
+Resource cleanup: no newly orphaned dotnet process; Runner active session count 0;
+  PostgreSQL connections return 1 -> 1
+Required mutants: 5/5 killed — active-run unique index, ACK/checkpoint gate,
+  T2/outbox atomicity, semantic idempotency fingerprint, canonical message hash;
+  explicit mutants only, no external mutation score/percentage
+Local curves: queue 8/32/64 x workers 1/2/4; deterministic randomized order, one
+  warm-up + five measured repetitions, raw intake/claim/drain/ops samples and machine/
+  PostgreSQL/append-row provenance retained; no latency threshold assertion
+Observed median claim-drain ms (w1/w2/w4): q8 5.553/7.130/7.246;
+  q32 8.848/8.822/7.867; q64 10.920/10.957/8.938
+Artifact: E:\Code\BeGo\artifacts\ridebound\wp5-independent-v1\wp5-013-20260809-final
+Manifest SHA-256:
+  e21fb0877fbc6d61bf6f1e24adcda24e09a29fea95a9f44d1b61bf4fc1061ca2
+Independent rehash: sidecar exact; 18/18 manifest files present/size/hash exact;
+  missing/extra/reparse/tamper rejected
+Full BeGo Debug, fresh PostgreSQL + published Runner: 153/153, 0 skipped
+Full BeGo Release /p:TreatWarningsAsErrors=true, separate fresh DB: 153/153, 0 skipped
+Security/quality: changed-code format clean; all BeGo/RideBound NuGet vulnerability
+  audits 0; git diff --check clean apart from pre-existing line-ending notices
+Required RideBound command: 557/557 passed; WAC 0x800711C7 did not recur
+Claim: independent bounded systems-correctness evidence only; no formal LDFI/Elle,
+  exhaustive state space, mutation percentage, end-to-end throughput, SLA,
+  ridepooling effectiveness or non-inferiority claim
+Date: 2026-08-09
+```
+
+### RB-WP5-014 closure/source audit
+
+```text
+Source findings fixed:
+  1. commit_subject_links UPDATE/DELETE rejected by append-only DB trigger
+  2. commit_outbox.operation_id non-null; absolute head chosen before Applied gate
+  3. claimed per-run heads publish concurrently in independent DI scopes/DbContexts
+Real PostgreSQL targeted migration/publication gate: 1/1 passed, 0 skipped
+Targeted rollout/outbox/model gate: 20/20 passed
+Full BeGo Debug, fresh PostgreSQL + published Runner: 154/154, 0 skipped
+Full BeGo Release /p:TreatWarningsAsErrors=true, separate fresh DB: 154/154, 0 skipped
+Frontend: npm test 9/9; ESLint, TypeScript --noEmit and Next production build passed
+Quality/security: full dotnet format verify passed; NuGet/npm vulnerability audits 0
+Required RideBound command: 557/557 passed; WAC 0x800711C7 did not recur
+Verdict: GO for RB-WP6-001 refinement only; NO-GO for main experiment,
+  production SLA, effectiveness/non-inferiority or user-satisfaction claims
+Date: 2026-08-09
 ```
 
 ## 5. Next action
 
-WP1–WP4 đã Complete. `RB-WP4-001..014` Done và ADR-024 đóng core mechanical
-correctness. WP3 validator/certificate/checkpoint tiếp tục là publication boundary
-cho mọi policy/solver WP4.
+WP1–WP5 Complete; `RB-WP5-001..014` Done. WP3 validator/certificate/checkpoint
+tiếp tục là publication boundary cho mọi write path; WP5 durable adapter không
+được tái tính hoặc nới lỏng boundary đó.
 
 Ticket duy nhất `READY`:
 
-> `RB-WP5-001` — refinement BeGo adapter và persistence; no implementation.
+> `RB-WP6-001` — common benchmark harness refinement (refinement-only).
 
 Chi tiết:
-[31-wp5-bego-integration-refinement.md](tasks/31-wp5-bego-integration-refinement.md).
-Refinement phải khóa source provenance, Runner ownership, transaction/recovery,
-persistence, rollback và paired Layer-1 evidence. Không tạo migration/endpoint/
-adapter implementation, không tự chọn O-002/O-003/O-004 và không mở O-001.
+[33-wp6-common-benchmark-harness-refinement.md](tasks/33-wp6-common-benchmark-harness-refinement.md).
+Ticket này chỉ khóa scenario identity, dataset license, demand semantics, pairing,
+seed, Runner/failure/exclusion/metric/result/bundle/resource contracts và tiny/medium
+acceptance. Không viết harness hoặc chạy experiment trong refinement.
+Không tự chọn O-002/O-003/O-004 hoặc mở O-001. `Microsoft.OpenApi` đã pin bản vá
+`2.7.5`; tiếp tục giữ vulnerability audit bắt buộc.
 
 ## 6. Open decisions
 
@@ -1029,11 +1453,12 @@ adapter implementation, không tự chọn O-002/O-003/O-004 và không mở O-0
 | O-004 | Service non-inferiority margin cuối? | WP8 prereg |
 | O-005 | RidePy hay AMoD2 là Layer 3 final? | WP10 preflight |
 | O-006 | FleetPy 1.0.2 có cung cấp exact directed-edge progress ổn định không? Protocol union/capability đã khóa bởi ADR-014. | WP7 executable preflight; nếu không đạt, khai báo `nodeOnly` và fail/downgrade |
-| O-007 | HTTP/gRPC có cần cho product v1 ngoài NDJSON? | WP5 |
 | O-008 | Cross-city confirmatory hay robustness only? | WP8 |
 
 O-001 đã được khóa bởi ADR-018: B1 WP2 không cho incumbent accepted request đổi
 vehicle; WP4 chỉ mở lại bằng ADR superseding và atomic multi-vehicle evidence.
+O-007 được khóa bởi ADR-025: WP5 dùng versioned long-lived NDJSON child process;
+HTTP/gRPC chỉ mở lại khi có cross-host operational requirement và ADR mới.
 
 ## 7. Decision log
 
@@ -1645,6 +2070,194 @@ required suite 557/557, Release/format/vulnerability/JSON/Markdown/process/diff 
 **Supersedes / superseded by:** Đóng execution của ADR-023; không supersede
 ADR-014/016/017/020/022 hoặc claim boundary trong `03`/`21`.
 
+### ADR-025 — 2026-08-05 — Accepted
+
+**Context:** WP4 đã đóng core mechanical correctness nhưng BeGo hiện là snapshot
+outing application: `Session`/`PickupRequest` không phải online RideBound aggregate,
+không có append-only event/decision/ACK/outbox state, và flow cũ không thể cho biết
+Runner call đã commit qua các crash window. Gọi child process rồi `SaveChanges`/
+SignalR bằng happy-path `if/else` sẽ tạo khoảng mất/nhân đôi decision và có thể
+manufacture ACK/certificate sai.
+
+**Research evidence:** In-app Browser đọc paper Saltzer–Reed–Clark về end-to-end
+duplicate suppression/ack/crash recovery; Helland về local transaction entity,
+at-least-once messaging và durable activity state; transactional outbox pattern;
+official EF Core transaction/optimistic concurrency; PostgreSQL locking/
+`SKIP LOCKED`; official ASP.NET hosted service; và IETF HTTPAPI Idempotency-Key
+draft-07. Draft cuối đã expired/archived ngày audit nên chỉ dùng như prior art,
+không claim RFC compliance. Chi tiết và URL ở
+`research/wp5-distributed-integration-evidence-2026-08-05.md`.
+
+**Decision:**
+
+1. Adapter/API/EF/SignalR code nằm trong tracked BeGo `src`; RideBound không copy/
+   reference source BeGo và BeGo không reference RideBound core assemblies. BeGo
+   chỉ gọi exact versioned `RideBound.Runner` artifact qua NDJSON.
+2. O-007 đóng cho WP5 bằng long-lived child process. Config tách command path,
+   artifact path, expected binary SHA-256, core commit, mode/policy/config hash;
+   preflight mismatch fail closed.
+3. Một `CommitRun` là serialization entity: một pending operation/decision, event
+   sequence/epoch liên tiếp. Nhiều worker có thể xử lý nhiều run; database lease +
+   partial uniqueness ngăn hai owner cùng run.
+4. Chỉ local transaction ngắn: T1 append idempotency/event/work; external Runner;
+   T2 persist exact decision/certificate/rebuildable projection/outbox; external
+   matching ACK; T3 persist ACK/checkpoint. Không giữ DB lock qua process/SignalR.
+5. Delivery là at-least-once với idempotent effect, không claim exactly-once.
+   Composite idempotency scope bind actor/route/run/key và canonical payload hash;
+   same key khác fingerprint conflict, in-flight retry không cấp sequence mới.
+6. Outbox cùng T2; relay dùng stable message ID, deterministic per-run order và
+   lease. `SKIP LOCKED` chỉ dùng queue claim, không dùng audit query.
+7. Crash/ACK uncertain buộc bỏ process handle, start đúng binary, initialize cùng
+   manifest, restore checkpoint, replay committed suffix, replay pending event,
+   compare exact decision hash rồi mới ACK. Mismatch chuyển `Diverged`, không publish.
+8. Bootstrap tạo run-local pseudonymous ID/node map, E7/ms ties-to-even, full
+   directed travel matrix và provenance từng field. Time window/max ride phải từ
+   explicit override hoặc named stored profile; thiếu thì fail, không có hidden default.
+9. Feature flag mặc định off giữ Session/endpoints hiện hành. Runtime rollback là
+   stop claim/disable; không xóa append-only evidence. Raw identity link tách khỏi
+   pseudonymous research export; log/realtime payload không chứa exact location,
+   token hoặc raw witness mặc định.
+10. Paired B1/C1 dùng cùng source input, seed, binary/work rules và allowlist duy
+    nhất policy/config fields; replay cùng arm phải byte/hash exact. Kết quả chỉ là
+    Layer-1 mechanical/descriptive signal trước WP8/WP9.
+11. Ordered queue `RB-WP5-002..014` thực hiện tuần tự; mỗi code ticket chạy BeGo
+    targeted/full backend, required RideBound suite, frontend khi surface đổi,
+    và real PostgreSQL gate khi liên quan persistence/concurrency.
+
+**Alternatives considered:** đặt adapter trong RideBound và project-reference qua
+repo; gắn fields vào `Session`; distributed transaction qua DB/process/SignalR;
+call Runner trong DB transaction; in-memory `Channel` làm durable queue; key-only
+dedup; spawn process mỗi event; retry ACK trên uncertain live process; import old
+snapshot thành ledger; auto default missing time windows; HTTP/gRPC ngay WP5;
+drop evidence khi rollback.
+
+**Consequences:** `RB-WP5-001` Done, no production implementation claim. Queue
+`tasks/32` có đúng `RB-WP5-002 READY`. Persistence/recovery phức tạp hơn direct
+call nhưng mọi crash window có durable interpretation, Runner vẫn là decision
+authority và BeGo cũ có default-off rollback.
+
+**Evidence:** pinned checkouts/baselines trong mục 4; `tasks/31`, `tasks/32`,
+research evidence; Browser excerpts; source audit BeGo Domain/Application/
+Infrastructure/API; required RideBound 557/557, BeGo backend 25/25, frontend 7/7.
+
+**Implementation amendment 2026-08-05 (`RB-WP5-003..004`):** T1 không nhận
+caller wall clock; lease dùng `transaction_timestamp()` trong DB. Event metadata
+epoch/time/contiguous sequence phải bind exact canonical frame; canonical batch
+hash bảo vệ bytes của Runner. `jsonb` chỉ phục vụ query; mọi replay/Runner write lấy strict
+UTF-8 canonical `bytea`, vì PostgreSQL được phép normalize JSON text. Event batch
+lưu cả first/last sequence; same-run composite FK ngăn operation/decision/
+checkpoint cross-link. Queue claim dùng ordered `SKIP LOCKED`, bounded capacity
+và commit lease trước khi trả work ra ngoài transaction.
+
+**Implementation amendment 2026-08-05 (`RB-WP5-005`):** Runner artifact được
+pin bằng absolute command/artifact path, SHA-256 và core commit; process pool có
+giới hạn rõ và session là run-local. Client tự kiểm schema/capability/manifest/
+run/epoch/time ở cả hai chiều, giới hạn exact UTF-8 line và stderr, gom
+`decisionApplied` + checkpoint vào một I/O critical section. Mọi timeout,
+cancellation, malformed response hoặc identity mismatch remove session rồi kill
+toàn process tree. Dispose/start được serialize để không rò process qua race.
+
+**Implementation amendment 2026-08-05 (`RB-WP5-006`):** Bootstrap được tách
+thành synchronous immutable source capture trước external I/O và completion sau
+exact capability negotiation. Manifest hash không còn là input trước `helloAck`;
+nó được tính từ canonical manifest bằng đúng domain `RideBound.ManifestHash.v1`
+sau khi bind exact selection. Adapter chỉ materialize graph node cần thiết, áp
+node cap trước complete O(n²) matrix call, fail closed mọi missing/unreachable/
+ambiguous conversion và giữ legacy state dưới dạng hashed provenance-only.
+
+**Implementation amendment 2026-08-05 (`RB-WP5-007`):** Sửa một coupling sai
+trong `003..004`: idempotency fingerprint bind canonical HTTP method/resource/
+path/body semantics, không bind `eventSeq`/epoch do server cấp; exact eventBatch
+bytes tiếp tục có hash riêng. Create-run khóa composite idempotency bằng PostgreSQL
+advisory transaction lock trước lookup/insert để cùng key luôn replay cùng winner,
+không phụ thuộc thứ tự unique index. HTTP chỉ expose user-safe views và exact
+cached response; controller không nhận raw protocol/ledger/certificate input.
+
+**Implementation amendment 2026-08-09 (`RB-WP5-008`):** Runner response được
+materialize lại trong T2 từ exact canonical frame; decision, certificate,
+projection, timeline và outbox commit cùng transaction. Claim bằng raw SQL phải
+clear committed EF snapshots có guard trước khi T2/T3 lock row, nếu không identity
+map có thể trả revision trước claim và làm fence sai. ACK outcome không chắc chắn
+luôn bỏ session, reconstruct fresh Runner và so byte/hash exact; T3 dùng DB time,
+owner và revision. Promise service order ở BeGo boundary tái lập invariant Domain,
+không chỉ schema field checks. Cơ chế này là at-least-once retry với durable
+idempotent effect theo RIFL/outbox prior art, không phải exactly-once delivery.
+
+**Implementation amendment 2026-08-09 (`RB-WP5-009`):** Outbox claim chọn exact
+unpublished head của mỗi run trước khi xét availability/lease, nên backoff hoặc
+slow head không cho sequence sau overtaking; `SKIP LOCKED` vẫn cho run khác tiến.
+Claim tăng `attempt_count` bằng DB time và commit trước SignalR; mark/reschedule
+phải khớp message/owner/attempt/unexpired lease. Payload được tái kiểm exact
+user-safe allowlist và Session target bị migration trigger khóa không retarget.
+Source audit áp dụng đúng giới hạn Gray-Cheriton: lease không fence external send
+đã bắt đầu. Wire vì vậy mang stable aggregate sequence/hash và frontend bỏ
+duplicate/stale callback theo per-run cursor; offline gap vẫn cần timeline `010`.
+`SendAsync` không được ghi thành durable client acknowledgement hoặc exactly-once.
+
+**Implementation amendment 2026-08-09 (`RB-WP5-010`):** Audit timeline dùng exact
+row-value `(sequence,id)` keyset và server-owned access scope; raw subject link chỉ
+phục vụ ownership join, raw decision/certificate chỉ qua operator policy mặc định
+deny. JSONB phải canonicalize rồi kiểm hash/allowlist lại ở end-to-end boundary.
+Projection không được coi là source of truth: repeatable-read rebuild tái tạo từ
+append-only decision/certificate/operation, kiểm full hash/state/materializer chain
+và so rebuilt/live hash; mismatch chặn export. Audit read không dùng `SKIP LOCKED`.
+Migration rollback guard phải chạy trước destructive `Down`. Logging/telemetry/
+export không mang subject, token, coordinate, route, witness hoặc raw evidence.
+Các cơ chế này là correctness/rebuildability/privacy prior-art application, không
+phải exactly-once, throughput/SLA, effectiveness hoặc novelty claim.
+
+**Implementation amendment 2026-08-09 (`RB-WP5-011`):** Rollout mode là
+`Disabled/Shadow/Live`; omission/default là Disabled và không đăng ký COMMIT hosted
+service. Namespace Shadow/Live phải persist bất biến trên run, decision claim phải
+lọc namespace và outbox store chỉ claim Live — ngừng đăng ký relay trong RAM là
+không đủ vì live restart có thể phát shadow backlog. Existing rows backfill Shadow.
+Mọi active worker/member boundary phải qua exact Runner artifact hash preflight;
+preflight không spawn process. Disable/cancel ngừng claim mới, để durable lease hết
+hạn và same-namespace worker reclaim theo existing fence. Feature rollback không
+xóa append-only evidence hoặc sửa Session route; Down guard chạy trước destructive
+DDL. Đây là operational correctness/compatibility, không phải effectiveness claim.
+
+**Implementation amendment 2026-08-09 (`RB-WP5-012`):** Layer-1 pair dùng cùng
+commitment-mode publication/validator path cho cả B1 và C1; không cho B1 né
+certificate bằng online mode khác. Raw/canonical workload, provenance, common
+policy và mỗi arm config đều hash-bound; effective config hash domain-separate bind
+hai config. Ngoài `/policyId`, normalized config phải exact; initialize chỉ được
+khác policy ID/effective hash và `decisionApplied.decisionHash` được phân loại rõ là
+output-derived control. Validated config bytes được stage rồi kiểm trước/sau từng
+clean process để tránh TOCTOU. Decision phải qua BeGo exact materializer, checkpoint
+phải được tính lại độc lập, repeats phải exact, và bundle manifest reject file thiếu,
+thừa hoặc tamper. Bundle bind harness source + executing assemblies vì working tree
+chưa commit không được giả thành reproducible chỉ bằng base commit. Đây là
+mechanical/correctness evidence, không phải effectiveness/non-inferiority/SLA claim.
+
+**Implementation amendment 2026-08-09 (`RB-WP5-013`):** Failure evidence phải
+hard-kill executable riêng tại từng durable decision/outbox boundary, có marker trước
+crash và fresh-process recovery; exception/finally trong test process không được gọi
+là hard crash. Expected state/claim được dựng bởi test-owned observed-history oracle,
+không gọi production transition table. Concurrency phải so exact operation set trên
+PostgreSQL thật với nhiều worker, không chỉ đếm tổng. Mutation gate gồm năm fault model
+độc lập phá unique active-run, ACK/checkpoint, T2/outbox, fingerprint và canonical hash;
+`5/5` chỉ là required-mutant result, không phải external mutation percentage.
+Performance evidence randomize scenario order, warm-up, nhiều repetition và lưu raw
+sample/machine/database/row counts; không assert SLA. LDFI, Elle, QuickCheck, mutation
+testing và rigorous-performance papers cung cấp phương pháp, nhưng implementation
+không chạy external LDFI/Elle/QuickCheck/mutation engine và không claim formal proof.
+
+**Implementation/closure amendment 2026-08-09 (`RB-WP5-014`):** Dữ liệu dùng
+để authorize member phải immutable: `commit_subject_links` dùng cùng append-only
+reject trigger như evidence tables. Mọi outbox row phải bind non-null operation cùng
+run. Query phải chọn absolute earliest unpublished head trước rồi kiểm head `Applied`,
+vì T2 không được lộ trước T3 và row sau không được vượt head chưa T3. Per-run-head
+SQL phải đi kèm application-level independent scope/DbContext
+cho mỗi run; otherwise một SignalR send chậm vẫn gây cross-run head-of-line blocking.
+Migration rollback tiếp tục fail closed khi còn dữ liệu và cần explicit guard. Closure
+review không biến mechanical paired/fault/local-curve evidence thành formal delivery,
+SLA hoặc effectiveness claim; nó chỉ cho phép mở đúng `RB-WP6-001` refinement.
+
+**Supersedes / superseded by:** Khóa O-007 và thay proposed WP5 project placement
+trong `19` bằng BeGo-owned adapter + artifact boundary. Không đổi protocol/hash,
+O-001/O-002/O-003/O-004, WP3 publication gate hoặc ADR-024 claim boundary.
+
 ## 8. Work package tracker
 
 | WP | Trạng thái | Bắt đầu | Kết thúc | Evidence |
@@ -1654,8 +2267,8 @@ ADR-014/016/017/020/022 hoặc claim boundary trong `03`/`21`.
 | WP2 Online baseline | Complete; physical/B1 gate, Debug 333/333; Release host-policy exception recorded | 2026-07-29 | 2026-07-30 | ADR-018–020 + Debug 333/333 + Release bundles + two-process tiny replay |
 | WP3 Ledger/certificate | Complete; `001..014` DONE; Debug 414/414 | 2026-07-31 | 2026-08-02 | ADR-021/022 + `tasks/28` + full-solution 414/414 + WP3 process/checkpoint replay |
 | WP4 Algorithms/solver | Complete; `001..014` Done; Q2 mechanical gate closed | 2026-08-03 | 2026-08-03 | ADR-023/024 + independent oracles + named policy/solver/Runner path + 557/557 + final review |
-| WP5 BeGo integration | Refinement ready; only `RB-WP5-001`, no implementation | 2026-08-03 | — | `tasks/31-wp5-bego-integration-refinement.md` |
-| WP6 Benchmark harness | Not started | — | — | — |
+| WP5 BeGo integration | Complete; `001..014` Done; Q3 mechanical gate closed | 2026-08-05 | 2026-08-09 | ADR-025 + durable adapter/rollout + paired bundle + independent evidence + source/claim review; BeGo 154/154 Debug/Release |
+| WP6 Benchmark harness | Refinement Ready; only `RB-WP6-001`, no implementation | 2026-08-09 | — | `tasks/33` |
 | WP7 FleetPy | Not started | — | — | — |
 | WP8 Pilot/prereg | Not started | — | — | — |
 | WP9 Main experiments | Not started | — | — | — |
@@ -1665,6 +2278,110 @@ ADR-014/016/017/020/022 hoặc claim boundary trong `03`/`21`.
 
 ## 9. Change history
 
+- 2026-08-09: Hoàn thành `RB-WP5-014` và đóng WP5/Q3 mechanical gate. Source audit
+  sửa subject-link immutability, pre-T3 outbox publication và cross-run relay scope;
+  BeGo Debug/Release 154/154, frontend/format/vulnerability gates sạch. Tạo detailed
+  WP1–WP5 review với GO chỉ cho refinement và NO-GO cho experiment/SLA/effectiveness.
+  Mở đúng một ticket `RB-WP6-001 READY`, chưa có WP6 implementation.
+- 2026-08-09: Hoàn thành `RB-WP5-013`. Thêm executable hard-crash riêng tại đủ
+  8 decision + 4 outbox boundary, fresh-Runner exact recovery, test-owned 16.384-step
+  transition oracle, exact-set 2/3/4-worker PostgreSQL contention, `5/5` required
+  mutants và raw randomized warm-up/repetition local curves. Artifact manifest
+  `e21fb08...` rehash đủ 18 file; BeGo Debug/Release 153/153, RideBound 557/557,
+  vulnerability audit sạch. Browser mapping ghi rõ LDFI/Elle/QuickCheck/mutation/
+  performance mechanism và giới hạn claim. Chuyển duy nhất `RB-WP5-014` sang
+  In progress; chưa đóng Q3 hoặc mở WP6 trước source-level closure audit.
+- 2026-08-09: Hoàn thành `RB-WP5-012`. Thêm strict paired replay preflight,
+  staged exact configs, B1/C1 × two clean Runner processes, exact materializer/
+  checkpoint validation, repeat/common-input proof và self-verifying bundle bind
+  source + assemblies. Final manifest `b843bd20...`; BeGo Debug/Release 152/152,
+  RideBound 557/557, vulnerability audit sạch. Chuyển duy nhất `RB-WP5-013`
+  sang In progress; không diễn giải bundle thành effectiveness hoặc SLA.
+- 2026-08-09: Hoàn thành `RB-WP5-011`. Thêm default-off conditional hosted
+  registration, exact artifact preflight health/gate và durable immutable Shadow/
+  Live namespace. Decision claim lọc namespace; outbox hard-code Live-only nên
+  shadow backlog không publish sau mode switch. PostgreSQL kiểm same-Session dual
+  namespace, old Session snapshot unchanged, expired lease reclaim và guarded
+  rollback; logic audit sửa unique-constraint typed mapping. Debug/Release 147/147,
+  frontend 9/9, RideBound 557/557, dependency audits sạch. Chuyển duy nhất
+  `RB-WP5-012` sang In progress.
+- 2026-08-09: Hoàn thành `RB-WP5-010`. Thêm exact canonical audit cursor,
+  server-owned member ownership, operator-only raw evidence, repeatable-read
+  append-log rebuild/live hash và fail-closed pseudonymous export. Logic audit sửa
+  cross-member access, JSONB canonical/hash mismatch, prefix cursor plan, partial
+  migration downgrade, eager HMAC authorization resolution và exception
+  message-controlled classification. PostgreSQL concurrent append/drift/migration/
+  12.000-row indexed-plan gates pass; BeGo Debug/Release 138/138, frontend 9/9,
+  RideBound 557/557, audits sạch. Chuyển duy nhất `RB-WP5-011` sang In progress.
+- 2026-08-09: Hoàn thành `RB-WP5-009`. Thêm bounded outbox relay contract,
+  PostgreSQL exact-per-run-head claim/attempt fence/backoff, canonical authorized
+  SignalR publisher và strict user-safe payload gate. Crash-after-send phát cùng
+  stable ID/payload/hash; stale owner không mark được và slow run không chặn run
+  khác. Logic audit phát hiện external send có thể hoàn tất sau lease takeover;
+  bổ sung stable aggregate sequence/hash wire envelope và frontend monotonic
+  duplicate/stale gate, đồng thời ghi rõ SignalR enqueue không phải durable client
+  ACK. Hai fresh PostgreSQL + published Runner gates đều 131/131 ở Debug/Release,
+  frontend 9/9 + lint/tsc/build. Audit dependency phát hiện và vá Auth.js/Next/
+  transitive advisories; NuGet/npm về 0 vulnerability. Chuyển duy nhất
+  `RB-WP5-010` sang In progress.
+- 2026-08-09: Hoàn thành `RB-WP5-008`. Thêm exact decision/certificate
+  materializer, atomic T2 projection/timeline/outbox, fenced ACK/T3 checkpoint và
+  fresh-process reconstruction. Source audit phát hiện/sửa EF identity-map stale
+  revision sau raw SQL claim và thiếu semantic cross-binding trong promise
+  service order. Migration recovery frames/FK/immutability/guarded Down được kiểm
+  trên PostgreSQL 17. Tám failpoint khớp clean published-Runner oracle; BeGo Debug
+  và Release `/warnaserror` 125/125 không skip, frontend 7/7, RideBound required
+  command 557/557. Bổ sung paper mapping RIFL/leases, giữ claim at-least-once.
+  Chuyển duy nhất `RB-WP5-009` sang In progress.
+- 2026-08-05: Hoàn thành refinement `RB-WP5-001` bằng ADR-025. Audit exact
+  RideBound/BeGo checkouts và re-run ba baseline độc lập 557/557, 25/25, 7/7.
+  In-app Browser đọc primary systems evidence về end-to-end ACK/dedup, local
+  transaction activity, outbox, EF concurrency/transaction, PostgreSQL worker
+  locking, hosted service và Idempotency-Key draft (ghi rõ expired). Khóa adapter
+  trong BeGo gọi exact hashed NDJSON Runner, T1/T2/T3 short transactions,
+  per-run lease, checkpoint/replay/hash recovery, explicit bootstrap provenance,
+  default-off rollback và same-input paired B1/C1. Tạo queue `RB-WP5-002..014`;
+  chỉ `002` Ready và chưa claim WP5 production implementation.
+- 2026-08-05: Hoàn thành `RB-WP5-002`. Thêm BeGo Application pure contracts/
+  ports và exhaustive state/idempotency/hash/protocol guards cùng 32 targeted
+  tests, gồm 3 architecture boundary cases. BeGo full 57/57 và RideBound 557/557 pass; targeted
+  Release/format sạch. Full BeGo Release `/warnaserror` phát hiện dependency nền
+  `Microsoft.OpenApi 2.0.0` có advisory High qua ASP.NET OpenAPI 10.0.1; ghi rõ
+  chưa pass thay vì tắt warning. Chuyển duy nhất `RB-WP5-003` sang In progress.
+- 2026-08-05: Hoàn thành `RB-WP5-003`. Thêm 11-table EF/PostgreSQL model và
+  migration guarded bằng same-run composite FK, partial unique indexes, năm
+  append-only triggers và explicit empty-only Down. PostgreSQL 17 thật pass
+  migration/constraint/concurrency/evidence cases; BeGo 62 pass + 1 opt-in skip,
+  targeted Release 38/38 và RideBound 557/557. Chuyển duy nhất `RB-WP5-004`
+  sang In progress.
+- 2026-08-05: Hoàn thành `RB-WP5-004`. T1 store khóa row run và bind exact
+  fingerprint/epoch/time/range, atomic event/op/run, bounded capacity; claim dùng
+  DB time + ordered `SKIP LOCKED` rồi commit trước external work. Fix replay đọc
+  canonical `bytea`, không đọc text đã bị `jsonb` chuẩn hóa. PostgreSQL clean-run
+  race pass 5/5; Release 40/40, BeGo 64 pass + 1 opt-in skip, RideBound 557/557.
+  Chuyển duy nhất `RB-WP5-005` sang In progress.
+- 2026-08-05: Hoàn thành `RB-WP5-005`. Thêm pinned long-lived Runner supervisor,
+  bounded pool/NDJSON/stderr/timeout và exact negotiation/provenance/context/
+  ACK-checkpoint guards. Audit sửa cleanup semaphore, process-tree child leak,
+  dispose/start và removed-Lazy races. 16 adversarial process tests cùng một
+  published RideBound Runner online gate pass; full BeGo Release với PostgreSQL
+  và Runner thật 82/82 không skip, frontend 7/7, RideBound 557/557. Chuyển duy
+  nhất `RB-WP5-006` sang In progress.
+- 2026-08-05: Hoàn thành `RB-WP5-006`. Thêm two-phase immutable bootstrap mapper,
+  HMAC run-local pseudonymization, restricted subject links, per-field provenance,
+  E7/ms ties-to-even, bounded complete directed travel matrix và exact canonical
+  negotiated manifest. Audit sửa circular pre-negotiation manifest identity,
+  semantic conversion ordering và zeroization path. Mapper 16/16, supervisor +
+  mapper 31/31, full BeGo Release trên fresh PostgreSQL 17 và published Runner
+  thật 98/98 không skip; RideBound 557/557. Chuyển duy nhất `RB-WP5-007` sang
+  In progress.
+- 2026-08-05: Hoàn thành `RB-WP5-007`. Thêm host/member authenticated API,
+  strict DTO/request bounds, Problem Details, stable cached replay, create/finalize/
+  safe queries và server-owned timer sequence. Audit sửa semantic fingerprint,
+  composite idempotency locking và rate-policy precedence; PostgreSQL→published
+  Runner path thực pass. Pin `Microsoft.OpenApi 2.7.5` vá GHSA-v5pm-xwqc-g5wc;
+  Release `/warnaserror` 0 warning, full BeGo 116/116, frontend 7/7, RideBound
+  557/557. Chuyển duy nhất `RB-WP5-008` sang In progress.
 - 2026-08-03: Hoàn thành `RB-WP4-013..014` và đóng WP4 bằng ADR-024. B1
   generator/selector khớp independent oracle trên 64 fixtures; production C1
   mapper + actual OR-Tools khớp independent enumerator trên 64 fixtures, mọi

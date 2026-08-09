@@ -1,7 +1,7 @@
 # RideBound — bản đồ tài liệu
 
-> Trạng thái: đặc tả v1 + WP0–WP4 hoàn thành; WP5 refinement READY
-> Cập nhật: 2026-08-03
+> Trạng thái: đặc tả v1 + WP0–WP5 hoàn thành; WP6 `RB-WP6-001` READY (refinement-only)
+> Cập nhật: 2026-08-09
 > Nguồn sự thật về tiến độ: [18-status-and-decision-log.md](18-status-and-decision-log.md)
 
 ## 1. Mục đích của bộ tài liệu
@@ -113,9 +113,13 @@ Bộ tài liệu này trả lời năm câu hỏi:
 | [29-wp4-algorithms-solver-refinement.md](tasks/29-wp4-algorithms-solver-refinement.md) | Ticket refinement WP4; khóa schedule/candidate/objective/solver/fallback trước production code |
 | [30-wp4-algorithms-solver-ticket-plan.md](tasks/30-wp4-algorithms-solver-ticket-plan.md) | Ordered queue WP4 `002..014`; source hiện hành cho policies/solver implementation |
 | [31-wp5-bego-integration-refinement.md](tasks/31-wp5-bego-integration-refinement.md) | Refinement-only WP5; khóa adapter/persistence/transaction/paired Layer-1 trước implementation |
+| [32-wp5-bego-integration-ticket-plan.md](tasks/32-wp5-bego-integration-ticket-plan.md) | Ordered queue WP5 `002..014`; durable adapter/EF/Runner/outbox/recovery/paired replay |
+| [33-wp6-common-benchmark-harness-refinement.md](tasks/33-wp6-common-benchmark-harness-refinement.md) | Ticket refinement-only WP6; khóa scenario/result/metric/bundle boundary trước implementation |
 | [reviews/wp1-wp3/README.md](reviews/wp1-wp3/README.md) | Review chi tiết code, invariant, tối ưu thật và khoảng trống WP1–WP3 |
 | [reviews/wp1-wp4-final/README.md](reviews/wp1-wp4-final/README.md) | Final logic/code/paper/evidence review WP1–WP4; thay thế trạng thái cũ của review WP1–WP3 |
+| [reviews/wp1-wp5-final/README.md](reviews/wp1-wp5-final/README.md) | Final source/logic/optimization/claim review WP1–WP5 và verdict có điều kiện |
 | [research/README.md](research/README.md) | Archive báo cáo, audit và evidence matrix nền |
+| [wp5-distributed-integration-evidence-2026-08-05.md](research/wp5-distributed-integration-evidence-2026-08-05.md) | Paper/official evidence cho outbox, idempotency, worker lease và crash recovery WP5 |
 
 ## 6. Kiến trúc bằng một hình
 
@@ -152,12 +156,14 @@ không chép lại thuật toán RideBound bằng Python hoặc C++.
 - Repository độc lập: `https://github.com/tsunflowerr/RideBound`.
 - WP0 hoàn thành với `RideBound.slnx`; repository hiện có 7 source project và
   6 test project sau khi WP2 thêm Application và Algorithms test boundary.
-- Logical inventory hiện tại có 133 Contracts, 134 Domain, 34 Application,
-  48 Algorithms, 58 Runner và 7 Architecture test: tổng **414**. Required
-  `dotnet test RideBound.slnx` pass **414/414** ngày 2026-08-03 sau khi Smart App
-  Control không còn chặn các fresh DLL. Các lần `0x800711C7` trước đó được giữ
-  trong `18` như historical environment evidence, không còn là blocker hiện tại.
-- BeGo độc lập vẫn đạt 25/25 backend và 7/7 frontend test.
+- Logical inventory hiện tại có 133 Contracts, 135 Domain, 69 Application,
+  134 Algorithms, 6 OR-Tools, 71 Runner và 9 Architecture test: tổng **557**.
+  Required `dotnet test RideBound.slnx` pass **557/557** ngày 2026-08-05. Các lần
+  `0x800711C7` trước đó được giữ trong `18` như historical environment evidence,
+  không còn là blocker hiện tại.
+- BeGo hiện đạt 154/154 backend pass, 0 skip ở cả Debug và Release
+  `/warnaserror` trên fresh PostgreSQL + published Runner thật. Frontend đạt 9/9,
+  lint/TypeScript/production build pass và npm audit không còn vulnerability.
 - Đã có protocol/schema v1, canonical unit/JSON/hash, long-lived NDJSON runner,
   hello/init/event/error lifecycle, idempotent retry, đúng 10 golden fixture và
   source-controlled replay/hash proof.
@@ -190,7 +196,25 @@ không chép lại thuật toán RideBound bằng Python hoặc C++.
   557/557; synthetic performance chỉ là promising signal, chưa phải scale hay
   effectiveness claim. Final review ở
   [reviews/wp1-wp4-final/README.md](reviews/wp1-wp4-final/README.md).
-- Ticket duy nhất `READY` là refinement-only `RB-WP5-001`; chưa có migration,
-  endpoint hay BeGo adapter implementation được phép trước khi ownership,
-  transaction/recovery, provenance và paired Layer-1 evidence được khóa trong
-  [31-wp5-bego-integration-refinement.md](tasks/31-wp5-bego-integration-refinement.md).
+- `RB-WP5-001..014` đã khóa ownership/transaction/recovery và hiện thực typed
+  Application boundary, 11-table append-only EF/PostgreSQL foundation, T1
+  idempotent intake/lease store, pinned long-lived Runner supervisor cùng
+  canonical privacy-preserving bootstrap mapping/provenance và authenticated
+  idempotent HTTP boundary, fenced T2/T3 recovery worker và outbox relay trong
+  BeGo. Relay claim exact per-run head bằng DB-time lease, không giữ lock qua
+  SignalR, publish stable sequence/message/hash envelope và client chặn duplicate/
+  stale delivery. Audit read dùng exact `(sequence,id)` keyset, member ownership,
+  operator-only raw evidence, append-log rebuild và privacy-safe export. Default-off
+  rollout persist immutable Shadow/Live namespace; shadow không thể bị relay live
+  publish sau restart/chuyển mode. Same-input B1/C1 đã chạy hai clean repeat/arm,
+  exact certificate/checkpoint validation và self-verifying bundle. Independent
+  evidence dùng process `FailFast` thật tại 8 decision + 4 outbox boundary, oracle
+  16.384 transition steps, 2/3/4-worker PostgreSQL contention, 5/5 required mutant
+  và raw bounded local curves; không có lost/duplicate committed effect hoặc orphan.
+  Closure audit bổ sung subject-link append-only, outbox chọn absolute head rồi bắt
+  head operation `Applied`, và concurrent scope riêng theo run; source/claim review kết luận không
+  còn correctness blocker cho refinement WP6, nhưng chưa đủ bằng chứng SLA,
+  effectiveness hay main experiment. Review ở
+  [reviews/wp1-wp5-final/README.md](reviews/wp1-wp5-final/README.md). Ticket duy nhất
+  tiếp theo là [RB-WP6-001](tasks/33-wp6-common-benchmark-harness-refinement.md)
+  `READY`, chỉ refinement và chưa cho phép viết harness/chạy experiment.

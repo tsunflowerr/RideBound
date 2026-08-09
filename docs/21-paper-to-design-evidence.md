@@ -157,3 +157,135 @@ signal. Không paper nào ở trên chứng minh RideBound scale, tăng acceptan
 non-inferiority hoặc tăng user satisfaction trên paired demand; các claim đó vẫn
 thuộc WP5–WP9. Mapping chi tiết ở
 [reviews/wp1-wp4-final/07-paper-to-code-audit.md](reviews/wp1-wp4-final/07-paper-to-code-audit.md).
+
+## 13. Browser research phục vụ ADR-025/WP5 — 2026-08-05
+
+| Nguồn | Bằng chứng dùng | Quyết định WP5 |
+|---|---|---|
+| [Saltzer, Reed & Clark 1984](https://deepplum.com/Papers/EndtoEnd.html) | Duplicate suppression, crash recovery và acknowledgement hoàn chỉnh cần application endpoint knowledge; lower-level reliability chỉ hỗ trợ performance | Persist fingerprint/result và matching application ACK; process pipe không thay end-to-end checkpoint/replay/hash proof |
+| [Lee et al. 2015 — RIFL](https://doi.org/10.1145/2815400.2815416) | Unique request IDs + durable completion records cho retry nhận lại cùng outcome; không tự biến transport thành exactly-once | Stable scoped operation/message IDs, semantic fingerprint và exact cached result; claim chỉ `idempotent effect under retry` |
+| [Gray & Cheriton 1989 — Leases](https://doi.org/10.1145/74850.74870) | Time-bounded ownership cho reclaim/liveness; lease duration là trade-off và lease đơn lẻ không fence late side effect | PostgreSQL DB-time lease để reclaim; T2/T3 còn bắt buộc owner + monotonic revision fence và exact reconstruction |
+| [Helland 2007/2016](https://queue.acm.org/detail.cfm?id=3025012) | Local transaction entity, at-least-once retry/out-of-order tolerance và durable activity state khi không dùng distributed transaction | Serialize mỗi `CommitRun`, durable operation state, idempotent retry; không cố transaction xuyên DB/Runner/SignalR |
+| [Transactional Outbox](https://microservices.io/patterns/data/transactional-outbox.html) | Business state + message cùng local transaction; relay có thể publish lặp sau crash | Decision/certificate/projection/outbox atomic; SignalR wire giữ stable message ID, aggregate sequence, payload hash và consumer dedup |
+| [EF Core transaction](https://learn.microsoft.com/en-us/ef/core/saving/transactions) và [concurrency](https://learn.microsoft.com/en-us/ef/core/saving/concurrency) | `SaveChanges` atomic theo provider; savepoint/retry/concurrency token cần application handling và provider tests | Short explicit T1/T2/T3, application-managed run revision, real PostgreSQL integration gate |
+| [PostgreSQL locking clause](https://www.postgresql.org/docs/current/sql-select.html#SQL-FOR-UPDATE-SHARE) | `SKIP LOCKED` phù hợp queue-like consumer nhưng cho inconsistent view | Chỉ claim worker dùng ordered `SKIP LOCKED`; audit query không dùng; invariant còn có lease/unique/concurrency guard |
+| [IETF Idempotency-Key draft-07](https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/) | Key + fingerprint, completed replay, in-flight conflict và changed-payload error | Dùng như prior art cho composite scope/fingerprint/cached response. Draft đã expired/archived, không claim RFC compliance |
+| [ASP.NET hosted services](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/host/hosted-services) | Background service cần tự tạo scope; ungraceful shutdown có thể không gọi `StopAsync`; bounded channel chỉ tạo backpressure | PostgreSQL là durable authority, channel chỉ wake-up; worker scoped per claim và mọi state recovery được sau hard crash |
+
+Đây là systems-correctness evidence, không phải ridepooling-effectiveness paper.
+Nó cho phép tối ưu claim/worker/outbox/recovery nhưng không cung cấp lease duration,
+batch size, polling interval, retention, checkpoint frequency hay production SLA.
+Chi tiết ở
+[wp5-distributed-integration-evidence-2026-08-05.md](research/wp5-distributed-integration-evidence-2026-08-05.md).
+
+`RB-WP5-009` còn áp dụng một giới hạn quan trọng của lease paper: lease không thể
+fence một SignalR side effect đã bắt đầu. Server vì vậy chỉ mở message kế tiếp sau
+mark của per-run head, nhưng wire vẫn mang `aggregateSequence`; frontend bỏ
+duplicate/stale completion nếu sender cũ hoàn tất sau takeover. Đây là monotonic
+live callback trong connection hiện tại, không phải durable client receipt;
+timeline catch-up của `RB-WP5-010` xử lý disconnect/gap ở durable query boundary.
+
+### 14. Cơ chế paper đã được kiểm ở RB-WP5-010
+
+`RB-WP5-010` không thêm novelty claim; nó kiểm xem các cơ chế systems đã chọn có
+được áp dụng đến end-to-end boundary thay vì chỉ xuất hiện dưới dạng tên pattern:
+
+- End-to-End Argument: SignalR enqueue không phải durable receipt. Client lấy lại
+  gap qua timeline cursor từ committed store, và server vẫn tái kiểm canonical
+  payload/hash/authorization tại điểm trả dữ liệu;
+- Transactional Outbox/Helland: projection/timeline là dữ liệu dẫn xuất có thể
+  rebuild; source of truth vẫn là append-only decision/certificate/operation. Rebuild
+  dùng snapshot nhất quán, kiểm chain và so content hash với live view;
+- RIFL/lease boundary: audit read không phải worker claim nên không dùng
+  `SKIP LOCKED`; production pagination dùng deterministic row-value keyset với
+  stable tie-breaker, còn raw evidence nằm sau operator policy mặc định deny;
+- least privilege/privacy: member scope được suy server-side từ ownership; raw
+  subject link chỉ dùng cho authorization join. Export/log/metric chỉ mang
+  pseudonymous, allowlisted evidence và fail closed khi projection drift;
+- rollback/recoverability: migration guard phải chạy trước destructive downgrade;
+  append-only evidence không bị feature rollback hoặc projection rebuild xóa.
+
+Bằng chứng gồm concurrent append pagination, cross-request denial, canonical JSONB
+hash mutation, append-log rebuild/live-drift mutation, recursive privacy mutation
+và `EXPLAIN` trên 12.000 dòng. Kết quả chỉ hỗ trợ correctness/rebuildability/privacy,
+không hỗ trợ throughput SLA, effectiveness, novelty hay exactly-once delivery.
+
+### 15. Cơ chế systems đã được kiểm ở RB-WP5-011
+
+Ticket rollout không thêm paper/novelty claim mới; nó áp dụng tiếp các giới hạn đã
+khóa từ End-to-End Argument, leases và transactional outbox:
+
+- preflight hash ở application boundary chỉ cho phép claim sau khi exact artifact
+  provenance đã khớp; Runner vẫn tự hash/handshake lại trước process I/O;
+- lease là recovery/liveness, không phải cờ enable. Disable ngừng claim mới; lease
+  đã committed được để expire rồi owner/revision fence quyết định reclaim;
+- shadow no-publish phải là thuộc tính durable. Persist namespace + live-only outbox
+  query ngăn live restart phát effect shadow; chỉ bỏ hosted relay là không đủ;
+- rollback bảo toàn append-only evidence và operator audit; migration guard chạy
+  trước DDL mất namespace. Old Session route là boundary riêng không bị shadow sửa.
+
+Đây là operational correctness/compatibility evidence. Không paper nào được dùng
+để suy ra treatment hiệu quả, throughput production, SLA hoặc exactly-once delivery.
+
+### 16. Cơ chế reproducibility đã được kiểm ở RB-WP5-012
+
+Ticket không thêm novelty claim. Nó operationalize các nguyên tắc paired experiment,
+end-to-end validation và artifact reproducibility đã khóa ở tài liệu `09`–`11`:
+
+- cùng exogenous workload/seed/graph/travel/Runner/work rules; policy ID là khác biệt
+  config duy nhất và output-bound ACK hash không bị gọi sai thành input treatment;
+- B1/C1 cùng dùng commitment/certificate path, tránh confound do pipeline khác nhau;
+- exact file + canonical + domain-separated effective-config hashes và Runner
+  initialize validation tạo nhiều lớp provenance end-to-end;
+- two clean repeats/arm kiểm deterministic bytes/hashes; BeGo materializer và
+  checkpoint validator không chỉ tin status mà kiểm cấu trúc/state chain;
+- staged exact input đóng preflight/use race; self-verifying manifest reject file
+  thiếu/thừa/tamper và snapshot source/assembly để không overstate base commit;
+- failure/exclusion log luôn hiện diện và cấm loại run theo metric outcome.
+
+Tiny pseudonymous fixture chỉ tạo Layer-1 mechanical/correctness signal. Không dùng
+nó để ước lượng acceptance, revision reduction, non-inferiority, latency SLA hoặc
+khả năng tổng quát sang FleetPy/data thật.
+
+## 17. Browser research và mechanism audit cho RB-WP5-013 — 2026-08-09
+
+Các nguồn dưới đây được mở lại từ trang DOI/publisher/abstract chính thức bằng
+in-app Browser. Chúng định hình **cách tạo evidence độc lập**, không thay đổi thuật
+toán ridepooling và không tự cấp một chứng nhận hình thức cho implementation.
+
+| Nguồn primary | Cơ chế rút ra | Cách đã áp dụng trong WP5-013 | Giới hạn claim bắt buộc |
+|---|---|---|---|
+| Alvaro, Rosen & Hellerstein, [Lineage-Driven Fault Injection](https://doi.org/10.1145/2723372.2723711), SIGMOD 2015 | Lỗi phân tán nên được chọn theo ranh giới nhân quả có khả năng phá outcome, thay vì chỉ fault ngẫu nhiên mù | Liệt kê hữu hạn mọi durable boundary của decision worker (`8`) và outbox relay (`4`), rồi kill process thật bằng `Environment.FailFast` tại từng boundary; fresh process phải reconstruct và so exact decision/certificate/checkpoint/effect | Không chạy solver SAT/lineage engine của LDFI, nên không claim fault-space completeness hay LDFI certification |
+| Kingsbury & Alvaro, [Elle: Inferring Isolation Anomalies from Experimental Observations](https://doi.org/10.14778/3430915.3430918), PVLDB 2020 | Oracle nên suy từ history quan sát bên ngoài thay vì tin internal state/implementation under test | Test-owned transition table chạy `256 × 64 = 16.384` bước và PostgreSQL claim oracle so exact expected/observed operation set với `2/3/4` worker; oracle không gọi production transition table | Không chạy Elle và không chứng minh serializability/linearizability của toàn database; evidence chỉ bao phủ state/claim invariants đã khai báo |
+| Claessen & Hughes, [QuickCheck: A Lightweight Tool for Random Testing of Haskell Programs](https://doi.org/10.1145/351240.351266), ICFP 2000 | Sinh input có cấu trúc từ property, giữ seed/counterexample để tái hiện | Sinh history có seed cố định, lưu exact seed/step/accepted-rejected trace và chạy invariant sau từng bước | Không dùng QuickCheck runtime/shrinker và không claim coverage đầy đủ ngoài generator/bounds đã công bố |
+| DeMillo, Lipton & Sayward, [Hints on Test Data Selection: Help for the Practicing Programmer](https://doi.org/10.1109/C-M.1978.218136), IEEE Computer 1978 | Chất lượng test được thăm dò bằng các biến thể lỗi có chủ đích mà suite phải phân biệt | Năm mutant bắt buộc lần lượt phá unique active-run, ACK/checkpoint gate, T2/outbox atomicity, semantic fingerprint và canonical hash; cả `5/5` tạo vi phạm được oracle phát hiện | Đây là năm explicit mutation-killing cases, không phải external mutation tool hay mutation percentage |
+| Georges, Buytaert & Eeckhout, [Statistically Rigorous Java Performance Evaluation](https://doi.org/10.1145/1297027.1297033), OOPSLA 2007 | Warm-up, nhiều repetition, raw observations và environment provenance cần được giữ để tránh kết luận timing từ một lần chạy | Mỗi cấu hình queue `8/32/64 × worker 1/2/4` có một warm-up, năm measured repetition, randomized scenario order, raw sample, machine/PostgreSQL config và row count trước/sau | Chỉ là claim/drain curve trên một máy; chưa có significance test, end-to-end throughput, capacity limit hay production SLA |
+
+Artifact tự kiểm chứng của ticket có manifest SHA-256
+`e21fb0877fbc6d61bf6f1e24adcda24e09a29fea95a9f44d1b61bf4fc1061ca2`.
+Nó bind source snapshot, executing assembly, Runner artifact, raw history/crash/
+mutation/performance observations và machine configuration. Kết quả cơ học là
+không mất/nhân đôi committed operation trong phạm vi thử, mọi crash recovery khớp
+oracle và `5/5` mutant bắt buộc bị giết; không phải bằng chứng C1 hiệu quả hơn B1.
+
+## 18. Claim closure audit cho RB-WP5-014 — 2026-08-09
+
+Review cuối đối chiếu lại toàn bộ WP1–WP5 với nguồn primary đã mở bằng in-app
+Browser. Kết luận bảo thủ được giữ nguyên:
+
+- durable operation/result reuse lấy cơ chế từ RIFL nhưng chỉ được gọi là durable
+  duplicate suppression/idempotent effect under retry, không phải transport
+  exactly-once;
+- durable boundary/process-crash enumeration lấy cảm hứng LDFI nhưng không có
+  lineage solver, nên không chứng nhận fault-space completeness;
+- external-history oracle lấy cảm hứng Elle và structured random properties lấy
+  cảm hứng QuickCheck, nhưng không chạy hai tool đó và không chứng minh toàn cục
+  serializability/linearizability/property coverage;
+- năm mutant là năm lỗi có chủ đích bị giết, không phải mutation score; local queue
+  curves tuân thủ warm-up/repetition/provenance nhưng không phải SLA/significance.
+
+Ba sửa đổi closure — subject-link append-only, absolute head chỉ publication-eligible
+sau operation `Applied`, và scope/DbContext độc lập theo run — là correctness/scalability
+mechanisms của integration boundary. Chúng không phải novelty claim. Source audit
+cho phép refinement common harness tiếp tục; main experiment, production SLA và
+effectiveness claim vẫn NO-GO cho đến khi WP6–WP9 cung cấp evidence tương ứng.

@@ -5,8 +5,8 @@
 | ID | Yêu cầu | Thiết kế/tài liệu | Artifact dự kiến | Verification | Trạng thái |
 |---|---|---|---|---|---|
 | R-001 | Hệ thống RideBound độc lập | `05` | `Domain/Application/Runner` trong Git repo riêng | 5 architecture rules + 2 cross-platform path cases | WP0 verified; Linux CI rerun pending |
-| R-002 | Gắn được vào BeGo | `02`, `14` | BeGo adapter/API | integration replay | Planned |
-| R-003 | Core mang sang benchmark | `05`, `06`, `24`, `26` | contracts + runner | same binary hash | WP1 runner boundary/Q1 + WP2 online single runner verified; adapter same-binary proof planned |
+| R-002 | Gắn được vào BeGo | `02`, `14`, `32` | BeGo adapter/API | integration replay | WP5 `002..014` có Application, persistence, intake/lease, Runner, bootstrap/API, fenced T2/T3 recovery, Applied-only outbox/SignalR, rebuildable timeline, default-off Shadow/Live rollout và paired Layer-1 bundle |
+| R-003 | Core mang sang benchmark | `05`, `06`, `24`, `26`, `32` | contracts + runner | same binary hash | WP1/WP2 runner verified; WP5 BeGo bootstrap/decision/recovery uses pinned published artifact hash; cross-simulator proof pending |
 | R-004 | Layer 1 cùng codebase | `09` | B1/C1 chung RideBound engine; BeGo export adapter | paired runs | Planned |
 | R-005 | Layer 2 simulator chung | `09`, `12` | FleetPy adapter | Layer 2 gate | Planned |
 | R-006 | Layer 3 framework độc lập | `09`, `13` | RidePy/AMoD2 adapter | Layer 3 gate | Planned |
@@ -15,13 +15,13 @@
 | R-009 | Certificate/witness | `07`, `28` | certificate DTO/validator | invalid-plan mutations | WP3 implemented: physical→lock→budget stages, normal/witness body và decision/publication cross-binding |
 | R-010 | Đánh giá bằng data rõ | `10` | manifests/data pipeline | checksums/validation | Planned |
 | R-011 | Metric/statistics rõ | `11` | analysis package | prereg/full report | Planned |
-| R-012 | Dùng paper nhưng không làm lại | `03`, `21` | claim ledger | novelty re-audit | Docs v1 |
-| R-013 | Nêu công nghệ và tối ưu | `05`, `08`, `12`–`14` | projects/adapters | build/performance | Docs v1 |
+| R-012 | Dùng paper nhưng không làm lại | `03`, `21` | claim ledger | novelty re-audit | WP1–WP5 mechanisms mapped; final re-audit DONE trong `reviews/wp1-wp5-final/07-paper-to-code-and-optimization.md` |
+| R-013 | Nêu công nghệ và tối ưu | `05`, `08`, `12`–`14` | projects/adapters | build/performance | WP4 solver + WP5 DB/Runner/concurrency/local curves implemented; no SLA claim |
 | R-014 | Nêu thêm/bỏ gì | `02`, mục 2 dưới | migration plan | code review | Docs v1 |
-| R-015 | Agent sau biết tiếp tục | `00`, `17`, `18`, `23`–`31` | root `AGENTS.md` + ordered current-topic tickets | reading order + one unambiguous current ticket | Verified; WP4 `001..014` DONE, only refinement `RB-WP5-001` READY |
+| R-015 | Agent sau biết tiếp tục | `00`, `17`, `18`, `23`–`33` | root `AGENTS.md` + ordered current-topic tickets | reading order + one unambiguous current ticket | Verified; WP5 `001..014` DONE, only `RB-WP6-001` READY (refinement-only) |
 | R-016 | Thuật ngữ dễ hiểu | `22` | glossary | doc review | Docs v1 |
 | R-017 | Không bias bằng dữ liệu giả | `01`, `10`, `11` | pilot/holdout | prereg audit | Planned |
-| R-018 | Tái lập | `06`, `15`, `24`, `26`, `28` | hashes/bundle | clean reproduction | WP1/WP2 verified; WP3 two-process commitment + checkpoint suffix equivalence verified; experiment bundle planned |
+| R-018 | Tái lập | `06`, `15`, `24`, `26`, `28`, `32`, `33` | hashes/bundle | clean reproduction | WP1–WP5 verified at mechanical gates; paired + independent source/assembly/hash-bound WP5 artifacts verified; experiment bundle still WP6+ |
 
 ## 2. Những gì cần thêm
 
@@ -41,8 +41,11 @@
 - `RideBound.Algorithms.Tests` (WP2)
 - `RideBound.Runner.Tests` (WP1)
 
-Chỉ thêm `RideBound.Adapters.BeGo`, `RideBound.Persistence` và các test project
-khác tại work package có behavior thật; không scaffold assembly rỗng.
+ADR-025 khóa placement WP5: adapter/API/EF/SignalR nằm trong tracked BeGo `src`
+và chỉ gọi exact hashed/versioned Runner artifact qua NDJSON. Không thêm project
+reference xuyên repository hoặc scaffold `RideBound.Adapters.BeGo`/
+`RideBound.Persistence` rỗng. RideBound chỉ nhận harness/docs/evidence cần tái lập;
+core không biết BeGo.
 
 ### WP0 artifacts đã có
 
@@ -377,11 +380,25 @@ giả. Các lần `0x800711C7` trước đó chỉ là historical host-policy re
 | RB-WP4-012 | R-003/R-013, F-003–F-007, N-001–N-005/N-009 | DONE: seven-name registry, manifest/config hash binding, exact solver objective mapper, Runner validator/certificate/hash/ACK/checkpoint/CLI integration; 523/523 |
 | RB-WP4-013 | R-012/R-015/R-018, N-001/N-003/N-005/N-007 | DONE: 64-seed B1 oracle; 64-seed production C1 mapper + actual OR-Tools independent differential, all levels optimal/gap 0; hard-gate mutation, actual bounded-loss propagation, synthetic 4–128 option curve; 557/557 |
 | RB-WP4-014 | R-012/R-015/R-018, N-001/N-003/N-005/N-007 | DONE: ADR-024, source/config/Runner/claim audit, final WP1–WP4 review, all quality gates và only `RB-WP5-001 READY` |
-| RB-WP5-001 | R-003/R-013/R-015/R-018, N-001/N-003/N-007/N-009 | READY refinement-only: khóa BeGo source/provenance, Runner ownership, transaction/recovery, persistence, rollback và paired Layer-1 evidence; no implementation |
+| RB-WP5-001 | R-003/R-013/R-015/R-018, N-001/N-003/N-007/N-009 | DONE: ADR-025 khóa BeGo source/provenance, Runner ownership, transaction/recovery, persistence, rollback và paired Layer-1 protocol; no production implementation |
+| RB-WP5-002 | R-002/R-013/R-015, N-003/N-004/N-009 | DONE: pure BeGo Application contracts/ports; exhaustive run/operation transition, idempotency fingerprint, strict UTF-8/frame/hash/order/checkpoint guards; 32 targeted, BeGo 57/57, RideBound 557/557 |
+| RB-WP5-003 | R-002/R-014, N-003/N-004/N-008/N-009 | DONE: 11-table EF/migration, composite same-run FK, canonical bytes/range/time columns, five append-only DB triggers, guarded rollback; PostgreSQL 17 real gate |
+| RB-WP5-004 | R-002, N-001/N-003/N-004/N-005 | DONE: T1 row-locked intake, exact frame binding/idempotency, bounded DB queue, ordered `SKIP LOCKED` lease/reclaim with database time; PostgreSQL race 5/5, Release 40/40, BeGo 64 pass/1 opt-in skip, RideBound 557/557 |
+| RB-WP5-005 | R-002/R-003, N-001/N-002/N-005/N-009 | DONE: pinned hash/core, bounded long-lived Runner pool, strict NDJSON/schema/context, timeout/tree cleanup, exact ACK/checkpoint critical section; real published Runner online gate |
+| RB-WP5-006 | R-002/R-003/R-013, N-001/N-002/N-008/N-009 | DONE: immutable pre-I/O source capture, run-local HMAC pseudonyms, restricted raw-ID links, E7/ms ties-to-even, complete bounded directed matrix, field provenance, exact negotiated manifest/domain hash; real Runner bootstrap; BeGo 98/98 |
+| RB-WP5-007 | R-002/R-014, N-004/N-006/N-008/N-009 | DONE: host/member auth, strict bounded HTTP DTO, semantic fingerprint independent server sequence, composite advisory-locked create idempotency, exact cached response, RFC Problem Details/rate gate, PostgreSQL→published Runner API path; 116/116 |
+| RB-WP5-008 | R-002/R-003/R-018, F-001/F-005–F-009, N-001/N-003/N-004/N-007 | DONE: atomic T2 decision/certificate/projection/outbox, fenced matching ACK/T3 checkpoint, exact fresh reconstruction, typed divergence; 8 real crash windows, BeGo 125/125, RideBound 557/557 |
+| RB-WP5-009 | R-002/R-013, N-003/N-004/N-005/N-006 | DONE: per-run-head DB-time lease/fence, no-lock SignalR I/O, stable sequence/message/hash wire envelope, client duplicate/stale suppression, safe payload/auth gates; real PG + Runner 131/131 |
+| RB-WP5-010 | R-002/R-018, F-010, N-003/N-005/N-007/N-008 | DONE: exact keyset/member ownership, operator-only raw evidence, append-log rebuild/live hash, pseudonymous export, privacy/log mutations, indexed PostgreSQL plan; 138/138 |
+| RB-WP5-011 | R-002/R-014, N-006/N-008/N-009 | DONE: default-off DI/API, exact artifact preflight, immutable Shadow/Live namespace, namespace-filtered decision claim, live-only relay, restart recovery, old Session snapshots unchanged; 147/147 |
+| RB-WP5-012 | R-003/R-004/R-018, N-001/N-002/N-007/N-009 | DONE: exact source/config/binary preflight; B1/C1 × two clean processes; common normalized input, exact repeat hashes, materialized certificates, independently checked checkpoints, self-verifying source/assembly-bound bundle; BeGo 152/152 |
+| RB-WP5-013 | R-012/R-013/R-018, N-001/N-003–N-007 | DONE: 16.384-step independent oracle, exact-set 2/3/4-worker claim, actual process crash at 8+4 boundaries, 5/5 explicit mutants, raw local curves + self-verifying artifact; 153/153 |
+| RB-WP5-014 | R-012/R-015/R-018, N-001–N-009 | DONE: source/claim/evidence audit; subject-link append-only, absolute-head-then-Applied/non-null operation outbox và independent scoped per-run batch; WP1–WP5 review/verdict; BeGo 154/154 Debug/Release |
+| RB-WP6-001 | R-010/R-011/R-015/R-018, N-001/N-002/N-007/N-009 | READY: refinement-only common scenario/result/metric/failure/bundle harness boundary; no implementation or experiment |
 
-Queue `30` đã complete và ADR-024 đóng exit gate. WP3 validator/certificate tiếp
-tục là publication gate độc lập cho mọi policy WP4. Queue implementation kế tiếp
-chưa được tạo; chỉ refinement `31` Ready.
+Queue `30` đã complete và ADR-024 đóng WP4. WP3 validator/certificate tiếp tục
+là publication gate độc lập. ADR-025/`tasks/32` đã complete và đóng WP5;
+`RB-WP5-001..014` Done. `tasks/33` có đúng `RB-WP6-001 Ready`, refinement-only.
 
 WP4 closure evidence: required `dotnet test RideBound.slnx` pass 557/557 ngày
 2026-08-03 — Contracts 133, Domain 135, Application 69, Algorithms 134, Solver 6,

@@ -374,7 +374,36 @@ user satisfaction; các claim đó vẫn cần paired replay/preregistration.
 
 ### Q3 — BeGo
 
-- same-codebase paired replay pass.
+- migration up/down và real PostgreSQL constraint/concurrency/recovery gates pass;
+- feature flag off giữ existing BeGo backend/frontend contract;
+- same-input, same-binary/work-rule B1/C1 paired replay; mỗi arm clean-repeat
+  byte/hash exact và chỉ khác allowlisted policy/config identity;
+- crash injection quanh event commit, Runner response, decision/outbox commit,
+  ACK/checkpoint và SignalR không tạo double committed effect hoặc invalid publish;
+- audit timeline rebuild/auth/privacy gates pass.
+
+ADR-025/tasks/32 khóa gate trên. `RB-WP5-001..014` đã chứng minh migration,
+intake/Runner/bootstrap/API, T2/T3 recovery và ordered at-least-once outbox relay
+bằng PostgreSQL 17 + published Runner. Relay gate gồm crash-after-send duplicate
+cùng ID, stale completion fence, cross-run non-blocking, failed-send retry,
+T2-rollback absence, authorization và frontend monotonic dedup. Timeline gate bổ
+sung exact keyset/member ownership, raw operator authorization, concurrent append,
+append-log rebuild/live drift, privacy mutation, 12.000-row indexed plan và guarded
+migration rollback. Rollout gate bổ sung default-off DI/API, exact artifact preflight,
+durable immutable Shadow/Live namespace, namespace-filtered claims, live-only outbox,
+restart lease recovery và unchanged Session route snapshots. Paired gate dùng B1/C1
+commitment mode với cùng exact Runner/work rules, hai clean repeat/arm, common
+normalized input, exact materialized certificates/checkpoints và self-verifying
+source/assembly-bound bundle. Independent gate bổ sung 16.384-step test-owned state
+oracle, exact-set 2/3/4-worker PostgreSQL contention, 8 decision + 4 outbox abrupt
+child-process crashes, 5/5 explicit required mutants và raw local queue curves có
+machine/config/row-count provenance. Closure source audit còn chứng minh subject-link
+append-only, outbox chỉ claim khi operation cùng run đã `Applied`, và batch publish
+dùng scope/DbContext riêng để một run chậm không head-of-line block run khác. Full
+Debug/Release đạt 154/154, 0 skip; frontend 9/9, lint, TypeScript và production build
+đều pass. Q3 mechanical BeGo gate đã đóng. Paired tiny fixture và local curves vẫn
+không phải effectiveness, non-inferiority hoặc production SLA evidence; các claim đó
+chỉ có thể được xét sau WP6–WP9.
 
 ### Q4 — FleetPy
 

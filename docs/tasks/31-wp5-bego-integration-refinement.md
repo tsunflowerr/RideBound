@@ -1,10 +1,13 @@
 # RB-WP5-001 — refinement BeGo adapter và persistence
 
-> Trạng thái: `READY`
+> Trạng thái: `DONE`
 > Work package: `WP5`
 > Loại ticket: refinement-only
 > Dependency: `RB-WP4-014 DONE`, ADR-024
-> Implementation được phép trước khi ticket này DONE: `NONE`
+> Hoàn thành: 2026-08-05, ADR-025
+> Ordered implementation queue: [32-wp5-bego-integration-ticket-plan.md](32-wp5-bego-integration-ticket-plan.md)
+> Tại mốc refinement, ticket duy nhất `READY` là `RB-WP5-002`; trạng thái hiện hành
+> luôn đọc ở `tasks/32` và `docs/18`.
 
 ## 1. Outcome
 
@@ -82,3 +85,18 @@ evidence để “dọn” một thử nghiệm thất bại.
 Khi ticket này DONE, tạo queue implementation WP5 theo template trong `tasks/23`.
 Chỉ ticket nhỏ nhất có đủ dependency/evidence được chuyển `READY`; WP6/WP7 có thể
 refine độc lập nhưng không được dùng để bỏ qua Layer-1 transaction gate.
+
+## 8. Closure evidence — 2026-08-05
+
+- Khóa BeGo checkout `ebe0d34365ec4751bd5c629677733032490a1a0d`, RideBound
+  checkout `44ef6a7cacdc58e7c6c0576430fcd7bb02e76c7a` và ba baseline độc lập
+  RideBound 557/557, BeGo backend 25/25, frontend 7/7.
+- In-app Browser đọc paper/tài liệu primary về end-to-end acknowledgement,
+  at-least-once activity state, transactional outbox, EF transaction/concurrency,
+  PostgreSQL queue locking, hosted worker và Idempotency-Key. Evidence/claim limit
+  ở [wp5-distributed-integration-evidence-2026-08-05.md](../research/wp5-distributed-integration-evidence-2026-08-05.md).
+- ADR-025 khóa repository boundary, NDJSON child-process O-007, state/transaction/
+  crash recovery, idempotency fingerprint, append-only schema, bootstrap mapping,
+  privacy, feature flag và paired Layer-1 protocol.
+- Queue `RB-WP5-002..014` có đúng một ticket `READY`; chưa claim production WP5
+  implementation tại mốc refinement này.

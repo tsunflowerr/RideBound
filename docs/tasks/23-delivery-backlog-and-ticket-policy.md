@@ -7,7 +7,9 @@
 > [WP2 Online baseline](26-wp2-online-baseline-ticket-plan.md) và
 > [WP3 ledger/certificate](28-wp3-ledger-certificate-ticket-plan.md) và
 > [WP4 refinement](29-wp4-algorithms-solver-refinement.md) và
-> [WP4 ordered queue](30-wp4-algorithms-solver-ticket-plan.md)
+> [WP4 ordered queue](30-wp4-algorithms-solver-ticket-plan.md) và
+> [WP5 ordered queue](32-wp5-bego-integration-ticket-plan.md) và
+> [WP6 refinement](33-wp6-common-benchmark-harness-refinement.md)
 
 ## 1. Mục đích
 
@@ -22,7 +24,7 @@ Backlog dùng **progressive elaboration**:
   BDD, acceptance criteria, verification và rollback khi phù hợp;
 - topic kế tiếp chỉ được refinement sau khi exit gate của topic trước đạt.
 
-Quy tắc này tránh tạo false precision cho các topic xa (hiện là WP5–WP12) khi
+Quy tắc này tránh tạo false precision cho các topic xa (hiện là WP6–WP12) khi
 contract và evidence đầu vào chưa tồn tại.
 
 ## 2. Nguồn sự thật và thứ tự ưu tiên
@@ -121,9 +123,10 @@ Ticket tài liệu phải:
 | WP11 Product UX | UI/audit có rollback, không overclaim | product gate | WP5 |
 | WP12 Paper/release | Claim traceable và artifact tái lập | Q6 | WP9, WP10 |
 
-WP6–WP12 **chưa có ticket**. WP2 đã đóng physical/B1; WP3 đã hoàn thành ordered
-queue `RB-WP3-001..014`; WP4 đã hoàn thành `RB-WP4-001..014` bằng ADR-024.
-WP5 hiện chỉ có refinement-only `RB-WP5-001 READY`; chưa có implementation queue.
+WP7–WP12 **chưa có ticket**. WP2 đã đóng physical/B1; WP3 đã hoàn thành ordered
+queue `RB-WP3-001..014`; WP4 đã hoàn thành `RB-WP4-001..014` bằng ADR-024; WP5
+đã hoàn thành `RB-WP5-001..014`. WP6 chỉ có đúng một ticket refinement-only
+`RB-WP6-001 READY`, chưa có implementation queue.
 
 WP11 không nằm trên critical path nghiên cứu và không được làm chậm WP8–WP10.
 
@@ -144,12 +147,13 @@ certificate/hash/ACK và checkpoint/restore; không bao gồm C1 solver quality.
 
 Ticket duy nhất hiện `READY`:
 
-> **RB-WP5-001 — refinement BeGo adapter và persistence**
+> **RB-WP6-001 — common benchmark harness refinement**
 
-ADR-023/024 và `tasks/30` đã đóng WP4 với required suite 557/557, exact-small/
-actual-solver differential và final review. `tasks/31` phải khóa source provenance,
-Runner ownership, persistence transaction/recovery, feature-flag rollback và paired
-Layer-1 evidence trước khi tạo migration/endpoint/adapter implementation.
+ADR-023/024 và `tasks/30` đã đóng WP4. ADR-025/`tasks/32` đã đóng WP5 với durable
+Application/PostgreSQL/Runner/T2–T3/outbox/audit/rollout boundary, paired B1/C1,
+independent crash/concurrency/mutation/local-curve evidence và closure source audit.
+`tasks/33` chỉ được khóa scenario/result/metric/exclusion/bundle contract; chưa cho
+phép hiện thực harness hoặc diễn giải mechanical/performance-local evidence thành SLA.
 
 ## 9. Template refinement cho topic kế tiếp
 
@@ -175,5 +179,6 @@ Không copy BDD của WP1 sang topic khác nếu semantics khác.
 5. Chỉ chuyển ticket kế tiếp sau khi evidence của ticket hiện tại được review.
 6. Chỉ đóng topic khi toàn bộ exit gate trong `16` đạt.
 
-Theo trạng thái ngày 2026-08-03, ticket tiếp theo phải thực hiện là
-**RB-WP5-001**; chưa có WP5 implementation ticket nào được READY.
+Theo trạng thái ngày 2026-08-09, `RB-WP5-014` đã đóng source/claim/exit-gate audit,
+khắc phục ba boundary correctness và tạo review WP1–WP5. Ticket tiếp theo duy nhất
+là **RB-WP6-001 READY**, refinement-only; WP6 implementation chưa bắt đầu.

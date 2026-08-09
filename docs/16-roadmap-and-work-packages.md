@@ -28,9 +28,12 @@ WP3 đã đóng; WP4 refinement
 [29-wp4-algorithms-solver-refinement.md](tasks/29-wp4-algorithms-solver-refinement.md),
 đã Done và tạo ordered queue
 [30-wp4-algorithms-solver-ticket-plan.md](tasks/30-wp4-algorithms-solver-ticket-plan.md).
-WP4 đã đóng bằng ADR-024; WP5 chỉ mở refinement
+WP4 đã đóng bằng ADR-024; WP5 đã refinement và hoàn thành theo
 [31-wp5-bego-integration-refinement.md](tasks/31-wp5-bego-integration-refinement.md),
-chưa mở implementation.
+[32-wp5-bego-integration-ticket-plan.md](tasks/32-wp5-bego-integration-ticket-plan.md).
+WP6 hiện chỉ có đúng một ticket refinement `READY` trong
+[33-wp6-common-benchmark-harness-refinement.md](tasks/33-wp6-common-benchmark-harness-refinement.md);
+chưa có implementation.
 
 ## WP0 — Freeze baseline và scaffold
 
@@ -166,9 +169,9 @@ Execution plan hiện hành:
 
 ## WP5 — BeGo adapter và persistence
 
-**Trạng thái:** Refinement ready; chỉ `RB-WP5-001` Ready, không có implementation
-ticket. Xem
-[31-wp5-bego-integration-refinement.md](tasks/31-wp5-bego-integration-refinement.md).
+**Trạng thái:** Complete 2026-08-09; `RB-WP5-001..014` Done. Xem
+[31-wp5-bego-integration-refinement.md](tasks/31-wp5-bego-integration-refinement.md)
+và [32-wp5-bego-integration-ticket-plan.md](tasks/32-wp5-bego-integration-ticket-plan.md).
 
 ### Deliverable
 
@@ -187,6 +190,9 @@ ticket. Xem
 - audit timeline query.
 
 ## WP6 — Common benchmark harness
+
+**Trạng thái:** Refinement `READY`; chỉ `RB-WP6-001`, chưa có code/experiment.
+Xem [33-wp6-common-benchmark-harness-refinement.md](tasks/33-wp6-common-benchmark-harness-refinement.md).
 
 ### Deliverable
 
@@ -359,6 +365,11 @@ người dùng. Sau khi WP0 qua exit gate:
    independent evidence và final review WP1–WP4.
 5. Tín hiệu WP4 hiện chỉ là exact-small agreement/gap 0 và synthetic runtime
    curve; paired demand/effectiveness thuộc WP5–WP9.
-6. Thực hiện đúng một ticket `READY`: refinement-only `RB-WP5-001`. Không tự chọn
-   O-002/O-003/O-004, không mở O-001 reassignment và không viết adapter/migration
-   trước khi refinement khóa ownership/transaction/provenance/rollback.
+6. `RB-WP5-001..014` đã đóng WP5 bằng actual child-process crash, PostgreSQL
+   oracle, self-verifying artifact và source-level closure audit. Audit sửa thêm
+   authorization-evidence immutability, pre-T3 publication và cross-run relay
+   isolation; review/verdict ở [reviews/wp1-wp5-final/README.md](reviews/wp1-wp5-final/README.md).
+7. Tiếp tục đúng một ticket `READY`: `RB-WP6-001`, chỉ refinement common harness.
+   Không viết harness/chạy experiment trước khi ticket khóa scenario, metric,
+   exclusion và bundle contract; không tự chọn O-002/O-003/O-004, không mở O-001
+   reassignment và không overclaim local curve.

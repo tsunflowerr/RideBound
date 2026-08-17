@@ -14,13 +14,15 @@ public sealed class InsertionCandidateGenerator
     private readonly ForwardSlackProfileCache _slackCache;
     private readonly OriginHoldCandidateTransformer _originHoldTransformer;
     private readonly WaitingIncumbentRepairSeedBuilder _repairSeedBuilder;
+    private readonly CandidatePortfolioRetainer _portfolioRetainer;
 
     public InsertionCandidateGenerator(
         PhysicalPlanValidator? validator = null,
         CandidateScheduleEvaluator? scheduleEvaluator = null,
         ForwardSlackProfileCache? slackCache = null,
         OriginHoldCandidateTransformer? originHoldTransformer = null,
-        WaitingIncumbentRepairSeedBuilder? repairSeedBuilder = null)
+        WaitingIncumbentRepairSeedBuilder? repairSeedBuilder = null,
+        CandidatePortfolioRetainer? portfolioRetainer = null)
     {
         _validator = validator ?? new PhysicalPlanValidator();
         _slackCache = slackCache ?? new ForwardSlackProfileCache(
@@ -29,6 +31,8 @@ public sealed class InsertionCandidateGenerator
             originHoldTransformer ?? new OriginHoldCandidateTransformer();
         _repairSeedBuilder =
             repairSeedBuilder ?? new WaitingIncumbentRepairSeedBuilder();
+        _portfolioRetainer = portfolioRetainer
+            ?? new CandidatePortfolioRetainer();
     }
 
     public CandidateGenerationResult Generate(
@@ -177,13 +181,12 @@ public sealed class InsertionCandidateGenerator
         }
 
         var beforeCap = feasibleById.Values.ToArray();
-        var ranked = beforeCap
-            .OrderByDescending(value => value.NewRequestIds.Count)
-            .ThenBy(value => value.Schedule.OperationalCost)
-            .ThenBy(value => value.CertifiedForwardSlackMilliseconds is null ? 0 : 1)
-            .ThenByDescending(value => value.CertifiedForwardSlackMilliseconds ?? 0)
-            .ThenBy(value => value.CandidateId, StringComparer.Ordinal)
-            .ToList();
+
+        // Rank once and hand the ordered result to the retainer. Ranking is the
+        // retainer's own precondition, so re-sorting the same pool inside it was
+        // pure duplicated O(n log n) on every vehicle of every epoch.
+        var rankedCandidates = CandidatePortfolioRetainer.Rank(beforeCap).ToArray();
+        var ranked = rankedCandidates.ToList();
         var omittedByCap = Array.Empty<InsertionCandidate>();
 
         if (ranked.Count > options.MaximumCandidatesPerVehicle)
@@ -200,19 +203,12 @@ public sealed class InsertionCandidateGenerator
                         Dimension: "maximumCandidatesPerVehicle"));
             }
 
-            var noOp = ranked.Single(value => value.IsNoOp);
-            var retained = ranked
-                .Where(value => !value.IsNoOp)
-                .Take(options.MaximumCandidatesPerVehicle - 1)
-                .ToList();
-            retained.Add(noOp);
-            var retainedIds = retained
-                .Select(candidate => candidate.CandidateId)
-                .ToHashSet(StringComparer.Ordinal);
-            omittedByCap = ranked
-                .Where(candidate => !retainedIds.Contains(candidate.CandidateId))
-                .ToArray();
-            ranked = retained;
+            var retention = _portfolioRetainer.RetainRanked(
+                rankedCandidates,
+                options.MaximumCandidatesPerVehicle,
+                options.RetentionStrategy);
+            omittedByCap = retention.Omitted.ToArray();
+            ranked = retention.Retained.ToList();
         }
 
         var omissions = new List<CandidateOmissionWitness>();
@@ -254,7 +250,7 @@ public sealed class InsertionCandidateGenerator
                     CandidateIdentity.CreateOmissionDigest(
                         omittedByCap.Select(candidate => candidate.CandidateId)),
                     "Feasible candidates were omitted by the deterministic " +
-                    "accepted-count/cost/slack/stable-ID cap.",
+                    $"'{options.RetentionStrategy}' cap.",
                     vehicle.Id));
         }
 
@@ -342,7 +338,7 @@ public sealed class InsertionCandidateGenerator
                 }
 
                 evaluatedPaths++;
-                var routeResult = vehicle.Route.ReplaceMutableSuffix(node.Suffix);
+                var routeResult = node.Project(vehicle);
 
                 if (routeResult.IsSuccess)
                 {
@@ -381,11 +377,18 @@ public sealed class InsertionCandidateGenerator
         var omittedCount = BigInteger.Zero;
         var omittedSubtreeIds = new List<string>();
 
+        // The combinatorial memo is keyed only by (suffixCount, remaining,
+        // hasInserted); nothing in it depends on the individual frontier node.
+        // Allocating it per node discarded one dictionary per unexpanded node.
+        var subtreeMemo =
+            new Dictionary<(int SuffixCount, int Remaining, bool Inserted), BigInteger>();
+
         while (frontier.TryDequeue(out var omitted, out _))
         {
             var subtreeCount = CountTerminalCandidatePaths(
                 omitted,
-                requests.Count);
+                requests.Count,
+                subtreeMemo);
 
             if (subtreeCount > 0)
             {
@@ -441,23 +444,46 @@ public sealed class InsertionCandidateGenerator
             request.Id,
             new Duration(0));
 
-        for (var pickupIndex = 0;
-             pickupIndex <= node.Suffix.Count;
-             pickupIndex++)
-        {
-            var withPickup = node.Suffix.ToList();
-            withPickup.Insert(pickupIndex, pickup);
+        var baseStops = node.Suffix;
 
+        // Every child of this expansion serves exactly the same request set, so
+        // the inserted-request list is built once and shared as an immutable
+        // snapshot instead of being rebuilt per child.
+        var insertedBuffer = new RequestId[node.InsertedRequestIds.Count + 1];
+
+        for (var index = 0; index < node.InsertedRequestIds.Count; index++)
+        {
+            insertedBuffer[index] = node.InsertedRequestIds[index];
+        }
+
+        insertedBuffer[^1] = request.Id;
+        var inserted = Array.AsReadOnly(insertedBuffer);
+
+        for (var pickupIndex = 0; pickupIndex <= baseStops.Count; pickupIndex++)
+        {
             for (var dropIndex = pickupIndex + 1;
-                 dropIndex <= withPickup.Count;
+                 dropIndex <= baseStops.Count + 1;
                  dropIndex++)
             {
-                var withPair = withPickup.ToList();
-                withPair.Insert(dropIndex, dropOff);
-                yield return CreateNode(
+                // Write the child suffix straight into its final array. The old
+                // form built an intermediate list per pickup slot and copied it
+                // again per drop slot, so every child paid three O(k) copies.
+                var withPair = new RouteStop[baseStops.Count + 2];
+                var source = 0;
+
+                for (var index = 0; index < withPair.Length; index++)
+                {
+                    withPair[index] = index == pickupIndex
+                        ? pickup
+                        : index == dropIndex
+                            ? dropOff
+                            : baseStops[source++];
+                }
+
+                yield return CreateOwnedNode(
                     node.RequestIndex + 1,
                     withPair,
-                    node.InsertedRequestIds.Append(request.Id).ToArray(),
+                    inserted,
                     node.RepairedIncumbentRequestId);
             }
         }
@@ -480,9 +506,16 @@ public sealed class InsertionCandidateGenerator
                 stop.ServiceDuration.Milliseconds);
         }
 
+        // The ordinary root is the current route, but a B4 repair root already
+        // carries a different mutable suffix. Ranking that root by the current
+        // route's slack would make the bounded best-first order blind to the
+        // repair it is deciding whether to explore. Keep the no-repair fast
+        // path, while every repair root (and every expanded node) is projected
+        // on its own candidate suffix.
         var route = node.RequestIndex == 0
+                    && node.RepairedIncumbentRequestId is null
             ? vehicle.Route
-            : vehicle.Route.ReplaceMutableSuffix(node.Suffix).Value;
+            : node.Project(vehicle).Value;
         long? slack = 0;
 
         if (route is not null)
@@ -506,42 +539,46 @@ public sealed class InsertionCandidateGenerator
             mandatoryService,
             slack is null ? 0 : 1,
             -(slack ?? 0),
-            node.StableId);
+            node);
     }
 
     private static ExplorationNode CreateNode(
         int requestIndex,
         IEnumerable<RouteStop> suffix,
         IEnumerable<RequestId> insertedRequestIds,
-        RequestId? repairedIncumbentRequestId)
-    {
-        var routeStops = suffix.ToArray();
-        var requests = insertedRequestIds.ToArray();
-        var stableId = $"{requestIndex:D8}:" +
-            CandidateIdentity.CreateSearchNodeDigest(
-                routeStops.Select(stop => stop.StopId.Value)
-                    .Concat(requests.Select(request => request.Value))
-                    .Append(repairedIncumbentRequestId?.Value ?? "no-repair"));
-        return new ExplorationNode(
+        RequestId? repairedIncumbentRequestId) =>
+        CreateOwnedNode(
             requestIndex,
-            Array.AsReadOnly(routeStops),
-            Array.AsReadOnly(requests),
-            repairedIncumbentRequestId,
-            stableId);
-    }
+            suffix.ToArray(),
+            Array.AsReadOnly(insertedRequestIds.ToArray()),
+            repairedIncumbentRequestId);
+
+    /// <summary>
+    /// Builds a node from a suffix array the caller has just allocated and will
+    /// not touch again, and from an already immutable inserted-request snapshot.
+    /// This avoids re-copying both sequences on the expansion hot path.
+    /// </summary>
+    private static ExplorationNode CreateOwnedNode(
+        int requestIndex,
+        RouteStop[] ownedSuffix,
+        IReadOnlyList<RequestId> insertedRequestIds,
+        RequestId? repairedIncumbentRequestId) =>
+        new(
+            requestIndex,
+            Array.AsReadOnly(ownedSuffix),
+            insertedRequestIds,
+            repairedIncumbentRequestId);
 
     private static BigInteger CountTerminalCandidatePaths(
         ExplorationNode node,
-        int requestCount)
-    {
-        var memo = new Dictionary<(int SuffixCount, int Remaining, bool Inserted), BigInteger>();
-        return Count(
+        int requestCount,
+        IDictionary<(int SuffixCount, int Remaining, bool Inserted), BigInteger> memo) =>
+        Count(
             node.Suffix.Count,
             requestCount - node.RequestIndex,
             node.InsertedRequestIds.Count > 0
                 || node.RepairedIncumbentRequestId is not null,
             memo);
-    }
 
     private static BigInteger Count(
         int suffixCount,
@@ -774,23 +811,58 @@ public sealed class InsertionCandidateGenerator
         return true;
     }
 
-    private sealed record ExplorationNode(
-        int RequestIndex,
-        IReadOnlyList<RouteStop> Suffix,
-        IReadOnlyList<RequestId> InsertedRequestIds,
-        RequestId? RepairedIncumbentRequestId,
-        string StableId);
+    /// <summary>
+    /// A search node. <see cref="StableId"/> and the projected route are both
+    /// derived, deterministic and expensive, so they are computed at most once
+    /// and only if something actually asks for them. The frontier holds far
+    /// more nodes than the work budget can expand, and the priority comparison
+    /// only reaches the identity tie-break when every earlier key ties.
+    /// </summary>
+    private sealed class ExplorationNode(
+        int requestIndex,
+        IReadOnlyList<RouteStop> suffix,
+        IReadOnlyList<RequestId> insertedRequestIds,
+        RequestId? repairedIncumbentRequestId)
+    {
+        private string? _stableId;
+        private DomainResult<RoutePlan>? _projection;
+
+        public int RequestIndex { get; } = requestIndex;
+
+        public IReadOnlyList<RouteStop> Suffix { get; } = suffix;
+
+        public IReadOnlyList<RequestId> InsertedRequestIds { get; } =
+            insertedRequestIds;
+
+        public RequestId? RepairedIncumbentRequestId { get; } =
+            repairedIncumbentRequestId;
+
+        public string StableId => _stableId ??= $"{RequestIndex:D8}:" +
+            CandidateIdentity.CreateSearchNodeDigest(
+                Suffix.Select(stop => stop.StopId.Value)
+                    .Concat(InsertedRequestIds.Select(request => request.Value))
+                    .Append(RepairedIncumbentRequestId?.Value ?? "no-repair"),
+                Suffix.Count + InsertedRequestIds.Count + 1);
+
+        public DomainResult<RoutePlan> Project(VehicleState vehicle) =>
+            _projection ??= vehicle.Route.ReplaceMutableSuffix(Suffix);
+    }
 
     private sealed record PrioritizedNode(
         ExplorationNode Node,
         SearchPriority Priority);
 
+    /// <summary>
+    /// The tie-break key carries the node rather than its identity string so
+    /// that the identity digest is only computed when the comparison actually
+    /// reaches it. The resulting order is unchanged.
+    /// </summary>
     private readonly record struct SearchPriority(
         int NegativePotentialAcceptedCount,
         long MandatoryServiceLowerBound,
         int SlackBoundClass,
         long NegativeCertifiedSlack,
-        string StableId);
+        ExplorationNode Node);
 
     private sealed class SearchPriorityComparer : IComparer<SearchPriority>
     {
@@ -813,7 +885,9 @@ public sealed class InsertionCandidateGenerator
                     right.NegativeCertifiedSlack);
             return comparison != 0
                 ? comparison
-                : StringComparer.Ordinal.Compare(left.StableId, right.StableId);
+                : StringComparer.Ordinal.Compare(
+                    left.Node.StableId,
+                    right.Node.StableId);
         }
     }
 

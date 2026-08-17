@@ -20,6 +20,12 @@ public enum CandidateScheduleStrategy
     OriginHoldRelocatedWait,
 }
 
+public enum CandidateRetentionStrategy
+{
+    LegacyAcceptedCountCostSlack,
+    ServiceSetStabilityPortfolioV1,
+}
+
 public sealed record InsertionCandidate(
     string CandidateId,
     VehicleId VehicleId,
@@ -132,7 +138,9 @@ public sealed record CandidateGenerationOptions
         CandidateScheduleStrategy scheduleStrategy =
             CandidateScheduleStrategy.EarliestFeasible,
         long maximumExplorationWorkUnits = 100_000,
-        int maximumRepairRequestsConsideredPerVehicle = 0)
+        int maximumRepairRequestsConsideredPerVehicle = 0,
+        CandidateRetentionStrategy retentionStrategy =
+            CandidateRetentionStrategy.LegacyAcceptedCountCostSlack)
     {
         if (maximumCandidatesPerVehicle < 1)
         {
@@ -164,6 +172,11 @@ public sealed record CandidateGenerationOptions
                 nameof(maximumRepairRequestsConsideredPerVehicle));
         }
 
+        if (!Enum.IsDefined(retentionStrategy))
+        {
+            throw new ArgumentOutOfRangeException(nameof(retentionStrategy));
+        }
+
         MaximumCandidatesPerVehicle = maximumCandidatesPerVehicle;
         MaximumNewRequestsPerVehicle = maximumNewRequestsPerVehicle;
         ExactSmallMode = exactSmallMode;
@@ -171,6 +184,7 @@ public sealed record CandidateGenerationOptions
         MaximumExplorationWorkUnits = maximumExplorationWorkUnits;
         MaximumRepairRequestsConsideredPerVehicle =
             maximumRepairRequestsConsideredPerVehicle;
+        RetentionStrategy = retentionStrategy;
     }
 
     public int MaximumCandidatesPerVehicle { get; }
@@ -189,6 +203,8 @@ public sealed record CandidateGenerationOptions
     /// </summary>
     public int MaximumRepairRequestsConsideredPerVehicle { get; }
 
+    public CandidateRetentionStrategy RetentionStrategy { get; }
+
     public CandidateGenerationOptions WithRepairRequestCap(int maximumRequests) =>
         new(
             MaximumCandidatesPerVehicle,
@@ -196,7 +212,8 @@ public sealed record CandidateGenerationOptions
             ExactSmallMode,
             ScheduleStrategy,
             MaximumExplorationWorkUnits,
-            maximumRequests);
+            maximumRequests,
+            RetentionStrategy);
 
     public static CandidateGenerationOptions ExactSmall { get; } =
         new(

@@ -1,0 +1,66 @@
+{
+  "schemaVersion": "1.0.0",
+  "fleetPy": {
+    "tag": "1.0.2",
+    "annotatedTagObject": "ca5a245243094236c84a0e93b32819ee502beeff",
+    "commit": "053aa9d4fcfde91c5d303435d5748f9206c071b0",
+    "license": "MIT",
+    "sourceHashes": {
+      "environment.yml": "7018a0525227e52926f9d1d472234b72f92d1a35e7cdb6418bcd596c5edb76fd",
+      "LICENSE": "13dd1c42955110bc9ff55f8d6c8403249aa71d1563e405a33789dd37a5d812e5",
+      "src/fleetctrl/FleetControlBase.py": "c9e14b0bef7dfc8313868a5ff4e97bffea2e3bc2570ace35e1bd8ec6aa8fe57e",
+      "src/routing/NetworkBase.py": "e77676820b94a6c734d17033d12c607a8c85db8bd7826b09fb80dfc4ba7a926b",
+      "src/simulation/Vehicles.py": "6a0e73536053c3b2b7280eb7eede9504367ce1812e5de5a59d8f9534898e6e46",
+      "src/misc/init_modules.py": "8cb4a4ade85a5942b91a5d486ffd060f1e61853efaae8685e7af03b7c9ee81bf"
+    }
+  },
+  "python": {
+    "major": 3,
+    "minor": 10,
+    "packages": {
+      "dill": "0.3.9",
+      "fiona": "1.10.1",
+      "geopandas": "1.0.1",
+      "matplotlib": "3.10.9",
+      "numpy": "2.2.6",
+      "pandas": "2.2.3",
+      "pyogrio": "0.10.0",
+      "pyproj": "3.7.0",
+      "PyYAML": "6.0.2",
+      "requests": "2.34.2",
+      "Rtree": "1.3.0",
+      "scipy": "1.15.2",
+      "shapely": "2.0.6",
+      "tqdm": "4.67.1"
+    }
+  },
+  "abstractCallbacks": [
+    "_call_time_trigger_request_batch",
+    "_create_user_offer",
+    "_lock_vid_rid_pickup",
+    "_prq_from_reservation_to_immediate",
+    "acknowledge_alighting",
+    "acknowledge_boarding",
+    "assign_vehicle_plan",
+    "change_prq_time_constraints",
+    "lock_current_vehicle_plan",
+    "receive_status_update",
+    "user_cancels_request",
+    "user_confirms_booking",
+    "user_request"
+  ],
+  "capabilities": {
+    "directedEdgeProgress": {
+      "status": "required",
+      "failureCode": "RBWP7_EDGE_PROGRESS_UNAVAILABLE"
+    },
+    "nonForcedAssignment": {
+      "status": "required",
+      "failureCode": "RBWP7_FORCE_ASSIGNMENT_PATH"
+    },
+    "fleetControlCallbacks": {
+      "status": "required",
+      "failureCode": "RBWP7_CALLBACK_CONTRACT_DRIFT"
+    }
+  }
+}

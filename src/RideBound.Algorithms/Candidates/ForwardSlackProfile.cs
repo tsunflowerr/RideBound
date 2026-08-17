@@ -251,15 +251,52 @@ public sealed class ForwardSlackProfileBuilder : IForwardSlackProfileBuilder
             message);
 }
 
-public sealed record ForwardSlackCacheKey(
-    RideBoundRun RunSnapshot,
-    VehicleState VehicleSnapshot,
-    string PositionFingerprint,
-    string RouteFingerprint,
-    SimTime EvaluationTime,
-    long TravelSnapshotVersion,
-    string TravelSnapshotHash)
+/// <summary>
+/// Identity of a slack-profile memo entry. The route is compared by exact
+/// structure rather than by a cryptographic fingerprint: this key never leaves
+/// the process and is not part of any published identity, so paying a framed
+/// SHA-256 over every stop on every lookup bought nothing but collision risk.
+/// The distinguishing power is unchanged — two routes share an entry exactly
+/// when their version, executed count, frozen prefix and mutable suffix are
+/// element-wise equal, which is precisely what the fingerprint encoded.
+/// </summary>
+public sealed class ForwardSlackCacheKey : IEquatable<ForwardSlackCacheKey>
 {
+    private readonly int _hash;
+
+    private ForwardSlackCacheKey(
+        RideBoundRun runSnapshot,
+        VehicleState vehicleSnapshot,
+        string positionFingerprint,
+        RoutePlan route,
+        SimTime evaluationTime,
+        long travelSnapshotVersion,
+        string travelSnapshotHash)
+    {
+        RunSnapshot = runSnapshot;
+        VehicleSnapshot = vehicleSnapshot;
+        PositionFingerprint = positionFingerprint;
+        Route = route;
+        EvaluationTime = evaluationTime;
+        TravelSnapshotVersion = travelSnapshotVersion;
+        TravelSnapshotHash = travelSnapshotHash;
+        _hash = ComputeHash(this);
+    }
+
+    public RideBoundRun RunSnapshot { get; }
+
+    public VehicleState VehicleSnapshot { get; }
+
+    public string PositionFingerprint { get; }
+
+    public RoutePlan Route { get; }
+
+    public SimTime EvaluationTime { get; }
+
+    public long TravelSnapshotVersion { get; }
+
+    public string TravelSnapshotHash { get; }
+
     public static ForwardSlackCacheKey Create(
         OnlineState state,
         VehicleState vehicle,
@@ -276,10 +313,102 @@ public sealed record ForwardSlackCacheKey(
             state.Run,
             vehicle,
             PositionIdentity(vehicle.Position),
-            CandidateIdentity.CreateRouteFingerprint(route),
+            route,
             evaluationTime,
             travelTimes.Version,
             travelTimes.SnapshotHash);
+    }
+
+    public bool Equals(ForwardSlackCacheKey? other)
+    {
+        if (ReferenceEquals(this, other))
+        {
+            return true;
+        }
+
+        return other is not null
+            && _hash == other._hash
+            && EqualityComparer<RideBoundRun>.Default.Equals(
+                RunSnapshot,
+                other.RunSnapshot)
+            && EqualityComparer<VehicleState>.Default.Equals(
+                VehicleSnapshot,
+                other.VehicleSnapshot)
+            && StringComparer.Ordinal.Equals(
+                PositionFingerprint,
+                other.PositionFingerprint)
+            && EvaluationTime == other.EvaluationTime
+            && TravelSnapshotVersion == other.TravelSnapshotVersion
+            && StringComparer.Ordinal.Equals(
+                TravelSnapshotHash,
+                other.TravelSnapshotHash)
+            && RoutesEqual(Route, other.Route);
+    }
+
+    public override bool Equals(object? obj) =>
+        Equals(obj as ForwardSlackCacheKey);
+
+    public override int GetHashCode() => _hash;
+
+    private static bool RoutesEqual(RoutePlan left, RoutePlan right)
+    {
+        if (ReferenceEquals(left, right))
+        {
+            return true;
+        }
+
+        return left.Version == right.Version
+            && left.ExecutedStopCount == right.ExecutedStopCount
+            && StopsEqual(left.FrozenPrefix, right.FrozenPrefix)
+            && StopsEqual(left.MutableSuffix, right.MutableSuffix);
+    }
+
+    private static bool StopsEqual(
+        IReadOnlyList<RouteStop> left,
+        IReadOnlyList<RouteStop> right)
+    {
+        if (left.Count != right.Count)
+        {
+            return false;
+        }
+
+        for (var index = 0; index < left.Count; index++)
+        {
+            if (left[index] != right[index])
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static int ComputeHash(ForwardSlackCacheKey key)
+    {
+        var hash = new HashCode();
+        hash.Add(key.RunSnapshot);
+        hash.Add(key.VehicleSnapshot);
+        hash.Add(key.PositionFingerprint, StringComparer.Ordinal);
+        hash.Add(key.EvaluationTime);
+        hash.Add(key.TravelSnapshotVersion);
+        hash.Add(key.TravelSnapshotHash, StringComparer.Ordinal);
+        hash.Add(key.Route.Version);
+        hash.Add(key.Route.ExecutedStopCount);
+        AddStops(ref hash, key.Route.FrozenPrefix);
+        AddStops(ref hash, key.Route.MutableSuffix);
+        return hash.ToHashCode();
+    }
+
+    private static void AddStops(
+        ref HashCode hash,
+        IReadOnlyList<RouteStop> stops)
+    {
+        hash.Add(stops.Count);
+
+        foreach (var stop in stops)
+        {
+            hash.Add(stop.StopId.Value, StringComparer.Ordinal);
+        }
     }
 
     private static string PositionIdentity(VehiclePosition position) =>

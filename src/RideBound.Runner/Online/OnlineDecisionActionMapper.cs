@@ -1,6 +1,7 @@
 using System.Text.Json;
 using RideBound.Algorithms.Policies;
 using RideBound.Application.Commitments;
+using RideBound.Application.State;
 using RideBound.Contracts.Protocol;
 using RideBound.Domain.Commitments;
 using RideBound.Domain.Routes;
@@ -12,9 +13,12 @@ namespace RideBound.Runner.Online;
 public static class OnlineDecisionActionMapper
 {
     public static IReadOnlyList<JsonElement> Map(
-        RollingCostDecision decision)
+        RollingCostDecision decision,
+        OnlineState stateBeforeEvents,
+        bool includeEventInducedPlanUpdates)
     {
         ArgumentNullException.ThrowIfNull(decision);
+        ArgumentNullException.ThrowIfNull(stateBeforeEvents);
         var actions = new List<JsonElement>();
 
         foreach (var action in decision.RequestActions.OrderBy(
@@ -25,7 +29,15 @@ public static class OnlineDecisionActionMapper
         }
 
         foreach (var plan in decision.VehiclePlans
-                     .Where(value => !value.Candidate.IsNoOp)
+                     .Where(
+                         value => !value.Candidate.IsNoOp
+                             || includeEventInducedPlanUpdates
+                             && (!stateBeforeEvents.Run.Vehicles.TryGetValue(
+                                     value.VehicleId,
+                                     out var priorVehicle)
+                                 || !RoutesEqual(
+                                     priorVehicle.Route,
+                                     value.Candidate.Route)))
                      .OrderBy(
                          value => value.VehicleId.Value,
                          StringComparer.Ordinal))
@@ -42,6 +54,12 @@ public static class OnlineDecisionActionMapper
 
         return actions.AsReadOnly();
     }
+
+    private static bool RoutesEqual(RoutePlan left, RoutePlan right) =>
+        left.Version == right.Version
+        && left.ExecutedStopCount == right.ExecutedStopCount
+        && left.FrozenPrefix.SequenceEqual(right.FrozenPrefix)
+        && left.MutableSuffix.SequenceEqual(right.MutableSuffix);
 
     public static IReadOnlyList<JsonElement> MapPublications(
         IEnumerable<PromisePublication> publications)

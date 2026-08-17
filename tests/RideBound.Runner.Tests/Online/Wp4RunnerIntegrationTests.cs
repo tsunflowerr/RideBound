@@ -16,6 +16,50 @@ namespace RideBound.Runner.Tests.Online;
 public sealed class Wp4RunnerIntegrationTests
 {
     [Fact]
+    public async Task Cli_explicit_line_budget_accepts_a_bounded_frame_above_legacy_default()
+    {
+        var startInfo = new ProcessStartInfo("dotnet")
+        {
+            RedirectStandardInput = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+        startInfo.ArgumentList.Add(
+            Path.Combine(AppContext.BaseDirectory, "RideBound.Runner.dll"));
+        startInfo.ArgumentList.Add("--mode");
+        startInfo.ArgumentList.Add("online");
+        startInfo.ArgumentList.Add("--maximum-line-bytes");
+        startInfo.ArgumentList.Add((2 * 1024 * 1024).ToString(
+            System.Globalization.CultureInfo.InvariantCulture));
+
+        using var process = Process.Start(startInfo);
+        Assert.NotNull(process);
+        var oversizedForLegacy = "{\"padding\":\""
+            + new string('x', 1_100_000)
+            + "\"}\n";
+        await process.StandardInput.WriteAsync(oversizedForLegacy);
+        process.StandardInput.Close();
+        var stdout = await process.StandardOutput.ReadToEndAsync();
+        var stderr = await process.StandardError.ReadToEndAsync();
+        await process.WaitForExitAsync();
+
+        Assert.Equal(0, process.ExitCode);
+        Assert.Contains("SCHEMA_VALIDATION_FAILED", stderr, StringComparison.Ordinal);
+        Assert.DoesNotContain("MESSAGE_TOO_LARGE", stderr, StringComparison.Ordinal);
+        using var response = JsonDocument.Parse(stdout.Trim());
+        Assert.Equal(
+            "error",
+            response.RootElement.GetProperty("messageType").GetString());
+        Assert.Equal(
+            "SCHEMA_VALIDATION_FAILED",
+            response.RootElement.GetProperty("payload")
+                .GetProperty("code")
+                .GetString());
+    }
+
+    [Fact]
     public async Task Wp4_cli_runs_real_child_process_with_bound_configuration()
     {
         var commitment = CommitmentConfiguration();
@@ -57,6 +101,8 @@ public sealed class Wp4RunnerIntegrationTests
             "benchmarks",
             "configurations",
             "wp4-rolling-cost-boundary-v1.json"));
+        startInfo.ArgumentList.Add("--solver-seed-source");
+        startInfo.ArgumentList.Add("manifest-master-seed");
 
         using var process = Process.Start(startInfo);
         Assert.NotNull(process);
@@ -117,6 +163,150 @@ public sealed class Wp4RunnerIntegrationTests
     }
 
     [Fact]
+    public void Booking_confirmation_C1_ranks_each_vehicle_scope_before_fleet_validation()
+    {
+        var commitment = CommitmentConfiguration();
+        var wp4 = Wp4RunnerConfiguration.Decode(
+            File.ReadAllBytes(Path.Combine(
+                RepositoryRoot(),
+                "benchmarks",
+                "configurations",
+                "wp7-fleetpy-ridebound-hard-vector-v1.json")),
+            commitment);
+        var setup = CreateSession(
+            wp4,
+            commitmentConfiguration: commitment);
+        var bootstrap = JsonNode.Parse(
+            FixtureLoader.ReadUtf8("wp2/valid-bootstrap-event-batch.json"))!;
+        var events = bootstrap["payload"]!["events"]!.AsArray();
+        var secondVehicle = events[2]!.DeepClone();
+        secondVehicle["eventSeq"] = 4;
+        secondVehicle["payload"]!["vehicle"]!["vehicleId"] = "v-2";
+        secondVehicle["payload"]!["vehicle"]!["route"]!["mutableSuffix"] =
+            new JsonArray();
+        events.Add(secondVehicle);
+
+        var offerResponse = setup.Session.Process(
+            Encoding.UTF8.GetBytes(bootstrap.ToJsonString())).Response!;
+        var offer = DecisionPayloadCodec.Decode(offerResponse.Payload);
+        Assert.True(offer.IsSuccess, offer.Error?.Message);
+        Assert.Contains(
+            offer.Value!.Actions,
+            action => action.GetProperty("decisionType").GetString()
+                == "requestAccepted");
+        var accepted = offer.Value.Actions.Single(
+            action => action.GetProperty("decisionType").GetString()
+                == "requestAccepted");
+        var selectedVehicle = accepted.GetProperty("payload")
+            .GetProperty("vehicleId")
+            .GetString()!;
+        var selectedRoute = offer.Value.Actions.Single(
+            action => action.GetProperty("decisionType").GetString()
+                == "vehiclePlanUpdated"
+                && action.GetProperty("payload")
+                    .GetProperty("vehicleId")
+                    .GetString() == selectedVehicle)
+            .GetProperty("payload")
+            .GetProperty("route")
+            .GetRawText();
+        _ = setup.Session.Process(
+            DecisionApplied(1, 1_000, offer.Value.DecisionHash.Value));
+
+        var bookingResponse = setup.Session.Process(
+            Encoding.UTF8.GetBytes(
+                """
+                {
+                  "schemaVersion":"1.0.0",
+                  "messageType":"eventBatch",
+                  "runId":"wp2-run-001",
+                  "scenarioId":"wp2-two-epoch-small",
+                  "epochId":2,
+                  "simTimeMs":1000,
+                  "payload":{"events":[
+                    {
+                      "eventSeq":5,
+                      "eventType":"bookingConfirmed",
+                      "payload":{"requestId":"r-1"}
+                    }
+                  ]}
+                }
+                """)).Response!;
+        var booking = DecisionPayloadCodec.Decode(bookingResponse.Payload);
+
+        Assert.Equal("decision", bookingResponse.MessageType.Value);
+        Assert.True(booking.IsSuccess, booking.Error?.Message);
+        Assert.Equal(SolverStatus.Completed, booking.Value!.Solver.Status);
+        Assert.Single(
+            booking.Value.Actions,
+            action => action.GetProperty("decisionType").GetString()
+                == "promisePublished");
+        _ = setup.Session.Process(
+            DecisionApplied(2, 1_000, booking.Value.DecisionHash.Value));
+
+        // Half-edge progress is deliberately quantized one permille below the
+        // exact elapsed fraction: the old plan moves from pickup ETA 1100 to
+        // 1101. This is exogenous observation drift, not a decision changing a
+        // final-confirmation lock, so C1 must retain its no-op candidate.
+        var progressBatch = JsonNode.Parse(
+                """
+                {
+                  "schemaVersion":"1.0.0",
+                  "messageType":"eventBatch",
+                  "runId":"wp2-run-001",
+                  "scenarioId":"wp2-two-epoch-small",
+                  "epochId":3,
+                  "simTimeMs":1050,
+                  "payload":{"events":[
+                    {
+                      "eventSeq":6,
+                      "eventType":"vehicleAdvanced",
+                      "payload":{"vehicle":{
+                        "vehicleId":"placeholder",
+                        "capacity":4,
+                        "occupiedSeats":0,
+                        "position":{
+                          "kind":"edgeProgress",
+                          "edgeId":"edge-n0-n1",
+                          "fromNodeId":"n-0",
+                          "toNodeId":"n-1",
+                          "progressPermille":499
+                        },
+                        "onboardRequestIds":[],
+                        "acceptedRequestIds":["r-1"],
+                        "route":{}
+                      }}
+                    }
+                  ]}
+                }
+                """)!;
+        var observedVehicle = progressBatch["payload"]!["events"]![0]![
+            "payload"]!["vehicle"]!;
+        observedVehicle["vehicleId"] = selectedVehicle;
+        observedVehicle["route"] = JsonNode.Parse(selectedRoute);
+        var progressResponse = setup.Session.Process(
+            Encoding.UTF8.GetBytes(progressBatch.ToJsonString())).Response!;
+        var progress = DecisionPayloadCodec.Decode(progressResponse.Payload);
+
+        Assert.Equal("decision", progressResponse.MessageType.Value);
+        Assert.True(progress.IsSuccess, progress.Error?.Message);
+        var revised = Assert.Single(
+            progress.Value!.Actions,
+            action => action.GetProperty("decisionType").GetString()
+                == "promisePublished");
+        var publication = revised.GetProperty("payload");
+        Assert.Equal(
+            1,
+            publication.GetProperty("exogenousDelta")
+                .GetProperty("pickupEtaTotalMs")
+                .GetInt64());
+        Assert.Equal(
+            0,
+            publication.GetProperty("decisionDelta")
+                .GetProperty("pickupEtaTotalMs")
+                .GetInt64());
+    }
+
+    [Fact]
     public void Unknown_solver_uses_full_validator_no_op_and_reports_safe_fallback()
     {
         var setup = CreateSession(
@@ -139,6 +329,24 @@ public sealed class Wp4RunnerIntegrationTests
             action => action.GetProperty("decisionType").GetString()
                 == "requestAccepted");
         Assert.Empty(decision.Value.Certificate.Body!.PublicationIds);
+    }
+
+    [Fact]
+    public void Explicit_manifest_seed_mode_passes_the_manifest_seed_to_solver()
+    {
+        var solver = new CapturingUnknownSolver();
+        var setup = CreateSession(
+            PublishedWp4Configuration(),
+            solver,
+            useManifestSolverSeed: true);
+
+        var response = setup.Session.Process(
+            ReadFixture("wp2/valid-bootstrap-event-batch.json")).Response!;
+        var decision = DecisionPayloadCodec.Decode(response.Payload);
+
+        Assert.True(decision.IsSuccess, decision.Error?.Message);
+        Assert.Equal(20260729, solver.ObservedSeed);
+        Assert.Equal(SolverStatus.SafeFallback, decision.Value!.Solver.Status);
     }
 
     [Fact]
@@ -202,10 +410,15 @@ public sealed class Wp4RunnerIntegrationTests
     private static SessionSetup CreateSession(
         Wp4RunnerConfiguration wp4,
         ICandidateSelectionSolver? solver = null,
-        CommitmentPolicyConfiguration? commitmentConfiguration = null)
+        CommitmentPolicyConfiguration? commitmentConfiguration = null,
+        bool useManifestSolverSeed = false)
     {
         var commitment = commitmentConfiguration ?? CommitmentConfiguration();
-        var session = NewSession(commitment, wp4, solver);
+        var session = NewSession(
+            commitment,
+            wp4,
+            solver,
+            useManifestSolverSeed);
         Assert.Equal(
             "helloAck",
             session.Process(ReadFixture("hello/valid-hello.json"))
@@ -222,7 +435,8 @@ public sealed class Wp4RunnerIntegrationTests
     private static RunnerSession NewSession(
         CommitmentPolicyConfiguration commitment,
         Wp4RunnerConfiguration wp4,
-        ICandidateSelectionSolver? solver = null) =>
+        ICandidateSelectionSolver? solver = null,
+        bool useManifestSolverSeed = false) =>
         new(
             RunnerDefaults.CapabilityRequirements,
             RunnerExecutionMode.OnlineCommitment,
@@ -233,7 +447,8 @@ public sealed class Wp4RunnerIntegrationTests
             wp4Configuration: wp4,
             solverBackedPolicy: solver is null
                 ? null
-                : new SolverBackedRidePoolingPolicy(solver));
+                : new SolverBackedRidePoolingPolicy(solver),
+            useManifestSolverSeed: useManifestSolverSeed);
 
     private static JsonNode InitializePayload(
         Wp4RunnerConfiguration wp4,
@@ -360,6 +575,29 @@ public sealed class Wp4RunnerIntegrationTests
             CandidateSelectionProblem problem,
             DeterministicSolverBudget budget)
         {
+            var diagnostics = CandidateSelectionSolverDiagnostics.Create(
+                problem,
+                budget,
+                0,
+                0,
+                0,
+                []).Value!;
+            return CandidateSelectionSolveResult.Unknown(
+                diagnostics,
+                "TEST_UNKNOWN",
+                "The injected test solver did not produce an incumbent.");
+        }
+    }
+
+    private sealed class CapturingUnknownSolver : ICandidateSelectionSolver
+    {
+        public long? ObservedSeed { get; private set; }
+
+        public CandidateSelectionSolveResult Solve(
+            CandidateSelectionProblem problem,
+            DeterministicSolverBudget budget)
+        {
+            ObservedSeed = budget.RandomSeed;
             var diagnostics = CandidateSelectionSolverDiagnostics.Create(
                 problem,
                 budget,

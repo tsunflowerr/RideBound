@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.Buffers.Binary;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using RideBound.Application.State;
@@ -28,34 +29,39 @@ internal static class CandidateIdentity
     private static readonly byte[] SearchNodeDomain =
         "RideBound.CandidateSearchNode.v1\0"u8.ToArray();
 
+    // Framed identity payloads are dominated by 64-hex stop and request IDs.
+    // Sizing the writer up front removes the doubling reallocation chain from a
+    // path that runs once per generated candidate and once per search node.
+    private const int FrameEstimate = 96;
+    private const int StopEstimate = 5 * FrameEstimate;
+
+    private static ArrayBufferWriter<byte> CreateBuffer(int estimatedBytes) =>
+        new(Math.Max(256, estimatedBytes));
+
     public static string Create(
         OnlineState state,
         VehicleId vehicleId,
         RoutePlan route,
         IReadOnlyList<RequestId> newRequestIds)
     {
-        var buffer = new ArrayBufferWriter<byte>();
+        var buffer = CreateBuffer(
+            CandidateDomain.Length
+            + 256
+            + newRequestIds.Count * FrameEstimate
+            + (route.FrozenPrefix.Count + route.MutableSuffix.Count)
+                * StopEstimate);
         buffer.Write(CandidateDomain);
         WriteFrame(buffer, "vehicleId", vehicleId.Value);
         WriteFrame(
             buffer,
             "evaluationTimeMs",
-            state.Run.SimulationTime.Milliseconds.ToString(
-                System.Globalization.CultureInfo.InvariantCulture));
+            state.Run.SimulationTime.Milliseconds);
         WriteFrame(
             buffer,
             "travelSnapshotHash",
             state.TravelTimes?.SnapshotHash ?? string.Empty);
-        WriteFrame(
-            buffer,
-            "planVersion",
-            route.Version.Value.ToString(
-                System.Globalization.CultureInfo.InvariantCulture));
-        WriteFrame(
-            buffer,
-            "executedStopCount",
-            route.ExecutedStopCount.ToString(
-                System.Globalization.CultureInfo.InvariantCulture));
+        WriteFrame(buffer, "planVersion", route.Version.Value);
+        WriteFrame(buffer, "executedStopCount", route.ExecutedStopCount);
 
         foreach (var requestId in newRequestIds.OrderBy(
                      value => value.Value,
@@ -98,16 +104,8 @@ internal static class CandidateIdentity
         ArgumentNullException.ThrowIfNull(route);
         var buffer = new ArrayBufferWriter<byte>();
         buffer.Write(RouteDomain);
-        WriteFrame(
-            buffer,
-            "planVersion",
-            route.Version.Value.ToString(
-                System.Globalization.CultureInfo.InvariantCulture));
-        WriteFrame(
-            buffer,
-            "executedStopCount",
-            route.ExecutedStopCount.ToString(
-                System.Globalization.CultureInfo.InvariantCulture));
+        WriteFrame(buffer, "planVersion", route.Version.Value);
+        WriteFrame(buffer, "executedStopCount", route.ExecutedStopCount);
 
         foreach (var stop in route.FrozenPrefix)
         {
@@ -147,10 +145,13 @@ internal static class CandidateIdentity
         return Convert.ToHexStringLower(SHA256.HashData(buffer.WrittenSpan));
     }
 
-    public static string CreateSearchNodeDigest(IEnumerable<string> orderedTokens)
+    public static string CreateSearchNodeDigest(
+        IEnumerable<string> orderedTokens,
+        int estimatedTokenCount = 0)
     {
         ArgumentNullException.ThrowIfNull(orderedTokens);
-        var buffer = new ArrayBufferWriter<byte>();
+        var buffer = CreateBuffer(
+            SearchNodeDomain.Length + estimatedTokenCount * FrameEstimate);
         buffer.Write(SearchNodeDomain);
 
         foreach (var token in orderedTokens)
@@ -168,29 +169,69 @@ internal static class CandidateIdentity
     {
         WriteFrame(writer, tag, stop.StopId.Value);
         WriteFrame(writer, "nodeId", stop.NodeId.Value);
-        WriteFrame(writer, "kind", stop.Kind.ToString());
+        WriteFrame(writer, "kind", KindToken(stop.Kind));
         WriteFrame(writer, "requestId", stop.RequestId?.Value ?? string.Empty);
-        WriteFrame(
-            writer,
-            "serviceDurationMs",
-            stop.ServiceDuration.Milliseconds.ToString(
-                System.Globalization.CultureInfo.InvariantCulture));
+        WriteFrame(writer, "serviceDurationMs", stop.ServiceDuration.Milliseconds);
+    }
+
+    /// <summary>
+    /// The exact strings <see cref="Enum.ToString()"/> produces for
+    /// <see cref="RouteStopKind"/>. Framing them from constants keeps the bytes
+    /// identical while removing an enum formatting allocation from a path that
+    /// runs once per stop of every candidate route identity.
+    /// </summary>
+    private static string KindToken(RouteStopKind kind) => kind switch
+    {
+        RouteStopKind.Waypoint => "Waypoint",
+        RouteStopKind.Pickup => "Pickup",
+        RouteStopKind.DropOff => "DropOff",
+        _ => kind.ToString(),
+    };
+
+    private static void WriteFrame(
+        IBufferWriter<byte> writer,
+        string tag,
+        long value)
+    {
+        Span<char> digits = stackalloc char[20];
+
+        if (!value.TryFormat(
+                digits,
+                out var written,
+                provider: CultureInfo.InvariantCulture))
+        {
+            WriteFrame(
+                writer,
+                tag,
+                value.ToString(CultureInfo.InvariantCulture));
+            return;
+        }
+
+        WriteFrame(writer, tag, digits[..written]);
     }
 
     private static void WriteFrame(
         IBufferWriter<byte> writer,
         string tag,
-        string value)
+        ReadOnlySpan<char> value)
     {
-        var tagBytes = Encoding.UTF8.GetBytes(tag);
-        var valueBytes = Encoding.UTF8.GetBytes(value);
-        var header = writer.GetSpan(sizeof(ushort));
-        BinaryPrimitives.WriteUInt16BigEndian(header, checked((ushort)tagBytes.Length));
-        writer.Advance(sizeof(ushort));
-        writer.Write(tagBytes);
-        header = writer.GetSpan(sizeof(ulong));
-        BinaryPrimitives.WriteUInt64BigEndian(header, (ulong)valueBytes.Length);
-        writer.Advance(sizeof(ulong));
-        writer.Write(valueBytes);
+        // Encode straight into the writer's own buffer. The previous form
+        // allocated one byte[] for the tag and one for the value on every
+        // frame, so a single route fingerprint allocated roughly two arrays per
+        // stop field. Candidate identities are computed millions of times per
+        // decision, and the emitted bytes here are unchanged.
+        var tagLength = Encoding.UTF8.GetByteCount(tag);
+        var span = writer.GetSpan(sizeof(ushort) + tagLength);
+        BinaryPrimitives.WriteUInt16BigEndian(
+            span,
+            checked((ushort)tagLength));
+        Encoding.UTF8.GetBytes(tag, span[sizeof(ushort)..]);
+        writer.Advance(sizeof(ushort) + tagLength);
+
+        var valueLength = Encoding.UTF8.GetByteCount(value);
+        span = writer.GetSpan(sizeof(ulong) + valueLength);
+        BinaryPrimitives.WriteUInt64BigEndian(span, (ulong)valueLength);
+        Encoding.UTF8.GetBytes(value, span[sizeof(ulong)..]);
+        writer.Advance(sizeof(ulong) + valueLength);
     }
 }

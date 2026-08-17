@@ -11,6 +11,8 @@
 | Route prefix | Phần route đã chạy hoặc đã bị khóa |
 | Route suffix | Phần route tương lai còn có thể thay đổi |
 | Commitment/promise | Thông tin hệ thống đã hứa với khách: ETA, xe, điểm, thứ tự |
+| Provisional offer | Assignment đã kiểm tra vật lý nhưng chưa hứa gì với rider; chỉ tồn tại ở chế độ `booking-confirmation` |
+| `initialPromiseTrigger` | Config chọn thời điểm promise đầu tiên mở: `initial-acceptance` hoặc `booking-confirmation` |
 | Revision | Một lần hoặc một mức thay đổi lời hứa |
 | Churn | Kế hoạch đổi qua đổi lại nhiều lần |
 | Path-dependent | Chất lượng phụ thuộc cả lịch sử thay đổi, không chỉ trạng thái cuối |
@@ -59,3 +61,19 @@
 | Exploratory | Phân tích tìm hiểu thêm, không được trình bày như confirmatory |
 | External validity | Mức kết quả có thể áp ra môi trường khác; simulator khác chưa đủ chứng minh thực tế |
 | Incident | Sự cố như hỏng xe/đóng đường cho phép recovery đặc biệt có audit |
+| Terminal conservation | Mọi run đã plan phải có đúng một kết thúc: success, failure hoặc exclusion; không được biến mất |
+| Exclusion | Run bị loại trước outcome theo rule đã khai báo, vẫn phải có record; không phải failure hay metric 0 |
+| Failure taxonomy | Danh sách code/stage hữu hạn để cùng lỗi được ghi cùng nghĩa, không nhận text tùy ý |
+| Observation index | Bảng canonical dựng lại từ transcript để metric trỏ đúng input/output/decision observation |
+| Metric oracle | Implementation độc lập tự đọc raw evidence và tính lại metric để so production |
+| Semantic identity | Hash của nội dung có nghĩa phải lặp lại: scenario/plan/input/output/decision/metric semantic |
+| Resource identity | Hash chứa wall/CPU/memory thật; có thể khác giữa repeat nhưng phải đầy đủ và có provenance |
+| BagIt | Chuẩn đóng gói payload/tag manifest và checksum; WP6 bổ sung semantic/provenance verification |
+| Strict bundle | Bundle no-extra kiểm path, BagIt, source/runtime, grid, transcript, metric/oracle và claim |
+| Provenance DAG | Quan hệ source→transform→scenario→run→metric→bundle có hash/version/producer rõ |
+| Claim profile | Luật machine-readable giới hạn câu được phép nói về một artifact |
+| Mechanical evidence | Bằng chứng pipeline/correctness/repeatability; không tự chứng minh effectiveness khoa học |
+| Same-team clean process | Nhóm phát triển chạy lại ở process sạch; chưa phải independent reproduction |
+| Warm-up run | Run thật dùng làm nóng môi trường; vẫn có terminal evidence nhưng không vào measured summary |
+| Work budget | Giới hạn deterministic cho search/solver; hết budget phải báo loss/status, không giả infeasible |
+| Source inventory | Danh sách/hash exact source và dirty state tạo artifact; đổi inventory nghĩa là provenance đã đổi |

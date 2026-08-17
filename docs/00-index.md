@@ -1,7 +1,7 @@
 # RideBound — bản đồ tài liệu
 
-> Trạng thái: đặc tả v1 + WP0–WP5 hoàn thành; WP6 `RB-WP6-001` READY (refinement-only)
-> Cập nhật: 2026-08-09
+> Trạng thái: WP0–WP7 mechanical closure hoàn thành; WP7 `001..014` DONE
+> Cập nhật: 2026-08-16
 > Nguồn sự thật về tiến độ: [18-status-and-decision-log.md](18-status-and-decision-log.md)
 
 ## 1. Mục đích của bộ tài liệu
@@ -115,9 +115,18 @@ Bộ tài liệu này trả lời năm câu hỏi:
 | [31-wp5-bego-integration-refinement.md](tasks/31-wp5-bego-integration-refinement.md) | Refinement-only WP5; khóa adapter/persistence/transaction/paired Layer-1 trước implementation |
 | [32-wp5-bego-integration-ticket-plan.md](tasks/32-wp5-bego-integration-ticket-plan.md) | Ordered queue WP5 `002..014`; durable adapter/EF/Runner/outbox/recovery/paired replay |
 | [33-wp6-common-benchmark-harness-refinement.md](tasks/33-wp6-common-benchmark-harness-refinement.md) | Ticket refinement-only WP6; khóa scenario/result/metric/bundle boundary trước implementation |
+| [34-wp6-common-benchmark-harness-ticket-plan.md](tasks/34-wp6-common-benchmark-harness-ticket-plan.md) | Ordered queue WP6 `002..014`; schema, dataset, plan, Runner, result, metric, bundle và audit |
+| [35-wp7-fleetpy-layer2-refinement.md](tasks/35-wp7-fleetpy-layer2-refinement.md) | Refinement Candidate core + FleetPy Layer 2; paper/oracle gate, callback/position/plan/same-Runner contract và capability preflight |
+| [36-wp7-fleetpy-layer2-ticket-plan.md](tasks/36-wp7-fleetpy-layer2-ticket-plan.md) | Ordered queue WP7 `002..014`; Candidate portfolio, pin/env, mapping, Runner client, FleetControl, plan/lock, preflight và closed loop |
+| [wp7-014-fleetpy-layer2-closure-evidence-2026-08-15.md](benchmarking/wp7-014-fleetpy-layer2-closure-evidence-2026-08-15.md) | Historical Runner v6 receipt: actual FleetPy B1/C1 preflight/tiny/medium evidence, verifier và claim boundary |
+| [wp7-015-hot-path-and-semantics-closure-evidence-2026-08-17.md](benchmarking/wp7-015-hot-path-and-semantics-closure-evidence-2026-08-17.md) | ADR-039: ngữ nghĩa được khóa, đo hot path, work-profile gate, cross-binary differential và receipt hiện hành trên Runner v8 |
+| [wp6-contract-v1.md](benchmarking/wp6-contract-v1.md) | Equivalent contract v1 cho common benchmark harness, public data và reproduction bundle |
+| [wp6-benchmark-reproducibility-evidence-2026-08-09.md](research/wp6-benchmark-reproducibility-evidence-2026-08-09.md) | Primary-source evidence và claim boundary cho WP6 |
 | [reviews/wp1-wp3/README.md](reviews/wp1-wp3/README.md) | Review chi tiết code, invariant, tối ưu thật và khoảng trống WP1–WP3 |
 | [reviews/wp1-wp4-final/README.md](reviews/wp1-wp4-final/README.md) | Final logic/code/paper/evidence review WP1–WP4; thay thế trạng thái cũ của review WP1–WP3 |
 | [reviews/wp1-wp5-final/README.md](reviews/wp1-wp5-final/README.md) | Final source/logic/optimization/claim review WP1–WP5 và verdict có điều kiện |
+| [reviews/wp1-wp7-final/README.md](reviews/wp1-wp7-final/README.md) | Final Vietnamese source/logic/code walkthrough WP1–WP7, Candidate proof và FleetPy Layer 2 closure |
+| [reviews/wp1-wp6-final/README.md](reviews/wp1-wp6-final/README.md) | Handoff hiện hành: kiến trúc, logic, file map, paper, benchmark, risk và reproduction WP1–WP6 |
 | [research/README.md](research/README.md) | Archive báo cáo, audit và evidence matrix nền |
 | [wp5-distributed-integration-evidence-2026-08-05.md](research/wp5-distributed-integration-evidence-2026-08-05.md) | Paper/official evidence cho outbox, idempotency, worker lease và crash recovery WP5 |
 
@@ -154,11 +163,12 @@ không chép lại thuật toán RideBound bằng Python hoặc C++.
 ## 8. Mốc hiện tại
 
 - Repository độc lập: `https://github.com/tsunflowerr/RideBound`.
-- WP0 hoàn thành với `RideBound.slnx`; repository hiện có 7 source project và
-  6 test project sau khi WP2 thêm Application và Algorithms test boundary.
-- Logical inventory hiện tại có 133 Contracts, 135 Domain, 69 Application,
-  134 Algorithms, 6 OR-Tools, 71 Runner và 9 Architecture test: tổng **557**.
-  Required `dotnet test RideBound.slnx` pass **557/557** ngày 2026-08-05. Các lần
+- WP0 scaffold bắt đầu với 7 source/2 test project; sau WP6 solution hiện có 9
+  production source project và 9 test project.
+- Logical inventory hiện tại có 135 Contracts, 135 Domain, 69 Application,
+  136 Algorithms, 7 OR-Tools, 72 Runner, 71 Benchmarking.Contracts,
+  135 Benchmarking và 10 Architecture test: tổng **770**. Required
+  `dotnet test RideBound.slnx` pass **770/770** ngày 2026-08-13. Các lần
   `0x800711C7` trước đó được giữ trong `18` như historical environment evidence,
   không còn là blocker hiện tại.
 - BeGo hiện đạt 154/154 backend pass, 0 skip ở cả Debug và Release
@@ -215,6 +225,39 @@ không chép lại thuật toán RideBound bằng Python hoặc C++.
   head operation `Applied`, và concurrent scope riêng theo run; source/claim review kết luận không
   còn correctness blocker cho refinement WP6, nhưng chưa đủ bằng chứng SLA,
   effectiveness hay main experiment. Review ở
-  [reviews/wp1-wp5-final/README.md](reviews/wp1-wp5-final/README.md). Ticket duy nhất
-  tiếp theo là [RB-WP6-001](tasks/33-wp6-common-benchmark-harness-refinement.md)
-  `READY`, chỉ refinement và chưa cho phép viết harness/chạy experiment.
+  [reviews/wp1-wp5-final/README.md](reviews/wp1-wp5-final/README.md). Refinement
+  [RB-WP6-001](tasks/33-wp6-common-benchmark-harness-refinement.md) đã DONE bằng
+  ADR-026/contract v1; `RB-WP6-002` đã hiện thực strict schemas/codecs/identity
+  vectors; `RB-WP6-003` đã khóa/tải/xác minh FleetPy Manhattan public source, safe
+  extract; `RB-WP6-004` đã tạo canonical tiny/medium FleetPy derivatives sau ADR-027
+  hash-DAG correction; `005` đã đóng plan/seed/pairing compiler; ADR-028 + `006` đã
+  đóng exact external Runner/resource supervisor. ADR-029 + `007` đã đóng append-only
+  raw/terminal store, terminal conservation, crash recovery và authorized full-grid
+  rerun. `008` đã đóng mechanical registry, production calculator, executable oracle
+  không ProjectReference, chronology/cohort/window/resource state-machine và exact
+  132-row/metric-set differential gate. ADR-031 + `009` đã đóng deterministic strict
+  BagIt bundle, exact dirty-source/runtime/Runner/oracle/verifier provenance, raw
+  transcript/terminal/grid/metric semantic verification và clean-process sidecar;
+  required full solution đạt 688/688. ADR-032 + `010` đã đóng source-locked
+  machine-readable claim profile, scoped Unicode-aware checker, builder-generated
+  report và independent stage-10 recomputation; required full solution đạt 691/691.
+  ADR-033 + `011` đã đóng tiny paired B1/C1 qua six-run exact Runner/store/oracle/
+  strict-bundle chain ở hai clean Release process, có decision-induced delta thật,
+  typed failure matrix và bundle mechanical-only được verifier độc lập xác nhận;
+  required full solution đạt 705/705. ADR-034/contract `1.0.5` + `012` đã đóng medium
+  FleetPy public derivative qua two-clean-root normalization và hai fresh Release
+  B1/C1 × 3 exact Runner/store/oracle/strict-bundle process; semantic identities khớp,
+  bundles external-verify valid, required full solution đạt 710/710. Instant-drain là
+  nonphysical mechanics và không cho phép effectiveness claim. ADR-035/contract
+  `1.0.6` + `013` đã đóng adversarial determinism/failure/resource:
+  B1/C1 có 1 warm-up + 3 measured, complete provenance/policy preflight, đủ 21
+  failure-stage/8 exclusion matrix, fresh medium D/E 8/8 semantic exact và raw
+  resource strata được giữ. ADR-036 + `014` đã audit source/logic/claim toàn WP1–WP6,
+  chạy fresh tiny + medium H/I trên exact source cuối, external verifier và required
+  full solution 770/770. WP7 sau đó đóng mechanical Layer 2: cùng một Runner binary
+  được adapter gọi external, actual B1/C1 preflight, lifecycle, tiny và public-medium
+  physical loop đều pass/reconcile. ADR-039 tiếp tục khóa các ngữ nghĩa còn thiếu quyết
+  định, thêm work-profile gate và hoàn tất một vòng tối ưu hot path bất biến về kết quả;
+  required suite lên `798/798` và mọi actual receipt chuyển sang Runner v8. Review hiện
+  hành ở [reviews/wp1-wp7-final/README.md](reviews/wp1-wp7-final/README.md). Kết quả vẫn
+  không phải effectiveness, SLA, fairness, non-inferiority hoặc satisfaction claim.

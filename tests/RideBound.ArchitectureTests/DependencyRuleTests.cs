@@ -10,6 +10,9 @@ public sealed class DependencyRuleTests
         {
             ["RideBound.Domain"] = [],
             ["RideBound.Contracts"] = [],
+            ["RideBound.Benchmarking.Contracts"] = ["RideBound.Contracts"],
+            ["RideBound.Benchmarking"] =
+                ["RideBound.Benchmarking.Contracts", "RideBound.Contracts"],
             ["RideBound.Application"] = ["RideBound.Domain"],
             ["RideBound.Algorithms"] =
                 ["RideBound.Application", "RideBound.Domain"],
@@ -72,6 +75,7 @@ public sealed class DependencyRuleTests
     [InlineData("RideBound.Domain")]
     [InlineData("RideBound.Application")]
     [InlineData("RideBound.Contracts")]
+    [InlineData("RideBound.Benchmarking.Contracts")]
     public void Inner_projects_do_not_reference_external_packages(string projectName)
     {
         var projectFile = FindProjectFile(projectName);

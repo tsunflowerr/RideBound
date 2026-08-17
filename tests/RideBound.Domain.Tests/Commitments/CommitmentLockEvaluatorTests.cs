@@ -17,6 +17,7 @@ public sealed class CommitmentLockEvaluatorTests
         var witnesses = new CommitmentLockEvaluator().Evaluate(
             request,
             previous,
+            previous.Projection,
             candidate,
             new SimTime(1_000),
             CommitmentTestData.Policy());
@@ -41,6 +42,7 @@ public sealed class CommitmentLockEvaluatorTests
         var witnesses = new CommitmentLockEvaluator().Evaluate(
             request,
             previous,
+            previous.Projection,
             candidate,
             new SimTime(11_000),
             CommitmentTestData.Policy());
@@ -68,6 +70,7 @@ public sealed class CommitmentLockEvaluatorTests
         var witnesses = new CommitmentLockEvaluator().Evaluate(
             request,
             previous,
+            previous.Projection,
             candidate,
             new SimTime(9_000),
             policy);
@@ -84,6 +87,40 @@ public sealed class CommitmentLockEvaluatorTests
                 Assert.Equal("pickup_stop", witness.Dimension);
                 Assert.Equal("final_confirmation", witness.Rule);
             });
+    }
+
+    [Fact]
+    public void Exogenous_drift_does_not_trip_final_lock_but_candidate_delta_does()
+    {
+        var request = TestData.PendingRequest()
+            .Accept(TestData.VehicleOne).Value!
+            .ConfirmWaitingPickup().Value!;
+        var previous = Published(CommitmentTestData.Projection(
+            pickupEta: 10_000));
+        var exogenous = CommitmentTestData.Projection(pickupEta: 10_008);
+        var policy = CommitmentTestData.Policy(
+            confirmationLocks: PromiseLock.PickupEta);
+        var evaluator = new CommitmentLockEvaluator();
+
+        var noOp = evaluator.Evaluate(
+            request,
+            previous,
+            exogenous,
+            exogenous,
+            new SimTime(2_000),
+            policy);
+        var changedByDecision = evaluator.Evaluate(
+            request,
+            previous,
+            exogenous,
+            CommitmentTestData.Projection(pickupEta: 10_009),
+            new SimTime(2_000),
+            policy);
+
+        Assert.Empty(noOp);
+        var witness = Assert.Single(changedByDecision);
+        Assert.Equal("pickup_eta_ms", witness.Dimension);
+        Assert.Equal("final_confirmation", witness.Rule);
     }
 
     private static PublishedPromise Published(PromiseProjection projection) =>

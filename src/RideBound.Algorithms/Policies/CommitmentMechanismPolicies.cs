@@ -166,7 +166,8 @@ public sealed class FixedFreezeHorizonPolicy
             policies,
             context.StopDistances,
             context.PublicationScope,
-            context.SourceEventSequence);
+            context.SourceEventSequence,
+            initialPromiseTrigger: context.InitialPromiseTrigger);
         var filtered = filter.Filter(
             context.ReducedState,
             generated.VehicleCandidates!);

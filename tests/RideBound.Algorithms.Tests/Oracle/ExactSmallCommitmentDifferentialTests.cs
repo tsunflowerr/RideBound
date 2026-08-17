@@ -261,6 +261,113 @@ public sealed class ExactSmallCommitmentDifferentialTests
     }
 
     [Fact]
+    public void C1_stability_portfolio_is_no_worse_and_has_a_strict_positive_exact_small_witness()
+    {
+        var retainer = new CandidatePortfolioRetainer();
+        var strictPositive = false;
+
+        for (var seed = 0; seed < 128; seed++)
+        {
+            var fixture = CreateState(seed);
+            var generated = new InsertionCandidateGenerator().Generate(
+                fixture.State,
+                CandidateGenerationOptions.ExactSmall);
+            Assert.True(
+                generated.IsSuccess,
+                $"seed={seed}; {generated.Witness?.Message}");
+            var raw = Assert.Single(generated.VehicleCandidates!);
+            var legacyRetention = retainer.Retain(
+                raw.Candidates,
+                3,
+                CandidateRetentionStrategy.LegacyAcceptedCountCostSlack);
+            var portfolioRetention = retainer.Retain(
+                raw.Candidates,
+                3,
+                CandidateRetentionStrategy.ServiceSetStabilityPortfolioV1);
+            var legacyRaw = new[]
+            {
+                raw with { Candidates = legacyRetention.Retained },
+            };
+            var portfolioRaw = new[]
+            {
+                raw with { Candidates = portfolioRetention.Retained },
+            };
+            var context = MechanismContext(fixture, $"c1-retention-{seed}");
+            var legacyAssessed = new HardVectorCandidateAssessor()
+                .AssessAndFilter(context, legacyRaw);
+            var portfolioAssessed = new HardVectorCandidateAssessor()
+                .AssessAndFilter(context, portfolioRaw);
+
+            Assert.True(
+                legacyAssessed.IsSuccess,
+                $"seed={seed}; {legacyAssessed.Witness?.Message}");
+            Assert.True(
+                portfolioAssessed.IsSuccess,
+                $"seed={seed}; {portfolioAssessed.Witness?.Message}");
+            var legacySelection = new HardVectorFleetSelector().Select(
+                legacyAssessed.Batch!.FeasibleCandidateSets,
+                legacyAssessed.Batch.Assessments);
+            var portfolioSelection = new HardVectorFleetSelector().Select(
+                portfolioAssessed.Batch!.FeasibleCandidateSets,
+                portfolioAssessed.Batch.Assessments);
+            Assert.True(
+                legacySelection.IsSuccess,
+                $"seed={seed}; {legacySelection.Witness?.Message}");
+            Assert.True(
+                portfolioSelection.IsSuccess,
+                $"seed={seed}; {portfolioSelection.Witness?.Message}");
+
+            var comparison = CompareC1(
+                portfolioSelection.Selection!,
+                legacySelection.Selection!);
+            Assert.True(
+                comparison <= 0,
+                $"seed={seed}; portfolio C1 objective regressed.");
+            strictPositive |= comparison < 0;
+
+            var legacyDecision = new RideBoundHardVectorPolicy().Decide(
+                context,
+                new CandidateGenerationOptions(
+                    3,
+                    2,
+                    exactSmallMode: false,
+                    retentionStrategy: CandidateRetentionStrategy
+                        .LegacyAcceptedCountCostSlack));
+            var portfolioDecision = new RideBoundHardVectorPolicy().Decide(
+                context,
+                new CandidateGenerationOptions(
+                    3,
+                    2,
+                    exactSmallMode: false,
+                    retentionStrategy: CandidateRetentionStrategy
+                        .ServiceSetStabilityPortfolioV1));
+            Assert.True(
+                legacyDecision.IsSuccess,
+                $"seed={seed}; {legacyDecision.Witness?.Message}");
+            Assert.True(
+                portfolioDecision.IsSuccess,
+                $"seed={seed}; {portfolioDecision.Witness?.Message}");
+            var productionComparison = CompareC1(
+                ToFleetSelection(portfolioDecision.Decision!),
+                ToFleetSelection(legacyDecision.Decision!));
+            Assert.True(
+                productionComparison <= 0,
+                $"seed={seed}; production portfolio C1 objective regressed.");
+            Assert.Equal(
+                portfolioSelection.Selection!.VehiclePlans
+                    .Select(plan => plan.Candidate.CandidateId),
+                portfolioDecision.Decision!.VehiclePlans
+                    .Select(plan => plan.Candidate.CandidateId));
+            strictPositive |= productionComparison < 0;
+        }
+
+        Assert.True(
+            strictPositive,
+            "At least one published exact-small seed must strictly improve the " +
+            "C1 lexicographic objective; otherwise the strategy stays gated.");
+    }
+
+    [Fact]
     public void C1_normalization_uses_exact_ceiling_without_long_overflow()
     {
         Assert.Equal(
@@ -404,6 +511,88 @@ public sealed class ExactSmallCommitmentDifferentialTests
         Assert.Equal(
             "INVALID_COMMITMENT_WARNING_LIMIT",
             assessed.Witness!.Code);
+    }
+
+    [Fact]
+    public void C1_fails_closed_with_a_typed_witness_when_a_vehicle_loses_every_candidate()
+    {
+        // A configuration whose policy catalog does not declare the policy the
+        // requests were booked under is exactly the misconfiguration that must
+        // never degrade into a silently empty candidate set: the solver would
+        // then face a vehicle with no selectable option. This asserts the
+        // fail-closed contract and that the diagnosis is machine-readable.
+        var fixture = CreateState(seed: 3);
+        var generated = new InsertionCandidateGenerator().Generate(
+            fixture.State,
+            CandidateGenerationOptions.ExactSmall);
+        Assert.True(generated.IsSuccess, generated.Witness?.Message);
+        var undeclared = new CommitmentPolicy(
+            "undeclared-policy-v1",
+            CommitmentBudgetBasis.DecisionInduced,
+            CommitmentDimensionVocabulary.Ordered.Select(
+                dimension => new CommitmentDimensionLimit(
+                    dimension,
+                    null,
+                    CommitmentPhase.AllActive)),
+            new MaterialRevisionRule(1_000, null));
+        var context = new CommitmentMechanismContext(
+            fixture.BeforeEventState,
+            fixture.State,
+            new CommitmentPolicyCatalog([undeclared]),
+            NoDistances.Instance,
+            "c1-hard-empty",
+            1);
+
+        var assessed = new HardVectorCandidateAssessor().AssessAndFilter(
+            context,
+            generated.VehicleCandidates!);
+
+        Assert.False(assessed.IsSuccess);
+        var witness = assessed.Witness!;
+        Assert.Equal(
+            CommitmentFailureCodes.VehicleHasNoFeasibleCandidate,
+            witness.Code);
+        Assert.Equal(AlgorithmTestData.VehicleOne, witness.VehicleId);
+
+        // Every diagnostic field must be typed rather than parsed out of prose.
+        Assert.NotNull(witness.CandidateId);
+        Assert.NotNull(witness.UnderlyingCode);
+        Assert.Equal(
+            generated.VehicleCandidates!.Single().Candidates.Count,
+            witness.GeneratedCandidateCount);
+        Assert.Equal(
+            witness.GeneratedCandidateCount,
+            witness.RejectedCandidateCount);
+        Assert.DoesNotContain("firstCode=", witness.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void C1_fails_closed_when_a_vehicle_set_carries_no_candidate_at_all()
+    {
+        var fixture = CreateState(seed: 3);
+        var context = MechanismContext(fixture, "c1-empty-set");
+        var empty = new[]
+        {
+            new VehicleCandidateSet(
+                AlgorithmTestData.VehicleOne,
+                [],
+                [],
+                false,
+                new VehicleCandidateLoss(
+                    0, 0, 0, 0, 0, 0, 0, false, false, false, 0, 0, 0)),
+        };
+
+        var assessed = new HardVectorCandidateAssessor().AssessAndFilter(
+            context,
+            empty);
+
+        Assert.False(assessed.IsSuccess);
+        Assert.Equal(
+            CommitmentFailureCodes.VehicleHasNoFeasibleCandidate,
+            assessed.Witness!.Code);
+        Assert.Equal(AlgorithmTestData.VehicleOne, assessed.Witness.VehicleId);
+        Assert.Null(assessed.Witness.CandidateId);
+        Assert.Equal(0, assessed.Witness.GeneratedCandidateCount);
     }
 
     private static IReadOnlySet<string> RetainedKeys(
@@ -691,6 +880,53 @@ public sealed class ExactSmallCommitmentDifferentialTests
 
     private static long Difference(SimTime left, SimTime right) =>
         Math.Abs(left.Milliseconds - right.Milliseconds);
+
+    private static int CompareC1(FleetSelection left, FleetSelection right)
+    {
+        var accepted = right.AcceptedRequestCount.CompareTo(
+            left.AcceptedRequestCount);
+
+        if (accepted != 0)
+        {
+            return accepted;
+        }
+
+        var utilization = left.WorstHardUtilizationPartsPerMillion!.Value.CompareTo(
+            right.WorstHardUtilizationPartsPerMillion!.Value);
+
+        if (utilization != 0)
+        {
+            return utilization;
+        }
+
+        foreach (var dimension in CommitmentDimensionVocabulary.Ordered)
+        {
+            var revision = left.DecisionInducedRevision!.Get(dimension).CompareTo(
+                right.DecisionInducedRevision!.Get(dimension));
+
+            if (revision != 0)
+            {
+                return revision;
+            }
+        }
+
+        var cost = left.OperationalCost.CompareTo(right.OperationalCost);
+
+        if (cost != 0)
+        {
+            return cost;
+        }
+
+        return 0;
+    }
+
+    private static FleetSelection ToFleetSelection(RollingCostDecision decision) =>
+        new(
+            decision.VehiclePlans,
+            decision.AcceptedRequestCount,
+            decision.OperationalCost,
+            decision.DecisionInducedRevision,
+            decision.WorstHardUtilizationPartsPerMillion);
 
     private static string SemanticKey(InsertionCandidate candidate) =>
         string.Join(

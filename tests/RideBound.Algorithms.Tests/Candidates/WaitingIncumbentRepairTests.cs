@@ -1,6 +1,7 @@
 using RideBound.Algorithms.Candidates;
 using RideBound.Algorithms.Policies;
 using RideBound.Application.State;
+using RideBound.Application.Travel;
 using RideBound.Domain.Common;
 using RideBound.Domain.Requests;
 using RideBound.Domain.Routes;
@@ -259,6 +260,38 @@ public sealed class WaitingIncumbentRepairTests
                 .AssignedVehicleId);
     }
 
+    [Fact]
+    public void Bounded_B4_root_priority_projects_every_repair_seed_before_work_is_spent()
+    {
+        var fixture = CreateTwoIncumbents();
+        var seeds = new WaitingIncumbentRepairSeedBuilder().Build(
+            fixture.State,
+            fixture.Vehicle,
+            maximumRequestsConsidered: 2);
+        Assert.True(seeds.Seeds.Count > 1);
+
+        var slackBuilder = new RecordingSlackBuilder();
+        var generator = new InsertionCandidateGenerator(
+            slackCache: new ForwardSlackProfileCache(slackBuilder));
+        var result = generator.Generate(
+            fixture.State,
+            new CandidateGenerationOptions(
+                maximumCandidatesPerVehicle: 1_000,
+                maximumNewRequestsPerVehicle: 0,
+                exactSmallMode: false,
+                maximumExplorationWorkUnits: 1,
+                maximumRepairRequestsConsideredPerVehicle: 2));
+
+        Assert.True(result.IsSuccess, result.Witness?.Message);
+        Assert.True(Assert.Single(result.Diagnostics!.VehicleLosses)
+            .WorkBudgetExhausted);
+        Assert.True(
+            seeds.Seeds.All(
+                seed => slackBuilder.RouteFingerprints.Contains(RouteKey(seed.Route))),
+            "Each repair root must be ranked using the slack profile of its " +
+            "own route before a tight work cap can choose which root to expand.");
+    }
+
     private static Fixture CreateTwoIncumbents()
     {
         var first = AlgorithmTestData.PendingRequest(
@@ -324,6 +357,48 @@ public sealed class WaitingIncumbentRepairTests
         route.MutableSuffix
             .Select((stop, index) => (stop, index))
             .First(pair => pair.stop.RequestId == requestId).index;
+
+    private sealed class RecordingSlackBuilder : IForwardSlackProfileBuilder
+    {
+        public ISet<string> RouteFingerprints { get; } =
+            new HashSet<string>(StringComparer.Ordinal);
+
+        public ForwardSlackProfileBuildResult Build(
+            OnlineState state,
+            VehicleState vehicle,
+            RoutePlan route,
+            TravelTimeSnapshot travelTimes,
+            SimTime evaluationTime)
+        {
+            RouteFingerprints.Add(RouteKey(route));
+            var stops = route.RemainingStops
+                .Select(
+                    (stop, index) => new ForwardSlackStop(
+                        stop.StopId,
+                        new SimTime(index),
+                        new SimTime(index),
+                        new SimTime(index),
+                        WaitingBeforeServiceMilliseconds: 0,
+                        LocalDeadlineSlackMilliseconds: 10_000,
+                        CertifiedDelayBeforeArrivalMilliseconds: 10_000))
+                .ToArray();
+            var schedule = new CandidateSchedule(
+                stops.Select(
+                    stop => new ScheduledStop(
+                        stop.StopId,
+                        stop.ArrivalTime,
+                        stop.ServiceStartTime,
+                        stop.DepartureTime)).ToArray(),
+                OperationalCost: 0);
+            return ForwardSlackProfileBuildResult.Success(
+                new ForwardSlackProfile(schedule, stops, 10_000));
+        }
+    }
+
+    private static string RouteKey(RoutePlan route) => string.Join(
+        "|",
+        route.RemainingStops.Select(
+            stop => $"{stop.StopId.Value}:{stop.RequestId?.Value ?? "none"}"));
 
     private sealed record Fixture(
         OnlineState State,

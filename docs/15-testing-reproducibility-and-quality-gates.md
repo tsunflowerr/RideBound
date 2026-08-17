@@ -239,6 +239,16 @@ exclusion/failure log
 environment fingerprint
 ```
 
+Từ ADR-026, WP6 bundle là strict BagIt-compatible directory: `bagit.txt`,
+`bag-info.txt`, payload dưới `data/`, `manifest-sha256.txt` và
+`tagmanifest-sha256.txt`. Verifier phải reject missing/extra file, duplicate hoặc
+non-canonical path, traversal, symlink/reparse point, case collision, digest mismatch,
+schema/identity mismatch, provenance/metric inconsistency và claim vượt profile.
+RFC 8785 chỉ là nguồn tham khảo; RideBound dùng canonical JSON subset chặt hơn
+(integer/string/bool/array/object, no null/float, ordinal property order) và không
+claim full JCS conformance. BagIt compatibility cũng không tự cấp ACM badge hay bằng
+chứng independent reproduction/replication.
+
 Một người khác phải chạy được tiny/medium reproduction trước khi gọi release.
 
 ## 13. Quality gates theo mức
@@ -419,6 +429,41 @@ chỉ có thể được xét sau WP6–WP9.
 
 Q2 đã đạt mechanical gate; vẫn không bắt đầu full confirmatory experiments trước
 WP5–WP8 adapter, harness, pilot và preregistration gates.
+
+### WP6 common harness closure
+
+ADR-036/`RB-WP6-014` đã audit source thay vì chỉ test inventory và chạy lại exact
+external chain. Tiny A 8/8 và medium H/I 8/8 mỗi process; H/I khớp 16 top-level +
+72 per-run semantic fields, khác 8/8 resource rows hợp lệ; ba bundles được verifier
+Release process riêng xác nhận. Required `dotnet test RideBound.slnx` pass 770/770;
+Contracts/Runner load và WAC không tái hiện. Gate này đóng WP6 mechanical harness,
+không đóng Q4–Q6.
+
+### WP7 FleetPy Layer-2 closure
+
+ADR-038 đóng Layer 2 ở mức mechanical, không phải quality/effectiveness. ADR-039 giữ
+nguyên phạm vi đó và bổ sung hai gate. Gate source hiện hành gồm Candidate portfolio/
+repair differential tests, full `dotnet test RideBound.slnx` `798/798`, format sạch,
+Release `-warnaserror` sạch, actual pinned Python adapter `50/50` không skip, capability
+probe và B1/C1 same-Runner v8 preflight/lifecycle/tiny/public-medium loops. Medium chạy
+ba repeat mỗi arm và verifier đọc bundle từ transcript/manifest.
+
+Hai gate bổ sung của ADR-039:
+
+- **work-profile gate.** `CandidateSearchWorkProfileTests` khóa chính xác work unit,
+  evaluated path, feasible-before-cap, omitted path, retained count và số profile slack
+  riêng biệt cho bốn kích thước route. Mọi tối ưu hiệu năng ở Candidate core phải giữ
+  nguyên toàn bộ các số này; đo bằng đếm, không đo bằng đồng hồ.
+- **cross-binary differential.** Semantic hash actual bind `binarySha256`, nên khi đổi
+  Runner artifact phải so các trường hành vi thay vì hash tổng hợp, và phải dùng **cùng
+  một label** vì label chảy vào `run_id` rồi vào manifest.
+
+Các invariant bổ sung không chỉ là branch coverage: B4 repair root phải được đánh giá
+trên suffix đã repair trước bounded work selection; portfolio opt-in phải preserve no-op
+stops và khai báo chính xác mọi request mới, rồi B1 anchor proof mới được phép dùng.
+Tất cả timing/publication count vẫn là raw diagnostics. Không dùng chúng để kết luận arm
+nào nhanh hơn/tốt hơn, SLA hay satisfaction. Receipt chi tiết nằm ở
+[`wp7-014-fleetpy-layer2-closure-evidence-2026-08-15.md`](benchmarking/wp7-014-fleetpy-layer2-closure-evidence-2026-08-15.md).
 
 ## 14. Definition of done cho một code task
 

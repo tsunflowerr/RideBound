@@ -108,16 +108,12 @@ public sealed class RoutePlan
                 dimension: "executedStopCount");
         }
 
-        var duplicate = frozen.Concat(mutable)
-            .GroupBy(stop => stop.StopId)
-            .FirstOrDefault(group => group.Count() > 1);
-
-        if (duplicate is not null)
+        if (FindDuplicateStopId(frozen, mutable) is { } duplicate)
         {
             return DomainResult<RoutePlan>.Fail(
                 RouteFailureCodes.DuplicateStop,
-                $"Route stop '{duplicate.Key}' appears more than once.",
-                duplicate.Key.Value,
+                $"Route stop '{duplicate}' appears more than once.",
+                duplicate.Value,
                 "stopId");
         }
 
@@ -127,6 +123,48 @@ public sealed class RoutePlan
                 (int)executedStopCount,
                 Array.AsReadOnly(frozen),
                 Array.AsReadOnly(mutable)));
+    }
+
+    /// <summary>
+    /// Reports the first stop identifier that occurs more than once, in
+    /// first-occurrence order. That is exactly the key a
+    /// <c>GroupBy(...).FirstOrDefault(group =&gt; group.Count() &gt; 1)</c> would
+    /// select, but without allocating a grouping for a route that is rebuilt
+    /// once per explored candidate.
+    /// </summary>
+    private static StopId? FindDuplicateStopId(
+        RouteStop[] frozen,
+        RouteStop[] mutable)
+    {
+        var counts = new Dictionary<StopId, int>(frozen.Length + mutable.Length);
+
+        foreach (var stop in frozen)
+        {
+            counts[stop.StopId] = counts.GetValueOrDefault(stop.StopId) + 1;
+        }
+
+        foreach (var stop in mutable)
+        {
+            counts[stop.StopId] = counts.GetValueOrDefault(stop.StopId) + 1;
+        }
+
+        foreach (var stop in frozen)
+        {
+            if (counts[stop.StopId] > 1)
+            {
+                return stop.StopId;
+            }
+        }
+
+        foreach (var stop in mutable)
+        {
+            if (counts[stop.StopId] > 1)
+            {
+                return stop.StopId;
+            }
+        }
+
+        return null;
     }
 
     public RoutePlan CreateNoOp() => this;

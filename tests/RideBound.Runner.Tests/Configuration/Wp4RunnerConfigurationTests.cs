@@ -1,6 +1,8 @@
 using System.Reflection;
 using System.Text;
+using RideBound.Algorithms.Candidates;
 using RideBound.Algorithms.Policies;
+using RideBound.Application.Commitments;
 using RideBound.Domain.Commitments;
 using RideBound.Runner.Configuration;
 using RideBound.Solvers.OrTools;
@@ -9,6 +11,38 @@ namespace RideBound.Runner.Tests.Configuration;
 
 public sealed class Wp4RunnerConfigurationTests
 {
+    [Theory]
+    [InlineData("wp7-fleetpy-rolling-cost-v1.json", "rolling-cost")]
+    [InlineData(
+        "wp7-fleetpy-ridebound-hard-vector-v1.json",
+        "ridebound-hard-vector")]
+    public void Wp7_fleetpy_configs_explicitly_bind_the_portfolio_strategy(
+        string fileName,
+        string policyId)
+    {
+        var commitment = CommitmentConfiguration();
+        var configuration = Wp4RunnerConfiguration.Decode(
+            File.ReadAllBytes(Path.Combine(
+                RepositoryRoot(),
+                "benchmarks",
+                "configurations",
+                fileName)),
+            commitment);
+
+        Assert.Equal(policyId, configuration.PolicyId);
+        Assert.Equal("wp7-fleetpy-v1", configuration.PolicyVersion);
+        Assert.Equal(
+            InitialPromiseTrigger.BookingConfirmation,
+            configuration.InitialPromiseTrigger);
+        Assert.Equal(
+            CandidateRetentionStrategy.ServiceSetStabilityPortfolioV1,
+            configuration.CandidateGeneration.RetentionStrategy);
+        Assert.NotEqual(
+            configuration.ContentHash,
+            configuration.BindToCommitmentConfiguration(
+                commitment.ContentHash));
+    }
+
     [Fact]
     public void Published_configuration_is_strict_and_binds_both_configuration_hashes()
     {
@@ -31,10 +65,66 @@ public sealed class Wp4RunnerConfigurationTests
             "google-ortools-9.15.6755");
         Assert.NotNull(first.SolverPolicyOptions);
         Assert.Null(first.MultiplePlanOptions);
+        Assert.Equal(
+            CandidateRetentionStrategy.LegacyAcceptedCountCostSlack,
+            first.CandidateGeneration.RetentionStrategy);
+        Assert.Equal(
+            InitialPromiseTrigger.InitialAcceptance,
+            first.InitialPromiseTrigger);
         Assert.Equal(first.ContentHash, second.ContentHash);
         Assert.NotEqual(first.ContentHash, binding);
         Assert.NotEqual(commitment.ContentHash, binding);
         Assert.Equal(64, binding.Value.Length);
+    }
+
+    [Fact]
+    public void Candidate_retention_strategy_is_explicit_for_new_configs_and_legacy_when_absent()
+    {
+        var commitment = CommitmentConfiguration();
+        var legacy = Wp4RunnerConfiguration.Decode(
+            Encoding.UTF8.GetBytes(PublishedJson()),
+            commitment);
+        var portfolioJson = PublishedJson().Replace(
+            "\"scheduleStrategy\": \"earliest-feasible\"",
+            "\"scheduleStrategy\": \"earliest-feasible\",\n    " +
+            "\"retentionStrategy\": \"service-set-stability-portfolio-v1\"",
+            StringComparison.Ordinal);
+        var portfolio = Wp4RunnerConfiguration.Decode(
+            Encoding.UTF8.GetBytes(portfolioJson),
+            commitment);
+
+        Assert.Equal(
+            CandidateRetentionStrategy.LegacyAcceptedCountCostSlack,
+            legacy.CandidateGeneration.RetentionStrategy);
+        Assert.Equal(
+            CandidateRetentionStrategy.ServiceSetStabilityPortfolioV1,
+            portfolio.CandidateGeneration.RetentionStrategy);
+        Assert.Equal(
+            InitialPromiseTrigger.InitialAcceptance,
+            portfolio.InitialPromiseTrigger);
+
+        var unknown = portfolioJson.Replace(
+            "service-set-stability-portfolio-v1",
+            "unknown-retention",
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "retentionStrategy",
+            Assert.Throws<InvalidDataException>(
+                () => Wp4RunnerConfiguration.Decode(
+                    Encoding.UTF8.GetBytes(unknown),
+                    commitment)).Message);
+
+        var unknownTrigger = portfolioJson.Replace(
+            "\"policyVersion\": \"wp4-boundary-v1\"",
+            "\"policyVersion\": \"wp4-boundary-v1\",\n  " +
+            "\"initialPromiseTrigger\": \"unknown-trigger\"",
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "initialPromiseTrigger",
+            Assert.Throws<InvalidDataException>(
+                () => Wp4RunnerConfiguration.Decode(
+                    Encoding.UTF8.GetBytes(unknownTrigger),
+                    commitment)).Message);
     }
 
     [Fact]

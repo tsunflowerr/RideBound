@@ -2,6 +2,7 @@ using RideBound.Application.Events;
 using RideBound.Application.Travel;
 using RideBound.Domain.Common;
 using RideBound.Domain.Incidents;
+using RideBound.Domain.Requests;
 using RideBound.Domain.Runs;
 using RideBound.Domain.Vehicles;
 
@@ -188,6 +189,11 @@ public sealed class EventReducer
             RequestArrived arrived => run.AddRequest(arrived.Request),
             BookingConfirmed confirmed =>
                 run.ConfirmWaitingPickup(confirmed.RequestId),
+            OfferDeclined declined when run.Requests.TryGetValue(
+                    declined.RequestId,
+                    out var offered)
+                && offered.Lifecycle == RequestLifecycle.Accepted =>
+                run.CancelAfterAcceptance(declined.RequestId),
             OfferDeclined declined => run.RejectRequest(declined.RequestId),
             RequestCancelledBeforeAcceptance cancelled =>
                 run.CancelBeforeAcceptance(cancelled.RequestId),

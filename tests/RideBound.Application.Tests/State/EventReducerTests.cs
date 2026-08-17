@@ -327,6 +327,58 @@ public sealed class EventReducerTests
     }
 
     [Fact]
+    public void Provisional_accepted_offer_decline_removes_assignment_and_route_stops()
+    {
+        var request = ApplicationTestData.Request();
+        var route = RoutePlan.Create(
+            new PlanVersion(1),
+            0,
+            [],
+            [
+                new RouteStop(
+                    new StopId("offered-pickup"),
+                    request.OriginNodeId,
+                    RouteStopKind.Pickup,
+                    request.Id,
+                    new Duration(0)),
+                new RouteStop(
+                    new StopId("offered-drop"),
+                    request.DestinationNodeId,
+                    RouteStopKind.DropOff,
+                    request.Id,
+                    new Duration(0)),
+            ]).Value!;
+        var run = ApplicationTestData.InitialState().Run
+            .AddRequest(request).Value!
+            .BootstrapVehicle(ApplicationTestData.Vehicle()).Value!
+            .UpdateVehicleRoute(ApplicationTestData.VehicleId, route).Value!
+            .AcceptRequest(request.Id, ApplicationTestData.VehicleId).Value!
+            .AdvanceEpoch(1, new SimTime(1_000)).Value!;
+        var state = Committed(run);
+        var time = new SimTime(1_100);
+
+        var result = new EventReducer().Reduce(
+            state,
+            new InternalEventBatch(
+                ApplicationTestData.RunId,
+                ApplicationTestData.ScenarioId,
+                2,
+                time,
+                [new OfferDeclined(4, time, request.Id)]));
+
+        Assert.True(result.IsSuccess, result.Witness?.Message);
+        var proposed = result.ProposedState!.Run;
+        Assert.Equal(
+            RequestLifecycle.CancelledAfterAcceptance,
+            proposed.Requests[request.Id].Lifecycle);
+        var vehicle = proposed.Vehicles[ApplicationTestData.VehicleId];
+        Assert.DoesNotContain(request.Id, vehicle.AcceptedRequestIds);
+        Assert.DoesNotContain(
+            vehicle.Route.RemainingStops,
+            stop => stop.RequestId == request.Id);
+    }
+
+    [Fact]
     public void Booking_boarding_and_alighting_update_request_and_vehicle_together()
     {
         var route = RoutePlan.Create(

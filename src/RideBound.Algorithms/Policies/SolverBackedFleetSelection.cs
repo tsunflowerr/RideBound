@@ -217,16 +217,24 @@ public sealed class SolverBackedFleetSelector
                     group => group.Single(),
                     StringComparer.Ordinal);
 
-            if (orderedSets.Count(set => set.Candidates.Count != 0)
-                    != orderedSets.Length
-                || candidateMap.Count != allCandidates.Length)
+            if (orderedSets.Any(set => set.Candidates.Count == 0))
             {
                 return Failure(
                     candidateMap,
                     profile,
                     revisionAssessments,
                     hardAssessments,
-                    "Every vehicle needs candidates with globally unique IDs.");
+                    "Every vehicle needs at least one feasible candidate.");
+            }
+
+            if (candidateMap.Count != allCandidates.Length)
+            {
+                return Failure(
+                    candidateMap,
+                    profile,
+                    revisionAssessments,
+                    hardAssessments,
+                    "Candidate IDs must be globally unique across the fleet.");
             }
 
             if (profile == SolverBackedObjectiveProfile.RevisionPenalty

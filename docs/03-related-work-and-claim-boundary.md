@@ -90,6 +90,9 @@ Kết luận: ETA update, max delay, reassignment và consent riêng lẻ không
 | [FleetPy, ETRR 2026](https://doi.org/10.1186/s12544-026-00823-3) | Simulator chung, benchmark Manhattan/Chicago/Munich | Không tự chứng minh thuật toán tốt |
 | [RidePy, JOSS 2024](https://doi.org/10.21105/joss.06241) | Simulator độc lập, dispatcher/event analytics | Không có sẵn RideBound semantics |
 | [Optimal Online Dispatch, ICRA 2021](https://www.cs.bham.ac.uk/~parkerdx/papers/icra21samod.pdf) | OSP/online dispatch baseline trong AMoD2 | Tối ưu schedule không đồng nghĩa ổn định lời hứa |
+| Savelsbergh 1992, forward time slack | Định nghĩa gốc của slack mà `ForwardSlackProfile` hiện thực | Slack là early prune, không thay full validator |
+| Cordeau & Laporte 2003, eight-step scheme | Mô tả đúng lớp chi phí RideBound đang trả khi dựng lại lịch cho từng candidate | Không phải chuẩn tối ưu; chỉ là baseline chi phí |
+| [Gschwind & Drexl, Transportation Science 2019](https://doi.org/10.1287/trsc.2018.0837) | Constant-time insertion feasibility test, exact, báo `3,8×` so eight-step | **Chưa áp dụng.** Full text chưa đọc được ngày 2026-08-17; chỉ phủ chiều thời gian, không phủ capacity/connectivity/frozen prefix/commitment budget |
 
 ## 5. Framework đã xác minh ngày 2026-07-27
 
@@ -180,3 +183,20 @@ Audit này làm hẹp, không mở rộng, claim:
 Vì vậy WP3 không được gọi là “solver tối ưu mới”. Nó là correctness mechanism.
 Hiệu quả vận hành và các tối ưu plan-pool/slack/solver phải được kiểm chứng ở WP4+
 trên cùng candidate/compute budget trước khi nâng claim ladder.
+
+## 9. Recheck khi đóng WP6 — 2026-08-13
+
+In-app Browser đối chiếu lại Alonso-Mora 2017, Simonetto 2019, Santi 2014,
+Ackermann–Rieck 2025, Engelhardt et al. speed-up heuristic và FleetPy sources.
+Kết quả không mở novelty claim:
+
+- request-trip-vehicle graph, sparse assignment, shareability network, multiple-plan,
+  direction/distance filtering và dynamic insertion đều có tiền lệ;
+- paper speed-up thừa nhận quality trade-off, nên WP4 không được cắt candidate khi
+  chưa có exact/differential loss evidence và full revalidation;
+- multiple-plan/consensus không luôn tốt, nên B5 là comparator tách biệt;
+- WP6 public derivative là mechanics/provenance evidence, không phải FleetPy
+  closed-loop hoặc effectiveness result.
+
+ADR-036 chỉ đóng mechanical correctness/reproducibility của WP1–WP6. Claim ladder
+vẫn dừng ở tầng 2; tầng 3–5 phải chờ WP7–WP10 và preregistration.

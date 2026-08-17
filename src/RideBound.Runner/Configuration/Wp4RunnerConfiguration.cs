@@ -1,9 +1,9 @@
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using RideBound.Algorithms.Candidates;
 using RideBound.Algorithms.Commitments;
 using RideBound.Algorithms.Policies;
+using RideBound.Application.Commitments;
 using RideBound.Application.Optimization;
 using RideBound.Contracts.Protocol;
 using RideBound.Contracts.Serialization;
@@ -15,24 +15,30 @@ namespace RideBound.Runner.Configuration;
 
 public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
 {
-    private static readonly byte[] BindingDomain =
-        "RideBound.Wp4RunnerConfigurationBinding.v1\0"u8.ToArray();
     private static readonly IReadOnlySet<string> RootFields = Fields(
         "configurationVersion",
         "policyId",
         "policyVersion",
+        "initialPromiseTrigger",
         "candidateGeneration",
         "solverExecution",
         "fixedFreeze",
         "repair",
         "multiplePlan",
         "warningProfiles");
-    private static readonly IReadOnlySet<string> GenerationFields = Fields(
+    private static readonly IReadOnlySet<string> GenerationRequiredFields = Fields(
         "maximumCandidatesPerVehicle",
         "maximumNewRequestsPerVehicle",
         "exactSmallMode",
         "scheduleStrategy",
         "maximumExplorationWorkUnits");
+    private static readonly IReadOnlySet<string> GenerationFields = Fields(
+        "maximumCandidatesPerVehicle",
+        "maximumNewRequestsPerVehicle",
+        "exactSmallMode",
+        "scheduleStrategy",
+        "maximumExplorationWorkUnits",
+        "retentionStrategy");
     private static readonly IReadOnlySet<string> SolverFields = Fields(
         "adapterVersion",
         "maximumGenerationWorkUnits",
@@ -61,6 +67,7 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
         Sha256Hex contentHash,
         string policyId,
         string policyVersion,
+        InitialPromiseTrigger initialPromiseTrigger,
         CandidateGenerationOptions candidateGeneration,
         SolverBackedRidePoolingPolicyOptions? solverPolicyOptions,
         MultiplePlanPoolOptions? multiplePlanOptions,
@@ -69,6 +76,7 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
         ContentHash = contentHash;
         PolicyId = policyId;
         PolicyVersion = policyVersion;
+        InitialPromiseTrigger = initialPromiseTrigger;
         CandidateGeneration = candidateGeneration;
         SolverPolicyOptions = solverPolicyOptions;
         MultiplePlanOptions = multiplePlanOptions;
@@ -80,6 +88,8 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
     public string PolicyId { get; }
 
     public string PolicyVersion { get; }
+
+    public InitialPromiseTrigger InitialPromiseTrigger { get; }
 
     public CandidateGenerationOptions CandidateGeneration { get; }
 
@@ -96,14 +106,46 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
         Sha256Hex commitmentConfigurationHash)
     {
         ArgumentNullException.ThrowIfNull(commitmentConfigurationHash);
-        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-        hash.AppendData(BindingDomain);
-        hash.AppendData(Convert.FromHexString(commitmentConfigurationHash.Value));
-        hash.AppendData(Convert.FromHexString(ContentHash.Value));
-        _ = Sha256Hex.TryCreate(
-            Convert.ToHexStringLower(hash.GetHashAndReset()),
-            out var bound);
-        return bound!;
+        return Wp4PolicyConfigurationBinding.Calculate(
+            commitmentConfigurationHash,
+            ContentHash);
+    }
+
+    public SolverBackedRidePoolingPolicyOptions CreateSolverPolicyOptionsForRun(
+        long manifestSolverSeed)
+    {
+        var source = SolverPolicyOptions
+            ?? throw new InvalidOperationException(
+                "The selected WP4 policy does not use the solver-backed path.");
+        var sourceExecution = source.ExecutionBudget;
+        var sourceSolver = sourceExecution.SolverBudget;
+        var solver = DeterministicSolverBudget.Create(
+            sourceSolver.MaximumWorkUnits,
+            sourceSolver.MaximumDeterministicTimeMicros,
+            manifestSolverSeed);
+
+        if (!solver.IsSuccess)
+        {
+            throw new InvalidDataException(
+                "Manifest solver seed is outside the deterministic solver range.");
+        }
+
+        var execution = DeterministicCandidateSelectionExecutionBudget.Create(
+            sourceExecution.MaximumGenerationWorkUnits,
+            sourceExecution.MaximumValidationWorkUnits,
+            solver.Value!);
+
+        if (!execution.IsSuccess)
+        {
+            throw new InvalidDataException(execution.Failure!.Message);
+        }
+
+        return new SolverBackedRidePoolingPolicyOptions(
+            source.PolicyKind,
+            execution.Value!,
+            source.FreezeHorizon,
+            source.FreezeLocks,
+            source.MaximumRepairRequestsConsideredPerVehicle);
     }
 
     public static Wp4RunnerConfiguration Decode(
@@ -147,6 +189,20 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
             throw new InvalidDataException(
                 "WP4 policyVersion must be an opaque protocol identifier.");
         }
+
+        var initialPromiseTrigger = root.TryGetProperty(
+            "initialPromiseTrigger",
+            out _)
+                ? Text(root, "initialPromiseTrigger") switch
+                {
+                    "initial-acceptance" =>
+                        InitialPromiseTrigger.InitialAcceptance,
+                    "booking-confirmation" =>
+                        InitialPromiseTrigger.BookingConfirmation,
+                    _ => throw new InvalidDataException(
+                        "Unknown initialPromiseTrigger."),
+                }
+                : InitialPromiseTrigger.InitialAcceptance;
 
         var generation = ReadGeneration(root.GetProperty("candidateGeneration"));
         var hasSolver = root.TryGetProperty("solverExecution", out var solverElement);
@@ -241,6 +297,7 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
             contentHash!,
             policyId,
             policyVersion,
+            initialPromiseTrigger,
             generation,
             solverOptions,
             multipleOptions,
@@ -252,7 +309,7 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
         RequireObject(
             element,
             GenerationFields,
-            GenerationFields,
+            GenerationRequiredFields,
             "$.candidateGeneration");
         var strategy = Text(element, "scheduleStrategy") switch
         {
@@ -262,6 +319,19 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
             _ => throw new InvalidDataException(
                 "Unknown candidate scheduleStrategy."),
         };
+        var retentionStrategy = element.TryGetProperty(
+            "retentionStrategy",
+            out _)
+                ? Text(element, "retentionStrategy") switch
+                {
+                    "legacy-accepted-count-cost-slack" =>
+                        CandidateRetentionStrategy.LegacyAcceptedCountCostSlack,
+                    "service-set-stability-portfolio-v1" =>
+                        CandidateRetentionStrategy.ServiceSetStabilityPortfolioV1,
+                    _ => throw new InvalidDataException(
+                        "Unknown candidate retentionStrategy."),
+                }
+                : CandidateRetentionStrategy.LegacyAcceptedCountCostSlack;
         return new CandidateGenerationOptions(
             PositiveInt32(
                 element.GetProperty("maximumCandidatesPerVehicle"),
@@ -275,7 +345,8 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
             strategy,
             PositiveInteger(
                 element.GetProperty("maximumExplorationWorkUnits"),
-                "maximumExplorationWorkUnits"));
+                "maximumExplorationWorkUnits"),
+            retentionStrategy: retentionStrategy);
     }
 
     private static DeterministicCandidateSelectionExecutionBudget

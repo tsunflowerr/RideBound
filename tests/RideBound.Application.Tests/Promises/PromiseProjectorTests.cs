@@ -95,6 +95,46 @@ public sealed class PromiseProjectorTests
         Assert.Equal(RouteStopKind.DropOff, only.Kind);
     }
 
+    [Fact]
+    public void First_projection_after_same_batch_boarding_uses_realized_pickup()
+    {
+        var (acceptedRun, _, route) = AcceptedState();
+        var confirmed = acceptedRun.ConfirmWaitingPickup(
+            ApplicationTestData.RequestId).Value!;
+        var reached = confirmed.ReachStop(
+            ApplicationTestData.VehicleId,
+            new StopId("pickup"),
+            route.Version,
+            new NodePosition(ApplicationTestData.NodeOne),
+            1).Value!;
+        var onboard = reached.Board(
+            ApplicationTestData.VehicleId,
+            ApplicationTestData.RequestId,
+            route.Version,
+            new SimTime(1000)).Value!;
+        var vehicle = onboard.Vehicles[ApplicationTestData.VehicleId];
+        var schedule = new RouteScheduleProjector().Project(
+            onboard,
+            vehicle,
+            vehicle.Route,
+            ApplicationTestData.Travel(),
+            new SimTime(1000)).Schedule!;
+
+        var result = new PromiseProjector().Project(
+            onboard,
+            vehicle,
+            vehicle.Route,
+            schedule,
+            ApplicationTestData.RequestId);
+
+        Assert.True(result.IsSuccess, result.Failure?.Message);
+        Assert.Equal(new StopId("pickup"), result.Value!.PickupStopId);
+        Assert.Equal(ApplicationTestData.NodeOne, result.Value.PickupNodeId);
+        Assert.Equal(1000, result.Value.PickupEta.Milliseconds);
+        var only = Assert.Single(result.Value.ServiceOrder);
+        Assert.Equal(RouteStopKind.DropOff, only.Kind);
+    }
+
     private static (RideBoundRun Run, VehicleState Vehicle, RoutePlan Route)
         AcceptedState()
     {

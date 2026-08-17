@@ -44,6 +44,26 @@ stateDiagram-v2
 
 Không có transition bình thường `Accepted -> Rejected`. Hủy bởi người dùng và failure do incident là trạng thái riêng, không được dùng để làm đẹp acceptance metric.
 
+### 2.1 Promise mở lúc nào — `initialPromiseTrigger`
+
+Ledger cần biết **chính xác** thời điểm lời hứa đầu tiên ra đời, vì mọi revision sau đó
+được đo từ đó. Config khai báo một trong hai trigger, khóa bởi ADR-039:
+
+| Giá trị | Promise mở tại | Reason code | Dùng cho |
+|---|---|---|---|
+| `initial-acceptance` (mặc định) | chuyển `Pending → Accepted` | `INITIAL_ACCEPTANCE` | WP1–WP6; assignment là cam kết ngay |
+| `booking-confirmation` | chuyển `Accepted → WaitingPickup/Onboard` | `INITIAL_BOOKING_CONFIRMATION` | Layer 2 thật, nơi assignment chỉ là **offer provisional** |
+
+Ở chế độ `booking-confirmation`, một request đang `Accepted` đã được kiểm tra vật lý
+đầy đủ nhưng **cố ý chưa có promise nào**: nó là một offer, và rider chưa được hứa gì.
+Vì vậy validator bỏ qua nó khi tính hard vector và warning excess, và một
+`OfferDeclined` trên request đó là `CancelAfterAcceptance` — từ chối một offer đã cấp
+không được ghi thành chưa từng được phục vụ.
+
+Config thiếu field phải parse thành `initial-acceptance` để content hash của
+config WP1–WP6 không đổi. Trigger nằm trong hash cấu hình chính sách, nên hai arm
+không thể vô tình so sánh với hai định nghĩa promise khác nhau.
+
 ## 3. Budget policy
 
 Budget là vector:
@@ -220,6 +240,13 @@ Budget v1 nên có hai cấu hình:
 - `customer-visible`: hard/soft budget áp vào tổng thay đổi nhìn thấy.
 
 `decision-only` là cấu hình nghiên cứu chính vì công bằng hơn khi so thuật toán dưới cùng traffic shock. `customer-visible` là secondary vì gần trải nghiệm sản phẩm nhưng có thể bất khả thi khi traffic thay đổi lớn.
+
+Cùng lý do đó, **phase lock được đánh giá trên trục exogenous → candidate**, không phải
+trên trục published promise → candidate (ADR-039). Xe chạy thật làm ETA trôi vài mili
+giây; drift đó được ghi vào ledger như exogenous delta nhưng không phải vi phạm lock,
+vì thuật toán không gây ra nó. Promise đã công bố trước đó vẫn là thứ xác định horizon
+nào đang bị khóa. Nếu so candidate trực tiếp với promise cũ thì mọi traffic shock đều
+trở thành vi phạm lock và phép so B1/C1 mất ý nghĩa.
 
 ## 11. Concurrent update và idempotency
 

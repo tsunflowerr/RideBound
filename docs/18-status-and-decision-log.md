@@ -1,7 +1,7 @@
 # Trạng thái và decision log
 
 > Tệp sống — cập nhật ở cuối mọi task RideBound
-> Cập nhật gần nhất: 2026-08-09
+> Cập nhật gần nhất: 2026-08-17
 
 ## 1. Trạng thái tổng thể
 
@@ -9,8 +9,8 @@
 |---|---|
 | Research direction | `LOCKED_FOR_IMPLEMENTATION_PLANNING` |
 | Documentation | `MIGRATED_AND_VERIFIED_V1` |
-| Implementation | `WP1_Q1_COMPLETE; WP2_COMPLETE; WP3_COMPLETE_14_OF_14; WP4_COMPLETE_14_OF_14; WP5_COMPLETE_14_OF_14; Q3_MECHANICAL_COMPLETE` |
-| Current work package | `WP6 HARNESS — RB-WP6-001 READY (REFINEMENT-ONLY)` |
+| Implementation | `WP1_Q1_COMPLETE; WP2_COMPLETE; WP3_COMPLETE_14_OF_14; WP4_COMPLETE_14_OF_14; WP5_COMPLETE_14_OF_14; WP6_COMPLETE_14_OF_14; WP7_COMPLETE_14_OF_14` |
+| Current work package | `NONE — WP7 closed mechanically; WP8 requires explicit refinement/preregistration decision` |
 | Repository | `https://github.com/tsunflowerr/RideBound` |
 | Main baseline | B1 `rolling-cost` |
 | Main treatment | C1 `ridebound-hard-vector` |
@@ -238,6 +238,139 @@
   fresh database + published Runner đạt 154/154, 0 skip; frontend 9/9, lint,
   TypeScript/build; full format và vulnerability audits sạch. Review WP1–WP5 kết
   luận GO chỉ cho refinement WP6, NO-GO cho main experiment/SLA/effectiveness.
+- Hoàn thành `RB-WP6-001`: đọc toàn bộ 82 Markdown hiện có và nghiên cứu primary
+  sources bằng in-app Browser. ADR-026 khóa FleetPy Manhattan v1/CC BY 4.0,
+  canonical scenario/result contracts, addressable HMAC seed hierarchy, exact pinned
+  Runner boundary, typed failure/exclusion/denominator rules, independent raw metric
+  oracle, strict BagIt-compatible bundle, resource accounting và claim checker.
+  Tạo contract decision-complete trong `docs/benchmarking/`, research evidence và
+  ordered queue `RB-WP6-002..014`.
+- Hoàn thành `RB-WP6-002`: thêm pure benchmark-contract project, 10 strict typed
+  codecs/models, semantic validator, 10 Draft 2020-12 document schemas + common
+  definitions, positive/negative fixtures và domain-separated identities. Hai clean
+  process tái tạo exact six-hash published vector. Targeted 28/28, format sạch và
+  required full solution 586/586; chỉ `RB-WP6-003` Ready, chưa download public data.
+- Hoàn thành `RB-WP6-003`: registry khóa exact Zenodo FleetPy Manhattan v1 source;
+  resumable downloader đã tải/xác minh `408878341` byte với publisher MD5 và local
+  SHA-256; safe extractor preflight 335 members/`1022750557` uncompressed byte và
+  inventory SHA-256. Rerun thật rehash rồi reuse object/extraction không chạm mạng.
+  Targeted 26/26, format sạch và required full solution 612/612.
+- Hoàn thành `RB-WP6-004`: ADR-027 sửa impossible scenario/report hash cycle thành
+  provenance DAG schema `1.0.1`; deterministic normalizer rehash exact members, strict
+  parse, directed SCC/Dijkstra, dense node-pool coverage optimizer + HMAC row rank,
+  ties-to-even và typed source/time failures. Hai clean process tái tạo exact tiny
+  8/2/16/240 và medium 128/32/96/9120 từ 21400 conserved public rows, kèm CC-BY/
+  synthetic-overlay caveat. Targeted 29+32 và full solution 619/619.
+- Hoàn thành `RB-WP6-005`: framed HMAC addressable seeds + published cross-process/
+  int32 vectors; plan compiler bind caller config/protocol/candidate/validator/solver/
+  work/capability/pairing, reject asymmetry/B5 mixing/noncanonical/oversized grid;
+  materialize full warm-up/measured run set với collision-free repeat IDs và HMAC arm
+  order trước outcome. Targeted 32+37, format sạch và full solution 627/627.
+- Hoàn thành `RB-WP6-006`: ADR-028/contract `1.0.2` sửa gap typed failure cho
+  cancellation/process-count/stream bytes; external-only supervisor pre/postflight
+  exact Runner/runtime/config/source, isolated run root, canonical protocol
+  hello/init/event/decision/ACK/checkpoint/shutdown và monotonic sampled process-tree
+  limits. 15/15 fake/real supervisor cases pass; actual published WP3 fixture chạy
+  qua pinned Runner process, không linked-core fallback. Contract 37/37,
+  Benchmarking 52/52, format sạch và full solution 647/647; Windows Application
+  Control `0x800711C7` không tái hiện.
+- Hoàn thành `RB-WP6-007`: ADR-029/contract `1.0.3`; immutable per-plan/per-run
+  intents, six raw roles, regenerated observation index, exactly-one terminal record,
+  shared gapless failure/exclusion hash chain và planned terminal conservation. Seven
+  injected crash boundaries, seal/in-flight race, 12-arm concurrency, tamper/path/
+  denominator/resource/artifact/manifest/checkpoint mutations và full-grid-only
+  authorized rerun đều fail/recover đúng. Artifact inventory được tự rederive và
+  pre/postflight bind cùng launch; success transcript bind exact plan scenario/config/
+  Runner binary. Benchmarking 77/77, Contracts 38/38, format sạch và required full
+  solution 673/673, 0 failed/skipped; `0x800711C7` không tái hiện.
+- Hoàn thành `RB-WP6-008`: canonical registry 36 định nghĩa và production calculator
+  sinh đúng 132 integer rows/run với arrival-cohort, decision-time window, explicit
+  numerator/denominator/missing/unit và semantic/resource evidence identity. Source
+  audit bổ sung state-machine chặn time/epoch regression, terminal outcome conflict,
+  defer/completion sai lifecycle và resource-terminal drift trước khi emit metric.
+  `RideBound.Wp6MetricOracle` là executable BCL-only không ProjectReference, tự parse/
+  canonicalize/hash/reconstruct rồi so toàn bộ row/evidence/metric-set byte-exact.
+  McKeeman differential testing được áp dụng bằng request/action/promise/vector/window/
+  order/resource/denominator/overflow mutations; Dolan–Moré chỉ khóa run-level paired
+  evidence cho WP8/WP9, không tạo profile/effectiveness claim ở WP6. Benchmarking
+  86/86, format sạch, Release `-warnaserror` sạch và required full solution 682/682,
+  0 failed/skipped; WAC `0x800711C7` không tái hiện.
+- Hoàn thành `RB-WP6-009`: deterministic strict BagIt 1.0 builder tạo exact LF/
+  SHA-256 payload/tag manifests, oxum, logical no-self manifest, reviewed verifier
+  script, build lock/private staging/atomic publication và không overwrite artifact.
+  Exact Git dirty/source inventory, scenario/dataset, runtime/Runner/Contracts/
+  harness/oracle/verifier assemblies, machine, registry và run-store grid/denominator
+  được cross-bind. Ten-stage verifier dùng lại WP6-007 portable run verifier để kiểm
+  raw file/artifact receipts/resources/transcript/ACK/checkpoint, kiểm global failure/
+  exclusion sequence, production=oracle và còn tái tính production metric từ raw.
+  Fresh-process verifier tự hash binary và chỉ tạo new external sidecar. Deterministic
+  all-success + mixed-terminal fixtures và missing/extra/tamper/length/type/traversal/
+  case/reparse/script/scenario/provenance/grid/transcript/log/oracle/correlated-metric
+  mutations pass/fail đúng stage. Browser đối chiếu lại RFC 8493 + LOC conformance
+  suite; ADR-031 khóa boundary. Benchmarking 92/92, format sạch, Release
+  `-warnaserror` sạch và required full solution 688/688, 0 failed/skipped; WAC
+  `0x800711C7` không tái hiện.
+- Hoàn thành `RB-WP6-010`: ADR-032 khóa machine-readable
+  `wp6-mechanical-only-v1` trong source/verifier; builder tự sinh profile và exact
+  claim report, bind profile SHA-256 trong `reproducibility.json` `1.0.1`, caller/CLI
+  không thể cấp profile hoặc report thay thế. Checker chỉ đọc README, manifest/plan/
+  packaging-report labels và selected provenance flags; không đọc transcript, public
+  trip/scenario/dataset hoặc source prose. Sáu caveat exact được mask trước scan;
+  bounded NFKC/casefold/diacritic, punctuation dual skeleton, common Greek/Cyrillic
+  confusable mapping và unsafe Unicode rejection trả typed code/rule/category/path/
+  selector/original/normalized witness. Stage 10 tái tính exact report và chặn case,
+  punctuation, confusable, default-ignorable, synonym, caveat, report, provenance,
+  forged-result và profile-switch mutations đã reseal. ACM/NASEM/Unicode cùng Peng
+  2011/Munafò 2017 khóa same-team/minimum-standard/non-confirmatory boundary.
+  Benchmarking 95/95, format sạch, Release `-warnaserror` 0 warning/error và required
+  full solution 691/691, 0 failed/skipped; WAC `0x800711C7` không tái hiện.
+- Hoàn thành `RB-WP6-011`: ADR-033/contract `1.0.4` khóa tiny paired E2E correction.
+  Source fixture có 1 xe/3 request/2 complete travel snapshot/6 epoch/16 event; B1/C1
+  đều đi qua accept, capacity reject, revision và lifecycle completion. Tight feasible
+  request ở epoch 2 buộc chèn một stop trước incumbent pickup nên exact certificate có
+  decision-induced `prePickupInsertedStopCount=1`; traffic projection tách riêng
+  pickup `+50 ms`, drop `+150 ms`. Plan bind cả WP3 commitment + WP4 arm config, và
+  Runner chỉ lấy per-run solver seed qua explicit `manifest-master-seed`. Hai clean
+  Release harness process, mỗi process B1/C1 × 3 measured repeat, khớp exact mọi
+  semantic identity/per-run hash; resource samples và bundle chứa chúng được phép
+  khác. Independent oracle summary được strict verifier kiểm lại theo assembly/raw/
+  semantic/resource/row/metric hashes. Timeout/crash/solver unknown/incomplete/
+  postflight/input/metric/missing/extra/tamper/selective-rerun matrix đều typed đúng
+  stage. Bundle ignored `artifacts/wp6/tiny-paired-20260812-release/` có SHA-256
+  `0936f8c26b9edb1086696e5a33a99a3a158459fbc1f31a3f53ce147fb03a1671`,
+  fresh Release verifier + claim checker pass. Benchmarking 104/104, Algorithms
+  136/136, format/Release sạch, required full solution 705/705; WAC không tái hiện.
+- Hoàn thành `RB-WP6-012`: ADR-034/contract `1.0.5` khóa medium public-data gate.
+  Verified Zenodo artifact SHA-256 `d9e86f33...599e`, MD5/license/length đạt; hai clean
+  root sinh exact 128-request/32-vehicle/96-node/9.120-arc scenario `88a8730a...0e88`
+  với 21.400 = 21.400 + 0 conservation. Dedicated synthetic-policy config sửa đúng
+  identity mismatch từng gây `FLEET_SELECTION_CONFLICT`; validator/data không bị nới.
+  Exact Runner conversation kiểm init/ACK/checkpoint/action/lifecycle. Hai fresh Release
+  process đều chạy B1/C1 × 3 = 6/6 success và khớp plan/scenario/source/runtime/grid/
+  transcript/decision/semantic metric cùng mọi per-run semantic hash; external verifier
+  xác nhận bundles `4f3aa1fd...aa90` và `193c5616...8b44`. Resource/full/bundle hashes
+  khác đúng contract. Instant-drain driver là nonphysical mechanics, cấm KPI/effectiveness
+  claim. Format pass; required full solution 710/710, WAC không tái hiện.
+- Hoàn thành `RB-WP6-013`: ADR-035/contract `1.0.6` làm executable warm-up 1 +
+  measured 3 mỗi arm, đưa provenance/policy binding lên early preflight, derive
+  conservation từ compiled grid và canonicalize driver failure code trước store.
+  Required matrix cover nested canonical permutation/parallel, 21 failure-stage, 8
+  exclusion, actual process/resource/store/bundle/metric/claim mutations và source
+  nondeterminism audit. Fresh medium D/E đều 8/8 success; 13 semantic field cùng mọi
+  per-run semantic hash exact, còn 8/8 full resource rows khác đúng contract. Raw
+  negative strata giữ C1 chậm hơn B1 ở cả sáu local measured pair nhưng không tạo
+  effectiveness/SLA claim. Release/format/dependency/schema/link gates sạch và exact
+  full solution cuối 770/770; một run trước 769/770 do medium CPU control được giữ
+  đúng là resource variance, không báo thành WAC.
+- Hoàn thành `RB-WP6-014`: đọc lại toàn bộ Markdown và source WP1–WP6, audit cả
+  protocol/state/physical/commitment/solver/BeGo durable boundary và WP6
+  data→process→store→oracle→bundle logic. Không tìm thấy unresolved correctness/
+  contract defect và không thêm heuristic chỉ dựa trên paper. Fresh tiny 8/8,
+  medium H/I trên exact source cuối 8/8 mỗi process; 16/16 top-level + 72/72 per-run
+  semantic fields exact,
+  8/8 full resource rows khác hợp lệ, ba bundle external-verify. Required exact
+  `dotnet test RideBound.slnx` pass 770/770; WAC không tái hiện. ADR-036, evidence và
+  review `docs/reviews/wp1-wp6-final/` đóng WP6; không effectiveness/SLA claim.
 
 ## 3. Chưa làm
 
@@ -247,13 +380,14 @@
   incumbent repair; không được báo thành reassignment optimizer.
 - Incident recovery optimizer chưa có; WP3 chỉ đảm bảo breach được ghi đúng và
   không bị certificate normal-operation che lấp.
-- WP5 đã complete mechanical integration gate. WP6 chỉ có refinement ticket
-  `RB-WP6-001 READY`; common harness chưa được hiện thực và FleetPy/RidePy adapter
-  chưa có.
+- WP5 và WP6 đã complete mechanical integration/common-harness gate. WP7 đã khóa
+  refinement, cải tiến bounded Candidate portfolio và executable FleetPy source/env/
+  capability pin; closed-loop control adapter chưa hoàn tất.
 - Full BeGo format audit đã sạch sau khi ba whitespace-only legacy file
   `FindMeetPointHandler`, `WeightedGeometricMedianCalculator` và
   `MapboxTransportModeMapper` được format cơ học; không có logic change ở chúng.
-- Chưa tải/freeze dataset cho experiment.
+- FleetPy public source đã tải/freeze cho WP6 mechanical derivative; chưa freeze
+  confirmatory experiment/holdout cho WP8–WP9.
 - Chưa pilot hoặc preregister.
 - Chưa có bất kỳ kết quả chứng minh RideBound tốt hơn baseline.
 
@@ -1426,23 +1560,88 @@ Verdict: GO for RB-WP6-001 refinement only; NO-GO for main experiment,
 Date: 2026-08-09
 ```
 
+### RB-WP6-006 external Runner/resource supervisor closure
+
+```text
+Contract correction: ADR-028; umbrella 1.0.2; FailureRecord 1.0.1;
+  wp6-failure-v1.0.1; five missing cancellation/process/stream codes typed
+Actual Runner gate: published WP3 commitment fixture; hello + initialize + 4 event
+  batches + 4 decisions + dynamic ACK + checkpoint + shutdown; exit 0, stderr empty
+Pinned pre/postflight: dotnet host, 189 .NET 10.0.9 runtime files, 12 non-PDB Runner
+  deployment files, exact policy config and exact scenario source
+Independent harness checks: capability selection, manifest hash, decision payload/hash,
+  ACK context and checkpoint manifest/epoch/previous-decision chain
+Adversarial supervisor cases: 15/15 passed; wall/CPU/memory/process count, stdin/
+  stdout/stderr, crash, caller cancel, child tree, mutation, incomplete output,
+  existing root and unpinned executable all fail closed with retained evidence
+Architecture/source boundary: Benchmarking references only Benchmarking.Contracts and
+  Contracts; no Runner/Domain/Application/core result path
+Targeted: Benchmarking.Contracts 37/37; Benchmarking 52/52
+Quality: dotnet format RideBound.slnx --verify-no-changes --no-restore passed
+Required command: dotnet test RideBound.slnx passed 647/647; WAC 0x800711C7 did not recur
+Claim: local bounded controls/mechanical repeatability only; no SLA/effectiveness claim
+Date: 2026-08-09
+```
+
+### RB-WP6-013 adversarial determinism/failure/resource closure
+
+```text
+Contract correction: ADR-035; umbrella 1.0.6; no public JSON field/failure code removed
+Plan: B1/C1 × (1 isolated warm-up + 3 isolated measured) = 8 terminal runs
+Canonical/property gate: 10 document types, nested reversal, 16 parallel decode each;
+  plan permutation + 32 parallel compile; both HMAC arm-order strata observed
+Taxonomy gate: 21 canonical failure/stage cases, 8 pre-outcome exclusions,
+  21 deterministic terminal raw-evidence mappings
+Actual failure gate: start/crash/cancel, wall/CPU/memory/process/stdin/stdout/stderr,
+  postflight/incomplete/unsupported conversation; partial evidence retained
+Source boundary: no mutable RNG/runtime hash; exact staging/provenance allowlist;
+  metric call sites remain producer + verifier recomputation only
+Fresh medium D/E: 8/8 success each; 13 top-level semantic fields and 8 per-run
+  semantic records exact; all 8 sampled-resource metric hashes legitimately differ
+Bundle D/E: cb6597d89a844099d5af4849f895d0c5f7af3d7351be5345cfcbf558180324a0 /
+  27c7f69e5df77b4f1136c75252e8abb9371231e76e5df55c2a5b42c427d2514e; externally valid
+Negative local strata retained: C1 wall/CPU > B1 in 6/6 measured pairs; diagnostic only
+Required-mutant result: 100% of declared matrix; not a general mutation score
+Quality: Release 0 warning/error; format pass; no vulnerable NuGet package;
+  schema 4/4; Markdown 91 files/180 internal links/0 broken/0 unbalanced fences
+Required command final: dotnet test RideBound.slnx passed 770/770, 0 fail/skip
+Preceding run: 769/770 from medium CPU control; standalone pass then exact rerun pass;
+  Contracts/Runner loaded and WAC 0x800711C7 did not recur
+Evidence: docs/benchmarking/wp6-013-adversarial-closure-evidence-2026-08-12.md
+Date: 2026-08-12
+```
+
+### RB-WP6-014 source/claim closure
+
+```text
+Source verdict: no unresolved correctness/contract issue; no paper-only heuristic added
+Fresh tiny A: 8/8 success; bundle 79cb321a...b04; external verify valid
+Fresh medium H/I on final exact source: 8/8 success each;
+  16/16 top-level semantic exact; 72/72 per-run semantic exact;
+  8/8 full resource rows different as expected
+Bundle H/I: 89a43921...d9d8 / a954db62...94e9; both externally valid
+Required exact command: dotnet test RideBound.slnx passed 770/770, exit 0
+WAC: Contracts/Runner loaded; 0x800711C7 did not recur
+Claim: WP6 mechanical correctness/reproducibility only; no effectiveness/SLA
+BeGo read-only baseline: backend 149 pass + 5 explicit opt-in skip (154 discovered),
+  frontend 9/9; no false 154/154 integration claim for this closure run
+Evidence: docs/benchmarking/wp6-014-source-claim-closure-evidence-2026-08-13.md
+Review: docs/reviews/wp1-wp6-final/README.md
+Date: 2026-08-13
+```
+
 ## 5. Next action
 
-WP1–WP5 Complete; `RB-WP5-001..014` Done. WP3 validator/certificate/checkpoint
-tiếp tục là publication boundary cho mọi write path; WP5 durable adapter không
-được tái tính hoặc nới lỏng boundary đó.
+WP1–WP7 Complete mechanically; WP3 validator/certificate/checkpoint vẫn là publication
+boundary cho mọi write path. WP5 durable adapter, WP6 harness và WP7 FleetPy mapping
+không được tái tính hoặc nới boundary đó.
 
-Ticket duy nhất `READY`:
-
-> `RB-WP6-001` — common benchmark harness refinement (refinement-only).
-
-Chi tiết:
-[33-wp6-common-benchmark-harness-refinement.md](tasks/33-wp6-common-benchmark-harness-refinement.md).
-Ticket này chỉ khóa scenario identity, dataset license, demand semantics, pairing,
-seed, Runner/failure/exclusion/metric/result/bundle/resource contracts và tiny/medium
-acceptance. Không viết harness hoặc chạy experiment trong refinement.
-Không tự chọn O-002/O-003/O-004 hoặc mở O-001. `Microsoft.OpenApi` đã pin bản vá
-`2.7.5`; tiếp tục giữ vulnerability audit bắt buộc.
+Không có ticket active. WP8 chỉ được mở bằng refinement/preregistration explicit để
+khóa endpoint, denominator, seed, margin và analysis trước pilot; không dùng raw WP7
+timing/publication để chọn các giá trị này. Không tự chọn O-002/O-003/O-004 hoặc mở
+O-001. Ordered evidence ở [tasks/36](tasks/36-wp7-fleetpy-layer2-ticket-plan.md),
+closure receipt ở [WP7 evidence](benchmarking/wp7-014-fleetpy-layer2-closure-evidence-2026-08-15.md)
+và review hiện hành là [wp1-wp7-final](reviews/wp1-wp7-final/README.md).
 
 ## 6. Open decisions
 
@@ -1452,13 +1651,15 @@ Không tự chọn O-002/O-003/O-004 hoặc mở O-001. `Microsoft.OpenApi` đã
 | O-003 | Material ETA revision threshold/bucket? | WP8 pilot |
 | O-004 | Service non-inferiority margin cuối? | WP8 prereg |
 | O-005 | RidePy hay AMoD2 là Layer 3 final? | WP10 preflight |
-| O-006 | FleetPy 1.0.2 có cung cấp exact directed-edge progress ổn định không? Protocol union/capability đã khóa bởi ADR-014. | WP7 executable preflight; nếu không đạt, khai báo `nodeOnly` và fail/downgrade |
 | O-008 | Cross-city confirmatory hay robustness only? | WP8 |
 
 O-001 đã được khóa bởi ADR-018: B1 WP2 không cho incumbent accepted request đổi
 vehicle; WP4 chỉ mở lại bằng ADR superseding và atomic multi-vehicle evidence.
 O-007 được khóa bởi ADR-025: WP5 dùng versioned long-lived NDJSON child process;
 HTTP/gRPC chỉ mở lại khi có cross-host operational requirement và ADR mới.
+O-006 được khóa bởi ADR-037 và executable probe trên exact FleetPy 1.0.2: position
+`(start,end,relative)` có direction/range ổn định và `SimulationVehicle._move` cập nhật
+`veh_obj.pos`; drift phải fail closed, không suy diễn fraction từ clock.
 
 ## 7. Decision log
 
@@ -2258,6 +2459,810 @@ SLA hoặc effectiveness claim; nó chỉ cho phép mở đúng `RB-WP6-001` ref
 trong `19` bằng BeGo-owned adapter + artifact boundary. Không đổi protocol/hash,
 O-001/O-002/O-003/O-004, WP3 publication gate hoặc ADR-024 claim boundary.
 
+### ADR-026 — 2026-08-09 — Accepted
+
+**Context:** WP1–WP5 đã đóng mechanical correctness/integration gate nhưng chưa có
+common data-to-result harness. WP5 paired bundle chứng minh cùng exact Runner path
+trên một fixture, không có dataset normalizer, public scenario identity, general run
+grid, failure/exclusion denominator contract, independent metric oracle hoặc
+experiment bundle. Viết harness trước khi khóa các semantics đó sẽ tạo survivorship
+bias, metric leakage và artifact có checksum nhưng không tái lập được.
+
+Primary evidence được đọc bằng in-app Browser và ghi tại
+`docs/research/wp6-benchmark-reproducibility-evidence-2026-08-09.md`: FleetPy
+Manhattan Zenodo/paper, RFC 8785 JCS, Random123, RFC 8493 BagIt, W3C PROV-DM,
+FAIR, Datasheets for Datasets, Sandve reproducibility rules và ACM artifact
+terminology. Contract đầy đủ nằm tại `docs/benchmarking/wp6-contract-v1.md`.
+
+**Decision 1 — public dataset/source boundary:** Khóa FleetPy Manhattan case-study
+data v1, DOI `10.5281/zenodo.15187906`, file `FleetPy_Manhattan.zip`, Zenodo MD5
+`8b11882ae9c6d87f666bf6e006806744`, license `CC BY 4.0` làm public source chính.
+Downloader phải kiểm publisher length/MD5 và local SHA-256 exact bytes. Raw archive
+nằm trong ignored content-addressed read-only cache, không commit/overwrite. Safe
+extractor fail closed với traversal/symlink/reparse/duplicate/case/size/ratio attack.
+Derivative tiny/medium phải có attribution, transform recipe, source selection hash
+và không suy observed preference/satisfaction/identity từ TLC/FleetPy trip records.
+
+**Decision 2 — scenario identity/canonical units:** Scenario content là strict
+versioned solver/simulator-neutral document. Canonical bytes dùng RideBound Canonical
+JSON v1 — accepted-domain subset hẹp của JCS: UTF-8/no BOM, duplicate/invalid Unicode
+reject, recursive ordinal property sort, sequence order preserved, no null/float, safe
+integers only. Quantities dùng explicit scaled units; time semantics dùng relative ms.
+Semantic identity dùng SHA-256 domain `RideBound.Wp6.Scenario.v1` và length-prefixed
+frames, tách khỏi plain file SHA-256. Source bytes, member inventory, selection,
+normalizer source/version/config và report hash đều được bind.
+
+**Decision 3 — demand/event semantics:** Scenario khai báo source timezone/window,
+warm-up/scoring/horizon/drain boundaries, explicit initial fleet, requests, directed
+travel snapshots, driver semantics và event ordering. Nếu upstream có validated total
+sequence thì giữ nó; nếu không dùng `(simTimeMs,typeRank,sourceOrdinal,stableId)` theo
+`ridebound-event-order-v1`. Missing/unreachable arc làm source exclusion hoặc scenario
+invalid; cấm zero/max/Euclidean/reverse imputation. Mọi source row có đúng một
+selected/not-selected/excluded disposition và conservation report.
+
+**Decision 4 — plan/pairing:** Benchmark plan được materialize trước outcome, chứa
+scenario hashes, exact Runner/runtime/source, arm policy/version/config/effective
+hash, candidate/validator/solver/work/capability binding, warm-up/repeats và resource/
+failure/exclusion/metric profiles. `wp4-common-candidate-v1` chỉ pair B1/B2/B3/B4/
+C1/C2 khi common raw candidate/work semantics exact; B5 ở
+`wp4-multiple-plan-v1`. Một fresh isolated Runner process cho mỗi arm/repeat/attempt;
+arm order HMAC-counterbalanced. Rerun có authorization tạo new plan/attempt và giữ
+old evidence, không rerun seed xấu chọn lọc.
+
+**Decision 5 — seed hierarchy:** Master seed là 256-bit hex. Component seed dùng
+HMAC-SHA-256 domain `RideBound.Wp6.Seed.v1` trên scenario hash, repeat index,
+component ID và stable item ID. Full digest được lưu; int32 conversion là first-four
+big-endian masked `0x7fffffff`. Sampling/order dùng hash rank stable ID. Cấm clock,
+GUID, thread/process ID, `Random.Shared`, implicit default, global call-count RNG và
+unstable enumeration. Đây là addressable-randomness mechanism học từ Random123;
+implementation không dùng/copy Random123 và không kế thừa claim của nó.
+
+**Decision 6 — exact Runner boundary:** Harness/fixture/adapter chỉ phát exact
+RideBound protocol input và consume exact output từ pinned external Runner process.
+Không reference/call policy/core để tạo alternative result. Pre/postflight bind
+assembly, runtime, config, source and staged input bytes. Fixture driver chỉ sở hữu
+declared exogenous event/execution semantics; FleetPy control adapter vẫn thuộc WP7.
+Mọi decision đi qua WP3 independent publication validator, certificate, state hash,
+matching ACK/checkpoint path.
+
+**Decision 7 — raw result and terminal conservation:** Mỗi planned run có immutable
+input/output/stderr/resource/preflight/postflight files, observation index và đúng một
+terminal record `succeeded|failed|excluded`. Index giữ event/request/vehicle/run/
+scenario/arm/repeat locator nhưng không thay raw NDJSON. Plan conservation bắt buộc:
+`planned = succeeded + failed + excluded`. Negative/policy-worse output vẫn được giữ.
+
+**Decision 8 — failure taxonomy:** Typed failures gồm invalid input/artifact mismatch,
+capability divergence, start/crash, wall/CPU/memory/resource breach, solver unknown,
+invalid/incomplete protocol output, state divergence, metric oracle mismatch và
+bundle invalid. Failure không thành metric 0/infeasible, không bị silent drop và
+không được chuyển thành exclusion sau outcome.
+
+**Decision 9 — exclusion/denominator:** Exclusion chỉ trước outcome theo exact
+predeclared rules: license/checksum/invalid source/unreachable/capability/position/
+pairing incompatibility. Append-only row ghi rule/source/stage/subject/evidence và
+retained denominators. Mỗi metric ghi unit/window/scope/numerator/denominator ID/value/
+missing semantics. Valid-run descriptions luôn đi cùng planned failure/exclusion
+counts; denominator zero là missing, không phải rate 0.
+
+**Decision 10 — metric ownership:** WP6 registry v1 tính unique arrived/accepted/
+rejected/completed, defer actions, decision epochs, promise publications/revisions,
+breaches, non-normal certificates, ten decision-delta sum/max và exact resource
+metrics. Không lưu IEEE float; rate dùng integer PPM ties-to-even và checked wider
+intermediate. Production calculator chỉ đọc raw evidence. Independent oracle nằm ở
+separate source/executable, không reference production calculator/models, và phải tạo
+byte-identical sorted rows/hash trên tiny bound. Mismatch invalidates bundle trước
+aggregate/statistics. Runner/simulator aggregate column không là sole source.
+
+**Decision 11 — resource accounting:** Plan khai báo wall/CPU/working-set/process/
+stream byte limits, deterministic policy work budgets, enforcement kind, warm-up và
+repeats. Supervisor dùng monotonic time, raw samples và process-tree termination;
+machine/OS/CPU/memory/.NET/container/git/source/assembly/command provenance bắt buộc.
+Local limit/timing là experiment control, không phải production throughput/SLA.
+
+**Decision 12 — bundle integrity/provenance:** Result bundle dùng strict
+BagIt-compatible SHA-256 profile: payload dưới `data/`, payload/tag manifests, logical
+bundle manifest, README/verifier, exact role/media type/length/hash/producer/source
+derivation. Strict RideBound verifier reject absolute/traversal/symlink/reparse/
+case-collision, missing, extra, tamper, source/config/runtime mismatch, run
+conservation, transcript/hash, failure/exclusion, metric oracle hoặc claim failure.
+Logical manifest không tự hash; BagIt payload manifest hash nó. PROV-like entity/
+activity/agent và Datasheet/FAIR metadata được lưu nhưng không claim full external
+PROV/FAIR certification. Bag validity không chứng minh scientific validity.
+
+**Decision 13 — tiny/medium gate:** Tiny có tối đa 8 request/2 vehicle/16 node/256
+arc, ba measured repeats cho B1/C1 trong hai clean harness processes, non-zero
+accept/reject-or-defer/revision/delta coverage, exact raw-to-oracle equality và failure/
+bundle mutations. Medium là deterministic CC BY derivative từ verified FleetPy
+Manhattan, target 128 request/32 vehicle/max 96 node/9.120 non-self directed arc,
+HMAC selection độc lập policy, two-clean normalization và ít nhất ba mechanical
+repeats. Nếu source không thỏa mà không fabricate semantics thì stop/amend ADR, không
+đổi lén. WP6 medium gate là normalizer/harness mechanics, không phải FleetPy Layer-2
+effectiveness; WP7 vẫn sở hữu control adapter.
+
+**Decision 14 — claim checker:** WP6 chỉ cho `mechanical|development` evidence và câu
+“same-team clean-process repeatability”. Bundle bắt buộc caveat no effectiveness,
+non-inferiority, production SLA, ACM badge, independent reproducibility/replicability,
+novel ETA/reassignment/satisfaction claim. Claim profile machine-readable chặn các từ/
+synonym tương ứng. Functional/Reusable-like properties là target nội bộ, không phải
+ACM award. WP6 không chọn O-002/O-003/O-004 và không gọi public data là consented
+human behavior.
+
+**Alternatives rejected:** Một JSON/CSV aggregate duy nhất; seeded `System.Random`
+global; fixed arm order; in-process policy call; simulator aggregate as truth; timeout
+as zero/infeasible; drop failed/outlier seed; zip-only bundle; checksum-only verifier;
+commit 408.9 MB raw archive; reuse WP5 paired/local curve as WP6 effectiveness; mở
+FleetPy adapter trong refinement.
+
+**Consequences:** WP6 có nhiều typed/integrity work trước khi có graph/table đẹp, nhưng
+data loss, arm asymmetry, hidden RNG, metric circularity và claim inflation trở thành
+testable failures. Contract v1 là equivalent contract cho `RB-WP6-001`; JSON schemas
+và primitives được hiện thực ở ticket nhỏ nhất `RB-WP6-002`. Ordered queue
+`RB-WP6-002..014` nằm trong `docs/tasks/34-wp6-common-benchmark-harness-ticket-plan.md`.
+Chỉ `002` Ready; chưa có WP6 executable/result tại thời điểm ADR được accept.
+
+**Supersedes / superseded by:** Thay ví dụ manifest có `TBD` trong `docs/10` bằng
+contract v1 cho WP6 implementation. Không đổi WP1 protocol/hash, WP3 publication gate,
+ADR-024 policy semantics, ADR-025 BeGo boundary, O-001 hoặc O-002/O-003/O-004.
+
+### ADR-027 — 2026-08-09 — Accepted
+
+**Context:** Khi `RB-WP6-004` chuẩn bị tạo scenario thật, executable contract `1.0.0`
+cho scenario chứa `normalizationReportHash`, đồng thời normalization report chứa
+`scenarioContentSha256` và `scenarioHash`. Fixture dùng các hash giả độc lập nên test
+schema vẫn pass, nhưng artifact thật đòi hai canonical documents là cryptographic
+fixed point của nhau. Không có thứ tự tính hoặc placeholder nào thỏa contract đó.
+
+**Decision:** Sửa WP6 scenario/report schemas lên `1.0.1`. Bỏ
+`normalizationReportHash` khỏi `ScenarioContent`; giữ scenario bind exact raw source,
+member selection, normalizer source/version/config và validation summary. Tính
+canonical scenario/plain SHA/domain-separated identity trước; sau đó report ghi hai
+hash scenario cùng conservation/selection/exclusion evidence và mới nhận report hash.
+Logical bundle bind scenario lẫn report. Dataset/plan/run/metric/bundle document shape
+không đổi và tiếp tục `1.0.0`. Runtime validator dùng exact per-document version.
+
+**Evidence required:** schema/runtime property parity, old cyclic field bị reject như
+unknown, clean-process identity vectors được republish và regression trực tiếp tạo
+scenario identity trước rồi bind nó vào report. Không được tái diễn giải field cũ,
+dùng zero hash, lặp đến gần fixed point hoặc bỏ report khỏi bundle.
+
+**Consequences:** provenance trở thành Merkle DAG một chiều có thể tạo và verify độc
+lập. Đây là correction trước WP6 executable/result đầu tiên, không phải experiment
+protocol change và không làm phát sinh effectiveness claim.
+
+**Supersedes / superseded by:** Supersede riêng câu “report hash được bind vào
+scenario” của ADR-026 Decision 2 và contract `1.0.0`; không đổi các decision còn lại,
+WP1 protocol/hash, WP3 publication gate hay O-001/O-002/O-003/O-004.
+
+### ADR-028 — 2026-08-09 — Accepted
+
+**Context:** Khi hiện thực `RB-WP6-006`, supervisor bắt buộc phải giới hạn và ghi
+typed terminal evidence cho process-tree count, stdin/stdout/stderr bytes và caller
+cancellation. ADR-026 Decision 8/11 cùng ticket 006 đã yêu cầu các nhánh này, nhưng
+failure schema/rule set `1.0.0` chỉ liệt kê wall/CPU/memory. Vì vậy một implementation
+tuân ticket sẽ tạo record bị schema từ chối, còn ép các nhánh đó thành
+`process.crash`/`protocol.invalid-output` sẽ làm sai nguyên nhân và audit denominator.
+
+**Decision:** Nâng umbrella contract lên `1.0.2`, riêng `FailureRecord` lên `1.0.1`
+và failure rule set thành `wp6-failure-v1.0.1`. Bổ sung đúng năm terminal codes:
+`process.cancelled`, `resource.process-count-exceeded`,
+`resource.stdin-bytes-exceeded`, `resource.stdout-bytes-exceeded` và
+`resource.stderr-bytes-exceeded`. Tất cả có stage `execution`; partial raw evidence
+vẫn phải giữ. Benchmark plan fixture/identity vector phải được republish vì rule-set
+identity là một phần canonical plan. Scenario/report version và identity không đổi.
+
+**Evidence required:** runtime/schema parity; mỗi code mới decode/validate; supervisor
+fake-child mutation kích hoạt đúng code; plan/vector clean-process byte exact; full
+solution pass. Không được dùng mã mới để biến local resource control thành SLA.
+
+**Consequences:** failure accounting phản ánh đúng cơ chế đã predeclare thay vì có
+nhánh implementation không thể serialize. Đây là contract correction trước WP6 run
+record/bundle đầu tiên, không phải thay đổi outcome, exclusion hay claim boundary.
+
+**Supersedes / superseded by:** Bổ sung phần liệt kê cụ thể cho ADR-026 Decision 8/11
+và contract `1.0.1`; không đổi WP1 protocol, WP3 publication gate, policy semantics,
+O-001 hay O-002/O-003/O-004.
+
+### ADR-029 — 2026-08-09 — Accepted
+
+**Context:** Khi hiện thực crash-safe `RB-WP6-007`, một planned intent có thể tồn tại
+nhưng harness chết giữa copy/index/detail/log/atomic-directory boundaries. Failure
+rule set `1.0.1` không có code cho nhánh này. Ghi `process.crash` sẽ sai nếu external
+Runner đã exit 0; bỏ run sẽ vi phạm terminal conservation. Observation contract cũng
+yêu cầu `certificateHash` nhưng chưa khóa projection byte cụ thể.
+
+**Decision:** Nâng umbrella contract lên `1.0.3`, `FailureRecord` lên `1.0.2` và
+failure rule set thành `wp6-failure-v1.0.2`. Thêm
+`harness.persistence-incomplete` tại stage `persistence`; recovery/seal phải giữ
+partial staging evidence rồi tạo một terminal failure mới, không overwrite và không
+đổ lỗi cho Runner. `certificateHash` trong observation index là plain SHA-256 của
+exact RideBound-canonical certificate-body JSON; envelope/decision identities vẫn
+giữ domain hiện có và không bị thay thế bởi locator này.
+
+**Evidence required:** crash injection tại mọi write boundary; retry/recovery cho ra
+một terminal directory hoặc typed incomplete, log sequence/hash chain không gap;
+failure không sinh zero metric; schema/runtime/vector/full-solution gates pass.
+
+**Consequences:** plan identity vector phải republish vì failure rule-set ID đổi.
+Đây là persistence/accounting correction trước bundle đầu tiên, không thay outcome,
+policy, exclusion-before-outcome hay claim boundary.
+
+**Implementation amendment 2026-08-11 (`RB-WP6-007`):** Plan/run publication dùng
+private staging rồi atomic directory rename; duplicate semantic cell trong cùng plan
+bị cấm. Raw identity được pin/copy bằng streaming length/SHA, locator phải đúng exact
+run path và layout reparse point bị từ chối. Observation index được tái sinh từ raw;
+success bind initialize manifest với planned scenario/config/Runner binary, exact
+decision/ACK và checkpoint applied epoch/time. Runtime inventory được rederive từ
+role/file/length/SHA và pre/postflight phải cùng launch command. Failure/exclusion dùng
+chung gapless previous-hash log; seal và in-flight commit hội tụ theo per-run lock.
+Authorized rerun publish plan + `supersedes.json` nguyên tử, giữ trọn semantic grid/
+denominator và recursively verify prior terminal evidence. Các invariant này thực thi
+ADR-029; không đổi public contract/version hoặc claim boundary.
+
+**Supersedes / superseded by:** Bổ sung ADR-026 Decision 7/8 và ADR-028; không đổi
+WP1 protocol, WP3 validator/certificate, O-001 hay O-002/O-003/O-004.
+
+### ADR-030 — 2026-08-11 — Accepted
+
+**Context:** `RB-WP6-008` là lần đầu contract metric v1 được hiện thực. Chỉ decode JSON
+và cộng counter sẽ cho kết quả có vẻ hợp lệ nhưng vẫn có thể tính sai khi transcript
+đảo thời gian, request vừa accepted vừa rejected, completion trước acceptance, hoặc
+window trộn request arrival với action/completion time. Một oracle gọi lại production
+model/calculator cũng chỉ lặp cùng bug. Paper McKeeman về differential testing yêu cầu
+các implementation thật sự khác nhau; Dolan–Moré nhắc rằng benchmark comparison cần
+giữ phân phối/tập bài toán thay vì che mọi thứ trong một aggregate.
+
+**Decision:** Giữ metric registry v1 ở đúng 36 definition/hash đã publish và khóa:
+
+1. `warmup=[warmupStart,scoreStart)`, `scoring=[scoreStart,horizonEnd]`,
+   `drain=(horizonEnd,drainEnd]`, `all=[warmupStart,drainEnd]`;
+2. request outcome/rate/defer dùng arrival cohort; decision/certificate/promise/breach/
+   decision-delta dùng decision-envelope time;
+3. raw parser phải kiểm monotonic time/epoch, unique arrival/completion/terminal action,
+   accepted/rejected exclusivity, arrival→defer/terminal→completion chronology và
+   exact resource terminal maxima trước khi emit row;
+4. ratio denominator 0 là missing, không phải 0; vector sum/ratio dùng `BigInteger`
+   intermediate rồi fail typed nếu vượt canonical safe integer;
+5. oracle là executable/source tree BCL-only, không ProjectReference tới production
+   contracts/calculator/models; hai phía tự canonicalize/parse/state/hash và phải khớp
+   toàn bộ 132 canonical rows, semantic/resource evidence và metric-set hash;
+6. bất kỳ byte/hash mismatch nào là `metric.oracle-mismatch` và chặn bundle. Failed/
+   excluded run không được có success metrics;
+7. WP6 chỉ giữ run-level/pairing/planned-denominator evidence cho aggregate sau này;
+   performance profile, failure penalty, estimand và conclusion thuộc WP8/WP9
+   preregistration, không được tự thêm ở WP6.
+
+**Consequences:** Metric path không còn là vài nhánh đếm đơn giản mà là hai state
+reconstruction độc lập với lifecycle/window/evidence invariants. Agreement vẫn không
+chứng minh specification đúng hay independent reproduction; protocol/store verifier,
+mutation matrix và source/hash provenance vẫn bắt buộc. Đây là lần khóa đầu của semantic
+boundary trước metric bundle đầu tiên, không đổi field/schema/registry/hash vector nên
+contract vẫn `1.0.3`; thay đổi tương lai phải bump metric version và ADR.
+
+**Supersedes / superseded by:** Hiện thực và làm rõ ADR-026 Decision 9/10; không đổi
+WP1 protocol, WP3 commitment semantics, O-001/O-002/O-003/O-004 hay claim boundary.
+
+### ADR-031 — 2026-08-11 — Accepted
+
+**Context:** `RB-WP6-009` là bundle đầu tiên. RFC 8493 checksum/completeness một mình
+không phát hiện scenario đặt sai address, base commit che dirty source, run bị đổi
+seed/grid, transcript sai ACK/checkpoint, hoặc hai file production/oracle cùng bị sửa.
+Contract cũng có một `metricSetHash` ở bundle trong khi ADR-030 identity gốc là per-run;
+nếu dùng plain file SHA hoặc chọn tùy ý một run sẽ làm field đúng cú pháp nhưng sai
+ngữ nghĩa. External verifier ghi report vào bag sẽ tự phá seal hoặc overwrite evidence.
+
+**Decision:** Khóa strict bundle implementation boundary sau:
+
+1. giữ RFC 8493 BagIt 1.0 exact LF/UTF-8, payload/tag SHA-256, every-payload-once,
+   no-self tag manifest và payload oxum; RideBound bổ sung no-extra cùng cấm absolute,
+   traversal, percent/control, reparse/junction, case/Unicode collision, Windows device,
+   trailing dot/space;
+2. logical manifest liệt kê đúng union `data/` trừ chính nó; self-reference chỉ được
+   giải bằng payload manifest. `verify.ps1` phải byte-exact reviewed template;
+3. bundle `metricSetHash` dùng domain mới
+   `RideBound.Wp6.BundleMetricSet.v1(planHash, registryHash, exact LF all-run rows)`;
+   per-run `RideBound.Wp6.MetricSet.v1` không đổi;
+4. source inventory phải capture Git HEAD + raw porcelain status hash/dirty flag và
+   exact selected component path/length/SHA. Harness/oracle/verifier source hashes
+   được rederive từ entries, không tin base commit hay self-reported digest;
+5. provenance cross-bind scenario/dataset, plan, machine, immutable metric registry,
+   Runner executable/assembly, Contracts, harness, oracle, verifier assemblies và
+   runtime inventory. Fresh verifier phải tự hash assembly đang chạy;
+6. export exact canonical run-store plan gồm denominator + full intent grid. Public
+   plan materializer, intent, terminal directory và run record phải one-to-one; exact
+   solver component seed/runtime/config được so trước transcript. Bundle verifier dùng
+   chung portable WP6-007 run verifier, không viết lại protocol logic nông hơn;
+7. terminal failure/exclusion logs phải là exact detail union với một global gapless
+   sequence. Metric stage yêu cầu production=oracle byte-exact, exact registry/window/
+   succeeded-run coverage, bundle metric identity **và** production recomputation từ
+   raw run/scenario evidence để correlated edit không qua;
+8. builder pin/copy/recheck input, dùng per-destination lock/private staging/atomic
+   rename và không overwrite existing/stale bag. External report luôn là new sidecar
+   ngoài sealed bag hoặc artifact của derived bag.
+
+**Evidence required:** deterministic two-root bundle equality; valid all-success và
+mixed success/failure/exclusion; clean-process verifier/hash/sidecar; mutations tại
+mọi ordered stage gồm missing/extra/tamper/length/type/path/traversal/case/reparse,
+script, dirty source/provenance, scenario, grid/seed, transcript, terminal log,
+oracle-only và correlated production+oracle; Release/format/full-solution gates.
+
+**Consequences:** BagIt validity và RideBound semantic validity trở thành hai gate rõ
+ràng; cả hai vẫn không chứng minh algorithm effectiveness, unbiased benchmark hoặc
+independent reproduction. Đây là lần khóa đầu của bundle semantics; không đổi public
+field/schema/registry hoặc failure rule nên umbrella contract giữ `1.0.3`. Source
+evidence và Browser audit nằm trong research doc; claim enforcement tiếp tục ở 010.
+
+**Supersedes / superseded by:** Hiện thực/làm rõ ADR-026 Decision 12 và ADR-030 bundle
+handoff; không đổi WP1 protocol, WP3 commitment validator/certificate, O-001,
+O-002/O-003/O-004 hay claim profile wording.
+
+### ADR-032 — 2026-08-11 — Accepted
+
+**Context:** `RB-WP6-009` chứng minh một bag đầy đủ và semantic-valid, nhưng checksum,
+exact replay và same-team clean process vẫn có thể bị README/report/provenance gắn nhãn
+`effective`, `production-ready`, `Results Reproduced` hoặc ACM badge. Quét substring
+toàn repository sẽ vừa leak/false-positive raw trip/source prose, vừa tự bắt các câu
+phủ định bắt buộc. Regex lowercase đơn giản lại bị né bằng punctuation, full-width,
+default-ignorable và Greek/Cyrillic confusable. ACM version 1.1 yêu cầu team khác cho
+Results Reproduced/Replicated; NASEM tách same-data/code reproducibility khỏi new-data
+replication; Peng 2011 nói reproducibility không bảo đảm correctness/validity; Munafò
+et al. 2017 cảnh báo HARKing/analytical flexibility/over-interpretation; Unicode UTS
+#39 cung cấp anti-confusable mechanisms nhưng không phải general prose classifier.
+
+**Decision:** Khóa artifact claim boundary sau:
+
+1. `wp6-mechanical-only-v1` là canonical machine-readable profile được compile trong
+   verifier và emit thành `data/provenance/claim-profile.json`. Profile ghi ADR,
+   normalization ID, bounded surface size, evidence URI, exact scan selectors, caveat
+   và forbidden/synonym rules; caller/CLI không có profile switch;
+2. builder reserve/tự sinh cả profile và `data/claim-check.json`; payload caller không
+   thể đưa kết quả `passed` giả. Profile SHA-256 được cross-bind trong
+   `reproducibility.json`; required-field addition bump evidence shape nội bộ từ
+   `1.0.0` lên `1.0.1`, public benchmark-contract/umbrella vẫn `1.0.3`;
+3. phạm vi scan chỉ gồm README; manifest/plan identity, evidence, rule/resource labels;
+   packaging report labels; machine `fileSystemType`/`powerModeNote`/
+   `containerImageDigest`; repository `gitDirty`. Cấm quét run transcript, scenario,
+   public trip/dataset, failure/metric rows hoặc source-code prose;
+4. sáu caveat exact-once khóa mechanical/development, same-team clean-process,
+   non-confirmatory, no effectiveness/non-inferiority/SLA/ACM/independent claim,
+   local resource controls và absence of observed public-trip preference/satisfaction.
+   Exact caveat spans được mask trước forbidden scan;
+5. text matching bounded dùng NFKC, invariant casefold, diacritic removal, common
+   Greek/Cyrillic confusable mapping và hai skeleton: punctuation-as-separator và
+   punctuation-removed. Non-whitespace control/format/default-ignorable, private-use,
+   surrogate/unassigned code point fail closed; không claim full UTS #39 conformance;
+6. mỗi failure mang stable code, rule/category, relative path, selector, bounded
+   original excerpt và normalized witness. Stage 10 dùng typed decoded fields để tái
+   tính valid report byte-exact; forged report/profile hoặc consistently resealed
+   claim mutation vẫn invalidates bundle;
+7. future profile extension bắt buộc ADR + external evidence + source/profile/hash
+   change. Không có CLI flag hay README wording để nâng claim ladder.
+
+**Evidence required:** allowed exact wording; direct typed witness; forbidden
+effectiveness/non-inferiority/SLA/production/novelty/satisfaction/ACM/reproduced/
+replicated; case/punctuation/synonym/full-width/confusable/default-ignorable; missing
+or duplicate caveat; report/provenance/profile/forged-check mutations sau khi reseal;
+scoped-selection proof; deterministic two-bundle/fresh verifier; format/Release/full
+solution gates.
+
+**Consequences:** Claim checker là fail-closed artifact guard chứ không phải general NLP
+hay bằng chứng scientific truth. Finite synonym profile giảm bypass trong export
+surface đã khóa nhưng không cho phép suy luận rằng mọi prose bên ngoài repository đã
+được kiểm. WP6 chỉ đạt mechanical same-team boundary; tiny/medium/adversarial gates và
+independent team/main experiment vẫn chưa hoàn tất.
+
+**Supersedes / superseded by:** Hiện thực và siết ADR-026 Decision 14/ADR-031 stage 10;
+không đổi WP1 protocol, WP3 hard commitment semantics, O-001, O-002/O-003/O-004 hoặc
+novelty boundary.
+
+### ADR-033 — 2026-08-12 — Accepted
+
+**Context:** `RB-WP6-001..010` đã có từng thành phần harness nhưng chưa chứng minh chúng
+ghép thành một measurement path trung thực. Tiny draft đầu chỉ tạo ETA revision do
+traffic và reject một request quá capacity, nên `decisionDelta` bằng zero; compiler
+còn giả định đúng bốn batch. Plan từng hash một policy file trong khi Runner đọc cả
+WP3 commitment config lẫn WP4 algorithm config. Derived `solver-rng` chưa có launch
+contract nói rõ Runner phải lấy manifest seed. Production/oracle rows bằng nhau cũng
+chưa tự chứng minh oracle process/binary/raw input tương ứng nếu thiếu execution
+summary. Cuối cùng supervisor từng gắn mọi conversation failure vào stage `protocol`,
+không thuộc failure taxonomy đã khóa. Các lỗ này có thể cho test xanh nhưng không cho
+phép gọi là paired end-to-end reproduction.
+
+**Decision:** Nâng umbrella contract lên `1.0.4` và khóa tiny E2E như sau:
+
+1. fixture nguồn phải tự chứa lifecycle có thể chạy, không phát sinh decision bằng
+   code test. Compiler chấp nhận 1–32 event batch và derive batch indexes, horizon,
+   fleet/request/snapshot/event counts từ canonical fixture. Gate hiện tại dùng sáu
+   epoch: accept incumbent, traffic projection + tight feasible insertion, capacity
+   reject, confirm/board/drop/alight cả hai accepted request;
+2. non-zero treatment witness phải là `decisionDelta`, không lấy exogenous traffic
+   delta thay thế. Epoch 2 hiện có `prePickupInsertedStopCount=1`; exogenous pickup/
+   drop ETA `+50/+150 ms` vẫn ghi riêng. Harness fail nếu bất kỳ measured run nào
+   thiếu accept, complete, revision, reject/defer hoặc non-zero decision delta;
+3. WP4 arm dùng `ridebound-wp4-policy-binding-v1` trên exact SHA-256 của cả WP3 và WP4
+   config. Effective configuration tiếp tục bind policy/solver/budget/capability/
+   launch contract. Per-run `solver-rng` int32 trở thành initialize master seed và
+   Runner chỉ tiêu thụ qua pinned opt-in `--solver-seed-source manifest-master-seed`;
+4. một run là một fresh exact external Runner process và isolated writable root.
+   B1/C1 × ba measured repeat phải thành công trong mỗi hai clean harness process.
+   So sánh exact plan/scenario/source/runtime/grid/transcript/decision/semantic metric
+   và từng run input/output/index/decision/semantic metric; không đòi physical bundle
+   hash giống nhau khi monotonic/resource evidence thật khác nhau;
+5. independent oracle process emit canonical per-run summary bind oracle assembly,
+   raw resource evidence, semantic evidence, row count và per-run metric-set hash.
+   Strict bundle chỉ cho exact optional union một summary/successful run và stage 9
+   tái tính toàn bộ; corrupted, missing trong partial union hoặc extra summary fail;
+6. conversation failure map đúng taxonomy: negotiation/decision/parsing/completion/
+   validation. Timeout/tree/resource/crash/postflight/incomplete/solver unknown cùng
+   store/transcript/metric/bundle/selective-rerun mutations phải giữ typed terminal
+   evidence, không đổi thành zero, drop hoặc selective success;
+7. source audit tách model-mapping diagnostic: empty candidate set là “không có
+   candidate khả thi”, duplicate ID là global identity collision. Hai invariant có
+   regression riêng để benchmark diagnosis không che infeasibility.
+
+Không đổi public JSON field hay bỏ failure code hiện hữu; `1.0.4` là backward-
+compatible semantic/verification correction. Existing bundle không có oracle summary
+vẫn được đọc; bundle đã cung cấp bất kỳ summary nào phải cung cấp exact complete union.
+
+**Evidence required:** exact six-run conservation; non-zero decision witness trong raw
+Runner output; two-clean-process semantic comparison; independent verifier sidecar;
+claim report pass; oracle-summary tamper; timeout/crash/unknown/incomplete/input/
+postflight/metric/missing/extra/tamper/selective-rerun mutations; format, Release
+`-warnaserror` và required full solution.
+
+**Consequences:** Bundle tại
+`artifacts/wp6/tiny-paired-20260812-release/` là mechanical/development evidence của
+same-team clean-process repeatability. Nó chứng minh harness chạy đúng và B1/C1 tạo
+output khác theo semantics đã bind; nó không chứng minh C1 tốt hơn B1, không phải
+FleetPy closed-loop effectiveness, independent reproduction, production SLA hay
+confirmatory result. Full metric/bundle hash có resource samples nên không phải
+semantic determinism key; semantic subset và provenance mới là cross-process gate.
+
+**Supersedes / superseded by:** Làm rõ/hiện thực ADR-026 Decisions 5–14, ADR-028 launch
+boundary, ADR-029 terminal conservation, ADR-030 metric oracle, ADR-031 strict bundle
+và ADR-032 claim boundary. Không đổi WP1 protocol ordering, WP3 commitment validator/
+certificate, O-001 hoặc tự chọn O-002/O-003/O-004.
+
+### ADR-034 — 2026-08-12 — Accepted
+
+**Context:** Medium derivative 128 request đã reproducible nhưng chưa có một exact
+Runner conversation và paired bundle path. Draft đầu tái dùng WP3 boundary-test config
+chỉ khai báo `uniform-v1`, trong khi public scenario ghi synthetic policy
+`wp6-synthetic-policy-overlay-v1`; request vật lý khả thi vì thế trả no-op/defer
+`FLEET_SELECTION_CONFLICT`. OR-Tools diagnostic 32 vehicle/34 objective level vẫn đạt
+optimal trong budget, nên tăng budget hoặc nới validator sẽ che sai policy identity.
+Một six-run attempt khác hoàn thành execution/oracle nhưng bundle preflight phát hiện
+source entity IDs chưa sorted. Ngoài ra medium run chứa real resource samples nên yêu
+cầu physical bundle hash giống nhau giữa process là sai determinism domain.
+
+**Decision:** Nâng umbrella contract lên `1.0.5` và khóa:
+
+1. medium compiler bind exact verified descriptor/scenario/report/manifest chain và
+   exact 128 request, 32 vehicle, 96 node, 9.120 directed arc; 21.400 input phải bảo
+   toàn thành eligible/excluded/selected, không raw-row loss hoặc fabricated arc;
+2. Runner dùng dedicated commitment config khai báo đúng synthetic policy ID cùng WP4
+   config qua existing composite binding. Policy mismatch fail closed; không đổi data,
+   solver result hay validator để biến nó thành success;
+3. driver `wp6-public-derivative-instant-drain-driver-v1` kiểm exact capability/init,
+   decision context/hash/ACK/checkpoint, request/vehicle/candidate/plan/suffix binding
+   và lifecycle. Historical frozen prefix chỉ hợp lệ khi executed count exact và không
+   chứa request mới; drain decision không được emit allocation action;
+4. instant drain ở cùng source timestamp chỉ là nonphysical state-machine mechanics.
+   Zero wait/ride không được aggregate/rank/report thành effectiveness, service,
+   fairness, satisfaction, non-inferiority hay SLA; WP7 sở hữu simulator semantics;
+5. source claims và artifact pins phải unique/sorted ordinal ở early preflight trước
+   expensive run. Attempt fail preflight không có receipt và không được gọi pass;
+6. B1/C1 × ba measured repeat chạy trong mỗi hai fresh Release harness process. Exact
+   semantic domains gồm plan/scenario/source/runtime/grid/transcript/decision/semantic
+   metric và từng run input/output/index/decision/semantic rows. Monotonic resource
+   samples, full metric/logical/physical bundle hashes được phép khác nhưng phải complete,
+   provenance-bound và được external verifier xác nhận;
+7. exact-Runner medium test giữ CPU regression ceiling 120 giây. Wall ceiling 180 giây
+   cho full-solution scheduler contention; một 120-second wall failure phải ghi là test
+   resource timeout, không được báo thành WAC hay algorithm pass.
+
+**Evidence required:** publisher length/MD5 + local SHA/license; two-clean-root exact
+normalization; request/exclusion conservation; exact Runner lifecycle; 6/6 × hai fresh
+process; per-run semantic comparison; oracle/strict external verifier; rejected
+unsorted provenance attempt; mechanical-only claim report; format và required full
+solution.
+
+**Evidence:**
+[wp6-012-public-medium-evidence-2026-08-12.md](benchmarking/wp6-012-public-medium-evidence-2026-08-12.md)
+ghi commands, identities, bundles B/C, fail-closed attempt A và claim caveat. Required
+`dotnet test RideBound.slnx` cuối đạt 710/710; Contracts/Runner nạp/chạy và WAC
+`0x800711C7` không tái hiện.
+
+**Consequences:** WP6 có medium public-source harness evidence nhưng chưa có FleetPy
+closed-loop control, vehicle motion hoặc physical KPI. B1/C1 cùng accept/complete mọi
+request dưới instant-drain không chứng minh hai arm tương đương hay C1 tốt hơn. Mọi
+effectiveness experiment vẫn phải chờ WP7 adapter và WP8 preregistration.
+
+**Supersedes / superseded by:** Làm rõ ADR-026 medium gate và mở rộng ADR-033 generic
+paired harness semantics; không đổi WP1 protocol, WP3 publication validator, WP4 solver
+objective, O-001 hoặc O-002/O-003/O-004.
+
+### ADR-035 — 2026-08-12 — Accepted
+
+**Context:** Source/adversarial audit của `RB-WP6-013` phát hiện năm khoảng trống mà
+bundle 012 vẫn có thể che: plan generic khai báo không warm-up; preflight message nói
+claims/pins/sources sorted nhưng chỉ claims được kiểm; medium policy mismatch còn được
+phát hiện sau expensive Runner work; conversation driver có thể phát code ngoài failure
+taxonomy; terminal conservation hard-code sáu thay vì lấy compiled grid. Khi warm-up
+được bật, literal sáu lập tức làm tiny harness fail, chứng minh đây là lỗi logic chứ
+không phải bổ sung test trang trí. Resource evidence D/E cũng xác nhận semantic hash
+phải ổn định trong khi full sampled-resource hash phải được phép khác.
+
+**Decision:** Nâng umbrella contract lên `1.0.6` và khóa:
+
+1. paired mechanical gate materialize một warm-up và ba measured repeat mỗi B1/C1;
+   từng run có process/root/output riêng, repeat index collision-free, không cache/state
+   donation. Conservation dùng exact `compiled.PlannedRuns.Count`;
+2. claims, absolute pins và bundle sources phải non-empty, ordinal-sorted và
+   case-insensitively unique; relative destination/media type cũng fail-closed tại
+   preflight trước Runner execution;
+3. public scenario phải derive đúng một commitment policy ID và exact Runner-visible
+   config phải khai báo policy đó. Empty/multiple/mismatch fail trước run đầu tiên;
+4. conversation chỉ được phát năm code do boundary sở hữu ở negotiation/decision/
+   parsing/completion/validation. Code khác canonicalize thành
+   `protocol.invalid-output/parsing`, không persist arbitrary taxonomy/stage;
+5. required-mutant gate gồm 10 document nested permutation + parallel decode, plan/
+   seed/order parallelism, đủ 21 failure/stage và 8 pre-outcome exclusion rules,
+   actual supervisor/resource branches, store write/race/log boundaries, metric/
+   bundle/claim mutations và exact source nondeterminism audit. `100% killed` chỉ nói
+   về declared matrix này, không phải general mutation score;
+6. cross-process equality dùng scenario/plan/source/runtime/grid/transcript/decision/
+   semantic metric và per-run semantic hashes. UTC/monotonic resource, full metric,
+   logical/physical bundle containing those samples được phép khác nhưng phải complete,
+   provenance-bound và externally verified;
+7. giữ mọi raw resource stratum, kể cả treatment chậm và resource-control failure.
+   Không dùng local instant-drain rows làm effectiveness, non-inferiority, production
+   latency/throughput hoặc SLA evidence.
+
+Không public schema field/failure code nào bị thêm/bỏ; đây là backward-compatible
+semantic/verification correction. WP3 validator/certificate và WP4 objective không
+bị nới, public data không đổi, O-001/O-002/O-003/O-004 vẫn khóa.
+
+**Evidence:** Hai fresh medium D/E đều 8/8 success và strict external verify valid;
+13/13 top-level semantic fields cùng 8/8 per-run semantic records exact, trong khi
+8/8 full resource row hashes khác đúng contract. C1 wall/CPU lớn hơn B1 trong 6/6
+local measured pair được giữ như diagnostic âm. Declared mutation matrix pass; Release
+0 warning/error, format/dependency/schema/link gates sạch và required exact full
+solution cuối 770/770. Một run trước 769/770 do medium CPU control được ghi riêng,
+standalone rồi exact rerun pass; WAC không tái hiện. Chi tiết tại
+[wp6-013-adversarial-closure-evidence-2026-08-12.md](benchmarking/wp6-013-adversarial-closure-evidence-2026-08-12.md).
+
+**Consequences:** `RB-WP6-013` Done và `RB-WP6-014` là ticket duy nhất In progress.
+WP6 chưa đóng cho đến khi source/claim audit toàn WP1–WP6, toàn bộ Markdown, E2E/
+artifact verifier và final Vietnamese review folder có evidence đầy đủ.
+
+**Supersedes / superseded by:** Làm rõ ADR-026 determinism/resource/failure boundary,
+ADR-033 generic paired harness và ADR-034 public medium gate; không supersede WP1
+protocol, WP3 publication boundary, WP4 algorithm semantics hoặc claim profile.
+
+### ADR-036 — 2026-08-13 — Accepted
+
+**Context:** `RB-WP6-014` phải quyết định WP6 có thể đóng dựa trên source/logic và
+fresh artifact evidence hay chỉ đang xanh do test. Audit cũng phải phân biệt source
+provenance change với nondeterminism: medium D/E lịch sử không có cùng source inventory
+với working tree closure hiện hành.
+
+**Decision:** Đóng WP6 với các điều kiện:
+
+1. review source theo chuỗi authority thực, không dùng test count làm kết luận;
+2. WP3 full-fleet physical/commitment validator và ACK-only commit giữ nguyên; WP4
+   heuristic/solver/filter không được tự cấp publication certificate;
+3. WP5 chỉ orchestration/persistence và phải gọi pinned Runner; WP6 chỉ external
+   supervision/measurement, không reference core decision path;
+4. fresh repeat pair phải dùng cùng exact source inventory. So khác source inventory
+   là provenance difference, không phải deterministic failure;
+5. semantic equality bao gồm top-level và từng run input/output/index/decision/metric;
+   sampled resource/full/bundle hash được phép khác nhưng phải complete/external-verify;
+6. paper speed-up/sparse/multiple-plan result chỉ vào code sau claim-boundary,
+   deterministic loss/oracle và hard revalidation evidence; closure không tự thêm;
+7. final handoff phải giải thích logic/code/file/paper/risk/reproduction bằng tiếng
+   Việt và giữ mọi negative result/caveat;
+8. WP7 giữ Not Started; WP6 không cấp effectiveness, SLA, non-inferiority, fairness
+   hay satisfaction claim.
+
+**Evidence:** Fresh tiny A 8/8, bundle
+`79cb321a2aa079c34ddfa49061387e78990f14b7bb368abb762e497c30b27b04` valid.
+Medium H/I trên exact source cuối đều 8/8; 16 top-level field + 72 per-run semantic
+field có 0 mismatch, 8/8 full resource row khác hợp lệ; bundles
+`89a43921e46f57cfc47d9fcb0d63f8f18f58087a1f54d29fe65c7fecc4d6d9d8` và
+`a954db621758a6404fba988a491f9f4575add45a771f0b852ce7ab7cd95494e9`
+đều fresh-process verify. Exact full solution 770/770; Contracts/Runner load và WAC
+không tái hiện. Evidence chi tiết ở
+[wp6-014-source-claim-closure-evidence-2026-08-13.md](benchmarking/wp6-014-source-claim-closure-evidence-2026-08-13.md)
+và [review WP1–WP6](reviews/wp1-wp6-final/README.md).
+
+**Consequences:** `RB-WP6-001..014` Done, WP6 Complete. Không có ticket active;
+WP7 chỉ được mở bằng refinement explicit. D/E, F/G và mọi artifact lỗi/âm vẫn được giữ.
+
+**Supersedes / superseded by:** Đóng exit gate ADR-026 và các amendment ADR-027..035;
+không thay protocol WP1, state/physical WP2, publication WP3, algorithm WP4, durable
+boundary WP5 hoặc các open decisions O-002/O-003/O-004/O-006/O-008.
+
+### ADR-037 — 2026-08-13 — Accepted
+
+**Context:** Refinement WP7 phải giải quyết hai rủi ro trước khi viết adapter. Thứ
+nhất, Candidate cap cũ xếp từng route variant riêng lẻ, nên nhiều variant cùng exact
+service set có thể chiếm cap và làm mất một service set hữu ích ở fleet selection;
+C1 còn có thể mất variant ít phá incumbent trước hard gate. Thứ hai, FleetPy adapter
+không được suy đoán callback, edge progress hoặc vượt locked leg chỉ vì unit test giả
+pass. Nghiên cứu lại Alonso-Mora, Engelhardt et al. và Zalesak et al. cho thấy các
+RV/subset/random-direction filter có speed/quality trade-off hoặc đòi giả định không
+được bảo đảm bởi arbitrary directed sparse RideBound snapshot.
+
+**Decision:**
+
+1. thêm config-bound `CandidateRetentionStrategy`; old WP1–WP6 config thiếu field
+   phải parse thành `LegacyAcceptedCountCostSlack`, giữ behavior và content hash cũ;
+2. strategy opt-in `ServiceSetStabilityPortfolioV1` chạy riêng từng accepted-count
+   tier: giữ cheapest anchor cho mọi exact service set, rồi stability anchor theo
+   unchanged incumbent prefix, inserted-before-incumbent-pickup và integer service-
+   start shifts, cuối cùng fill bằng legacy rank;
+3. no-op luôn được giữ; retained/omitted count và digest vẫn exact. Candidate filter
+   không cấp publication authority: WP3 full-fleet physical/commitment validator vẫn
+   revalidate trước decision;
+4. chỉ nhận strategy mới sau bounded evidence: per-set B1 cost dominance tại mọi cap,
+   fleet strict-positive, C1 real-validator/no-regression và permutation/conservation;
+   đây không phải chứng minh tối ưu phổ quát hay effectiveness;
+5. reject random request/vehicle order, random direction, forecast/reassignment hoặc
+   paper-only pruning khỏi default; O-001 và O-002/O-003/O-004 không mở;
+6. pin FleetPy tag `1.0.2`, annotated tag object
+   `ca5a245243094236c84a0e93b32819ee502beeff`, commit
+   `053aa9d4fcfde91c5d303435d5748f9206c071b0`, MIT và source/env hashes ngoài vendor;
+7. executable probe phải fail trước adapter import khi commit/tag/dirty/source/env
+   drift; probe actual abstract callbacks, position round-trip,
+   `SimulationVehicle._move` mutation và non-forced assignment default;
+8. khóa directed position model `(startNode,endNode,relativeProgress)` với node form
+   `(node,None,None)` và `relativeProgress ∈ [0,1]`. Không có capability thì fail/
+   named downgrade; không suy diễn từ clock;
+9. FleetPy suffix mapping phải giữ exact active locked leg, không bao giờ gọi
+   `force_assign=True`, và chỉ gọi cùng pinned external RideBound Runner; Python không
+   port/reimplement Candidate, validator hoặc policy.
+
+**Evidence:** Candidate tests chứng minh per-service-set anchor dominance, exact fleet
+adversarial cùng cap tăng accepted `2 → 4`, stability anchor sống qua hard gate và
+32 exact-small seeds qua real assessor/production policy không có substantive C1
+regression, có strict-positive witness; permutation/loss/config compatibility đều
+pass. Algorithm 141/141, Runner 73/73 và exact full solution 776/776. FleetPy probe
+trên external clean checkout kiểm đúng annotated tag/commit và six critical source
+hashes, Python 3.10.20/package lock, 13 abstract callbacks, position
+`(11,12,0.375)` round-trip, `_move` đổi thành `(11,12,0.625)`, và
+`force_assign=False` được truyền vào `force_ignore_lock`; bốn drift mutation test
+fail đúng typed code.
+
+**Consequences:** `RB-WP7-001..003` Done; `RB-WP7-004` là ticket duy nhất Ready.
+Strategy mới là opt-in cho config WP7/future experiment; published WP4/WP6 config
+không bị đổi. WP7 vẫn chỉ mechanical Layer-2 cho đến actual preflight/tiny/medium
+closed loop; chưa có effectiveness, SLA, non-inferiority, fairness hay novelty claim.
+
+**Supersedes / superseded by:** Đóng O-006 và mở ordered WP7 queue sau ADR-036;
+không supersede WP1 protocol, WP2 physical state, WP3 publication gate, WP4 objective,
+WP5 durable boundary, WP6 measurement contract hoặc open decisions còn lại.
+
+### ADR-038 — 2026-08-16 — Accepted
+
+**Context:** Sau ADR-037, WP7 phải đóng bằng current-source evidence thay vì chỉ unit
+test hoặc một preflight giả. Audit Candidate tìm thấy một lỗi ranking thật: B4 repair
+root có thể bị xếp theo slack của route chưa repair dưới work cap. Adapter FleetPy cũng
+phải chứng minh actual callbacks, directed position, locked plan và process restart qua
+cùng Runner binary ở B1/C1.
+
+**Decision:**
+
+1. Sửa B4 root priority để mọi repair seed xếp theo mutable suffix của chính route đã
+   repair; regression ghi việc projection này xảy ra trước khi one-work budget chọn root.
+2. Giữ portfolio là opt-in. B1 proof chỉ là substitution cùng vehicle/exact service set:
+   cost anchor không đắt hơn và có cùng conflict columns; nó không bảo toàn CandidateId
+   tie-break, không là global optimum và không là định lý C1 phổ quát.
+3. Khi opt-in cap thực sự áp dụng, một candidate non-no-op phải giữ nguyên mọi no-op
+   incumbent stop và tập stop request mới phải đúng `NewRequestIds`. Nhờ vậy label
+   service set không thể che route khác nghĩa.
+4. Python adapter chỉ map FleetPy và gọi external published Runner v6; không có core
+   algorithm Python, không `force_assign=True`, không invented reverse/zero arc và
+   locked/current leg mismatch fail typed.
+5. Actual evidence bắt buộc dùng FleetPy 1.0.2 clean pin + CPython lock, Runner preflight,
+   FleetControl preflight/lifecycle, two-repeat tiny clock và three-repeat public-medium
+   B1/C1. Medium bundle phải qua verifier độc lập từ transcript/manifest.
+6. Giữ caveat upstream FleetPy future-ABC warning và các raw resource/negative records.
+   Không suppress warning, nâng CPU limit, hoặc suy diễn effectiveness/performance từ
+   publication count, wall time hay semantic hash khác arm.
+
+**Evidence:** Published Runner v6 SHA-256
+`8a227fcd44e2c8e9814821bce317ea07f59c6fe9766dd26b6b8533a8129b75a2`; external
+evidence root `E:\\RideBoundData\\wp7\\results\\candidate-portfolio-v6-20260815`;
+hard-vector medium manifest `e8f03b56137d9ca54ebeef802cb5c3da0e3cab600c73c08ce42a4c13ae41274e`
+and rolling-cost manifest `829eb76645a4c751af5a3bf25f298ed9608ac320351a1713a054b43c9838689f`.
+Full .NET suite passes `790/790`; pinned Python adapter suite passes `49/49` without
+skip; WAC did not recur. Exact receipts and claim boundary are in
+`benchmarking/wp7-014-fleetpy-layer2-closure-evidence-2026-08-15.md`.
+
+**Consequences:** `RB-WP7-001..014` Done and WP7 Complete for mechanical Layer-2
+scope. WP8 is not started and needs an explicit refinement/preregistration decision.
+No effectiveness, SLA, non-inferiority, fairness, satisfaction, novelty, independent
+reproduction or global-optimality claim is authorized.
+
+**Supersedes / superseded by:** Supersedes the open queue state of ADR-037; retains its
+pin, claim boundary and all earlier protocol/state/commitment/solver decisions.
+
+### ADR-039 — 2026-08-17 — Accepted
+
+**Context:** Một audit source sau ADR-038 tìm thấy hai loại nợ. Thứ nhất, một nhóm
+thay đổi ngữ nghĩa thật đã vào source mà **không có ADR nào khóa**: thời điểm mở
+promise (`initialPromiseTrigger`), baseline của lock evaluator, cách reducer xử lý
+`OfferDeclined` sau khi đã accept, một failure fail-closed mới ở C1, hai CLI flag mới
+của Runner và việc phát plan update do event gây ra. Thứ hai, cổng benchmark medium
+từng chạm trần CPU và nguyên nhân chưa từng được **đo**, chỉ được suy đoán. Ngoài ra
+mọi receipt tài liệu vẫn ghi `790/790` trong khi source đã đi tiếp.
+
+**Decision:**
+
+1. Khóa `initialPromiseTrigger` là một thuộc tính config có hai giá trị hợp lệ.
+   `initial-acceptance` giữ nguyên ngữ nghĩa WP1–WP6: promise mở khi request được
+   accept. `booking-confirmation` mô hình hóa Layer-2 thật, nơi assignment chỉ là một
+   **offer provisional**: nó được kiểm tra vật lý đầy đủ nhưng **không** tạo promise,
+   và promise chỉ mở tại chuyển trạng thái `Accepted → WaitingPickup/Onboard` với
+   reason code `INITIAL_BOOKING_CONFIRMATION`. Config thiếu field phải parse thành
+   `initial-acceptance`, giữ nguyên content hash cũ.
+2. `CommitmentLockEvaluator` so candidate với **exogenous projection**, còn published
+   promise trước đó chỉ xác định horizon đang bị khóa. Traffic drift vì thế được ghi
+   nhận nhưng không bị báo sai thành vi phạm lock. Đây là áp dụng đúng three-way delta
+   đã khóa ở ADR-021, không phải nới lỏng lock.
+3. `OfferDeclined` trên một request đang `Accepted` là `CancelAfterAcceptance`, không
+   phải `RejectRequest`; từ chối một offer đã được cấp không được ghi thành chưa từng
+   được phục vụ.
+4. `C1_VEHICLE_HAS_NO_FEASIBLE_CANDIDATE` là fail-closed bắt buộc: nếu treatment loại
+   hết mọi candidate của một vehicle — kể cả no-op an toàn — run phải dừng với witness
+   **typed**, không được giao cho solver một vehicle không có lựa chọn nào. Witness
+   mang `requestId`, `dimension`, `underlyingCode`, `before`, `after` và số lượng
+   generated/rejected ở trường riêng, không nhồi vào prose.
+5. Runner nhận `--maximum-line-bytes` (bounded `1 MiB..64 MiB`) và
+   `--manifest-solver-seed`; plan update do event gây ra chỉ được phát khi caller bật
+   tường minh và route thực sự khác route trước đó.
+6. Tối ưu hiệu năng chỉ được chấp nhận khi **không đổi một byte kết quả nào** và được
+   chứng minh bằng counter, không bằng đồng hồ. Khóa memo slack chuyển sang so sánh
+   cấu trúc chính xác thay cho fingerprint SHA-256; framing identity ghi thẳng UTF-8;
+   `RoutePlan.Create` phát hiện stop trùng bằng đếm hai lượt và báo đúng key cũ;
+   StableId của search node và route đã chiếu được tính lười; generator rank một lần
+   rồi đưa thứ tự cho retainer kèm kiểm tra fail-closed. `CandidateSearchWorkProfileTests`
+   khóa chính xác work unit, evaluated path, feasible-before-cap, omitted path, retained
+   count và số profile slack riêng biệt.
+7. Semantic hash của actual FleetPy **không so sánh được giữa hai Runner artifact**, vì
+   `RunManifestIdentity` cố ý bind `binarySha256`. Differential giữa hai binary phải so
+   các trường hành vi, không so hash tổng hợp.
+
+**Evidence:** Micro-harness xác định hot path không phải validator (`0,72 µs/route`)
+mà là khóa memo slack (`19,63 µs/lookup`, ~39.000 lookup mỗi `Generate`). Sau thay đổi:
+`0,64 µs/lookup`. Wall time mỗi `Generate` (min của ba lần chạy) giảm
+`25,3 → 16,6 ms` (suffix 4), `220 → 170 ms` (suffix 8), `897 → 587 ms` (suffix 12),
+`1662 → 1018 ms` (suffix 16); mọi counter giữ nguyên tuyệt đối. Benchmark medium
+mechanical hoàn tất trong `1 m 50 s` dưới trần CPU 120 giây.
+Required `dotnet test RideBound.slnx` pass **798/798**, 0 failed, 0 skipped:
+Contracts 135, Domain 136, Application 73, Algorithms 154, Runner 77, Benchmarking 135,
+Benchmarking.Contracts 71, OrTools 7, Architecture 10. `dotnet format --verify-no-changes`
+sạch; Release `-warnaserror` 0 warning/0 error. Pinned Python adapter suite pass
+**50/50** không skip.
+Runner v8 SHA-256 `13bf5d9b1dfbcb677d2d64c24038dba2c9adc22e664d2a6adecbf1905dcc179e`
+tại `E:\\RideBoundData\\wp7\\runner\\candidate-portfolio-v8-identity-hotpath`; evidence root
+`E:\\RideBoundData\\wp7\\results\\candidate-portfolio-v8-identity-hotpath-20260817`.
+Differential v7↔v8 trên tiny clock với label giống hệt: publication, `requestState`,
+`travelSnapshotVersion`, `vehiclePosition`, `nextEpoch`, `nextEventSeq` và
+`exactPhysicalBoundaryDrainCount` **giống hệt**; chỉ `manifestHash`/`checkpointBindingHash`
+lệch, đúng bằng thiết kế bind binary.
+
+**Consequences:** Mọi receipt `790/790` trong tài liệu được thay bằng `798/798` và mọi
+receipt actual được gắn với Runner v8. WP7 vẫn Complete cho phạm vi mechanical Layer-2.
+Không có effectiveness, SLA, non-inferiority, fairness, satisfaction, novelty hay
+global-optimality claim nào được cấp. Đề xuất *lazy priority* bị **bác bỏ** và ghi lại
+như kết quả âm. Constant-time feasibility test của Gschwind–Drexl 2019 được ghi nhận là
+hướng WP8 nhưng **chưa áp dụng**, vì full text chưa đọc được tại ngày kiểm tra.
+
+**Supersedes / superseded by:** Bổ sung, không thay thế, ADR-037/038. Không đụng tới
+WP1 protocol, WP2 physical state, WP3 publication gate, WP4 objective, WP5 durable
+boundary hay WP6 measurement contract.
+
 ## 8. Work package tracker
 
 | WP | Trạng thái | Bắt đầu | Kết thúc | Evidence |
@@ -2268,8 +3273,8 @@ O-001/O-002/O-003/O-004, WP3 publication gate hoặc ADR-024 claim boundary.
 | WP3 Ledger/certificate | Complete; `001..014` DONE; Debug 414/414 | 2026-07-31 | 2026-08-02 | ADR-021/022 + `tasks/28` + full-solution 414/414 + WP3 process/checkpoint replay |
 | WP4 Algorithms/solver | Complete; `001..014` Done; Q2 mechanical gate closed | 2026-08-03 | 2026-08-03 | ADR-023/024 + independent oracles + named policy/solver/Runner path + 557/557 + final review |
 | WP5 BeGo integration | Complete; `001..014` Done; Q3 mechanical gate closed | 2026-08-05 | 2026-08-09 | ADR-025 + durable adapter/rollout + paired bundle + independent evidence + source/claim review; BeGo 154/154 Debug/Release |
-| WP6 Benchmark harness | Refinement Ready; only `RB-WP6-001`, no implementation | 2026-08-09 | — | `tasks/33` |
-| WP7 FleetPy | Not started | — | — | — |
+| WP6 Benchmark harness | Complete; `001..014` Done; common mechanical harness gate closed | 2026-08-09 | 2026-08-13 | ADR-026..036 + contract v1.0.6; fresh tiny A + medium H/I exact-source semantic reproduction, strict external verify, final review, 770/770 |
+| WP7 FleetPy | Complete; `001..014` Done; mechanical Layer-2 closed | 2026-08-13 | 2026-08-17 | ADR-037/038/039 + `tasks/35`/`tasks/36` + Runner v8 actual B1/C1 preflight/lifecycle/tiny/medium + external verifier |
 | WP8 Pilot/prereg | Not started | — | — | — |
 | WP9 Main experiments | Not started | — | — | — |
 | WP10 Cross-system | Not started | — | — | — |
@@ -2278,6 +3283,135 @@ O-001/O-002/O-003/O-004, WP3 publication gate hoặc ADR-024 claim boundary.
 
 ## 9. Change history
 
+- 2026-08-17: Chấp nhận ADR-039. Audit source khóa bằng ADR các thay đổi ngữ nghĩa
+  từng vào source mà chưa có quyết định: `initialPromiseTrigger` hai giá trị, lock
+  evaluator dùng baseline exogenous, `OfferDeclined` sau accept là cancel-after-
+  acceptance, fail-closed `C1_VEHICLE_HAS_NO_FEASIBLE_CANDIDATE` với witness typed,
+  hai CLI flag Runner và event-induced plan update phải opt-in. Hot path được **đo**
+  chứ không suy đoán: chi phí nằm ở khóa memo slack (`19,63 → 0,64 µs`), không ở
+  validator; wall time mỗi `Generate` giảm `23–39%` với toàn bộ counter bất biến, và
+  benchmark medium về `1 m 50 s` dưới trần CPU. Đề xuất lazy priority bị bác bỏ bằng
+  phân tích và được giữ làm kết quả âm. Required suite `798/798`, Python `50/50`,
+  format/Release sạch; Runner v8 `13bf5d9b…c179e` chạy lại toàn bộ actual FleetPy gate.
+  Vẫn không có effectiveness/SLA/novelty claim.
+- 2026-08-16: Chấp nhận ADR-038 và đóng `RB-WP7-004..014`. Audit Candidate sửa B4
+  repair-root priority để bounded best-first chấm đúng repaired suffix, đồng thời
+  portfolio opt-in cấm hidden introduced request. FleetPy 1.0.2 actual B1/C1 dùng cùng
+  Runner v6 qua preflight, lifecycle, tiny và public-medium three-repeat verifier;
+  .NET 790/790 và Python 49/49 pass, WAC không tái hiện. Đây chỉ là mechanical Layer-2
+  closure; raw timing/publication khác nhau không được suy thành effectiveness hay SLA.
+- 2026-08-13: Hoàn thành `RB-WP7-001..003` và chấp nhận ADR-037. Browser/source
+  research loại paper-only/random pruning; Candidate portfolio opt-in giữ cost/stability
+  anchor theo service set, exact loss accounting và old-config legacy semantics. Bounded
+  adversarial tăng accepted `2 → 4`; 32-seed real C1 gate không substantive regression
+  và có strict positive. FleetPy exact annotated tag/commit/source/env probe pass,
+  actual directed-edge `_move` và non-forced lock path được thực thi; bốn drift mutation
+  fail closed. Full solution 776/776; chuyển duy nhất `RB-WP7-004` sang Ready.
+- 2026-08-13: Hoàn thành `RB-WP6-014`, chấp nhận ADR-036 và đóng WP6. Source-level
+  audit WP1–WP6 không phát hiện unresolved correctness/contract defect; WP3 full
+  publication gate, WP4 fairness/fallback, WP5 pinned Runner/durable recovery và WP6
+  raw/oracle/bundle authority giữ nguyên. Fresh tiny A 8/8; medium H/I trên exact
+  source cuối mỗi process 8/8, 16/16 top-level + 72/72 per-run semantic exact,
+  8/8 resource rows khác hợp lệ;
+  external verifier valid. Required full solution 770/770, WAC không tái hiện. Tạo
+  final Vietnamese review và closure evidence; WP7 giữ Not Started, không active ticket.
+- 2026-08-12: Hoàn thành `RB-WP6-013` và chấp nhận ADR-035/contract `1.0.6`.
+  Audit sửa executable warm-up, complete provenance/policy preflight, plan-derived
+  conservation và canonical failure taxonomy. Declared permutation/parallel/failure/
+  exclusion/process/store/metric/bundle/claim/source matrix pass. Medium D/E đều 8/8,
+  semantic exact và strict verify valid; mọi sampled-resource row khác được giữ, gồm
+  C1 chậm hơn B1 ở 6/6 local measured pair nhưng không có effectiveness/SLA claim.
+  Release/format/dependency/schema/link sạch, exact full solution cuối 770/770; một
+  preceding CPU-control failure không bị báo sai thành WAC. Chuyển `RB-WP6-014` In progress.
+- 2026-08-12: Hoàn thành `RB-WP6-012` và chấp nhận ADR-034/contract `1.0.5`.
+  Verified FleetPy source và two-clean-root normalization khớp exact medium derivative;
+  dedicated synthetic-policy binding cùng exact Runner instant-drain lifecycle đóng lỗi
+  config identity mà không nới validator/data. Hai fresh Release harness B/C đều 6/6,
+  semantic/per-run hashes exact và external bundle verify valid; resource/full/bundle
+  hashes khác đúng phạm vi. Attempt A unsorted provenance fail-closed được giữ lại.
+  Format sạch, full solution cuối 710/710; một run trước fail wall-time contention được
+  ghi đúng là timeout test, không phải WAC. Chuyển `RB-WP6-013` In progress.
+- 2026-08-12: Hoàn thành `RB-WP6-011` và chấp nhận ADR-033/contract `1.0.4`.
+  Sáu-epoch source fixture tạo accept/reject/revision/completion và exact non-zero
+  decision-induced insertion witness. Composite WP3+WP4 policy binding, manifest
+  solver seed opt-in, canonical failure-stage mapping và independently verified
+  per-run oracle summaries đóng các lỗ provenance/measurement. Hai clean Release
+  harness process khớp toàn bộ semantic identity; verified mechanical bundle
+  `0936f8c...a1671` được publish dưới ignored `artifacts/`. Benchmarking 104/104,
+  Algorithms 136/136, format/Release sạch, full solution 705/705; WAC không tái hiện.
+  Chuyển đúng `RB-WP6-012` sang In progress.
+- 2026-08-11: Hoàn thành `RB-WP6-010` và chấp nhận ADR-032. Builder reserve/tự sinh
+  canonical claim profile/report, profile SHA được bind trong reproducibility evidence
+  `1.0.1`; stage 10 chỉ scan selected claim surfaces rồi recompute report byte-exact.
+  Exact caveat masking cùng Unicode/punctuation/confusable/synonym matcher trả typed
+  witness và chặn resealed README/report/provenance/profile/forged-check mutations,
+  không đọc raw trip/transcript/source prose. Browser đối chiếu ACM, NASEM, Unicode,
+  Peng và Munafò; không nâng same-team repeatability thành validity/effectiveness/
+  independent reproduction. Benchmarking 95/95, format/Release sạch, required full
+  solution 691/691; WAC không tái hiện. Chuyển đúng `RB-WP6-011` In progress.
+- 2026-08-11: Hoàn thành `RB-WP6-009` và chấp nhận ADR-031. Strict BagIt builder
+  phát deterministic no-extra payload/tag/oxum/logical manifests qua private staging
+  và atomic publication. Source capture bind exact dirty working tree; provenance
+  rederive source/runtime/Runner/oracle/verifier/grid identities. Ordered verifier tái
+  dùng WP6-007 transcript gate, bảo toàn mixed terminal logs, so oracle và recompute
+  raw production metrics; external process chỉ emit immutable sidecar. Sáu bundle/
+  source tests cùng full mutation matrix pass; Benchmarking 92/92, format và Release
+  `-warnaserror` sạch, required full solution 688/688, WAC không tái hiện. Chuyển đúng
+  `RB-WP6-010` In progress.
+- 2026-08-11: Hoàn thành `RB-WP6-008` và chấp nhận ADR-030. Metric registry exact
+  36 definition; production calculator sinh 132 canonical integer rows với explicit
+  cohort/window/lifecycle/denominator/missing/resource rules. External BCL-only oracle
+  không ProjectReference tự tái dựng và khớp byte-exact mọi row/evidence/metric-set;
+  request/action/promise/vector/window/order/resource/zero-denominator/overflow
+  mutations bị phát hiện hoặc từ chối typed. Browser evidence bổ sung McKeeman
+  differential testing và Dolan–Moré performance-profile boundary; không mở aggregate/
+  effectiveness claim. Benchmarking 86/86, format và Release `-warnaserror` sạch,
+  required full solution 682/682; WAC không tái hiện. Chuyển đúng `RB-WP6-009`
+  In progress.
+- 2026-08-11: Hoàn thành `RB-WP6-007`. Append-only store publish plan/run bằng atomic
+  rename, exact raw/index/detail/log identities, gapless failure/exclusion hash chain,
+  terminal conservation, typed persistence seal, concurrent per-run locking và
+  authorized full-grid supersession. Source audit bổ sung streaming hash, exact path/
+  reparse guards, canonical resource samples, plan-bound manifest/checkpoint checks,
+  independent artifact-inventory/launch verification và supervisor-store mapper.
+  23 store + 2 mapper cases; Benchmarking 77/77, Contracts 38/38, format sạch và
+  required full solution 673/673, không failed/skipped; WAC `0x800711C7` không tái
+  hiện. Chuyển đúng một ticket `RB-WP6-008` In progress.
+- 2026-08-09: Hoàn thành `RB-WP6-006`. Source implementation phát hiện failure
+  taxonomy thiếu cancellation/process-count/stream-byte branch; ADR-028 + contract
+  1.0.2/failure 1.0.1 republish plan/run/metric identity vectors. Supervisor chỉ gọi
+  external pinned process, hash pre/post 189 .NET runtime files + 12 Runner deploy
+  files/config/source trong actual fixture gate, kiểm độc lập capability/manifest/
+  decision/ACK/checkpoint chain và giữ bounded partial evidence. 15/15 supervisor,
+  contract 37/37, Benchmarking 52/52, format sạch, full 647/647; WAC 0x800711C7
+  không tái hiện. Chuyển `RB-WP6-007` In progress.
+- 2026-08-09: Hoàn thành `RB-WP6-005`. Framed HMAC seed vectors tái tạo qua hai clean
+  processes; plan compiler bind exact config/protocol/work/capability/pairing, reject
+  asymmetric/B5/noncanonical/oversized grids và materialize collision-free full run
+  grid với HMAC arm order trước outcome. Permutation/32-way parallel exact; targeted
+  32+37, format sạch, full 627/627. Chuyển `RB-WP6-006` In progress.
+- 2026-08-09: Hoàn thành `RB-WP6-004`. Source-level review phát hiện cyclic scenario/
+  report identities; ADR-027/schema 1.0.1 chuyển thành acyclic hash DAG. Normalizer
+  kiểm exact member bytes, directed SCC/Dijkstra, dense coverage node pool + HMAC row
+  ranking, ties-to-even/pseudonym/conservation và typed failures. Two clean processes
+  byte-exact cho tiny 8/2/16/240 và medium 128/32/96/9120; 21400 input rows conserved,
+  targeted 29+32, format sạch, full 619/619. Chuyển `RB-WP6-005` In progress.
+- 2026-08-09: Hoàn thành `RB-WP6-003`. Public FleetPy Manhattan ZIP được opt-in
+  download/resume và khóa exact length/MD5/SHA-256; safe preflight/extract tạo receipt
+  335 members, `1022750557` uncompressed bytes và stable inventory hash. Rerun xác
+  minh cache/extraction idempotent không chạm mạng; targeted 26/26, format sạch và
+  full solution 612/612. Chuyển `RB-WP6-004` sang In progress.
+- 2026-08-09: Hoàn thành `RB-WP6-002`. Thêm project contract thuần, 10 strict
+  document codecs/models, semantic/path/pairing/topology/terminal validators, Draft
+  2020-12 schemas/inventory, positive/negative fixtures và framed identity helpers.
+  Hai clean process khớp published vector sáu hash; targeted 28/28, format sạch,
+  required full solution 586/586. Chuyển duy nhất `RB-WP6-003` sang Ready.
+- 2026-08-09: Hoàn thành `RB-WP6-001` refinement. Đọc đủ 82 Markdown và dùng
+  in-app Browser kiểm FleetPy/Zenodo, RFC 8785, Random123, RFC 8493 BagIt, W3C
+  PROV, FAIR, Datasheets, Sandve và ACM artifact terminology. ADR-026/contract v1
+  khóa scenario/data/pairing/seed/Runner/failure/exclusion/metric/bundle/resource/
+  claim semantics. Tạo queue `RB-WP6-002..014`, chỉ `002` Ready; chưa có harness,
+  public download hoặc effectiveness result.
 - 2026-08-09: Hoàn thành `RB-WP5-014` và đóng WP5/Q3 mechanical gate. Source audit
   sửa subject-link immutability, pre-T3 outbox publication và cross-run relay scope;
   BeGo Debug/Release 154/154, frontend/format/vulnerability gates sạch. Tạo detailed

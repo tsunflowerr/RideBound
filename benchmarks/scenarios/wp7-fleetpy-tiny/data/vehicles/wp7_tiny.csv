@@ -1,0 +1,7 @@
+vtype_name_full,wp7_tiny
+maximum_passengers,4
+daily_fix_cost [cent],0
+per_km_cost [cent],0
+battery_size [kWh],50
+range [km],10000
+source,RideBound-WP7-source-controlled-fixture

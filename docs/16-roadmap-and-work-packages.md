@@ -31,9 +31,15 @@ WP3 đã đóng; WP4 refinement
 WP4 đã đóng bằng ADR-024; WP5 đã refinement và hoàn thành theo
 [31-wp5-bego-integration-refinement.md](tasks/31-wp5-bego-integration-refinement.md),
 [32-wp5-bego-integration-ticket-plan.md](tasks/32-wp5-bego-integration-ticket-plan.md).
-WP6 hiện chỉ có đúng một ticket refinement `READY` trong
+WP6 refinement đã hoàn thành trong
 [33-wp6-common-benchmark-harness-refinement.md](tasks/33-wp6-common-benchmark-harness-refinement.md);
-chưa có implementation.
+ordered implementation queue nằm tại
+[34-wp6-common-benchmark-harness-ticket-plan.md](tasks/34-wp6-common-benchmark-harness-ticket-plan.md),
+`RB-WP6-001..014` đã Done; WP6 đã đóng bằng ADR-036. WP7 refinement
+`RB-WP7-001..014` đã Done trong
+[35-wp7-fleetpy-layer2-refinement.md](tasks/35-wp7-fleetpy-layer2-refinement.md);
+ordered queue ở [tasks/36](tasks/36-wp7-fleetpy-layer2-ticket-plan.md) đã đóng bằng
+ADR-038 và evidence current-state.
 
 ## WP0 — Freeze baseline và scaffold
 
@@ -191,8 +197,17 @@ và [32-wp5-bego-integration-ticket-plan.md](tasks/32-wp5-bego-integration-ticke
 
 ## WP6 — Common benchmark harness
 
-**Trạng thái:** Refinement `READY`; chỉ `RB-WP6-001`, chưa có code/experiment.
-Xem [33-wp6-common-benchmark-harness-refinement.md](tasks/33-wp6-common-benchmark-harness-refinement.md).
+**Trạng thái:** `RB-WP6-001..014` DONE; WP6 COMPLETE. Strict contract,
+verified derivatives, plan/seed/pairing compiler, exact external Runner supervisor,
+append-only terminal store và production/independent metric equality đã có;
+strict BagIt bundle/clean-process verifier và source-locked claim checker đã có;
+tiny paired gate đã đóng bằng ADR-033; medium public-data mechanical gate đã đóng bằng
+ADR-034 medium gate và ADR-035/contract `1.0.6` adversarial determinism/failure/
+resource closure; ADR-036 đã đóng source/claim audit toàn WP1–WP6 bằng fresh tiny,
+medium H/I trên exact source cuối, external verifier, full gates và review tiếng Việt. Xem
+[33-wp6-common-benchmark-harness-refinement.md](tasks/33-wp6-common-benchmark-harness-refinement.md),
+[34-wp6-common-benchmark-harness-ticket-plan.md](tasks/34-wp6-common-benchmark-harness-ticket-plan.md)
+và [WP6 contract v1](benchmarking/wp6-contract-v1.md).
 
 ### Deliverable
 
@@ -211,6 +226,13 @@ Xem [33-wp6-common-benchmark-harness-refinement.md](tasks/33-wp6-common-benchmar
 - no confirmatory run yet.
 
 ## WP7 — FleetPy Layer 2
+
+**Trạng thái hiện tại:** `RB-WP7-001..014 DONE` — Candidate portfolio opt-in,
+FleetPy 1.0.2 external adapter, một Runner artifact cố định mỗi source state và actual
+B1/C1 closed-loop đã qua gate cơ học. Xem ADR-038 và `docs/benchmarking/wp7-014-...`.
+ADR-039 bổ sung: khóa các ngữ nghĩa còn thiếu quyết định, thêm work-profile gate cho
+Candidate core, và chạy lại toàn bộ actual gate trên Runner v8 —
+`docs/benchmarking/wp7-015-...`.
 
 ### Deliverable
 
@@ -369,7 +391,7 @@ người dùng. Sau khi WP0 qua exit gate:
    oracle, self-verifying artifact và source-level closure audit. Audit sửa thêm
    authorization-evidence immutability, pre-T3 publication và cross-run relay
    isolation; review/verdict ở [reviews/wp1-wp5-final/README.md](reviews/wp1-wp5-final/README.md).
-7. Tiếp tục đúng một ticket `READY`: `RB-WP6-001`, chỉ refinement common harness.
-   Không viết harness/chạy experiment trước khi ticket khóa scenario, metric,
-   exclusion và bundle contract; không tự chọn O-002/O-003/O-004, không mở O-001
-   reassignment và không overclaim local curve.
+7. `RB-WP6-014` đã đóng source/constraint/algorithm/claim audit WP1–WP6. `RB-WP7-001..014`
+   đã tiếp tục bằng Candidate oracle/dominance, external FleetPy capability/adapter,
+   actual tiny/medium B1/C1 loops và verifier. Không diễn giải WP6 instant-drain hay
+   WP7 mechanical closure thành FleetPy effectiveness; O-001/O-002/O-003/O-004 vẫn đóng.

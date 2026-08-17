@@ -199,6 +199,279 @@ public sealed class CommitmentDecisionValidatorTests
         Assert.Equal("COMMITMENT_STATE_BOUNDARY_MISMATCH", witness.Code);
     }
 
+    [Fact]
+    public void Booking_confirmation_trigger_keeps_offer_provisional_then_opens_v1_once()
+    {
+        var request = ApplicationTestData.Request();
+        var emptyRoute = RoutePlan.Create(
+            new PlanVersion(0),
+            0,
+            [],
+            []).Value!;
+        var vehicle = VehicleState.Create(
+            ApplicationTestData.VehicleId,
+            4,
+            0,
+            new NodePosition(ApplicationTestData.NodeZero),
+            [],
+            [],
+            emptyRoute,
+            0).Value!;
+        var beforeRun = RideBoundRun.Create(
+            ApplicationTestData.RunId,
+            ApplicationTestData.ScenarioId,
+            new SimTime(1_000));
+        beforeRun = beforeRun.BootstrapVehicle(vehicle).Value!;
+        var travel = ApplicationTestData.Travel();
+        var before = new OnlineState(
+            beforeRun,
+            travel,
+            1,
+            travel.SnapshotHash,
+            CommitmentLedger.Empty);
+        var reducedRun = beforeRun.AddRequest(request).Value!;
+        reducedRun = reducedRun.AdvanceEpoch(1, new SimTime(1_000)).Value!;
+        var reduced = before with
+        {
+            Run = reducedRun,
+            NextEventSequence = 2,
+        };
+        var assignedRoute = RoutePlan.Create(
+            new PlanVersion(1),
+            0,
+            [],
+            [
+                new RouteStop(
+                    new StopId("booking-pickup"),
+                    request.OriginNodeId,
+                    RouteStopKind.Pickup,
+                    request.Id,
+                    new Duration(0)),
+                new RouteStop(
+                    new StopId("booking-drop"),
+                    request.DestinationNodeId,
+                    RouteStopKind.DropOff,
+                    request.Id,
+                    new Duration(0)),
+            ]).Value!;
+        var candidateRun = reducedRun.UpdateVehicleRoute(
+            vehicle.Id,
+            assignedRoute).Value!;
+        candidateRun = candidateRun.AcceptRequest(request.Id, vehicle.Id).Value!;
+        var candidate = reduced with { Run = candidateRun };
+        var policy = new CommitmentPolicy(
+            request.CommitmentPolicyId,
+            CommitmentBudgetBasis.DecisionInduced,
+            CommitmentDimensionVocabulary.Ordered.Select(
+                dimension => new CommitmentDimensionLimit(
+                    dimension,
+                    DomainLimits.MaxCanonicalInteger,
+                    CommitmentPhase.AllActive)),
+            new MaterialRevisionRule(1, null));
+        var policies = new CommitmentPolicyCatalog([policy]);
+        var validator = new CommitmentDecisionValidator();
+
+        var offered = validator.Validate(
+            new CommitmentValidationContext(
+                before,
+                reduced,
+                candidate,
+                policies,
+                EmptyDistances.Instance,
+                "booking-offer-scope",
+                1,
+                InitialPromiseTrigger:
+                    InitialPromiseTrigger.BookingConfirmation));
+
+        Assert.True(offered.IsValid, offered.Witnesses.FirstOrDefault()?.Message);
+        Assert.Empty(offered.Publications);
+        Assert.Empty(offered.ValidatedState!.Commitments.Histories);
+        Assert.Equal(
+            RequestLifecycle.Accepted,
+            offered.ValidatedState.Run.Requests[request.Id].Lifecycle);
+
+        var beforeConfirmation = offered.ValidatedState;
+        var confirmedRun = beforeConfirmation.Run.ConfirmWaitingPickup(
+            request.Id).Value!;
+        confirmedRun = confirmedRun.AdvanceEpoch(2, new SimTime(1_000)).Value!;
+        var confirmed = beforeConfirmation with
+        {
+            Run = confirmedRun,
+            NextEventSequence = 3,
+        };
+        var published = validator.Validate(
+            new CommitmentValidationContext(
+                beforeConfirmation,
+                confirmed,
+                confirmed,
+                policies,
+                EmptyDistances.Instance,
+                "booking-confirmation-scope",
+                2,
+                InitialPromiseTrigger:
+                    InitialPromiseTrigger.BookingConfirmation));
+
+        Assert.True(
+            published.IsValid,
+            published.Witnesses.FirstOrDefault()?.Message);
+        var publication = Assert.Single(published.Publications);
+        Assert.Equal(
+            CommitmentLedgerEntryKind.InitialPromise,
+            publication.Entry.Kind);
+        Assert.Equal(1, publication.Entry.PublishedPromise.Version.Value);
+        Assert.Equal("INITIAL_BOOKING_CONFIRMATION", publication.Entry.ReasonCode);
+        Assert.Equal(2, publication.Entry.SourceEventSequence);
+        Assert.Single(published.ValidatedState!.Commitments.Histories);
+    }
+
+    [Fact]
+    public void Booking_and_boarding_in_one_batch_open_v1_from_realized_pickup()
+    {
+        var fixture = CreateBookingOfferFixture();
+        var offered = fixture.Validator.Validate(fixture.OfferContext);
+        Assert.True(offered.IsValid, offered.Witnesses.FirstOrDefault()?.Message);
+        var beforeConfirmation = offered.ValidatedState!;
+        var confirmedRun = beforeConfirmation.Run.ConfirmWaitingPickup(
+            fixture.Request.Id).Value!;
+        confirmedRun = confirmedRun.ReachStop(
+            fixture.Vehicle.Id,
+            new StopId("booking-pickup"),
+            new PlanVersion(1),
+            new NodePosition(fixture.Request.OriginNodeId),
+            2).Value!;
+        confirmedRun = confirmedRun.Board(
+            fixture.Vehicle.Id,
+            fixture.Request.Id,
+            new PlanVersion(1),
+            new SimTime(1_000)).Value!;
+        confirmedRun = confirmedRun.AdvanceEpoch(2, new SimTime(1_000)).Value!;
+        var reduced = beforeConfirmation with
+        {
+            Run = confirmedRun,
+            NextEventSequence = 5,
+        };
+
+        var published = fixture.Validator.Validate(
+            new CommitmentValidationContext(
+                beforeConfirmation,
+                reduced,
+                reduced,
+                fixture.Policies,
+                EmptyDistances.Instance,
+                "booking-and-boarding-scope",
+                4,
+                InitialPromiseTrigger:
+                    InitialPromiseTrigger.BookingConfirmation));
+
+        Assert.True(
+            published.IsValid,
+            published.Witnesses.FirstOrDefault()?.Message);
+        var publication = Assert.Single(published.Publications);
+        Assert.Equal("INITIAL_BOOKING_CONFIRMATION", publication.Entry.ReasonCode);
+        Assert.Equal(
+            new StopId("booking-pickup"),
+            publication.Entry.PublishedPromise.Projection.PickupStopId);
+        Assert.Equal(
+            1_000,
+            publication.Entry.PublishedPromise.Projection.PickupEta.Milliseconds);
+    }
+
+    private static BookingOfferFixture CreateBookingOfferFixture()
+    {
+        var request = ApplicationTestData.Request();
+        var emptyRoute = RoutePlan.Create(
+            new PlanVersion(0),
+            0,
+            [],
+            []).Value!;
+        var vehicle = VehicleState.Create(
+            ApplicationTestData.VehicleId,
+            4,
+            0,
+            new NodePosition(ApplicationTestData.NodeZero),
+            [],
+            [],
+            emptyRoute,
+            0).Value!;
+        var beforeRun = RideBoundRun.Create(
+            ApplicationTestData.RunId,
+            ApplicationTestData.ScenarioId,
+            new SimTime(1_000));
+        beforeRun = beforeRun.BootstrapVehicle(vehicle).Value!;
+        var travel = ApplicationTestData.Travel();
+        var before = new OnlineState(
+            beforeRun,
+            travel,
+            1,
+            travel.SnapshotHash,
+            CommitmentLedger.Empty);
+        var reducedRun = beforeRun.AddRequest(request).Value!;
+        reducedRun = reducedRun.AdvanceEpoch(1, new SimTime(1_000)).Value!;
+        var reduced = before with
+        {
+            Run = reducedRun,
+            NextEventSequence = 2,
+        };
+        var assignedRoute = RoutePlan.Create(
+            new PlanVersion(1),
+            0,
+            [],
+            [
+                new RouteStop(
+                    new StopId("booking-pickup"),
+                    request.OriginNodeId,
+                    RouteStopKind.Pickup,
+                    request.Id,
+                    new Duration(0)),
+                new RouteStop(
+                    new StopId("booking-drop"),
+                    request.DestinationNodeId,
+                    RouteStopKind.DropOff,
+                    request.Id,
+                    new Duration(0)),
+            ]).Value!;
+        var candidateRun = reducedRun.UpdateVehicleRoute(
+            vehicle.Id,
+            assignedRoute).Value!;
+        candidateRun = candidateRun.AcceptRequest(request.Id, vehicle.Id).Value!;
+        var candidate = reduced with { Run = candidateRun };
+        var policy = new CommitmentPolicy(
+            request.CommitmentPolicyId,
+            CommitmentBudgetBasis.DecisionInduced,
+            CommitmentDimensionVocabulary.Ordered.Select(
+                dimension => new CommitmentDimensionLimit(
+                    dimension,
+                    DomainLimits.MaxCanonicalInteger,
+                    CommitmentPhase.AllActive)),
+            new MaterialRevisionRule(1, null));
+        var policies = new CommitmentPolicyCatalog([policy]);
+        var validator = new CommitmentDecisionValidator();
+        var context = new CommitmentValidationContext(
+            before,
+            reduced,
+            candidate,
+            policies,
+            EmptyDistances.Instance,
+            "booking-offer-scope",
+            1,
+            InitialPromiseTrigger:
+                InitialPromiseTrigger.BookingConfirmation);
+
+        return new BookingOfferFixture(
+            request,
+            vehicle,
+            policies,
+            validator,
+            context);
+    }
+
+    private sealed record BookingOfferFixture(
+        RideRequest Request,
+        VehicleState Vehicle,
+        CommitmentPolicyCatalog Policies,
+        CommitmentDecisionValidator Validator,
+        CommitmentValidationContext OfferContext);
+
     private static Fixture CreateFixture(long? hardLimit)
     {
         var request = ApplicationTestData.Request();

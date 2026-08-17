@@ -30,6 +30,10 @@
 | K-24 | Cache/slack stale làm prune sai | Trung bình | Rất cao | cached và uncached khác feasible set | Full route/position/time/travel key, mutation/invalidation tests, validator cuối |
 | K-25 | Plan pool không replay/checkpoint | Trung bình | Rất cao | restore chọn distinguished plan khác | Pool trong canonical online/checkpoint state, compatibility filter và suffix equivalence |
 | K-26 | Solver status/objective bị overclaim | Trung bình | Cao | FEASIBLE/UNKNOWN ghi optimal hoặc gap sai | Typed status/bound/gap, exact enumerator differential và validator-pass fallback |
+| K-27 | Public archive hoặc license drift | Trung bình | Cao | DOI/file/checksum/license khác registry | Immutable source descriptor, publisher MD5 + local SHA-256, fail closed và explicit registry amendment |
+| K-28 | Seed phụ thuộc execution order | Trung bình | Cao | parallel/retry đổi scenario hoặc policy draw | 256-bit master seed + labeled HMAC-SHA-256 derivation + stable hash ranking vectors |
+| K-29 | Selective result/drop hoặc denominator drift | Trung bình | Rất cao | planned run thiếu terminal record, timeout thành 0, metric bỏ missing | terminal partition invariant, typed failure/exclusion, explicit denominator và independent oracle |
+| K-30 | Bundle hợp checksum nhưng sai provenance/claim | Trung bình | Rất cao | extra file, symlink, identity mismatch hoặc badge/effectiveness wording | strict BagIt-compatible verifier + no-extra/path/provenance/metric/claim checks |
 
 ## 2. Scope budget
 
@@ -71,9 +75,39 @@ chúng không bị xóa khỏi register vì demand-scale behavior vẫn chưa đ
 sang WP5 refinement, chưa sang simulator/main experiment và chưa đóng K-02/K-03/
 K-04/K-16/K-19/K-23.
 
+### Sau WP6
+
+Chỉ handoff WP7 khi tiny và medium public mechanical gates chạy qua exact external
+Runner, terminal partition/independent oracle/bundle tamper gates pass và clean clone
+có thể tái tạo theo tài liệu. Gate này không đóng K-02/K-04/K-07/K-19 và không cho
+phép claim effectiveness, non-inferiority, SLA hoặc independent reproduction.
+
+**Kết quả 2026-08-13:** ADR-036 đạt gate bằng fresh tiny A, medium H/I semantic exact,
+external verifier, source/claim audit và required 770/770. WP7 khi đó chưa bắt đầu; các
+risk effectiveness/simulator/threshold/margin không bị xóa hoặc hạ mức chỉ vì WP6 pass.
+
 ### Sau WP7
 
-Go pilot nếu FleetPy medium runs reconcile. Nếu không, sửa semantic adapter trước.
+**Kết quả 2026-08-16:** ADR-038 đóng WP7 mechanical Layer-2: actual FleetPy B1/C1
+preflight, lifecycle, tiny và three-repeat public-medium loops reconcile qua cùng Runner
+v6 và verifier. Điều này chỉ gỡ semantic-adapter blocker; K-02/K-04/K-07/K-19 và mọi
+rủi ro effectiveness, threshold/margin, fairness/satisfaction vẫn mở.
+
+**Bổ sung 2026-08-17 (ADR-039):** một nhóm ngữ nghĩa thật từng vào source mà không ADR
+nào khóa — rủi ro spec-drift đã hiện thực hóa một lần và nay được đóng. Quy tắc rút ra:
+bất kỳ thay đổi nào chạm thời điểm mở promise, trục so sánh lock, vòng đời request hay
+fail-closed boundary đều phải có ADR trước khi được coi là đã đóng, kể cả khi test xanh.
+
+Rủi ro thứ hai đã được đóng bằng gate: tối ưu hiệu năng ở Candidate core có thể âm thầm
+đổi cây tìm kiếm. `CandidateSearchWorkProfileTests` khóa work unit/evaluated path/
+omitted path/retained count/số slack profile, nên tốc độ không bao giờ được nhận làm
+bằng chứng thay cho tính bất biến.
+
+Go pilot chỉ khi có explicit WP8 refinement/preregistration khóa endpoint, denominator,
+seed, margin và analysis. Nếu một future FleetPy run không reconcile, sửa semantic adapter
+trước; không dùng observed WP7 timing/publication để chọn policy hay margin. Đặc biệt:
+semantic hash actual bind `binarySha256`, nên khác hash giữa hai Runner artifact **không**
+phải tín hiệu hồi quy — phải so trường hành vi dưới cùng một label.
 
 ### Sau WP8
 

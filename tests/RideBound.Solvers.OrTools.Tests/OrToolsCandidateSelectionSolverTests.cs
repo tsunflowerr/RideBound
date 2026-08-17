@@ -65,6 +65,72 @@ public sealed class OrToolsCandidateSelectionSolverTests
     }
 
     [Fact]
+    public void Medium_fleet_tie_break_levels_fit_the_locked_wp4_budget()
+    {
+        var vehicles = Enumerable.Range(0, 32)
+            .Select(index => new VehicleId($"vehicle-{index:D3}"))
+            .ToArray();
+        var request = new RequestId("request-1");
+        var levels = new[]
+        {
+            new CandidateSelectionObjectiveLevel(
+                "accepted",
+                CandidateSelectionObjectiveSense.Maximize,
+                CandidateSelectionObjectiveAggregation.Sum),
+            new CandidateSelectionObjectiveLevel(
+                "cost",
+                CandidateSelectionObjectiveSense.Minimize,
+                CandidateSelectionObjectiveAggregation.Sum),
+        }.Concat(
+            vehicles.Select(
+                vehicle => new CandidateSelectionObjectiveLevel(
+                    $"candidate-id-rank:{vehicle.Value}",
+                    CandidateSelectionObjectiveSense.Minimize,
+                    CandidateSelectionObjectiveAggregation.Sum)))
+            .ToArray();
+        var options = vehicles.SelectMany(
+                (vehicle, vehicleIndex) =>
+                {
+                    var noOp = new long[levels.Length];
+                    var accept = new long[levels.Length];
+                    accept[0] = 1;
+                    accept[1] = 1_000;
+                    accept[vehicleIndex + 2] = 1;
+                    return new[]
+                    {
+                        new CandidateSelectionOption(
+                            $"noop-{vehicle.Value}",
+                            vehicle,
+                            [],
+                            noOp,
+                            true),
+                        new CandidateSelectionOption(
+                            $"accept-{vehicle.Value}",
+                            vehicle,
+                            [request],
+                            accept,
+                            false),
+                    };
+                })
+            .ToArray();
+        var problem = CandidateSelectionProblem.Create(
+            vehicles,
+            [request],
+            levels,
+            options).Value!;
+        var budget = DeterministicSolverBudget.Create(
+            maximumWorkUnits: 100_000,
+            maximumDeterministicTimeMicros: 1_000_000,
+            randomSeed: 12_345).Value!;
+
+        var result = new OrToolsCandidateSelectionSolver().Solve(problem, budget);
+
+        Assert.Equal(CandidateSelectionSolveStatus.Optimal, result.Status);
+        Assert.Equal(1, result.Solution!.ObjectiveValues[0]);
+        Assert.Equal(34, result.Diagnostics.ObjectiveBounds.Count);
+    }
+
+    [Fact]
     public void Same_canonical_problem_seed_and_budget_replay_identically()
     {
         var solver = new OrToolsCandidateSelectionSolver();

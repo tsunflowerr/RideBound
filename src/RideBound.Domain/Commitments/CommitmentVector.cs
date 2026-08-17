@@ -141,4 +141,13 @@ public static class CommitmentFailureCodes
     public const string LedgerConflict = "COMMITMENT_LEDGER_CONFLICT";
     public const string BudgetExceeded = "COMMITMENT_BUDGET_EXCEEDED";
     public const string PhaseLock = "COMMITMENT_PHASE_LOCK";
+
+    /// <summary>
+    /// A treatment assessment rejected every generated candidate for one
+    /// vehicle, including the safety no-op. This is fail-closed: the run stops
+    /// with an explicit witness instead of handing the solver a vehicle that has
+    /// no selectable option.
+    /// </summary>
+    public const string VehicleHasNoFeasibleCandidate =
+        "C1_VEHICLE_HAS_NO_FEASIBLE_CANDIDATE";
 }

@@ -374,3 +374,57 @@ loss propagation, cache/infinite-budget/plan-pool/deadline gates pass. Synthetic
 4–128 Boolean-option curve chỉ là machine-local promising signal; không phải
 evidence scale, service improvement hoặc user satisfaction. Final walkthrough ở
 [reviews/wp1-wp4-final/README.md](reviews/wp1-wp4-final/README.md).
+
+## 17. WP7 bounded Candidate refinement
+
+WP7 không thay objective, hard validator hay solver boundary của WP4. Nó sửa hai điểm
+trong bounded candidate stage, chỉ cho config opt-in:
+
+- `ServiceSetStabilityPortfolioV1` giữ no-op, cost anchor cho từng exact
+  vehicle/service set trong accepted-count tier, rồi deterministic stability anchor và
+  legacy fill. Với B1, anchor có cùng conflict columns và cost không cao hơn plan cũ;
+  đây là proof substitution có scope rõ, không phải global optimum.
+- B4 repair root được priority theo route suffix sau repair. Khi work cap chặt, score
+  route cũ có thể chọn root sai; regression ghi projection của từng root trước budget
+  quyết định work đầu tiên.
+
+Portfolio phải preserve exact các no-op incumbent stop và phải khai đúng tập request
+introduced trong `NewRequestIds`. Điều này chặn route semantics khác bị gắn nhầm cùng
+service set. C1 vẫn chạy hard-vector assessor và full decision validator; stable anchor
+không tự cấp quyền publish. Evidence/code map/claim limit xem
+[final WP1–WP7 review](reviews/wp1-wp7-final/01-core-candidate-and-solver.md).
+
+## 18. Chi phí thật của bounded generation — đo ở ADR-039
+
+Cho tới ADR-039 chưa ai đo bounded candidate stage; giả định mặc nhiên là validator tốn
+kém. Số đo nói ngược lại.
+
+| Thành phần | Chi phí mỗi lần |
+|---|---:|
+| `PhysicalPlanValidator.Validate` | 0,72 µs |
+| `RoutePlan.ReplaceMutableSuffix` | 3,94 µs |
+| `SHA256.HashData` (1,6 KB) | 4,44 µs |
+| `ForwardSlackCacheKey.Create` (cũ, có fingerprint) | 19,63 µs |
+
+Một `Generate` trên xe 16 stop thực hiện khoảng 39.000 lần tra khóa memo slack. Vì vậy
+điểm nóng là **tính lại identity**, không phải suy luận khả thi. Khóa memo đã chuyển
+sang so sánh cấu trúc chính xác (`0,64 µs`); khả năng phân biệt không đổi vì đó đúng là
+thứ fingerprint mã hóa, và khóa này không nằm trong bất kỳ identity công bố nào.
+
+Ràng buộc bắt buộc: mọi tối ưu ở tầng này phải giữ nguyên **toàn bộ** work unit,
+evaluated path, feasible-before-cap, omitted path, retained count và số slack profile
+riêng biệt. `CandidateSearchWorkProfileTests` khóa các số đó ở bốn kích thước route.
+Nhanh hơn mà duyệt cây khác thì test đó fail — và đó mới là điều kiện, không phải
+đồng hồ.
+
+Hai kết luận về hướng đi tiếp:
+
+- *Lazy priority* **không dùng được** ở thiết kế hiện tại: stop chèn có
+  `ServiceDuration = 0` nên mọi insertion child đồng hạng ở cả hai key rẻ, khiến cận
+  dưới phẳng trên gần như toàn frontier.
+- Constant-time feasibility test (Gschwind & Drexl 2019) là hướng WP8 **chưa áp dụng**.
+  Nó exact chứ không phải filter nên không làm yếu comparator, nhưng chỉ phủ chiều thời
+  gian; validator ở đây còn quyết capacity, connectivity, frozen prefix và commitment
+  budget, nên nhiều nhất nó thay được tầng schedule/slack và vẫn phải chạy full
+  validator sau. Chi tiết và giới hạn đọc nguồn ở
+  [paper-to-design §22](21-paper-to-design-evidence.md).

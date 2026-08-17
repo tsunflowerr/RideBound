@@ -13,16 +13,19 @@ public sealed class CommitmentLockEvaluator
     public IReadOnlyList<CommitmentLockWitness> Evaluate(
         RideRequest request,
         PublishedPromise previous,
+        PromiseProjection exogenous,
         PromiseProjection candidate,
         SimTime evaluationTime,
         CommitmentPolicy policy)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(previous);
+        ArgumentNullException.ThrowIfNull(exogenous);
         ArgumentNullException.ThrowIfNull(candidate);
         ArgumentNullException.ThrowIfNull(policy);
 
         if (previous.Projection.RequestId != request.Id
+            || exogenous.RequestId != request.Id
             || candidate.RequestId != request.Id)
         {
             throw new ArgumentException(
@@ -67,7 +70,7 @@ public sealed class CommitmentLockEvaluator
             AddWitnesses(
                 witnesses,
                 request.Id,
-                previous.Projection,
+                exogenous,
                 candidate,
                 locks,
                 rule);

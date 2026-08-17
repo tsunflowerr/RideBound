@@ -1,7 +1,7 @@
 # Delivery backlog và quy tắc ticket
 
 > Trạng thái: `BASELINE_V1`
-> Cập nhật: 2026-08-02
+> Cập nhật: 2026-08-16
 > Nguồn tiến độ: [18-status-and-decision-log.md](../18-status-and-decision-log.md)
 > Topic đã ticket hóa: [WP1 Contracts](24-wp1-contracts-ticket-plan.md) và
 > [WP2 Online baseline](26-wp2-online-baseline-ticket-plan.md) và
@@ -9,7 +9,10 @@
 > [WP4 refinement](29-wp4-algorithms-solver-refinement.md) và
 > [WP4 ordered queue](30-wp4-algorithms-solver-ticket-plan.md) và
 > [WP5 ordered queue](32-wp5-bego-integration-ticket-plan.md) và
-> [WP6 refinement](33-wp6-common-benchmark-harness-refinement.md)
+> [WP6 refinement](33-wp6-common-benchmark-harness-refinement.md) và
+> [WP6 ordered queue](34-wp6-common-benchmark-harness-ticket-plan.md) và
+> [WP7 refinement](35-wp7-fleetpy-layer2-refinement.md)
+> và [WP7 ordered queue](36-wp7-fleetpy-layer2-ticket-plan.md)
 
 ## 1. Mục đích
 
@@ -123,10 +126,11 @@ Ticket tài liệu phải:
 | WP11 Product UX | UI/audit có rollback, không overclaim | product gate | WP5 |
 | WP12 Paper/release | Claim traceable và artifact tái lập | Q6 | WP9, WP10 |
 
-WP7–WP12 **chưa có ticket**. WP2 đã đóng physical/B1; WP3 đã hoàn thành ordered
+WP8–WP12 **chưa có ticket**. WP7 đã đóng ordered queue `001..014` bằng ADR-038;
+không còn queue head. WP2 đã đóng physical/B1; WP3 đã hoàn thành ordered
 queue `RB-WP3-001..014`; WP4 đã hoàn thành `RB-WP4-001..014` bằng ADR-024; WP5
-đã hoàn thành `RB-WP5-001..014`. WP6 chỉ có đúng một ticket refinement-only
-`RB-WP6-001 READY`, chưa có implementation queue.
+đã hoàn thành `RB-WP5-001..014`. WP6 refinement `RB-WP6-001` đã DONE bằng
+ADR-026..036 và có ordered queue `RB-WP6-002..014`; `RB-WP6-001..014` đã Done.
 
 WP11 không nằm trên critical path nghiên cứu và không được làm chậm WP8–WP10.
 
@@ -145,15 +149,22 @@ WP3 `RB-WP3-001..014` đã hoàn thành theo
 Correctness boundary gồm incident separation, independent validator,
 certificate/hash/ACK và checkpoint/restore; không bao gồm C1 solver quality.
 
-Ticket duy nhất hiện `READY`:
+Queue head hiện hành là: **NONE**. WP7 đã complete mechanical Layer-2; WP8 chỉ được
+refinement khi có quyết định/preregistration explicit.
 
-> **RB-WP6-001 — common benchmark harness refinement**
+WP6 đã đóng bằng:
+
+> **RB-WP6-014 DONE — WP1–WP6 source and claim closure audit**
 
 ADR-023/024 và `tasks/30` đã đóng WP4. ADR-025/`tasks/32` đã đóng WP5 với durable
 Application/PostgreSQL/Runner/T2–T3/outbox/audit/rollout boundary, paired B1/C1,
 independent crash/concurrency/mutation/local-curve evidence và closure source audit.
-`tasks/33` chỉ được khóa scenario/result/metric/exclusion/bundle contract; chưa cho
-phép hiện thực harness hoặc diễn giải mechanical/performance-local evidence thành SLA.
+`tasks/33` vẫn là refinement-only; implementation evidence nằm tuần tự trong
+`tasks/34`. `001..014` đã Done; không được diễn giải mechanical/performance-local
+evidence thành effectiveness hoặc SLA. Closure đã đọc toàn bộ Markdown, audit
+source/constraints/algorithms/claims WP1–WP6 và tạo final review folder.
+WP7 đã chạy tuần tự theo `tasks/36` và `001..014` đều Done. Không tự tạo WP8 ticket từ
+raw WP7 result; phải mở refinement riêng.
 
 ## 9. Template refinement cho topic kế tiếp
 
@@ -179,6 +190,28 @@ Không copy BDD của WP1 sang topic khác nếu semantics khác.
 5. Chỉ chuyển ticket kế tiếp sau khi evidence của ticket hiện tại được review.
 6. Chỉ đóng topic khi toàn bộ exit gate trong `16` đạt.
 
-Theo trạng thái ngày 2026-08-09, `RB-WP5-014` đã đóng source/claim/exit-gate audit,
-khắc phục ba boundary correctness và tạo review WP1–WP5. Ticket tiếp theo duy nhất
-là **RB-WP6-001 READY**, refinement-only; WP6 implementation chưa bắt đầu.
+Theo trạng thái ngày 2026-08-13, `RB-WP5-014` đã đóng source/claim/exit-gate audit,
+khắc phục ba boundary correctness và tạo review WP1–WP5. `RB-WP6-001` cũng đã
+đóng refinement bằng ADR-026/contract v1. ADR-027/028 đã sửa hai contract conflict
+phát hiện trong implementation. `RB-WP6-007` đã đóng append-only terminal store;
+ADR-030/`RB-WP6-008` đã đóng production/reference-free metric equality. ADR-031/
+`RB-WP6-009` đã đóng strict BagIt/semantic/clean-process verification. ADR-032/
+`RB-WP6-010` đã đóng claim profile/checker. ADR-033/`RB-WP6-011` đã đóng tiny paired
+exact Runner/store/oracle/bundle gate. ADR-034/`RB-WP6-012` đã đóng medium public
+mechanical gate ở two-clean-root normalization và hai fresh Release processes với
+required full solution 710/710. WP6 đã có strict contracts/vectors, verified public
+download, normalized scenarios, deterministic plan/seed, exact external Runner
+supervisor, terminal store, metric oracle/bundle verifier/claim checker cùng tiny/
+medium mechanical results. ADR-035/
+`RB-WP6-013` đã đóng executable warm-up, complete preflight, declared failure/
+exclusion/mutation/source matrix và medium D/E 8/8 semantic reproduction với required
+full solution 770/770. ADR-036/`RB-WP6-014` sau đó đã đóng source/claim closure bằng
+fresh tiny + medium H/I trên exact source cuối, external verifier, final review và
+required 770/770. Sau đó ADR-038 đóng WP7 `001..014` bằng Candidate source audit,
+FleetPy actual same-Runner B1/C1 preflight/lifecycle/tiny/medium và verifier; required
+suite 790/790, Python 49/49. ADR-039 sau đó khóa bằng ADR các thay đổi ngữ nghĩa còn
+thiếu quyết định (`initialPromiseTrigger`, baseline lock exogenous, cancel-after-
+acceptance, fail-closed C1, CLI flag Runner, event-induced plan update), thêm
+work-profile gate và hoàn tất một vòng tối ưu hot path bất biến về kết quả; required
+suite lên 798/798, Python 50/50 và mọi actual receipt chuyển sang Runner v8. WP8 vẫn
+chưa ticket hóa và cần refinement explicit.

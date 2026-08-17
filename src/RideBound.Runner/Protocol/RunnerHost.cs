@@ -34,7 +34,8 @@ public static class RunnerHost
         ICommitmentPolicyProvider? commitmentPolicies = null,
         IStopDistanceLookup? stopDistances = null,
         Sha256Hex? commitmentPolicyConfigurationHash = null,
-        Wp4RunnerConfiguration? wp4Configuration = null)
+        Wp4RunnerConfiguration? wp4Configuration = null,
+        bool useManifestSolverSeed = false)
     {
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(output);
@@ -49,7 +50,8 @@ public static class RunnerHost
             stopDistances: stopDistances,
             commitmentPolicyConfigurationHash:
                 commitmentPolicyConfigurationHash,
-            wp4Configuration: wp4Configuration);
+            wp4Configuration: wp4Configuration,
+            useManifestSolverSeed: useManifestSolverSeed);
 
         while (true)
         {

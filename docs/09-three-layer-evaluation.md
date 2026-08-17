@@ -189,3 +189,27 @@ Không lấy đa số phiếu. Điều tra:
 - demand filtering.
 
 Report heterogeneity là kết quả. Chỉ gọi “robust” khi hướng hiệu ứng và CI phù hợp với tiêu chí đã đăng ký.
+
+## 12. Common harness boundary đã khóa cho WP6
+
+ADR-026 và [WP6 contract v1](benchmarking/wp6-contract-v1.md) khóa một đường đo
+chung đứng ngoài policy/core:
+
+- normalizer tạo canonical scenario bất biến từ nguồn public đã pin;
+- plan tạo paired run theo compatibility class, không ép B5 vào candidate semantics
+  của B1/B2/B3/B4/C1/C2;
+- seed 256-bit được dẫn xuất theo label bằng HMAC-SHA-256, không phụ thuộc thứ tự
+  thực thi;
+- mỗi planned run gọi đúng external pinned Runner process và tạo đúng một terminal
+  record `succeeded`, `failed` hoặc `excluded`;
+- metrics chỉ được suy từ raw transcript với numerator/denominator/missingness rõ;
+- bundle strict BagIt-compatible tự kiểm source/config/binary/result hashes và claim
+  profile.
+
+WP6 chỉ đóng reproducibility/mechanical harness. FleetPy control adapter và bằng
+chứng effectiveness vẫn thuộc WP7–WP9.
+
+**Trạng thái closure 2026-08-13:** ADR-036 đóng WP6 sau fresh tiny A và public-medium
+H/I trên exact source cuối. H/I có 0 mismatch trên 16 top-level + 72 per-run semantic
+fields; resource/full/bundle identity khác hợp lệ và đều externally verified. Đây vẫn là Layer-0/common
+harness evidence, chưa phải Layer-2 FleetPy closed-loop.

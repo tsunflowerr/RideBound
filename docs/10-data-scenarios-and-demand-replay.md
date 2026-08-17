@@ -134,36 +134,18 @@ Không suy budget từ tuổi/khuyết tật/thu nhập nếu chưa có ethics/d
 
 ## 7. Scenario manifest
 
-Mỗi run tham chiếu manifest bất biến:
+Mỗi run tham chiếu canonical scenario và plan bất biến. Ví dụ YAML/TBD cũ đã được
+thay thế bởi field-level equivalent contract tại
+[WP6 contract v1](benchmarking/wp6-contract-v1.md); executable JSON Schema và
+published identity vectors thuộc `RB-WP6-002`.
 
-```yaml
-manifestVersion: "1.0"
-scenarioId: "manhattan-am-001"
-source:
-  name: "FleetPy Manhattan"
-  uri: "doi:10.5281/zenodo.15187906"
-  archiveSha256: "TBD"
-timeWindow:
-  startMs: 25200000
-  endMs: 32400000
-fleet:
-  size: 200
-  capacity: 4
-demand:
-  filterVersion: "TBD"
-  sampleSeed: 20260727
-events:
-  batching: "event-driven"
-travel:
-  snapshotPolicy: "TBD"
-commitmentPolicy:
-  id: "uniform-medium-v1"
-algorithm:
-  policy: "ridebound-hard-vector"
-  configSha256: "TBD"
-```
-
-Actual schema được tạo ở WP1; ví dụ chỉ minh họa field bắt buộc.
+Nguồn public đầu tiên được khóa là FleetPy Manhattan v1,
+DOI `10.5281/zenodo.15187906`, CC BY 4.0, archive publisher MD5
+`8b11882ae9c6d87f666bf6e006806744`. Downloader phải giữ archive trong ignored
+raw cache, kiểm publisher MD5 và local SHA-256, rồi safe-extract vào content-addressed
+directory. Không commit archive 408.9 MB. Scenario phải ghi rõ demand subset,
+time window, fleet, node/arc ordering, unreachable-pair semantics, travel snapshot,
+normalizer version và mọi source/output digest; không có `TBD`, float hoặc null.
 
 ## 8. Data pipeline
 
@@ -219,3 +201,11 @@ Giữ:
 - exclusion log.
 
 Nếu raw data không được redistrib, giữ downloader + checksum + transformation recipe.
+
+## 12. Trạng thái WP6 closure
+
+FleetPy Manhattan archive đã được tải vào ignored verified cache, kiểm exact release/
+license/length/MD5/SHA-256 và safe-extract. Tiny/medium canonical derivatives có
+conservation report; medium H/I dùng cùng scenario hash `88a8730a...e88`. Đây là
+development mechanical derivative, không phải confirmatory set và không thay yêu cầu
+WP7 closed-loop semantics hoặc WP8 holdout/preregistration.

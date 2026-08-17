@@ -35,6 +35,45 @@ public sealed class SolverBackedFleetSelectionTests
     }
 
     [Fact]
+    public void Empty_vehicle_candidate_set_reports_infeasibility_not_id_collision()
+    {
+        var result = Select(
+            [Set(AlgorithmTestData.VehicleOne)],
+            SolverBackedObjectiveProfile.RollingCost);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(
+            SolverBackedSelectionFailureCodes.ModelMappingFailed,
+            result.Witness!.Code);
+        Assert.Equal(
+            "Every vehicle needs at least one feasible candidate.",
+            result.Witness.Message);
+    }
+
+    [Fact]
+    public void Duplicate_candidate_ids_report_the_global_identity_collision()
+    {
+        var result = Select(
+            [
+                Set(
+                    AlgorithmTestData.VehicleOne,
+                    Candidate("duplicate", AlgorithmTestData.VehicleOne, [], 0)),
+                Set(
+                    AlgorithmTestData.VehicleTwo,
+                    Candidate("duplicate", AlgorithmTestData.VehicleTwo, [], 0)),
+            ],
+            SolverBackedObjectiveProfile.RollingCost);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(
+            SolverBackedSelectionFailureCodes.ModelMappingFailed,
+            result.Witness!.Code);
+        Assert.Equal(
+            "Candidate IDs must be globally unique across the fleet.",
+            result.Witness.Message);
+    }
+
+    [Fact]
     public void Rolling_cost_mapping_enforces_request_uniqueness_and_cost_order()
     {
         var request = new RequestId("request-1");

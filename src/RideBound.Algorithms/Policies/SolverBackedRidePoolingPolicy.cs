@@ -274,7 +274,8 @@ public sealed class SolverBackedRidePoolingPolicy
                         context.StopDistances,
                         context.PublicationScope,
                         context.SourceEventSequence,
-                        _commitmentValidator);
+                        _commitmentValidator,
+                        context.InitialPromiseTrigger);
                     validationWorkUnits = CountCandidates(candidates);
                     candidates = filter.Filter(context.ReducedState, candidates);
                     break;
@@ -502,7 +503,8 @@ public sealed class SolverBackedRidePoolingPolicy
                     context.StopDistances,
                     context.PublicationScope,
                     context.SourceEventSequence,
-                    RevisionReasonCode: "WP4_SOLVER_SELECTION"));
+                    RevisionReasonCode: "WP4_SOLVER_SELECTION",
+                    InitialPromiseTrigger: context.InitialPromiseTrigger));
             return validated.IsValid
                 ? CandidateSelectionValidationResult.Valid()
                 : CandidateSelectionValidationResult.Invalid(

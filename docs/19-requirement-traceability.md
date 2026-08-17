@@ -7,21 +7,21 @@
 | R-001 | Hệ thống RideBound độc lập | `05` | `Domain/Application/Runner` trong Git repo riêng | 5 architecture rules + 2 cross-platform path cases | WP0 verified; Linux CI rerun pending |
 | R-002 | Gắn được vào BeGo | `02`, `14`, `32` | BeGo adapter/API | integration replay | WP5 `002..014` có Application, persistence, intake/lease, Runner, bootstrap/API, fenced T2/T3 recovery, Applied-only outbox/SignalR, rebuildable timeline, default-off Shadow/Live rollout và paired Layer-1 bundle |
 | R-003 | Core mang sang benchmark | `05`, `06`, `24`, `26`, `32` | contracts + runner | same binary hash | WP1/WP2 runner verified; WP5 BeGo bootstrap/decision/recovery uses pinned published artifact hash; cross-simulator proof pending |
-| R-004 | Layer 1 cùng codebase | `09` | B1/C1 chung RideBound engine; BeGo export adapter | paired runs | Planned |
-| R-005 | Layer 2 simulator chung | `09`, `12` | FleetPy adapter | Layer 2 gate | Planned |
+| R-004 | Layer 1 cùng codebase | `09`, `32`, `34` | B1/C1 chung RideBound engine; BeGo/WP6 paired harness | paired runs | Mechanical same-Runner evidence verified trong WP5/WP6; effectiveness pending WP7–WP9 |
+| R-005 | Layer 2 simulator chung | `09`, `12`, `35`, `36`, ADR-038 | FleetPy adapter gọi same Runner | capability/preflight + actual lifecycle/tiny/medium closed-loop + external verifier | WP7 `001..014` DONE: pinned actual FleetPy 1.0.2 calls Runner v6; B1/C1 raw medium loops reconcile. Mechanical only, not effectiveness |
 | R-006 | Layer 3 framework độc lập | `09`, `13` | RidePy/AMoD2 adapter | Layer 3 gate | Planned |
 | R-007 | Giới hạn cumulative revision | `04`, `07`, `28` | ledger/validator | property/mutation tests | WP3 implemented: independent hard-vector recomputation + immutable ledger + certificate |
 | R-008 | Nhiều chiều promise | `04`, `07`, `28` | promise vector | golden fixtures | WP3 implemented: 10 dimensions, projection, three-way delta, strict wire actions và tiny replay |
 | R-009 | Certificate/witness | `07`, `28` | certificate DTO/validator | invalid-plan mutations | WP3 implemented: physical→lock→budget stages, normal/witness body và decision/publication cross-binding |
-| R-010 | Đánh giá bằng data rõ | `10` | manifests/data pipeline | checksums/validation | Planned |
-| R-011 | Metric/statistics rõ | `11` | analysis package | prereg/full report | Planned |
-| R-012 | Dùng paper nhưng không làm lại | `03`, `21` | claim ledger | novelty re-audit | WP1–WP5 mechanisms mapped; final re-audit DONE trong `reviews/wp1-wp5-final/07-paper-to-code-and-optimization.md` |
+| R-010 | Đánh giá bằng data rõ | `10`, `18`, `33`, `34`, WP6 contract | immutable public-source registry + deterministic normalization + scenario identity | source checksum/license/schema/vector gates | WP6 `002..004` complete: strict contracts, verified FleetPy source and exact tiny/medium canonical derivatives |
+| R-011 | Metric/statistics rõ | `11`, `18`, `33`, `34`, WP6 contract | raw observations + explicit denominator/missingness + independent oracle | golden/mutation/recompute gates | WP6 `RB-WP6-008` DONE: 36-definition registry, exact 132-row calculator and reference-free process oracle; statistical aggregation remains WP8/WP9 |
+| R-012 | Dùng paper nhưng không làm lại | `03`, `21` | claim ledger | novelty re-audit | WP1–WP7 mechanisms mapped; WP7 accepts bounded service-set/stability evidence only and rejects paper-only random pruning/reassignment; see `reviews/wp1-wp7-final/01-core-candidate-and-solver.md` |
 | R-013 | Nêu công nghệ và tối ưu | `05`, `08`, `12`–`14` | projects/adapters | build/performance | WP4 solver + WP5 DB/Runner/concurrency/local curves implemented; no SLA claim |
 | R-014 | Nêu thêm/bỏ gì | `02`, mục 2 dưới | migration plan | code review | Docs v1 |
-| R-015 | Agent sau biết tiếp tục | `00`, `17`, `18`, `23`–`33` | root `AGENTS.md` + ordered current-topic tickets | reading order + one unambiguous current ticket | Verified; WP5 `001..014` DONE, only `RB-WP6-001` READY (refinement-only) |
+| R-015 | Agent sau biết tiếp tục | `00`, `17`, `18`, `23`–`36` | root `AGENTS.md` + ordered queue | reading order + closed queue/evidence/review | WP1–WP7 DONE; next work package is WP8 only after new explicit refinement/prereg decision |
 | R-016 | Thuật ngữ dễ hiểu | `22` | glossary | doc review | Docs v1 |
 | R-017 | Không bias bằng dữ liệu giả | `01`, `10`, `11` | pilot/holdout | prereg audit | Planned |
-| R-018 | Tái lập | `06`, `15`, `24`, `26`, `28`, `32`, `33` | hashes/bundle | clean reproduction | WP1–WP5 verified at mechanical gates; paired + independent source/assembly/hash-bound WP5 artifacts verified; experiment bundle still WP6+ |
+| R-018 | Tái lập | `06`, `15`, `24`, `26`, `28`, `32`–`36`, WP6/WP7 evidence | domain-separated identities + seed tree + strict BagIt-compatible bundle + pinned FleetPy same-Runner receipt | clean-process, tamper, no-extra, source/assembly/hash verification + actual B1/C1 lifecycle/tiny/medium verifier | WP1–WP7 mechanical gates verified; WP7 B1/C1 use Runner v6 and FleetPy 1.0.2 pin with three-repeat medium external verification; no independent-reproduction claim |
 
 ## 2. Những gì cần thêm
 
@@ -76,7 +76,10 @@ có code/test. WP2 hiện đã có typed online payload, vehicle/request state, 
 atomic reducer, physical validator, deterministic candidate/B1 selection,
 independent exact-small oracle và online produced decision. WP3 đã thêm ledger,
 hard commitment validator/certificate, incident/breach và checkpoint trên cùng
-Runner boundary. C1 objective/solver và adapter vẫn thuộc WP4+.
+Runner boundary. WP4 đã hiện thực C1/objective/solver; WP5 đã hiện thực BeGo adapter;
+WP6 đã hiện thực common harness. WP7 đã thêm FleetPy closed-loop adapter chỉ gọi
+published external Runner; closed-loop evidence là mechanical Layer 2, không phải
+effectiveness evaluation.
 
 ### Product hoặc BeGo integration
 
@@ -116,7 +119,7 @@ Sau khi RideBound ổn định có thể deprecate benchmark claims quá mạnh 
 | F-007 | Reject candidate vượt budget | WP3 verified: candidate filter + independent physical/lock/budget recomputation and witness |
 | F-008 | Handle incident breach riêng | WP3 verified: typed open/resolve, affected riders, immutable breach chronology/budget relation |
 | F-009 | Checkpoint/restore | WP3 verified: canonical hash/tamper/reachable-state checks + genesis-suffix process equivalence |
-| F-010 | Export transcript/metrics | bundle validation |
+| F-010 | Export transcript/metrics | WP5 timeline/export và WP6 immutable transcript, observation index, 36-metric production/oracle rows, strict bundle verified |
 
 ## 5. Non-functional requirements
 
@@ -394,11 +397,25 @@ giả. Các lần `0x800711C7` trước đó chỉ là historical host-policy re
 | RB-WP5-012 | R-003/R-004/R-018, N-001/N-002/N-007/N-009 | DONE: exact source/config/binary preflight; B1/C1 × two clean processes; common normalized input, exact repeat hashes, materialized certificates, independently checked checkpoints, self-verifying source/assembly-bound bundle; BeGo 152/152 |
 | RB-WP5-013 | R-012/R-013/R-018, N-001/N-003–N-007 | DONE: 16.384-step independent oracle, exact-set 2/3/4-worker claim, actual process crash at 8+4 boundaries, 5/5 explicit mutants, raw local curves + self-verifying artifact; 153/153 |
 | RB-WP5-014 | R-012/R-015/R-018, N-001–N-009 | DONE: source/claim/evidence audit; subject-link append-only, absolute-head-then-Applied/non-null operation outbox và independent scoped per-run batch; WP1–WP5 review/verdict; BeGo 154/154 Debug/Release |
-| RB-WP6-001 | R-010/R-011/R-015/R-018, N-001/N-002/N-007/N-009 | READY: refinement-only common scenario/result/metric/failure/bundle harness boundary; no implementation or experiment |
+| RB-WP6-001 | R-010/R-011/R-015/R-018, N-001/N-002/N-007/N-009 | DONE: ADR-026 + equivalent contract v1 + primary-source evidence + ordered queue; no implementation/experiment result |
+| RB-WP6-002 | R-010/R-018, N-001/N-007/N-009 | DONE: 10 strict codecs/models + semantic validator, Draft 2020-12 schema inventory, fixtures, two-process six-identity vector; targeted 28/28, full 586/586 |
+| RB-WP6-003 | R-010/R-018, N-001/N-007/N-008/N-009 | DONE: exact Zenodo length/MD5/SHA registry, resumable verified content cache, safe ZIP extraction, actual 335-member public receipt; targeted 26/26, full 612/612 |
+| RB-WP6-004 | R-010/R-018, N-001/N-002/N-007/N-009 | DONE: ADR-027 acyclic scenario/report identity; verified-member FleetPy normalizer, SCC/dense-node-pool/HMAC/ties-even/conservation; exact 8/2/16/240 + 128/32/96/9120 derivatives; full 619/619 |
+| RB-WP6-005 | R-010/R-018, N-001/N-002/N-007/N-009 | DONE: cross-process framed HMAC/int32 vectors, effective binding + strict pairing compiler, permutation/parallel counterbalanced full grid; targeted 32+37, full 627/627 |
+| RB-WP6-006 | R-010/R-018, N-001/N-002/N-005/N-007/N-009 | DONE: ADR-028/contract 1.0.2; exact runtime/deploy/config/source pre/postflight, canonical Runner protocol + independent hash-chain checks, typed bounded process-tree/stream evidence; 15 supervisor cases, full 647/647 |
+| RB-WP6-007 | R-010/R-011/R-018, N-001/N-002/N-005/N-007/N-009 | DONE: ADR-029/contract 1.0.3; immutable plan/run/raw/index store, typed terminal/log chain, crash/seal/concurrency recovery, plan-bound protocol/artifact verification and full-grid authorized rerun; Benchmarking 77/77, full 673/673 |
+| RB-WP6-008 | R-010/R-011/R-018, N-001/N-002/N-005/N-007/N-009 | DONE: 36-definition registry; arrival-cohort/decision-window/lifecycle/resource calculator; 132 exact rows; no-reference external oracle; request/action/promise/vector/window/order/resource/overflow mutations; Benchmarking 86/86, full 682/682 |
+| RB-WP6-009 | R-010/R-011/R-015/R-018, N-001/N-002/N-005/N-007/N-009 | DONE: deterministic strict BagIt builder; logical/source/runtime/run-store provenance; 10-stage semantic verifier; fresh-process immutable sidecar; missing/extra/tamper/path/reparse/grid/transcript/log/metric mutations; Benchmarking 92/92, full 688/688 |
+| RB-WP6-010 | R-010/R-011/R-015/R-018, N-001/N-002/N-005/N-007/N-009 | DONE: ADR-032; source-locked/generated claim profile/report; scoped Unicode/confusable-aware typed checker; exact stage-10 recomputation; forbidden/caveat/report/provenance/profile mutations; Benchmarking 95/95, full 691/691 |
+| RB-WP6-011 | R-010/R-011/R-015/R-018, N-001/N-002/N-005/N-007/N-009 | DONE: ADR-033/contract 1.0.4; B1/C1 × 3 exact external Runner runs in two clean Release processes; real non-zero decision delta, exact semantic identities, oracle summaries, typed mutation matrix, verified mechanical bundle; Benchmarking 104/104, full 705/705 |
+| RB-WP6-012 | R-010/R-011/R-015/R-018, N-001/N-002/N-005/N-007/N-009 | DONE: ADR-034/contract 1.0.5; verified Zenodo + two-clean-root exact 128/32/96/9120 derivative; B1/C1 × 3 in two fresh exact Runner/store/oracle/verifier processes; exact semantic identities, valid strict bundles, explicit nonphysical instant-drain boundary; full 710/710 |
+| RB-WP6-013 | R-010/R-011/R-015/R-018, N-001/N-002/N-005/N-007/N-009 | DONE: ADR-035/contract 1.0.6; executable 1+3 warm-up/measured grid, complete preflight, 10-doc permutation/parallel, 21 failure-stage/8 exclusion plus process/store/metric/bundle/claim/source matrix; medium D/E 8/8 semantic exact, strict verify valid, full 770/770 |
+| RB-WP6-014 | R-010/R-011/R-015/R-018, N-001/N-002/N-005/N-007/N-009 | DONE: ADR-036; source/claim audit, fresh tiny A + medium H/I exact-source semantic repeat, external verifier, final WP1–WP6 review, exact 770/770 |
 
 Queue `30` đã complete và ADR-024 đóng WP4. WP3 validator/certificate tiếp tục
 là publication gate độc lập. ADR-025/`tasks/32` đã complete và đóng WP5;
-`RB-WP5-001..014` Done. `tasks/33` có đúng `RB-WP6-001 Ready`, refinement-only.
+`RB-WP5-001..014` Done. `RB-WP6-001..014` Done; WP7 `RB-WP7-001..014` Done và
+ADR-038 đóng mechanical Layer-2 theo `tasks/36`; WP8 chưa có ticket.
 
 WP4 closure evidence: required `dotnet test RideBound.slnx` pass 557/557 ngày
 2026-08-03 — Contracts 133, Domain 135, Application 69, Algorithms 134, Solver 6,
@@ -421,3 +438,28 @@ binding, actual OR-Tools/fallback status, ACK transaction, B5 restore và child 
 `013` mở B1 oracle lên 64 cases, thêm một 64-seed actual OR-Tools C1 differential,
 hard-gate mutation witness, actual bounded omission propagation và synthetic
 microbenchmark; `014` audit source/claim/gates và tạo final review folder.
+
+## 15. ADR-039 traceability — semantic lock và hot-path closure
+
+ADR-039 không thêm requirement mới. Nó đóng hai lỗ hổng truy vết: một nhóm hành vi đã
+tồn tại trong source nhưng chưa có quyết định nào khóa, và một cổng hiệu năng chưa từng
+được đo.
+
+| Hành vi | Nơi thực thi | Bằng chứng |
+|---|---|---|
+| `initialPromiseTrigger` hai giá trị, mặc định `initial-acceptance` | `Wp4RunnerConfiguration.Decode`, `CommitmentDecisionValidator` | `Wp4RunnerConfigurationTests`; config thiếu field giữ nguyên content hash |
+| Provisional offer không mở promise và bị loại khỏi hard/warning scope | `CommitmentDecisionValidator`, `HardVectorCandidateAssessor` | tiny clock actual: đúng một publication `INITIAL_BOOKING_CONFIRMATION` |
+| Promise mở tại `Accepted → WaitingPickup/Onboard`, kể cả khi board cùng batch | `PromiseProjector` khôi phục pickup đã thực hiện từ frozen prefix | `PromiseProjectorTests` |
+| Lock so trên trục exogenous → candidate | `CommitmentLockEvaluator` | `CommitmentLockEvaluatorTests`; `docs/07` §10 |
+| `OfferDeclined` sau accept là cancel-after-acceptance | `EventReducer` | `EventReducerTests` |
+| `C1_VEHICLE_HAS_NO_FEASIBLE_CANDIDATE` fail-closed, witness typed | `HardVectorCandidateAssessor`, `CommitmentFailureCodes` | `C1_fails_closed_with_a_typed_witness_when_a_vehicle_loses_every_candidate`, `C1_fails_closed_when_a_vehicle_set_carries_no_candidate_at_all` |
+| `--maximum-line-bytes`, `--manifest-solver-seed` | `Program`, `Wp4RunnerConfiguration.CreateSolverPolicyOptionsForRun` | `Wp4RunnerConfigurationTests`, `Wp4RunnerIntegrationTests` |
+| Event-induced plan update chỉ khi opt-in và route thực sự đổi | `OnlineDecisionActionMapper` | `Wp4RunnerIntegrationTests` |
+| Retention legacy fast path giữ nguyên hot path WP1–WP6 | `CandidatePortfolioRetainer` | `CandidatePortfolioRetainerTests` |
+| Tối ưu hot path không đổi kết quả | `CandidateIdentity`, `ForwardSlackCacheKey`, `RoutePlan.Create`, `InsertionCandidateGenerator` | `CandidateSearchWorkProfileTests` khóa work unit / evaluated path / feasible-before-cap / omitted path / retained count / số slack profile |
+
+Closure evidence: required `dotnet test RideBound.slnx` pass `798/798` ngày 2026-08-17 —
+Contracts 135, Domain 136, Application 73, Algorithms 154, Runner 77, Benchmarking 135,
+Benchmarking.Contracts 71, OrTools 7, Architecture 10. Pinned Python adapter `50/50`.
+Actual FleetPy gates chạy lại trên Runner v8; chi tiết ở
+[`wp7-015-hot-path-and-semantics-closure-evidence-2026-08-17.md`](benchmarking/wp7-015-hot-path-and-semantics-closure-evidence-2026-08-17.md).

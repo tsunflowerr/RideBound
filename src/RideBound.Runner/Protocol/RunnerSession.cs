@@ -54,6 +54,7 @@ public sealed class RunnerSession
     private readonly CommitmentDecisionValidator _commitmentValidator;
     private readonly Wp4RunnerConfiguration? _wp4Configuration;
     private readonly SolverBackedRidePoolingPolicy? _solverBackedPolicy;
+    private readonly bool _useManifestSolverSeed;
     private readonly MultiplePlanConsensusPolicy _multiplePlanPolicy;
     private HelloPayload? _hello;
     private HelloAckPayload? _helloAcknowledgement;
@@ -81,7 +82,8 @@ public sealed class RunnerSession
         CommitmentDecisionValidator? commitmentValidator = null,
         Wp4RunnerConfiguration? wp4Configuration = null,
         SolverBackedRidePoolingPolicy? solverBackedPolicy = null,
-        MultiplePlanConsensusPolicy? multiplePlanPolicy = null)
+        MultiplePlanConsensusPolicy? multiplePlanPolicy = null,
+        bool useManifestSolverSeed = false)
     {
         ArgumentNullException.ThrowIfNull(requirements);
         _requirements = requirements;
@@ -100,6 +102,7 @@ public sealed class RunnerSession
         _commitmentValidator = commitmentValidator
             ?? new CommitmentDecisionValidator();
         _wp4Configuration = wp4Configuration;
+        _useManifestSolverSeed = useManifestSolverSeed;
         _solverBackedPolicy = wp4Configuration is not null
                 && wp4Configuration.SolverPolicyOptions is not null
             ? solverBackedPolicy
@@ -126,6 +129,14 @@ public sealed class RunnerSession
             throw new ArgumentException(
                 "A WP4 policy configuration requires commitment execution mode.",
                 nameof(wp4Configuration));
+        }
+
+        if (useManifestSolverSeed
+            && wp4Configuration?.SolverPolicyOptions is null)
+        {
+            throw new ArgumentException(
+                "Manifest solver seeding requires a solver-backed WP4 configuration.",
+                nameof(useManifestSolverSeed));
         }
     }
 
@@ -308,6 +319,15 @@ public sealed class RunnerSession
                 "HASH_MISMATCH",
                 ProtocolFailureDisposition.FailSession,
                 "Manifest policyId/policyVersion does not match the loaded WP4 policy configuration.",
+                envelope);
+        }
+        if (_useManifestSolverSeed
+            && payloadResult.Value!.Manifest.MasterSeed > int.MaxValue)
+        {
+            return Error(
+                "SCHEMA_VALIDATION_FAILED",
+                ProtocolFailureDisposition.FailSession,
+                "Manifest solver seed exceeds the deterministic Int32 range.",
                 envelope);
         }
 
@@ -829,7 +849,8 @@ public sealed class RunnerSession
                 _commitmentPolicies!,
                 _stopDistances!,
                 publicationScope,
-                sourceEventSequence);
+                sourceEventSequence,
+                InitialPromiseTrigger: _wp4Configuration.InitialPromiseTrigger);
 
             if (_wp4Configuration.MultiplePlanOptions is not null)
             {
@@ -841,7 +862,8 @@ public sealed class RunnerSession
                     _stopDistances!,
                     publicationScope,
                     sourceEventSequence,
-                    _commitmentValidator);
+                    _commitmentValidator,
+                    _wp4Configuration.InitialPromiseTrigger);
                 var multiple = _multiplePlanPolicy.Decide(
                     reduced.ProposedState!,
                     _candidateOptions,
@@ -869,7 +891,10 @@ public sealed class RunnerSession
                 var solved = _solverBackedPolicy!.Decide(
                     context,
                     _candidateOptions,
-                    _wp4Configuration.SolverPolicyOptions!,
+                    _useManifestSolverSeed
+                        ? _wp4Configuration.CreateSolverPolicyOptionsForRun(
+                            _identity!.Manifest.MasterSeed)
+                        : _wp4Configuration.SolverPolicyOptions!,
                     _wp4Configuration);
 
                 if (!solved.IsSuccess)
@@ -896,7 +921,9 @@ public sealed class RunnerSession
                     _stopDistances!,
                     publicationScope,
                     sourceEventSequence,
-                    _commitmentValidator);
+                    _commitmentValidator,
+                    _wp4Configuration?.InitialPromiseTrigger
+                        ?? InitialPromiseTrigger.InitialAcceptance);
             }
 
             decision = _rollingCostPolicy.Decide(
@@ -928,7 +955,10 @@ public sealed class RunnerSession
                     validationPolicies,
                     _stopDistances!,
                     publicationScope,
-                    sourceEventSequence));
+                    sourceEventSequence,
+                    InitialPromiseTrigger:
+                        _wp4Configuration?.InitialPromiseTrigger
+                            ?? InitialPromiseTrigger.InitialAcceptance));
 
             if (!validation.IsValid)
             {
@@ -978,7 +1008,11 @@ public sealed class RunnerSession
                 staged.Witness!.Message);
         }
 
-        var actions = OnlineDecisionActionMapper.Map(decision.Decision)
+        var actions = OnlineDecisionActionMapper.Map(
+                decision.Decision,
+                beforeEventState,
+                _wp4Configuration?.InitialPromiseTrigger
+                    == InitialPromiseTrigger.BookingConfirmation)
             .Concat(OnlineDecisionActionMapper.MapPublications(publications))
             .ToArray();
         var reasonCode = decision.Decision.RequestActions.Any(

@@ -76,6 +76,10 @@ public sealed class HardVectorCandidateAssessor
         {
             var retained = new List<InsertionCandidate>();
             var pruned = set.PrunedCandidates.ToList();
+            var hardPruned = new List<CandidatePruneWitness>();
+            var hardValidationWitnesses =
+                new Dictionary<string, CommitmentValidationWitness>(
+                    StringComparer.Ordinal);
 
             foreach (var candidate in set.Candidates.OrderBy(
                          value => value.CandidateId,
@@ -87,13 +91,14 @@ public sealed class HardVectorCandidateAssessor
 
                 if (!updated.IsSuccess)
                 {
-                    pruned.Add(
-                        new CandidatePruneWitness(
-                            candidate.CandidateId,
-                            set.VehicleId,
-                            candidate.NewRequestIds,
-                            updated.Failure!.Code,
-                            updated.Failure.Message));
+                    var prune = new CandidatePruneWitness(
+                        candidate.CandidateId,
+                        set.VehicleId,
+                        candidate.NewRequestIds,
+                        updated.Failure!.Code,
+                        updated.Failure.Message);
+                    pruned.Add(prune);
+                    hardPruned.Add(prune);
                     continue;
                 }
 
@@ -107,18 +112,23 @@ public sealed class HardVectorCandidateAssessor
                         context.PublicationScope,
                         context.SourceEventSequence,
                         RevisionReasonCode: "C1_HARD_VECTOR",
-                        ScopedVehicleId: set.VehicleId));
+                        ScopedVehicleId: set.VehicleId,
+                        InitialPromiseTrigger: context.InitialPromiseTrigger));
 
                 if (!validation.IsValid)
                 {
                     var witness = validation.Witnesses[0];
-                    pruned.Add(
-                        new CandidatePruneWitness(
-                            candidate.CandidateId,
-                            set.VehicleId,
-                            candidate.NewRequestIds,
-                            witness.Code,
-                            witness.Message));
+                    var prune = new CandidatePruneWitness(
+                        candidate.CandidateId,
+                        set.VehicleId,
+                        candidate.NewRequestIds,
+                        witness.Code,
+                        witness.Message);
+                    pruned.Add(prune);
+                    hardPruned.Add(prune);
+                    hardValidationWitnesses.Add(
+                        candidate.CandidateId,
+                        witness);
                     continue;
                 }
 
@@ -134,7 +144,9 @@ public sealed class HardVectorCandidateAssessor
 
                 var utilization = CalculateWorstUtilization(
                     validation.ValidatedState!,
-                    context.Policies);
+                    context.Policies,
+                    set.VehicleId,
+                    context.InitialPromiseTrigger);
 
                 if (!utilization.IsSuccess)
                 {
@@ -148,7 +160,8 @@ public sealed class HardVectorCandidateAssessor
                     validation.ValidatedState!,
                     context.Policies,
                     warningProfiles,
-                    set.VehicleId);
+                    set.VehicleId,
+                    context.InitialPromiseTrigger);
 
                 if (!warning.IsSuccess)
                 {
@@ -167,6 +180,36 @@ public sealed class HardVectorCandidateAssessor
                         utilization.HasApplicableHardLimit,
                         warning.Value,
                         warning.HasApplicableWarning));
+            }
+
+            if (retained.Count == 0)
+            {
+                var first = hardPruned
+                    .OrderBy(value => value.CandidateId, StringComparer.Ordinal)
+                    .FirstOrDefault();
+                var firstValidation = first is not null
+                    && hardValidationWitnesses.TryGetValue(
+                        first.CandidateId,
+                        out var value)
+                        ? value
+                        : null;
+                return HardVectorCandidateAssessmentResult.Failure(
+                    new CommitmentAssessmentWitness(
+                        CommitmentFailureCodes.VehicleHasNoFeasibleCandidate,
+                        first is null
+                            ? "C1 reached a vehicle without any generated " +
+                              "candidate; even the safety no-op was absent."
+                            : "C1 rejected every generated candidate for this " +
+                              $"vehicle. First rejection: {first.Message}",
+                        first?.CandidateId,
+                        set.VehicleId,
+                        firstValidation?.RequestId,
+                        firstValidation?.Dimension,
+                        first?.Code,
+                        firstValidation?.Before,
+                        firstValidation?.After,
+                        set.Candidates.Count,
+                        hardPruned.Count));
             }
 
             outputSets.Add(
@@ -215,15 +258,26 @@ public sealed class HardVectorCandidateAssessor
 
     private static UtilizationResult CalculateWorstUtilization(
         OnlineState state,
-        ICommitmentPolicyProvider policies)
+        ICommitmentPolicyProvider policies,
+        VehicleId scopedVehicleId,
+        InitialPromiseTrigger initialPromiseTrigger)
     {
         long worst = 0;
         var hasLimit = false;
 
         foreach (var request in state.Run.Requests.Values
-                     .Where(value => value.IsAcceptedActive)
+                     .Where(
+                         value => value.IsAcceptedActive
+                             && value.AssignedVehicleId == scopedVehicleId)
                      .OrderBy(value => value.Id.Value, StringComparer.Ordinal))
         {
+            if (initialPromiseTrigger == InitialPromiseTrigger.BookingConfirmation
+                && request.Lifecycle == RequestLifecycle.Accepted
+                && !state.Commitments.Histories.ContainsKey(request.Id))
+            {
+                continue;
+            }
+
             if (!policies.TryGetPolicy(request.CommitmentPolicyId, out var policy)
                 || !StringComparer.Ordinal.Equals(
                     request.CommitmentPolicyId,
@@ -310,7 +364,8 @@ public sealed class HardVectorCandidateAssessor
         OnlineState state,
         ICommitmentPolicyProvider policies,
         ICommitmentWarningProfileProvider? warningProfiles,
-        VehicleId scopedVehicleId)
+        VehicleId scopedVehicleId,
+        InitialPromiseTrigger initialPromiseTrigger)
     {
         if (warningProfiles is null)
         {
@@ -326,6 +381,13 @@ public sealed class HardVectorCandidateAssessor
                              && value.AssignedVehicleId == scopedVehicleId)
                      .OrderBy(value => value.Id.Value, StringComparer.Ordinal))
         {
+            if (initialPromiseTrigger == InitialPromiseTrigger.BookingConfirmation
+                && request.Lifecycle == RequestLifecycle.Accepted
+                && !state.Commitments.Histories.ContainsKey(request.Id))
+            {
+                continue;
+            }
+
             if (!policies.TryGetPolicy(request.CommitmentPolicyId, out var policy)
                 || !warningProfiles.TryGetProfile(
                     request.CommitmentPolicyId,

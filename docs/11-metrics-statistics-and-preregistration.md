@@ -210,6 +210,26 @@ Phân loại:
 
 Mọi exclusion có log. Không bỏ run vì metric xấu.
 
+WP6 cụ thể hóa quy tắc này thành partition hữu hạn:
+
+```text
+planned = succeeded + failed + excluded
+```
+
+Mỗi `runId` có đúng một terminal record. Timeout, process exit, protocol/schema/hash,
+resource-limit và metric-oracle mismatch là typed failure; chúng không được đổi thành
+giá trị metric 0. Exclusion chỉ hợp lệ khi pre-rule đã khóa trước khi nhìn outcome và
+phải ghi rule/evidence. Mọi metric record phải mang numerator, denominator, unit,
+missing-count/reason và source transcript digest. Aggregate không được âm thầm bỏ
+missing/failed run; production calculator phải được so với oracle độc lập không gọi
+lại chính calculator đó.
+
+Closure WP6 ngày 2026-08-13 giữ đúng partition ở tiny A và medium H/I: mỗi process
+`planned=8, succeeded=8, failed=0, excluded=0`. Production/oracle 132 rows mỗi run
+byte-exact; 72/72 per-run semantic fields lặp lại. Full resource rows khác 8/8 và
+được giữ, không dùng làm effectiveness/SLA. Aggregate CI/non-inferiority vẫn chưa chạy
+vì thuộc WP8/WP9.
+
 ## 14. Success criteria
 
 Một kết luận RideBound mạnh cần đồng thời:

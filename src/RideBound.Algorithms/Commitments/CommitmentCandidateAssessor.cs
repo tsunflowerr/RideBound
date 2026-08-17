@@ -14,7 +14,9 @@ public sealed record CommitmentMechanismContext(
     ICommitmentPolicyProvider Policies,
     IStopDistanceLookup StopDistances,
     string PublicationScope,
-    long SourceEventSequence);
+    long SourceEventSequence,
+    InitialPromiseTrigger InitialPromiseTrigger =
+        InitialPromiseTrigger.InitialAcceptance);
 
 /// <summary>
 /// Rebuilds a named mechanism baseline from the configured material-revision
@@ -119,13 +121,24 @@ public sealed record CandidateCommitmentAssessment(
     string CandidateId,
     CommitmentVector DecisionInducedRevision);
 
+/// <summary>
+/// A machine-readable assessment failure. The optional fields mirror the
+/// vocabulary of <c>CommitmentValidationWitness</c> so that a caller never has
+/// to parse prose out of <paramref name="Message"/> to learn which request,
+/// dimension or bound produced the failure.
+/// </summary>
 public sealed record CommitmentAssessmentWitness(
     string Code,
     string Message,
     string? CandidateId = null,
     VehicleId? VehicleId = null,
     RequestId? RequestId = null,
-    string? Dimension = null);
+    string? Dimension = null,
+    string? UnderlyingCode = null,
+    long? Before = null,
+    long? After = null,
+    int? GeneratedCandidateCount = null,
+    int? RejectedCandidateCount = null);
 
 public sealed record CandidateCommitmentAssessmentResult
 {
@@ -210,7 +223,8 @@ public sealed class CommitmentCandidateAssessor
                         context.PublicationScope,
                         context.SourceEventSequence,
                         RevisionReasonCode: "B2_REVISION_PENALTY",
-                        ScopedVehicleId: set.VehicleId));
+                        ScopedVehicleId: set.VehicleId,
+                        InitialPromiseTrigger: context.InitialPromiseTrigger));
 
                 if (!validation.IsValid)
                 {

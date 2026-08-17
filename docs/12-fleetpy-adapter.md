@@ -32,16 +32,21 @@ Tạo module ngoài source vendor:
 
 ```text
 simulators/fleetpy-ridebound/
-  bego_commit_fleet_control.py
-  runner_client.py
-  mappings.py
-  scenario/
+  ridebound_fleetpy/
+    fleet_control.py
+    mapping.py
+    runner_client.py
+    errors.py
+  actual_*.py
+  capability_probe.py
   tests/
   environment.lock.yml
   README.md
 ```
 
-`BeGoCommitFleetControl` kế thừa `FleetControlBase` hoặc một base ridepool mỏng sau preflight. Không sửa trực tiếp checkout FleetPy. Study config nạp class adapter theo cơ chế FleetPy.
+`RideBoundFleetControl` kế thừa `FleetControlBase` sau capability preflight. Không sửa
+trực tiếp checkout FleetPy. Study config nạp class adapter theo cơ chế FleetPy; Python
+chỉ map protocol/callback và gọi Runner published ngoài repository.
 
 ## 4. Mapping callback
 
@@ -170,3 +175,22 @@ Link mỗi FleetPy user/vehicle row với canonical request/vehicle ID.
 - B1/C1 dùng cùng runner binary.
 - Promise/vehicle lifecycle reconciles với FleetPy logs.
 - Main metric script cho cùng kết quả khi đọc transcript hoặc derived table.
+
+## 14. WP7 mechanical closure — 2026-08-16
+
+`RB-WP7-001..014` đã đóng theo ADR-038. Cùng immutable Runner v6 được gọi cho B1 và
+C1 trên FleetPy 1.0.2 pin: Runner/FleetControl preflight, lifecycle matrix, actual
+FleetPy clock tiny và public-medium physical loop đều pass; medium có ba repeat mỗi arm
+và bundle được verifier độc lập đọc từ transcript/manifest. Full .NET suite là 798/798
+và pinned Python adapter suite là 50/50, không skip.
+
+Semantic hash của actual FleetPy bind `binarySha256` trong `RunManifestIdentity`, nên nó
+**không so sánh được giữa hai Runner artifact**. Muốn đối chiếu hai binary thì phải so
+các trường hành vi (publication, request state, vehicle position, epoch/sequence, drain
+count), không so hash tổng hợp.
+
+Lớp này chỉ chứng minh mapping, lifecycle, replay/checkpoint và same-Runner mechanics.
+Publication count, semantic hash hay raw wall time giữa arm không phải effectiveness,
+SLA, fairness, satisfaction hay superiority evidence. Raw result và exact hashes nằm
+ngoài repository, được index trong
+[`wp7-014-fleetpy-layer2-closure-evidence-2026-08-15.md`](benchmarking/wp7-014-fleetpy-layer2-closure-evidence-2026-08-15.md).

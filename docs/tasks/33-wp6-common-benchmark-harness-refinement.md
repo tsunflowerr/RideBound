@@ -1,10 +1,13 @@
 # RB-WP6-001 — refinement common benchmark harness
 
-> Trạng thái: `READY`  
-> Work package: `WP6`  
-> Loại ticket: refinement-only; không production code, không experiment result  
-> Dependency: WP4 và WP5 Complete; ADR-024/025; final review WP1–WP5  
+> Trạng thái: `DONE`
+> Work package: `WP6`
+> Loại ticket: refinement-only; không production code, không experiment result
+> Dependency: WP4 và WP5 Complete; ADR-024/025; final review WP1–WP5
 > Ticket implementation WP6 được phép trước khi ticket này DONE: `NONE`
+> Decision evidence: ADR-026, `docs/benchmarking/wp6-contract-v1.md`,
+> `docs/research/wp6-benchmark-reproducibility-evidence-2026-08-09.md`
+> Ordered implementation queue: `docs/tasks/34-wp6-common-benchmark-harness-ticket-plan.md`
 
 ## 1. Outcome
 
@@ -128,3 +131,17 @@ fail-closed/auditable thay vì tối ưu cho kết quả đẹp.
 Sau khi `RB-WP6-001` DONE, tạo một ordered plan mới (dự kiến `tasks/34`) và chỉ
 chuyển ticket schema/primitives nhỏ nhất sang `READY`. WP7 vẫn `NOT_STARTED` cho tới
 khi common scenario/result boundary executable đạt tiny gate.
+
+## 10. Closure evidence — 2026-08-09
+
+- ADR-026 khóa đủ 14 decision, không chọn O-002/O-003/O-004.
+- Contract v1 là equivalent contract decision-complete cho dataset/normalization,
+  scenario, plan/arm, raw observation/run, failure, exclusion, metric row và logical
+  bundle manifest; JSON Schema executable được giao riêng cho `RB-WP6-002`.
+- FleetPy Manhattan Zenodo v1/CC BY 4.0, publisher MD5 và raw-cache/derivative
+  boundary được khóa; local SHA-256 chỉ được điền sau exact download verification.
+- Seed hierarchy dùng addressable HMAC-SHA-256; không mạo nhận dùng Random123.
+- Bundle dùng strict BagIt-compatible profile, PROV-like derivation và no-extra rule.
+- Tiny/medium, independent oracle, resource/failure/claim gates có acceptance cụ thể.
+- Tại thời điểm refinement closure, `tasks/34` có đúng `RB-WP6-002 READY`; trạng
+  thái thực thi hiện hành luôn lấy từ đầu `tasks/34` và `docs/18`.

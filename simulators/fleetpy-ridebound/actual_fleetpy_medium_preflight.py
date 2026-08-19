@@ -9,6 +9,7 @@ import csv
 import hashlib
 import json
 import pathlib
+import subprocess
 import sys
 import tempfile
 import time
@@ -722,6 +723,19 @@ def _run_repeat(arguments, repeat, source, driver, output_directory):
     return report
 
 
+def _git_head_commit(repository):
+    completed = subprocess.run(
+        ["git", "-C", str(repository), "rev-parse", "HEAD"],
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        encoding="ascii",
+        timeout=10,
+    )
+    return completed.stdout.strip()
+
+
 def run(arguments):
     adapter_root = pathlib.Path(__file__).parent.resolve()
     arguments.repository_root = adapter_root.parents[1]
@@ -735,18 +749,34 @@ def run(arguments):
         raise RuntimeError(
             f"source scenario hash mismatch: {actual_source_hash}"
         )
+    # The cardinality a run must see is declared by its driver, so a grid can
+    # vary fleet size or demand window without weakening the check. Drivers that
+    # omit the fields keep the original WP7 medium constants exactly.
+    expected_cardinality = {
+        "requestCount": driver.get("expectedRequestCount", 128),
+        "vehicleCount": driver.get("expectedVehicleCount", 32),
+        "nodeCount": driver.get("expectedNodeCount", 96),
+        "directedArcCount": driver.get("expectedDirectedArcCount", 9120),
+    }
     if source["validationSummary"] != {
         **source["validationSummary"],
-        "requestCount": 128,
-        "vehicleCount": 32,
-        "nodeCount": 96,
-        "directedArcCount": 9120,
+        **expected_cardinality,
     }:
-        raise RuntimeError("medium source cardinality drift")
+        raise RuntimeError(
+            "source cardinality drift: driver declared "
+            f"{expected_cardinality}, scenario has "
+            + repr(
+                {
+                    key: source["validationSummary"][key]
+                    for key in expected_cardinality
+                }
+            )
+        )
     if driver["completeTravelSnapshotMaximumNodes"] != source[
         "validationSummary"
     ]["nodeCount"]:
         raise RuntimeError("complete travel snapshot bound must equal node count")
+    commit_before = _git_head_commit(arguments.repository_root)
     output = arguments.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
     reports = []
@@ -767,6 +797,18 @@ def run(arguments):
             }
             _write_new(output / f"failure-{repeat:02d}.json", failure_record)
             raise
+    # Provenance is sampled per repeat and is part of the manifest, so a commit
+    # landing mid-matrix changes coreCommitSha and every downstream hash. That
+    # is a frozen-source violation, not a nondeterministic engine, and it must
+    # say so: diagnosing it from an opaque "repeats diverged" message cost a
+    # full transcript diff once already.
+    commit_after = _git_head_commit(arguments.repository_root)
+    if commit_after != commit_before:
+        raise RuntimeError(
+            "core commit drifted during the matrix "
+            f"({commit_before} -> {commit_after}); the source tree must stay "
+            "frozen for the whole repeat matrix"
+        )
     hashes = {report["semanticHash"] for report in reports}
     if len(hashes) != 1:
         raise RuntimeError(f"medium semantic repeats diverged: {sorted(hashes)!r}")

@@ -213,5 +213,8 @@ suite 790/790, Python 49/49. ADR-039 sau đó khóa bằng ADR các thay đổi 
 thiếu quyết định (`initialPromiseTrigger`, baseline lock exogenous, cancel-after-
 acceptance, fail-closed C1, CLI flag Runner, event-induced plan update), thêm
 work-profile gate và hoàn tất một vòng tối ưu hot path bất biến về kết quả; required
-suite lên 798/798, Python 50/50 và mọi actual receipt chuyển sang Runner v8. WP8 vẫn
-chưa ticket hóa và cần refinement explicit.
+suite lên 798/798, Python 50/50 và mọi actual receipt chuyển sang Runner v8. ADR-040
+sau đó mở WP8: `RB-WP8-001` Done và queue `RB-WP8-002..014` nằm ở `tasks/38`, chỉ `002`
+Ready. Grid thí nghiệm dựng từ dữ liệu công khai thật (8 ngày), pilot `11-11`/`11-12`
+tách khỏi confirmatory holdout `11-13`→`11-18`, và commitment budget sẽ suy từ chỉ dữ
+liệu pilot. Chưa có production code WP8 và chưa có kết quả effectiveness nào.

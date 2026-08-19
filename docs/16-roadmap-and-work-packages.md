@@ -251,6 +251,12 @@ Candidate core, và chạy lại toàn bộ actual gate trên Runner v8 —
 
 ## WP8 — Pilot và preregistration
 
+**Trạng thái hiện tại:** `RB-WP8-001 DONE`, `RB-WP8-002 READY`. ADR-040 khoá grid từ
+dữ liệu công khai thật (8 ngày, 289 file demand), tách pilot `2018-11-11`/`2018-11-12`
+khỏi confirmatory holdout `2018-11-13`→`2018-11-18`, và quyết định suy commitment budget
+từ chỉ dữ liệu pilot thành ba mức strictness. Chi tiết ở `docs/tasks/37` và
+`docs/tasks/38`. Chưa có production code và chưa có kết quả nào.
+
 ### Deliverable
 
 - pilot results;

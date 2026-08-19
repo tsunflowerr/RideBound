@@ -9,8 +9,8 @@
 |---|---|
 | Research direction | `LOCKED_FOR_IMPLEMENTATION_PLANNING` |
 | Documentation | `MIGRATED_AND_VERIFIED_V1` |
-| Implementation | `WP1_Q1_COMPLETE; WP2_COMPLETE; WP3_COMPLETE_14_OF_14; WP4_COMPLETE_14_OF_14; WP5_COMPLETE_14_OF_14; WP6_COMPLETE_14_OF_14; WP7_COMPLETE_14_OF_14` |
-| Current work package | `NONE — WP7 closed mechanically; WP8 requires explicit refinement/preregistration decision` |
+| Implementation | `WP1_Q1_COMPLETE; WP2_COMPLETE; WP3_COMPLETE_14_OF_14; WP4_COMPLETE_14_OF_14; WP5_COMPLETE_14_OF_14; WP6_COMPLETE_14_OF_14; WP7_COMPLETE_14_OF_14; WP8_IN_PROGRESS_1_OF_14` |
+| Current work package | `WP8 — pilot và preregistration; ADR-040 đã khoá thiết kế, RB-WP8-002 là ticket Ready duy nhất` |
 | Repository | `https://github.com/tsunflowerr/RideBound` |
 | Main baseline | B1 `rolling-cost` |
 | Main treatment | C1 `ridebound-hard-vector` |
@@ -3263,6 +3263,112 @@ hướng WP8 nhưng **chưa áp dụng**, vì full text chưa đọc được t�
 WP1 protocol, WP2 physical state, WP3 publication gate, WP4 objective, WP5 durable
 boundary hay WP6 measurement contract.
 
+### ADR-040 — 2026-08-18 — Accepted
+
+**Context:** Hết WP7, RideBound có một đường so sánh cơ học đã công bằng — hai arm dùng
+chung scenario, seed, Runner binary, work budget, candidate pool và đường publication,
+và hai config chỉ khác đúng `policyId`. Cái chưa có là một **thí nghiệm**: chỉ một hiện
+thực nhu cầu, chưa preregister, và cơ chế đắt nhất của treatment chưa thực sự bị ràng
+buộc. WP8 phải quyết thí nghiệm trông thế nào rồi khoá lại, trước khi nhìn bất kỳ con
+số nào.
+
+**Decision:**
+
+1. Grid scenario dựng **hoàn toàn từ dữ liệu công khai thật**. Bộ FleetPy Manhattan v1
+   đã xác minh có 289 file demand trên 8 ngày liên tiếp, kèm sample fraction chính thức,
+   tỷ lệ đặt trước và hệ số traffic theo ngày/giờ. Không sinh demand tự chế.
+   `tools/RideBound.Wp6Normalize` chuyển từ hai profile hard-code sang chạy theo một
+   grid manifest source-controlled; `FleetPyNormalizationConfiguration` vốn đã nhận đủ
+   tham số nên đây là mở rộng CLI, không phải viết lại normalizer.
+2. **Pilot** là `2018-11-11` và `2018-11-12`; **confirmatory holdout** là `2018-11-13`
+   → `2018-11-18` và bị niêm phong cho tới khi preregistration đóng băng. `2018-11-12`
+   đúng là ngày WP6/WP7 đã dùng, nên toàn bộ phần dữ liệu đã bị nhìn nằm gọn trong
+   pilot; điều này phải được ghi trong preregistration.
+3. Đơn vị thí nghiệm là `(scenario, seed, travel realization)`. Rider được gộp lên mức
+   run trước khi bootstrap; cấm coi rider trong cùng run là mẫu độc lập.
+4. Primary endpoint là `p95_decision_pickup_eta_total_variation_ms`, so paired
+   difference `C1 − B1`. Calculator production phải khớp byte-exact với một oracle
+   BCL-only không ProjectReference, theo đúng chuẩn đã dùng ở `RB-WP6-008`.
+5. Commitment budget được **suy từ phân phối thực nghiệm trên chỉ dữ liệu pilot**, khoá
+   thành ba mức strictness, giữ cấu hình unbounded hiện tại làm tầng đối chứng. Quy tắc
+   suy dẫn phải khai báo trước khi đọc dữ liệu. Lý do: ở cấu hình hiện tại chỉ 3/10
+   chiều có `hardLimit` và cả ba bằng 0, lại luôn thoả sẵn do O-001, nên phần hard
+   vector của C1 gần như không ràng buộc gì và treatment thực chất chỉ đang được kiểm ở
+   phần thứ tự revision.
+6. Non-inferiority margin phải đặt trước, dùng cận một phía, và neo vào chính sách suy
+   biến "từ chối hết yêu cầu" — chính sách đó có revision `= 0` và service rate `= 0`,
+   nên margin phải đủ hẹp để treatment không thể thắng endpoint chính bằng cách hạ dịch
+   vụ. Ghi rõ rằng có margin **không** tự bảo vệ khỏi degradation.
+7. Sample size suy từ phương sai pilot và một minimum detectable effect có nghĩa vận
+   hành, cộng dự phòng failed run. Cấm chọn số tròn.
+8. Partition `planned = succeeded + failed + excluded` giữ nguyên; một primary endpoint,
+   một non-inferiority gate, Holm cho key secondary family; exploratory phải ghi rõ.
+9. Preregistration file đủ 15 mục của `docs/11` §11, được canonical hash và đóng băng;
+   sau freeze chỉ một ADR mới sửa được.
+10. WP8 **không** công bố bất kỳ kết quả effectiveness nào. Nó chỉ tạo ra một thí nghiệm
+    đã khoá.
+
+**Evidence:** Kiểm kê dataset đã xác minh (289 file demand, 8 ngày `2018-11-11` →
+`2018-11-18`, sample/res fractions, `tt_factors` theo ngày và giờ) và xác nhận
+`FleetPyNormalizationConfiguration` đã tham số hoá đủ day/window/selection-key/fleet/
+window-tightness. Phương pháp non-inferiority đọc full text từ *Non-inferiority
+statistics and equivalence studies* (PMC7808096) và *Choice of NI margins does not
+protect against degradation* (PMC4117500); guideline EMA CHMP được ghi nhận là nguồn
+quy chuẩn nhưng PDF không đọc được dạng text tại ngày kiểm tra nên không trích nội dung.
+Nền cơ học kế thừa từ ADR-039: required suite `798/798`, Python `50/50`, và actual
+FleetPy B1/C1 trên cây đóng băng `d48b115b` với verifier độc lập pass cho cả hai bundle.
+
+**Consequences:** Tạo `docs/tasks/37` và `docs/tasks/38`; `RB-WP8-002` là ticket Ready
+duy nhất. Chưa có production code WP8, chưa có scenario confirmatory nào được sinh, và
+không claim nào được nâng. `O-001`/`O-002`/`O-003`/`O-004` vẫn đóng.
+
+**Supersedes / superseded by:** Không supersede ADR nào. Nó mở WP8 sau ADR-039 và kế
+thừa nguyên vẹn claim boundary của WP6/WP7.
+
+### ADR-041 — 2026-08-19 — Accepted
+
+**Context:** Pilot WP8 chạy thật trên dữ liệu công khai đã xác minh và buộc phải sửa ba
+điểm trong thiết kế mà ADR-040 khoá. Cả ba đều phát hiện từ cơ chế hoặc từ chính pilot,
+trước khi bất kỳ ngày confirmatory nào được sinh.
+
+**Decision:**
+
+1. **Điểm vận hành phải có tranh chấp.** Ở điểm WP6/WP7 (128 request rải 24 giờ, 32 xe),
+   decision-induced delta bằng 0 cho mọi rider ở cả hai arm; exogenous bằng đúng visible.
+   Primary endpoint khi đó bằng 0 đồng nhất và không cỡ mẫu nào cứu được. Điểm vận hành
+   preregister là cửa sổ cao điểm thật `08:00–10:00` với 8 xe; chỉ cửa sổ và số xe thay
+   đổi, dùng cấu trúc sẵn có của dữ liệu chứ không bịa tải.
+2. **Primary endpoint là tổng decision-induced burden liên chiều**, không phải riêng
+   pickup ETA. Pickup-ETA zero-inflated tới mức `p50 = p90 = 0` ở mọi run, nên `p95` treo
+   trên 5–6 rider trong khoảng 110. Ghi rõ: đây **không** phải hằng đẳng thức cơ chế —
+   `C-d20181112-r2-c1` có `prePickupInsertedStopCount = 3` mà pickup delta vẫn bằng 0 vì
+   chèn vào slack sẵn có; lý do loại endpoint là tính giòn, không phải tính tất định.
+3. **Service rate là cổng đồng thời**, không phải secondary metric, và phải đo ở mốc hoàn
+   thành chuyến chứ không phải mốc được hứa.
+4. Harness: cardinality do driver khai báo thay vì hard-code; trần frame Runner dùng đúng
+   ceiling `64 MiB` mà ADR-039 đã khai, vì full-state checkpoint của kịch bản dày vượt
+   `16 MiB`. Trần này là guard tài nguyên, không phải bất biến đúng đắn, và vượt trần là
+   lỗi typed fail-closed.
+
+**Evidence:** Normalizer chạy theo grid manifest sinh derivative từ dữ liệu công khai
+thật; mỗi cell bảo toàn đủ bản ghi nguồn (ví dụ `21.400 → 128, 0 loại`). Bốn đơn vị
+paired ở điểm có tải, hai ngày, sample replicate chính thức của publisher: Δ burden âm ở
+cả bốn, median `−3.130.086 ms`, sd `1.128.334 ms`, giảm 75–93%. Δ tỷ lệ hoàn thành
+`−6,25 / −5,47 / −0,78 / 0,00` điểm phần trăm, mean `−3,13 pp`, sd `3,19 pp`. Chi tiết và
+giới hạn claim ở
+`benchmarking/wp8-001-pilot-operating-point-evidence-2026-08-19.md`.
+
+**Consequences:** Theo đúng tiêu chí `docs/11` §5/§14 mà dự án tự đặt trước, **C1 ở cấu
+hình hiện tại không vượt cổng service ở điểm vận hành này**: thiếu hụt dịch vụ trung bình
+gấp khoảng ba lần margin minh hoạ `1` điểm phần trăm. Đây là kết quả **pilot**, n = 4,
+không có khoảng tin cậy và không phải effectiveness claim. Confirmatory holdout
+`2018-11-14` → `2018-11-18` chưa được sinh và chưa bị chạm. `RB-WP8-002`/`003` Done;
+`RB-WP8-004` là ticket Ready tiếp theo, và nó phải xử lý đánh đổi dịch vụ trước khi bàn
+tới cỡ mẫu.
+
+**Supersedes / superseded by:** Sửa ba quyết định thiết kế trong ADR-040; giữ nguyên phần
+còn lại của ADR-040 và toàn bộ claim boundary WP6/WP7.
+
 ## 8. Work package tracker
 
 | WP | Trạng thái | Bắt đầu | Kết thúc | Evidence |
@@ -3275,7 +3381,7 @@ boundary hay WP6 measurement contract.
 | WP5 BeGo integration | Complete; `001..014` Done; Q3 mechanical gate closed | 2026-08-05 | 2026-08-09 | ADR-025 + durable adapter/rollout + paired bundle + independent evidence + source/claim review; BeGo 154/154 Debug/Release |
 | WP6 Benchmark harness | Complete; `001..014` Done; common mechanical harness gate closed | 2026-08-09 | 2026-08-13 | ADR-026..036 + contract v1.0.6; fresh tiny A + medium H/I exact-source semantic reproduction, strict external verify, final review, 770/770 |
 | WP7 FleetPy | Complete; `001..014` Done; mechanical Layer-2 closed | 2026-08-13 | 2026-08-17 | ADR-037/038/039 + `tasks/35`/`tasks/36` + Runner v8 actual B1/C1 preflight/lifecycle/tiny/medium + external verifier |
-| WP8 Pilot/prereg | Not started | — | — | — |
+| WP8 Pilot/prereg | In progress; `001..003` Done, `004` Ready | 2026-08-18 | — | ADR-040/041 + `tasks/37`/`tasks/38` + pilot 4 đơn vị paired trên dữ liệu thật; confirmatory holdout chưa sinh |
 | WP9 Main experiments | Not started | — | — | — |
 | WP10 Cross-system | Not started | — | — | — |
 | WP11 Product UX | Not started | — | — | — |
@@ -3283,6 +3389,27 @@ boundary hay WP6 measurement contract.
 
 ## 9. Change history
 
+- 2026-08-19: Hoàn thành `RB-WP8-002`/`003` và chấp nhận ADR-041. Normalizer chạy theo
+  grid manifest, harness nhận cardinality từ driver, và pilot chạy thật trên dữ liệu
+  Manhattan công khai. Pilot bác bỏ điểm vận hành cũ (decision delta bằng 0 ở cả hai arm
+  nên endpoint bằng 0 đồng nhất), loại primary endpoint pickup-ETA vì zero-inflated tới
+  mức `p50 = p90 = 0`, và nâng service rate thành cổng đồng thời đo ở mốc hoàn thành
+  chuyến. Bốn đơn vị paired ở điểm cao điểm thật cho Δ burden âm ở cả bốn (giảm 75–93%,
+  median `−3.130.086 ms`) nhưng Δ tỷ lệ hoàn thành `−6,25/−5,47/−0,78/0,00` điểm phần
+  trăm. Theo tiêu chí `docs/11` §5/§14 tự đặt trước, C1 ở cấu hình hiện tại **không vượt
+  cổng service** ở điểm này. Đây là pilot n = 4, không CI, không effectiveness claim;
+  confirmatory holdout chưa sinh.
+- 2026-08-18: Hoàn thành `RB-WP8-001` và chấp nhận ADR-040, mở WP8. Kiểm kê nguồn xác
+  nhận grid thí nghiệm dựng được **hoàn toàn từ dữ liệu công khai thật**: 289 file
+  demand trên 8 ngày `2018-11-11` → `2018-11-18`, kèm sample fraction, tỷ lệ đặt trước
+  và `tt_factors` theo ngày/giờ; normalizer đã tham số hoá đủ nên chỉ cần grid manifest
+  thay cho hai profile hard-code. Pilot khoá ở `11-11`/`11-12` — bao trọn phần dữ liệu
+  WP6/WP7 đã nhìn — và sáu ngày còn lại niêm phong làm confirmatory holdout. Commitment
+  budget sẽ suy từ chỉ dữ liệu pilot rồi phân tầng ba mức, vì cấu hình hiện tại chỉ có
+  3/10 chiều `hardLimit` và cả ba luôn thoả sẵn do O-001, khiến hard vector của C1 thực
+  tế chưa bị ràng buộc. Margin non-inferiority phải đặt trước và neo vào chính sách suy
+  biến từ chối hết. Tạo `tasks/37`/`tasks/38`; chỉ `RB-WP8-002` Ready; chưa có production
+  code, chưa sinh scenario confirmatory, không claim nào được nâng.
 - 2026-08-17: Chấp nhận ADR-039. Audit source khóa bằng ADR các thay đổi ngữ nghĩa
   từng vào source mà chưa có quyết định: `initialPromiseTrigger` hai giá trị, lock
   evaluator dùng baseline exogenous, `OfferDeclined` sau accept là cancel-after-

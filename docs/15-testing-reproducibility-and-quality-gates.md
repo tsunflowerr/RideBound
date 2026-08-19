@@ -457,6 +457,19 @@ Hai gate bổ sung của ADR-039:
 - **cross-binary differential.** Semantic hash actual bind `binarySha256`, nên khi đổi
   Runner artifact phải so các trường hành vi thay vì hash tổng hợp, và phải dùng **cùng
   một label** vì label chảy vào `run_id` rồi vào manifest.
+- **frozen-source rule.** Quy tắc này áp cho **cả FleetPy matrix lẫn `dotnet test`**, vì
+  cả hai đều có cổng băm trạng thái nguồn:
+  - `coreCommitSha` nằm trong manifest actual và được lấy mẫu ở từng repeat, nên một
+    commit rơi giữa ma trận làm mọi hash sau đó đổi.
+    `actual_fleetpy_medium_preflight.py` ghim HEAD ở đầu và kiểm lại ở cuối, báo lỗi
+    frozen-source tường minh trước khi rơi vào thông báo "repeats diverged" mơ hồ.
+  - `BundleSourceInventoryCapture` chạy `git status --porcelain=v1 -z
+    --untracked-files=all` trước và sau khi chụp inventory rồi ném
+    *"Git working-tree state changed during source inventory capture."* nếu khác. Vì có
+    `--untracked-files=all`, **tạo một file mới cũng đủ làm fail** — kể cả file tài liệu.
+  - Hệ quả: trong lúc chạy suite hoặc ma trận evidence, **không commit và không tạo/sửa
+    bất kỳ file nào trong repo**, kể cả tài liệu. Đây không phải flake; nó là guard
+    chống TOCTOU hoạt động đúng, và một receipt lấy trong điều kiện đó không hợp lệ.
 
 Các invariant bổ sung không chỉ là branch coverage: B4 repair root phải được đánh giá
 trên suffix đã repair trước bounded work selection; portfolio opt-in phải preserve no-op

@@ -53,9 +53,82 @@ if (extraction.Status != ArchiveExtractionStatus.Succeeded)
 }
 
 var sourceHash = FleetPyNormalizerSourceIdentity.Calculate(repositoryRoot);
+
+if (options.GridManifest is not null)
+{
+    var manifestPath = Path.GetFullPath(options.GridManifest);
+    var manifest = JsonSerializer.Deserialize<GridManifest>(
+        await File.ReadAllBytesAsync(manifestPath),
+        new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+    if (manifest is null
+        || string.IsNullOrWhiteSpace(manifest.GridId)
+        || manifest.Cells.Count == 0
+        || manifest.Cells.Select(cell => cell.CellId)
+            .Distinct(StringComparer.Ordinal).Count() != manifest.Cells.Count)
+    {
+        Console.Error.WriteLine(
+            "Grid manifest requires a gridId and cells with unique cellId values.");
+        return 6;
+    }
+
+    foreach (var cell in manifest.Cells.OrderBy(
+                 value => value.CellId,
+                 StringComparer.Ordinal))
+    {
+        var cellResult = await new FleetPyManhattanNormalizer().NormalizeAsync(
+            new FleetPyNormalizationRequest(
+                acquisition.Artifact!,
+                extraction,
+                GridConfiguration(cell, sourceHash)));
+
+        if (cellResult.Status != FleetPyNormalizationStatus.Succeeded)
+        {
+            Console.Error.WriteLine(JsonSerializer.Serialize(cellResult.Issue));
+            return 5;
+        }
+
+        var cellRoot = Path.Combine(
+            repositoryRoot,
+            "benchmarks",
+            "fixtures",
+            "wp6",
+            "public",
+            "fleetpy-manhattan-v1",
+            manifest.GridId,
+            cell.CellId);
+        var cellWritten = await WriteDerivativeAsync(
+            cellRoot,
+            cellResult.Artifact!,
+            acquisition.Artifact!.Descriptor.Citation);
+        Console.WriteLine(
+            JsonSerializer.Serialize(
+                new
+                {
+                    gridId = manifest.GridId,
+                    cell.CellId,
+                    outputRoot = cellRoot,
+                    cellResult.Artifact!.ScenarioHash,
+                    cellResult.Artifact.ReportHash,
+                    requestCount = cellResult.Artifact.Scenario.Requests.Count,
+                    vehicleCount = cellResult.Artifact.Scenario.Fleet.Count,
+                    nodeCount = cellResult.Artifact.Scenario.ValidationSummary.NodeCount,
+                    directedArcCount =
+                        cellResult.Artifact.Scenario.ValidationSummary.DirectedArcCount,
+                    cellResult.Artifact.Report.InputRecordCount,
+                    cellResult.Artifact.Report.EligibleRecordCount,
+                    cellResult.Artifact.Report.SelectedRecordCount,
+                    cellResult.Artifact.Report.ExcludedRecordCount,
+                    reusedExactDerivative = !cellWritten,
+                }));
+    }
+
+    return 0;
+}
+
 var profiles = options.Profile == "all"
     ? new[] { "tiny", "medium" }
-    : new[] { options.Profile };
+    : new[] { options.Profile! };
 
 foreach (var profile in profiles)
 {
@@ -105,6 +178,32 @@ foreach (var profile in profiles)
 }
 
 return 0;
+
+static FleetPyNormalizationConfiguration GridConfiguration(
+    GridCell cell,
+    string sourceHash) =>
+    new(
+        cell.ScenarioId,
+        cell.DemandMemberPath,
+        "FleetPy_Manhattan/networks/Manhattan_2019_corrected/base/nodes.csv",
+        "FleetPy_Manhattan/networks/Manhattan_2019_corrected/base/edges.csv",
+        cell.TravelFactorMemberPath,
+        cell.SourceLocalDate,
+        "America/New_York",
+        cell.SourceWindowStartSeconds,
+        cell.SourceWindowEndSeconds,
+        cell.TravelFactorAtSeconds,
+        cell.RequestTarget,
+        cell.VehicleCount,
+        cell.MaximumNodeCount,
+        cell.VehicleCapacity,
+        cell.PickupWindowMs,
+        cell.MaximumRideTimePermille,
+        cell.DrainDurationMs,
+        Sha(cell.SelectionLabel),
+        Sha(cell.PseudonymizationLabel),
+        cell.CommitmentPolicyId,
+        sourceHash);
 
 static FleetPyNormalizationConfiguration Configuration(
     string profile,
@@ -231,6 +330,7 @@ static bool TryParse(
     string? repository = null;
     string? license = null;
     string? profile = null;
+    string? grid = null;
 
     for (var index = 1; index < arguments.Length; index++)
     {
@@ -248,22 +348,34 @@ static bool TryParse(
             case "--profile" when index + 1 < arguments.Length:
                 profile = arguments[++index];
                 break;
+            case "--grid" when index + 1 < arguments.Length:
+                grid = arguments[++index];
+                break;
             default:
                 error = $"Unknown or incomplete argument '{arguments[index]}'.";
                 return false;
         }
     }
 
-    if (cache is null
-        || repository is null
-        || license is null
-        || profile is not ("tiny" or "medium" or "all"))
+    if (cache is null || repository is null || license is null)
     {
-        error = "--cache, --repository, --accept-license and a valid --profile are required.";
+        error = "--cache, --repository and --accept-license are required.";
         return false;
     }
 
-    options = new CommandOptions(cache, repository, license, profile);
+    if ((profile is null) == (grid is null))
+    {
+        error = "Exactly one of --profile or --grid is required.";
+        return false;
+    }
+
+    if (profile is not null and not ("tiny" or "medium" or "all"))
+    {
+        error = "--profile must be tiny, medium or all.";
+        return false;
+    }
+
+    options = new CommandOptions(cache, repository, license, profile, grid);
     return true;
 }
 
@@ -271,4 +383,32 @@ internal sealed record CommandOptions(
     string CacheRoot,
     string RepositoryRoot,
     string AcceptedLicense,
-    string Profile);
+    string? Profile,
+    string? GridManifest);
+
+/// <summary>
+/// One declared cell of an experiment grid. Every field the normalizer can vary is
+/// stated explicitly so a grid is auditable from source control alone; nothing is
+/// inferred and nothing is defaulted silently.
+/// </summary>
+internal sealed record GridCell(
+    string CellId,
+    string ScenarioId,
+    string DemandMemberPath,
+    string TravelFactorMemberPath,
+    string SourceLocalDate,
+    long SourceWindowStartSeconds,
+    long SourceWindowEndSeconds,
+    long TravelFactorAtSeconds,
+    int RequestTarget,
+    int VehicleCount,
+    int MaximumNodeCount,
+    int VehicleCapacity,
+    long PickupWindowMs,
+    long MaximumRideTimePermille,
+    long DrainDurationMs,
+    string SelectionLabel,
+    string PseudonymizationLabel,
+    string CommitmentPolicyId);
+
+internal sealed record GridManifest(string GridId, IReadOnlyList<GridCell> Cells);

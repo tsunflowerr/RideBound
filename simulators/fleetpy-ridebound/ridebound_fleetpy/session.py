@@ -17,8 +17,15 @@ FLEETPY_VERSION = "1.0.2"
 FLEETPY_COMMIT = "053aa9d4fcfde91c5d303435d5748f9206c071b0"
 ADAPTER_ID = "fleetpy-ridebound"
 ADAPTER_VERSION = "1.0.0"
-RUNNER_MAXIMUM_INPUT_LINE_BYTES = 16 * 1024 * 1024
-RUNNER_MAXIMUM_OUTPUT_LINE_BYTES = 16 * 1024 * 1024
+# The declared valid range for the Runner frame bound is 1 MiB..64 MiB
+# (ADR-039). This is a resource guard, not a correctness invariant: a denser
+# scenario legitimately produces a larger full-state checkpoint, and exceeding
+# the bound is a typed fail-closed error rather than silent truncation. A
+# contended peak-window grid with long per-vehicle routes overran 16 MiB, so the
+# adapter now requests the declared ceiling and the observed frame sizes are
+# recorded so the headroom stays visible.
+RUNNER_MAXIMUM_INPUT_LINE_BYTES = 64 * 1024 * 1024
+RUNNER_MAXIMUM_OUTPUT_LINE_BYTES = 64 * 1024 * 1024
 
 
 def _fail(code: str, path: str, detail: str) -> AdapterFailure:

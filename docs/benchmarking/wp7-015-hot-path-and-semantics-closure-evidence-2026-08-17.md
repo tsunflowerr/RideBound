@@ -145,6 +145,30 @@ as designed.
 | FleetPy clock tiny | 2 exact repeats | 2 exact repeats |
 | public-medium physical loop | see below | see below |
 
+### A frozen-source violation the gate caught
+
+The first medium attempt failed closed on the C1 arm: repeats 0 and 1 agreed on
+`4225f622…` and repeat 2 produced `150fd2e9…`. All three transcripts were the same
+length, so the divergence was in content.
+
+Diffing the transcripts localised it to line 3, the `initializeRun` frame, and to
+exactly one field: `coreCommitSha`, `9e30b6e…` for the first two repeats and
+`d48b115b…` for the third. A commit landed at `23:49:11`, between repeat 1 and repeat 2
+of a matrix that was already running. `coreCommitSha` is sampled per repeat from
+`git rev-parse HEAD`, it is part of `RunManifestIdentity`, and the manifest hash feeds
+every downstream hash — so the whole run identity moved.
+
+The engine was not nondeterministic; the source tree was not frozen. The gate did its
+job. But it reported the symptom, not the cause, and finding the cause required diffing
+two 38 MB transcripts. `actual_fleetpy_medium_preflight.py` now captures HEAD once at
+matrix start and asserts it is unchanged at the end, failing with an explicit
+frozen-source message before the opaque divergence check can fire.
+
+Operational rule this establishes: **no commit, and no edit to the harness scripts or
+provenance inputs, while an evidence matrix is running.** Editing unrelated
+documentation is safe — only `HEAD` and the files in the run's `additional` provenance
+list affect artifact identity.
+
 ### Resource caveat for this medium matrix
 
 Part of the B1 arm ran while a targeted .NET test project and the format gate were
@@ -154,7 +178,27 @@ Runner v6 matrix or used for any timing statement. They are retained unaltered a
 diagnostics, which is the standing policy for these records; no claim in this document
 depends on them. Semantic identity and repeat determinism are unaffected by load.
 
-<!-- MEDIUM-RESULTS -->
+## Public-medium actual output on a frozen tree
+
+Re-run in full on `HEAD d48b115b118f6022f55f02b861872bc8e9a7bde4`, verified unchanged at
+matrix start and end. Evidence root
+`E:\RideBoundData\wp7\results\candidate-portfolio-v8-frozen-20260818`. The fast gates
+were re-run in the same chain so the whole set shares one provenance.
+
+| Arm | semantic hash | per repeat | publications | checkpoint |
+|---|---|---|---:|---|
+| rolling-cost B1 | `723185deaa3af9f5abeda2cbd6d2c2fac41678fa0b14bcef055e5f4119f60111` | 128 requests, 13,277 events, 3,082 frames, 1,025 epochs | 482 | `24800d18…5ddfd` |
+| hard vector C1 | `0f185e18a2d830796b689b5f395d485ee3dbffa88d64d36cc9bf701ecdd1ad3e` | 128 requests, 13,277 events, 3,082 frames, 1,025 epochs | 495 | `96af727d…88408` |
+
+Both arms pass 3/3 with identical semantic and checkpoint identity across repeats, and
+the independent verifier reads each bundle's transcripts and manifests rather than the
+harness's success message. Raw wall times were 362.7 / 345.5 / 335.7 s for B1 and
+352.5 / 338.1 / 344.4 s for C1 on an otherwise idle machine; they are retained as
+diagnostics and support no performance or effectiveness statement. The differing
+publication counts reflect two different decision policies and are likewise not a
+result.
+
+
 
 ## Final quality gates
 

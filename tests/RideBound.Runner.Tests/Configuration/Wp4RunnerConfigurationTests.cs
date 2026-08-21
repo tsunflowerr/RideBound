@@ -43,6 +43,61 @@ public sealed class Wp4RunnerConfigurationTests
                 commitment.ContentHash));
     }
 
+    [Theory]
+    [InlineData("wp9-fleetpy-rolling-cost-audited-v1.json", "rolling-cost")]
+    [InlineData(
+        "wp9-fleetpy-ridebound-hard-vector-audited-v1.json",
+        "ridebound-hard-vector")]
+    public void Wp9_primary_configs_require_audited_solver_evidence(
+        string fileName,
+        string policyId)
+    {
+        var configuration = Wp4RunnerConfiguration.Decode(
+            File.ReadAllBytes(Path.Combine(
+                RepositoryRoot(),
+                "benchmarks",
+                "configurations",
+                fileName)),
+            CommitmentConfiguration());
+
+        Assert.Equal(policyId, configuration.PolicyId);
+        Assert.Equal("wp9-confirmatory-audited-v1", configuration.PolicyVersion);
+        Assert.True(configuration.EmitSolverExecutionEvidence);
+        Assert.Equal(
+            CandidateRetentionStrategy.ServiceSetStabilityPortfolioV1,
+            configuration.CandidateGeneration.RetentionStrategy);
+    }
+
+    [Fact]
+    public void Wp9_exploratory_c2_config_binds_warning_to_finite_hard_limit()
+    {
+        var repository = RepositoryRoot();
+        var commitment = CommitmentPolicyConfiguration.Decode(
+            File.ReadAllBytes(Path.Combine(
+                repository,
+                "benchmarks",
+                "configurations",
+                "wp8-drop-eta-budget-loose-v1.json")));
+        var configuration = Wp4RunnerConfiguration.Decode(
+            File.ReadAllBytes(Path.Combine(
+                repository,
+                "benchmarks",
+                "configurations",
+                "wp9-fleetpy-soft-hard-hybrid-audited-v1.json")),
+            commitment);
+
+        Assert.Equal(
+            RidePoolingPolicyRegistry.CommitSoftHardHybrid,
+            configuration.PolicyId);
+        Assert.True(configuration.EmitSolverExecutionEvidence);
+        Assert.True(configuration.TryGetProfile(
+            "wp6-synthetic-policy-overlay-v1",
+            out var profile));
+        Assert.Equal(
+            60_000,
+            profile.Limits[CommitmentDimension.DropEtaTotalMs].WarningLimit);
+    }
+
     [Fact]
     public void Published_configuration_is_strict_and_binds_both_configuration_hashes()
     {
@@ -71,10 +126,41 @@ public sealed class Wp4RunnerConfigurationTests
         Assert.Equal(
             InitialPromiseTrigger.InitialAcceptance,
             first.InitialPromiseTrigger);
+        Assert.False(first.EmitSolverExecutionEvidence);
         Assert.Equal(first.ContentHash, second.ContentHash);
         Assert.NotEqual(first.ContentHash, binding);
         Assert.NotEqual(commitment.ContentHash, binding);
         Assert.Equal(64, binding.Value.Length);
+    }
+
+    [Fact]
+    public void Solver_execution_evidence_is_explicit_opt_in_and_hash_bound()
+    {
+        var commitment = CommitmentConfiguration();
+        var legacy = Wp4RunnerConfiguration.Decode(
+            Encoding.UTF8.GetBytes(PublishedJson()),
+            commitment);
+        var optedInJson = PublishedJson().Replace(
+            "\"policyVersion\": \"wp4-boundary-v1\"",
+            "\"policyVersion\": \"wp4-boundary-v1\",\n  " +
+            "\"emitSolverExecutionEvidence\": true",
+            StringComparison.Ordinal);
+        var optedIn = Wp4RunnerConfiguration.Decode(
+            Encoding.UTF8.GetBytes(optedInJson),
+            commitment);
+
+        Assert.False(legacy.EmitSolverExecutionEvidence);
+        Assert.True(optedIn.EmitSolverExecutionEvidence);
+        Assert.NotEqual(legacy.ContentHash, optedIn.ContentHash);
+
+        var invalid = optedInJson.Replace(
+            "\"emitSolverExecutionEvidence\": true",
+            "\"emitSolverExecutionEvidence\": 1",
+            StringComparison.Ordinal);
+        Assert.Throws<InvalidDataException>(
+            () => Wp4RunnerConfiguration.Decode(
+                Encoding.UTF8.GetBytes(invalid),
+                commitment));
     }
 
     [Fact]

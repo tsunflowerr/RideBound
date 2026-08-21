@@ -25,7 +25,8 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
         "fixedFreeze",
         "repair",
         "multiplePlan",
-        "warningProfiles");
+        "warningProfiles",
+        "emitSolverExecutionEvidence");
     private static readonly IReadOnlySet<string> GenerationRequiredFields = Fields(
         "maximumCandidatesPerVehicle",
         "maximumNewRequestsPerVehicle",
@@ -71,7 +72,8 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
         CandidateGenerationOptions candidateGeneration,
         SolverBackedRidePoolingPolicyOptions? solverPolicyOptions,
         MultiplePlanPoolOptions? multiplePlanOptions,
-        IEnumerable<CommitmentWarningProfile> warningProfiles)
+        IEnumerable<CommitmentWarningProfile> warningProfiles,
+        bool emitSolverExecutionEvidence)
     {
         ContentHash = contentHash;
         PolicyId = policyId;
@@ -80,6 +82,7 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
         CandidateGeneration = candidateGeneration;
         SolverPolicyOptions = solverPolicyOptions;
         MultiplePlanOptions = multiplePlanOptions;
+        EmitSolverExecutionEvidence = emitSolverExecutionEvidence;
         _warningProfiles = new CommitmentWarningProfileCatalog(warningProfiles);
     }
 
@@ -96,6 +99,8 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
     public SolverBackedRidePoolingPolicyOptions? SolverPolicyOptions { get; }
 
     public MultiplePlanPoolOptions? MultiplePlanOptions { get; }
+
+    public bool EmitSolverExecutionEvidence { get; }
 
     public bool TryGetProfile(
         string policyId,
@@ -210,6 +215,10 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
         var hasRepair = root.TryGetProperty("repair", out var repairElement);
         var hasMultiple = root.TryGetProperty("multiplePlan", out var multipleElement);
         var hasWarnings = root.TryGetProperty("warningProfiles", out var warningsElement);
+        var emitSolverExecutionEvidence = root.TryGetProperty(
+            "emitSolverExecutionEvidence",
+            out var evidenceElement)
+                && Boolean(evidenceElement, "emitSolverExecutionEvidence");
 
         RequireVariantFields(
             policyKind,
@@ -301,7 +310,8 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
             generation,
             solverOptions,
             multipleOptions,
-            warningProfiles);
+            warningProfiles,
+            emitSolverExecutionEvidence);
     }
 
     private static CandidateGenerationOptions ReadGeneration(JsonElement element)

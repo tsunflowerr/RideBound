@@ -6,12 +6,19 @@ using RideBound.Domain.Vehicles;
 
 namespace RideBound.Domain.Validation;
 
+/// <param name="ServiceQuality">
+/// Relaxation of the service-quality dimensions for this vehicle, obtained from
+/// <see cref="PhysicalPlanValidator.ProbeServiceQuality"/>. <c>null</c> means the
+/// published contractual bounds apply unchanged, which is the behaviour of every
+/// call site that does not probe.
+/// </param>
 public sealed record PhysicalValidationContext(
     RideBoundRun State,
     VehicleId VehicleId,
     RoutePlan CandidateRoute,
     ITravelTimeLookup TravelTimes,
-    SimTime EvaluationTime);
+    SimTime EvaluationTime,
+    ServiceQualityAllowance? ServiceQuality = null);
 
 public sealed record PhysicalViolationWitness(
     string Code,
@@ -44,7 +51,90 @@ public sealed record PhysicalValidationResult
 
 public sealed class PhysicalPlanValidator
 {
-    public PhysicalValidationResult Validate(PhysicalValidationContext context)
+    public PhysicalValidationResult Validate(PhysicalValidationContext context) =>
+        Validate(context, observed: null);
+
+    /// <summary>
+    /// Projects a vehicle's <em>unchanged</em> active route under the current
+    /// travel snapshot and reports every service-quality deadline it no longer
+    /// meets. Nothing here is a decision: the route is the one already in force,
+    /// so a breach it produces is exogenous by construction (ADR-045).
+    ///
+    /// <para>Structural violations are not relaxed. If the active route fails
+    /// one, the probe fails closed and the caller must keep treating it as a
+    /// defect.</para>
+    /// </summary>
+    public ServiceQualityProbeResult ProbeServiceQuality(
+        RideBoundRun state,
+        VehicleId vehicleId,
+        ITravelTimeLookup travelTimes,
+        SimTime evaluationTime)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(travelTimes);
+
+        if (!state.Vehicles.TryGetValue(vehicleId, out var vehicle))
+        {
+            return ServiceQualityProbeResult.Failure(
+                new PhysicalViolationWitness(
+                    PhysicalViolationCodes.UnknownVehicle,
+                    vehicleId,
+                    "Service-quality probe references an unknown vehicle.",
+                    Dimension: "vehicleId"));
+        }
+
+        var observed = new List<ServiceQualityBreach>();
+        var result = Validate(
+            new PhysicalValidationContext(
+                state,
+                vehicleId,
+                vehicle.Route,
+                travelTimes,
+                evaluationTime),
+            observed);
+
+        return result.IsFeasible
+            ? ServiceQualityProbeResult.Success(
+                ServiceQualityAllowance.FromBreaches(observed))
+            : ServiceQualityProbeResult.Failure(result.Witness!);
+    }
+
+    /// <summary>
+    /// Validates a candidate route under the vehicle's own exogenous relief
+    /// (ADR-045): the probe is derived from the unchanged active route, so the
+    /// relaxation admits exactly the deadlines traffic has already broken and
+    /// nothing the candidate breaks itself. Call sites that re-check a route the
+    /// generator produced must use this, otherwise a candidate the generator
+    /// legitimately kept would be rejected downstream.
+    /// </summary>
+    public PhysicalValidationResult ValidateWithExogenousRelief(
+        RideBoundRun state,
+        VehicleId vehicleId,
+        RoutePlan candidateRoute,
+        ITravelTimeLookup travelTimes,
+        SimTime evaluationTime)
+    {
+        var probe = ProbeServiceQuality(
+            state,
+            vehicleId,
+            travelTimes,
+            evaluationTime);
+
+        return probe.IsSuccess
+            ? Validate(
+                new PhysicalValidationContext(
+                    state,
+                    vehicleId,
+                    candidateRoute,
+                    travelTimes,
+                    evaluationTime,
+                    probe.Allowance))
+            : PhysicalValidationResult.Infeasible(probe.Witness!);
+    }
+
+    private PhysicalValidationResult Validate(
+        PhysicalValidationContext context,
+        List<ServiceQualityBreach>? observed)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(context.State);
@@ -78,7 +168,7 @@ public sealed class PhysicalPlanValidator
                 dimension: "frozenPrefix");
         }
 
-        var schedule = EvaluateSchedule(context, vehicle);
+        var schedule = EvaluateSchedule(context, vehicle, observed);
 
         if (schedule is not null)
         {
@@ -118,7 +208,8 @@ public sealed class PhysicalPlanValidator
 
     private static PhysicalValidationResult? EvaluateSchedule(
         PhysicalValidationContext context,
-        VehicleState vehicle)
+        VehicleState vehicle,
+        List<ServiceQualityBreach>? observed)
     {
         var onboard = new HashSet<RequestId>(vehicle.OnboardRequestIds);
         var pickedUp = new HashSet<RequestId>();
@@ -262,7 +353,8 @@ public sealed class PhysicalPlanValidator
                     onboard,
                     pickedUp,
                     droppedOff,
-                    pickupTimes),
+                    pickupTimes,
+                    observed),
                 RouteStopKind.DropOff => ValidateDropOff(
                     context,
                     vehicle,
@@ -272,7 +364,8 @@ public sealed class PhysicalPlanValidator
                     onboard,
                     pickedUp,
                     droppedOff,
-                    pickupTimes),
+                    pickupTimes,
+                    observed),
                 _ => Fail(
                     PhysicalViolationCodes.InvalidRouteStop,
                     vehicle.Id,
@@ -324,7 +417,8 @@ public sealed class PhysicalPlanValidator
         IReadOnlySet<RequestId> onboard,
         ISet<RequestId> pickedUp,
         IReadOnlySet<RequestId> droppedOff,
-        IDictionary<RequestId, SimTime> pickupTimes)
+        IDictionary<RequestId, SimTime> pickupTimes,
+        List<ServiceQualityBreach>? observed)
     {
         var requestResult = ResolveRequest(context, vehicle, stop);
 
@@ -363,17 +457,41 @@ public sealed class PhysicalPlanValidator
                 "precedence");
         }
 
-        if (time.Milliseconds > request.LatestPickup.Milliseconds)
+        if (observed is not null)
         {
-            return Fail(
-                PhysicalViolationCodes.PickupWindow,
-                vehicle.Id,
-                "Pickup arrival is later than the request window.",
-                request.Id,
-                stop.StopId,
-                "latestPickupMs",
-                request.LatestPickup.Milliseconds,
-                time.Milliseconds);
+            // Probe pass: the route is the one already in force, so a missed
+            // window here is exogenous. Record it and keep going rather than
+            // deleting the safety no-op.
+            if (time.Milliseconds > request.LatestPickup.Milliseconds)
+            {
+                observed.Add(
+                    new ServiceQualityBreach(
+                        request.Id,
+                        PhysicalViolationCodes.PickupWindow,
+                        "latestPickupMs",
+                        request.LatestPickup.Milliseconds,
+                        time.Milliseconds));
+            }
+        }
+        else
+        {
+            var bound = context.ServiceQuality?.LatestPickupBound(
+                    request.Id,
+                    request.LatestPickup.Milliseconds)
+                ?? request.LatestPickup.Milliseconds;
+
+            if (time.Milliseconds > bound)
+            {
+                return Fail(
+                    PhysicalViolationCodes.PickupWindow,
+                    vehicle.Id,
+                    "Pickup arrival is later than the request window.",
+                    request.Id,
+                    stop.StopId,
+                    "latestPickupMs",
+                    bound,
+                    time.Milliseconds);
+            }
         }
 
         if (time.Milliseconds < request.EarliestPickup.Milliseconds)
@@ -423,7 +541,8 @@ public sealed class PhysicalPlanValidator
         IReadOnlySet<RequestId> onboard,
         IReadOnlySet<RequestId> pickedUp,
         ISet<RequestId> droppedOff,
-        IReadOnlyDictionary<RequestId, SimTime> pickupTimes)
+        IReadOnlyDictionary<RequestId, SimTime> pickupTimes,
+        List<ServiceQualityBreach>? observed)
     {
         var requestResult = ResolveRequest(context, vehicle, stop);
 
@@ -474,17 +593,53 @@ public sealed class PhysicalPlanValidator
 
         var rideTime = time.Milliseconds - pickupTime.Value.Milliseconds;
 
-        if (rideTime < 0 || rideTime > request.MaxRideTime.Milliseconds)
+        // A negative ride time is a precedence defect, not traffic, and is never
+        // relaxed or observed.
+        if (rideTime < 0)
         {
             return Fail(
                 PhysicalViolationCodes.MaxRideTime,
                 vehicle.Id,
-                "Drop-off exceeds maximum ride time.",
+                "Drop-off precedes the recorded pickup.",
                 request.Id,
                 stop.StopId,
                 "maxRideTimeMs",
                 request.MaxRideTime.Milliseconds,
                 rideTime);
+        }
+
+        if (observed is not null)
+        {
+            if (rideTime > request.MaxRideTime.Milliseconds)
+            {
+                observed.Add(
+                    new ServiceQualityBreach(
+                        request.Id,
+                        PhysicalViolationCodes.MaxRideTime,
+                        "maxRideTimeMs",
+                        request.MaxRideTime.Milliseconds,
+                        rideTime));
+            }
+        }
+        else
+        {
+            var bound = context.ServiceQuality?.MaxRideTimeBound(
+                    request.Id,
+                    request.MaxRideTime.Milliseconds)
+                ?? request.MaxRideTime.Milliseconds;
+
+            if (rideTime > bound)
+            {
+                return Fail(
+                    PhysicalViolationCodes.MaxRideTime,
+                    vehicle.Id,
+                    "Drop-off exceeds maximum ride time.",
+                    request.Id,
+                    stop.StopId,
+                    "maxRideTimeMs",
+                    bound,
+                    rideTime);
+            }
         }
 
         load -= request.PartySize;

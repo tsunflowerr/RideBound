@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
@@ -8,11 +9,12 @@ internal static class ProcessTreeSnapshot
     private const uint SnapshotProcesses = 0x00000002;
     private static readonly nint InvalidHandleValue = new(-1);
 
-    public static IReadOnlyList<int> GetProcessIds(int rootProcessId)
+    public static IReadOnlyList<ProcessInstanceIdentity> GetProcessInstances(
+        ProcessInstanceIdentity rootProcess)
     {
         if (!OperatingSystem.IsWindows())
         {
-            return [rootProcessId];
+            return [rootProcess];
         }
 
         var snapshot = CreateToolhelp32Snapshot(SnapshotProcesses, 0);
@@ -25,7 +27,7 @@ internal static class ProcessTreeSnapshot
 
         try
         {
-            var parentByProcess = new Dictionary<int, int>();
+            var rawEntries = new List<(int ProcessId, int ParentProcessId)>();
             var entry = new ProcessEntry32
             {
                 Size = checked((uint)Marshal.SizeOf<ProcessEntry32>()),
@@ -35,30 +37,53 @@ internal static class ProcessTreeSnapshot
             {
                 do
                 {
-                    parentByProcess[checked((int)entry.ProcessId)] =
-                        checked((int)entry.ParentProcessId);
+                    rawEntries.Add(
+                        (
+                            checked((int)entry.ProcessId),
+                            checked((int)entry.ParentProcessId)));
                     entry.Size = checked((uint)Marshal.SizeOf<ProcessEntry32>());
                 }
                 while (Process32Next(snapshot, ref entry));
             }
 
-            var result = new HashSet<int> { rootProcessId };
-            var added = true;
+            var entries = new List<ProcessSnapshotEntry>();
 
-            while (added)
+            foreach (var rawEntry in rawEntries)
             {
-                added = false;
-
-                foreach (var pair in parentByProcess)
+                if (rawEntry.ProcessId == rootProcess.ProcessId)
                 {
-                    if (result.Contains(pair.Value) && result.Add(pair.Key))
-                    {
-                        added = true;
-                    }
+                    entries.Add(
+                        new ProcessSnapshotEntry(
+                            rawEntry.ProcessId,
+                            rawEntry.ParentProcessId,
+                            rootProcess.StartTimeUtcTicks));
+                    continue;
+                }
+
+                try
+                {
+                    using var process = Process.GetProcessById(rawEntry.ProcessId);
+                    entries.Add(
+                        new ProcessSnapshotEntry(
+                            rawEntry.ProcessId,
+                            rawEntry.ParentProcessId,
+                            GetStartTimeUtcTicks(process)));
+                }
+                catch (ArgumentException)
+                {
+                    // A process may exit between the Toolhelp snapshot and inspection.
+                }
+                catch (InvalidOperationException)
+                {
+                    // An exited process cannot contribute to the current tree.
+                }
+                catch (Win32Exception)
+                {
+                    // Inaccessible processes cannot be verified as descendants.
                 }
             }
 
-            return result.Order().ToArray();
+            return SelectProcessTree(rootProcess, entries);
         }
         finally
         {
@@ -66,26 +91,78 @@ internal static class ProcessTreeSnapshot
         }
     }
 
-    public static ProcessTreeUsage Observe(
-        int rootProcessId,
-        IDictionary<int, long> maximumCpuByProcess)
+    internal static IReadOnlyList<ProcessInstanceIdentity> SelectProcessTree(
+        ProcessInstanceIdentity rootProcess,
+        IReadOnlyList<ProcessSnapshotEntry> snapshotEntries)
     {
-        var processIds = GetProcessIds(rootProcessId);
+        ArgumentNullException.ThrowIfNull(snapshotEntries);
+        var childrenByParent = snapshotEntries
+            .Where(entry => entry.ProcessId != rootProcess.ProcessId)
+            .GroupBy(entry => entry.ParentProcessId)
+            .ToDictionary(group => group.Key, group => group.ToArray());
+        var result = new Dictionary<int, ProcessInstanceIdentity>
+        {
+            [rootProcess.ProcessId] = rootProcess,
+        };
+        var pending = new Queue<ProcessInstanceIdentity>();
+        pending.Enqueue(rootProcess);
+
+        while (pending.Count > 0)
+        {
+            var parent = pending.Dequeue();
+
+            if (!childrenByParent.TryGetValue(parent.ProcessId, out var children))
+            {
+                continue;
+            }
+
+            foreach (var child in children)
+            {
+                if (child.StartTimeUtcTicks < parent.StartTimeUtcTicks
+                    || result.ContainsKey(child.ProcessId))
+                {
+                    continue;
+                }
+
+                var identity = new ProcessInstanceIdentity(
+                    child.ProcessId,
+                    child.StartTimeUtcTicks);
+                result.Add(child.ProcessId, identity);
+                pending.Enqueue(identity);
+            }
+        }
+
+        return result.Values
+            .OrderBy(identity => identity.ProcessId)
+            .ToArray();
+    }
+
+    public static ProcessTreeUsage Observe(
+        ProcessInstanceIdentity rootProcess,
+        IDictionary<ProcessInstanceIdentity, long> maximumCpuByProcess)
+    {
+        var processInstances = GetProcessInstances(rootProcess);
         long workingSet = 0;
 
-        foreach (var processId in processIds)
+        foreach (var processInstance in processInstances)
         {
             try
             {
-                using var process = Process.GetProcessById(processId);
+                using var process = Process.GetProcessById(processInstance.ProcessId);
                 process.Refresh();
+
+                if (GetStartTimeUtcTicks(process) != processInstance.StartTimeUtcTicks)
+                {
+                    continue;
+                }
+
                 workingSet = checked(workingSet + process.WorkingSet64);
                 var cpu = checked((long)process.TotalProcessorTime.TotalMilliseconds);
 
-                if (!maximumCpuByProcess.TryGetValue(processId, out var previous)
+                if (!maximumCpuByProcess.TryGetValue(processInstance, out var previous)
                     || cpu > previous)
                 {
-                    maximumCpuByProcess[processId] = cpu;
+                    maximumCpuByProcess[processInstance] = cpu;
                 }
             }
             catch (ArgumentException)
@@ -96,12 +173,22 @@ internal static class ProcessTreeSnapshot
             {
                 // Preserve the last observation for an exited process.
             }
+            catch (Win32Exception)
+            {
+                // Preserve the last observation for a now-inaccessible process.
+            }
         }
 
         return new ProcessTreeUsage(
             maximumCpuByProcess.Values.Sum(),
             workingSet,
-            processIds.Count);
+            processInstances.Count);
+    }
+
+    internal static long GetStartTimeUtcTicks(Process process)
+    {
+        ArgumentNullException.ThrowIfNull(process);
+        return process.StartTime.ToUniversalTime().Ticks;
     }
 
     [DllImport("kernel32.dll", SetLastError = true)]
@@ -135,6 +222,15 @@ internal static class ProcessTreeSnapshot
         [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)]
         public string ExecutableFile;
     }
+
+    internal readonly record struct ProcessInstanceIdentity(
+        int ProcessId,
+        long StartTimeUtcTicks);
+
+    internal readonly record struct ProcessSnapshotEntry(
+        int ProcessId,
+        int ParentProcessId,
+        long StartTimeUtcTicks);
 
     internal sealed record ProcessTreeUsage(
         long CpuTimeMs,

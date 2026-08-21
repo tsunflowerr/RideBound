@@ -6,6 +6,7 @@ using RideBound.Domain.Common;
 using RideBound.Domain.Requests;
 using RideBound.Domain.Routes;
 using RideBound.Domain.Vehicles;
+using RideBound.Domain.Validation;
 
 namespace RideBound.Algorithms.Tests.Candidates;
 
@@ -368,7 +369,8 @@ public sealed class WaitingIncumbentRepairTests
             VehicleState vehicle,
             RoutePlan route,
             TravelTimeSnapshot travelTimes,
-            SimTime evaluationTime)
+            SimTime evaluationTime,
+            ServiceQualityAllowance? serviceQuality = null)
         {
             RouteFingerprints.Add(RouteKey(route));
             var stops = route.RemainingStops

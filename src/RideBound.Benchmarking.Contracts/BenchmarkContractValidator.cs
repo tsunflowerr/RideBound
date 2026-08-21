@@ -86,6 +86,7 @@ public static partial class BenchmarkContractValidator
             ExclusionRecord value => ValidateExclusion(value),
             MetricRow value => ValidateMetric(value),
             LogicalBundleManifest value => ValidateBundle(value),
+            ExperimentalUnitIdentity value => ValidateExperimentalUnit(value),
             _ => Error(
                 BenchmarkContractErrorCode.InvalidValue,
                 "$",
@@ -1410,6 +1411,29 @@ public static partial class BenchmarkContractValidator
         {
             yield return stop.NodeId;
         }
+    }
+
+    private static BenchmarkContractError? ValidateExperimentalUnit(ExperimentalUnitIdentity value)
+    {
+        var fieldError = First(
+            Sha(value.ScenarioHash, "$.scenarioHash"),
+            Sha(value.DemandRealizationHash, "$.demandRealizationHash"),
+            Sha(value.TravelRealizationHash, "$.travelRealizationHash"),
+            Sha(value.UnitId, "$.unitId"));
+
+        if (fieldError is not null)
+        {
+            return fieldError;
+        }
+
+        var expectedUnitId = BenchmarkIdentity.CalculateExperimentalUnit(
+            value.ScenarioHash,
+            value.DemandRealizationHash,
+            value.TravelRealizationHash);
+
+        return !string.Equals(value.UnitId, expectedUnitId, StringComparison.Ordinal)
+            ? Invalid("$.unitId", "Experimental unit ID does not match its canonical hash.")
+            : null;
     }
 
     private static BenchmarkContractError? First(

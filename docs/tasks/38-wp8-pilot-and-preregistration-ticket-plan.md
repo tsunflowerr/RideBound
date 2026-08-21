@@ -5,8 +5,8 @@
 
 ## Quyết định nền đã chốt
 
-- **Pilot:** `2018-11-11` (Chủ nhật) và `2018-11-12` (Thứ hai).
-- **Confirmatory holdout:** `2018-11-13` → `2018-11-18`, sáu ngày, **không chạm** cho
+- **Pilot:** `2018-11-12` và `2018-11-13`. `2018-11-11` bị loại vì không có file travel-factor day-specific tương thích schema (chỉ có bản hourly 4 cột); đây là ràng buộc dữ liệu phát hiện trước khi nhìn outcome.
+- **Confirmatory holdout:** `2018-11-14` → `2018-11-18`, năm ngày, **không chạm** cho
   tới khi preregistration đã đóng băng và hash.
 - **Commitment budget:** suy từ phân phối thực nghiệm trên **chỉ dữ liệu pilot**, khoá
   thành ba mức chặt dần, giữ mức `unbounded` hiện tại làm tầng đối chứng.
@@ -17,19 +17,19 @@
 
 | Ticket | Nội dung | Điều kiện đóng |
 |---|---|---|
-| `RB-WP8-002` **Ready** | Scenario-grid manifest source-controlled + mở rộng `RideBound.Wp6Normalize` để chạy theo grid thay vì hai profile hard-code | Manifest khai đủ day/sample/window/selectionKey/fleet; CLI từ chối cell không khai; hai clean root sinh derivative byte-exact; không đổi hành vi hai profile cũ |
-| `RB-WP8-003` | Sinh và xác minh derivative cho **2 ngày pilot** | Mỗi cell có conservation `input = kept + dropped`, provenance DAG, license/DOI; verifier độc lập; confirmatory chưa được sinh |
-| `RB-WP8-004` | Hợp đồng đơn vị thí nghiệm và cách gộp trong-run | Đơn vị = `(scenario, seed, travel realization)`; rider gộp lên run trước khi bootstrap; cấm coi rider trong cùng run là mẫu độc lập (`docs/11` §1, §7) |
-| `RB-WP8-005` | Calculator chính xác cho primary endpoint + oracle độc lập | Endpoint phải là **tổng decision-induced burden trên các chiều**, không phải riêng pickup ETA: pilot cho thấy C1 có `prePickupInsertedStopCount = 0` theo cơ chế nên pickup-only là endpoint một arm không thể thua. Có numerator/denominator/missing rõ; oracle BCL-only không ProjectReference khớp byte-exact như chuẩn WP6-008 |
-| `RB-WP8-006` | Chạy pilot matrix Layer 2 trên **chỉ 2 ngày pilot** | Paired B1/C1 mỗi cell; typed failure/exclusion; raw transcript giữ; không suy ra kết luận nào |
-| `RB-WP8-007` | Ước lượng phương sai paired difference + power analysis → sample size | Sample size từ phương sai pilot và minimum detectable effect có nghĩa vận hành, cộng dự phòng failed run; cấm chọn số tròn (`docs/11` §12) |
-| `RB-WP8-008` | Suy commitment budget từ pilot; ba mức strictness + tầng unbounded | Quy tắc suy dẫn khai báo trước; chỉ đọc ngày pilot; chứng minh không đọc confirmatory; mỗi mức có content hash riêng |
-| `RB-WP8-009` | Non-inferiority margin, biện minh, và kiểm chất lượng endpoint | Margin đặt trước; neo vào chính sách suy biến "từ chối hết" (revision `=0`, service `=0`); dùng cận một phía; ghi rõ margin không tự bảo vệ khỏi degradation. Thêm hai điều kiện: endpoint **không được zero-inflated tới mức `p50 = p90 = 0`** (pilot cho thấy pickup-ETA rơi vào đúng trạng thái này), và không arm nào được thắng nhờ một hằng đẳng thức cơ chế. Service rate là **cổng đồng thời**, không phải secondary — pilot đã thấy một đơn vị mà C1 phục vụ ít hơn 7,5% |
-| `RB-WP8-010` | Estimand, CI, multiplicity, quy tắc failed/excluded | Paired/block bootstrap trên đơn vị thí nghiệm; một primary + một non-inferiority gate; Holm cho key secondary; partition `planned = succeeded + failed + excluded` |
-| `RB-WP8-011` | Preregistration document + canonical hash + cơ chế freeze | Đủ 15 mục template `docs/11` §11; hash bind config/binary/scenario/grid/analysis script; sau freeze chỉ ADR mới sửa được |
-| `RB-WP8-012` | Materialize grid confirmatory 6 ngày, **không chạy** | Chỉ sinh + hash + niêm phong; bất kỳ thao tác đọc outcome nào phải fail closed |
-| `RB-WP8-013` | Audit rò rỉ và cổng đối kháng | Chứng minh confirmatory chưa bị chạm; chứng minh metric/margin/threshold không dẫn xuất từ confirmatory; mutation test cho mỗi đường rò rỉ |
-| `RB-WP8-014` | Đóng WP8 | Audit source/claim, ADR, review; đúng một ticket WP9 Ready; **không** kết quả effectiveness nào được công bố ở WP8 |
+| `RB-WP8-002` **Done** | Scenario-grid manifest source-controlled + mở rộng `RideBound.Wp6Normalize` để chạy theo grid thay vì hai profile hard-code | Manifest khai đủ day/sample/window/selectionKey/fleet; CLI từ chối cell không khai; hai clean root sinh derivative byte-exact; không đổi hành vi hai profile cũ |
+| `RB-WP8-003` **Done** | Sinh và xác minh derivative cho **2 ngày pilot** | Mỗi cell có conservation `input = kept + dropped`, provenance DAG, license/DOI; verifier độc lập; confirmatory chưa được sinh |
+| `RB-WP8-004` **Done** | Hợp đồng đơn vị thí nghiệm và cách gộp trong-run | Đơn vị = `(scenarioHash, demandRealizationHash, travelRealizationHash)`; solver seed chỉ robustness; rider gộp lên run; pairing chặn cùng arm/đổi chỗ/lệch arrivals |
+| `RB-WP8-005` **Done** | Calculator chính xác cho primary endpoint + oracle độc lập | Endpoint phải là **tổng decision-induced burden trên các chiều**, không phải riêng pickup ETA: pilot cho thấy chiều này zero-inflated tới `p50 = p90 = 0` nên `p95` treo trên 5–6 rider trong ~110. Có numerator/denominator/missing rõ; oracle BCL-only không ProjectReference khớp byte-exact như chuẩn WP6-008 |
+| `RB-WP8-006` **Done** | Chạy pilot matrix Layer 2 trên **chỉ 2 ngày pilot** | Paired B1/C1 mỗi cell; typed failure/exclusion; raw transcript giữ; không suy ra kết luận nào |
+| `RB-WP8-007` **Done** | Kiểm design adequacy và cỡ mẫu khả dụng | Bác `N=62`: panel có đúng 20 demand/travel realization; seed solver không tăng N; fixed-panel estimand thay population inference |
+| `RB-WP8-008` **Done** | Frontier C1 theo budget | 25/25 pass; burden monotonic; tách giá lock/ranking khỏi giá budget; baseline equivalence dùng behavioral hash, không semantic hash |
+| `RB-WP8-009` **Done** | Non-inferiority margin và kiểm chất lượng endpoint | Giữ `m=1,0 pp`; service là gate; bắt buộc phân rã locked/earned và diagnostic đuôi |
+| `RB-WP8-010` **Done** | Estimand, failure/exclusion và robustness | Fixed-panel exact aggregate; không bootstrap rider/seed; audited solver evidence là admission gate |
+| `RB-WP8-011` **Done** | Preregistration document + canonical hash + cơ chế freeze | 15 mục, `H0=c653c3ce…`; amendment pre-outcome bind riêng; config/binary/analysis exact |
+| `RB-WP8-012` **Done** | Materialize grid confirmatory 5 ngày, **không chạy** | v1 fail node coverage; v2 uniform 108 requests materialize/reuse exact 20/20; historical `H2=97af95cf…`/`H3=d028eae4…`, current Runner-tree receipt `H4=2f7e6bf3…` |
+| `RB-WP8-013` **Done** | Audit rò rỉ và cổng đối kháng | No policy outcome; selection từ H0; mutation/pairing/solver/source-inventory gates |
+| `RB-WP8-014` **Done** | Đóng WP8 | Source/claim closure; mở WP9, `RB-WP9-001` đóng bằng current H4 verifier; không effectiveness claim ở WP8 |
 
 ## Ràng buộc xuyên suốt
 

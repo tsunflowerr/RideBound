@@ -15,6 +15,7 @@ public static class BenchmarkIdentity
     private const string RunDomain = "RideBound.Wp6.Run.v1";
     private const string MetricSetDomain = "RideBound.Wp6.MetricSet.v1";
     private const string BundleDomain = "RideBound.Wp6.Bundle.v1";
+    private const string ExperimentalUnitDomain = "RideBound.Wp8.ExperimentalUnit.v1";
 
     public static string CalculateScenario(ReadOnlySpan<byte> canonicalScenarioContent) =>
         CalculateCanonicalDocument(
@@ -81,6 +82,26 @@ public static class BenchmarkIdentity
             BundleDomain,
             "canonicalBundleManifest",
             canonicalBundleManifest);
+
+    public static string CalculateExperimentalUnit(
+        string scenarioHash,
+        string demandRealizationHash,
+        string travelRealizationHash)
+    {
+        var scenarioHashBytes = DecodeSha(scenarioHash, nameof(scenarioHash));
+        var demandBytes = DecodeSha(
+            demandRealizationHash,
+            nameof(demandRealizationHash));
+        var travelBytes = DecodeSha(travelRealizationHash, nameof(travelRealizationHash));
+
+        return Calculate(
+            ExperimentalUnitDomain,
+            [
+                new HashFrame("scenarioHash", scenarioHashBytes),
+                new HashFrame("demandRealizationHash", demandBytes),
+                new HashFrame("travelRealizationHash", travelBytes),
+            ]);
+    }
 
     public static string CalculateFileSha256(ReadOnlySpan<byte> bytes) =>
         Convert.ToHexStringLower(SHA256.HashData(bytes));

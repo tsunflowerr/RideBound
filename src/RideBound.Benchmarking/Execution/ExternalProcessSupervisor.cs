@@ -136,11 +136,15 @@ public static partial class ExternalProcessSupervisor
                 "execution");
         }
 
+        var rootProcess = new ProcessTreeSnapshot.ProcessInstanceIdentity(
+            process.Id,
+            ProcessTreeSnapshot.GetStartTimeUtcTicks(process));
         var stopwatch = Stopwatch.StartNew();
         var samples = new List<ProcessResourceSample>();
-        var cpuByProcess = new Dictionary<int, long>();
+        var cpuByProcess =
+            new Dictionary<ProcessTreeSnapshot.ProcessInstanceIdentity, long>();
         var enforcementKind = OperatingSystem.IsWindows()
-            ? "windows-toolhelp-sampled-process-tree-v1"
+            ? "windows-toolhelp-sampled-process-tree-v2"
             : "root-process-sampling-v1";
         ExternalProcessFailure? failure = null;
         long peakWorkingSet = 0;
@@ -187,7 +191,7 @@ public static partial class ExternalProcessSupervisor
                     break;
                 }
 
-                var usage = ProcessTreeSnapshot.Observe(process.Id, cpuByProcess);
+                var usage = ProcessTreeSnapshot.Observe(rootProcess, cpuByProcess);
                 observedCpu = Math.Max(observedCpu, usage.CpuTimeMs);
                 peakWorkingSet = Math.Max(peakWorkingSet, usage.WorkingSetBytes);
                 peakProcessCount = Math.Max(peakProcessCount, usage.ProcessCount);

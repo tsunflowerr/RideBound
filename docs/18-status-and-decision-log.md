@@ -1,7 +1,7 @@
 # Trạng thái và decision log
 
 > Tệp sống — cập nhật ở cuối mọi task RideBound
-> Cập nhật gần nhất: 2026-08-17
+> Cập nhật gần nhất: 2026-08-21
 
 ## 1. Trạng thái tổng thể
 
@@ -9,8 +9,8 @@
 |---|---|
 | Research direction | `LOCKED_FOR_IMPLEMENTATION_PLANNING` |
 | Documentation | `MIGRATED_AND_VERIFIED_V1` |
-| Implementation | `WP1_Q1_COMPLETE; WP2_COMPLETE; WP3_COMPLETE_14_OF_14; WP4_COMPLETE_14_OF_14; WP5_COMPLETE_14_OF_14; WP6_COMPLETE_14_OF_14; WP7_COMPLETE_14_OF_14; WP8_IN_PROGRESS_1_OF_14` |
-| Current work package | `WP8 — pilot và preregistration; ADR-040 đã khoá thiết kế, RB-WP8-002 là ticket Ready duy nhất` |
+| Implementation | `WP1_Q1_COMPLETE; WP2_COMPLETE; WP3_COMPLETE_14_OF_14; WP4_COMPLETE_14_OF_14; WP5_COMPLETE_14_OF_14; WP6_COMPLETE_14_OF_14; WP7_COMPLETE_14_OF_14; WP8_COMPLETE_14_OF_14; WP9_IN_PROGRESS_2_OF_8` |
+| Current work package | `WP9 — main experiments; RB-WP9-001/003 Done, RB-WP9-002a freeze repin Ready` |
 | Repository | `https://github.com/tsunflowerr/RideBound` |
 | Main baseline | B1 `rolling-cost` |
 | Main treatment | C1 `ridebound-hard-vector` |
@@ -3369,6 +3369,171 @@ tới cỡ mẫu.
 **Supersedes / superseded by:** Sửa ba quyết định thiết kế trong ADR-040; giữ nguyên phần
 còn lại của ADR-040 và toàn bộ claim boundary WP6/WP7.
 
+### ADR-042 — 2026-08-19 — Superseded
+
+> Superseded bởi ADR-043. Giữ nguyên làm lịch sử phát hiện sai: unit đã gắn
+> `masterSeed`, `N=62` không tồn tại trong holdout, và câu “toàn bộ khớp đúng” vượt
+> quá bằng chứng review. Không được dùng ADR-042 làm source of truth hiện hành.
+
+**Context:** Thực hiện các ticket tiếp theo của WP8 (`RB-WP8-004` đến `RB-WP8-007`) và tiến hành kiểm toán toàn diện mã nguồn/thuật toán từ WP1 đến WP7 theo đối chiếu văn hiến khoa học.
+
+**Decision:**
+1. **Khóa hợp đồng đơn vị thí nghiệm (`RB-WP8-004`):** Đơn vị thí nghiệm được định nghĩa chính xác là $u = (\text{scenarioHash}, \text{masterSeed}, \text{travelRealizationHash})$. Toàn bộ quan sát rider-level phải được gộp (aggregate) lên mức run trước khi thực hiện so sánh paired difference hay bootstrap (`docs/11` §1, §7). Cấm tuyệt đối coi các rider trong cùng run là mẫu độc lập.
+2. **Calculator & Standalone Oracle cho Primary Endpoint (`RB-WP8-005`):** Khóa công thức đo lường `total_decision_induced_burden_ms` ($\Delta^{\text{pickETA}}_{\text{decision}} + \Delta^{\text{dropETA}}_{\text{decision}}$) cùng tỷ lệ hoàn thành chuyến (`completed_service_rate`), kèm theo triển khai Oracle BCL-only độc lập (`DecisionInducedBurdenOracle`) đối chiếu byte-for-byte.
+3. **Phân phối thực nghiệm Pilot (`RB-WP8-006`):** Trích xuất phân phối gánh nặng thực nghiệm của B1 trên 4 đơn vị pilot tại điểm vận hành có tranh chấp (Manhattan Zenodo $08:00–10:00$, 8 xe). Trung bình B1 tạo ra $3.692.927\text{ ms}$ gánh nặng toàn mạng ($87,2\%$ ở drop ETA). C1 giảm gánh nặng $83,7\%$ nhưng làm giảm tỷ lệ hoàn thành $3,125\text{ pp}$.
+4. **Power Analysis & Cỡ mẫu (`RB-WP8-007`):** Dựa trên $\sigma_{\Delta \text{burden}} = 1.128.334\text{ ms}$ và $\sigma_{\Delta \text{service}} = 3,189\text{ pp}$, tính toán cỡ mẫu yêu cầu cho giai đoạn Confirmatory là $N = 62\text{ đơn vị paired}$ (kèm $10\%$ dự phòng).
+5. **Kiểm toán mã nguồn WP1–WP7:** Đã rà soát chi tiết toàn bộ các tầng Domain, Application, Algorithms, Solvers, Runner, Benchmarking và FleetPy adapter. Tất cả bất biến trạng thái, luật bảo toàn, cơ chế cắt tỉa và giải thuật lexicographic CP-SAT đều khớp đúng lý thuyết và văn hiến chuẩn mực.
+
+**Evidence:**
+- `docs/benchmarking/wp8-006-pilot-empirical-distributions-2026-08-19.md`
+- `docs/benchmarking/wp8-007-power-and-sample-size-report-2026-08-19.md`
+- Toàn bộ test suite pass 100%.
+
+**Consequences:** `RB-WP8-004`, `005`, `006`, `007` chuyển sang **Done**. `RB-WP8-008` (Frontier B1 $\rightarrow$ C2 $\rightarrow$ C1) trở thành ticket **Ready** duy nhất.
+
+### ADR-043 — 2026-08-21 — Accepted
+
+**Context:** Tiếp tục handoff WP8, hoàn tất frontier và review adversarial trước khi
+chạm outcome confirmatory. Review xác nhận bốn blocker F1/F7/F9/F10/F26 là thật,
+đồng thời tìm thêm lỗi metric frame, absolute-delta additivity, Windows PID lineage
+và analysis/source binding.
+
+**Decision:**
+
+1. Experimental unit là `(scenarioHash, demandRealizationHash,
+   travelRealizationHash)`; `masterSeed` chỉ là robustness và không tăng N. Holdout
+   khả dụng là fixed panel đúng 20 cell/5 travel-day cluster; không phát population
+   p-value/NI CI.
+2. Giữ strict service margin `m=1,0 pp`. Gate dùng exact integer aggregate trên
+   denominator `20 × 108 = 2160`; equality tại biên là fail. Burden improvement
+   không cứu service failure.
+3. Frontier 25/25 đóng: B1→C1 unbounded là lock/ranking price; C1 unbounded→tight
+   là budget price. Pickup-ETA reduction do lock định nghĩa và drop-ETA reduction
+   không bị lock phải báo riêng; pilot xấp xỉ 18%/82% không được áp sẵn cho WP9.
+4. Oracle burden phải chạy process BCL-only và mutation; pairing bind orientation,
+   policy/unit/denominator; decision-frame count tối đa một lần/envelope. Verifier
+   recompute lifecycle/checkpoint/report/behavior and audited solver evidence.
+5. Node-cap failure v1 không được loại cell. Amendment pre-outcome đồng nhất
+   request target 128→108, materialize 20/20 derivative v2.
+6. Handoff review tìm thấy analyzer chưa bind bundle với exact plan/label/scenario và
+   HEAD/status không bind nội dung dirty tree. Amendment pre-outcome `WP8-011b` thêm
+   execution binding, full Git-visible content+HEAD inventory pre/post, path-safe IDs,
+   robustness analyzer không gate và exact locked/earned decomposition.
+7. Freeze receipt v1 `H2=97af95cf…d3049` giữ byte-nguyên làm lịch sử. Receipt v2
+   `H3=d028eae4…dd14e` supersede operationally; executable verifier recompute 24
+   file hashes, Runner và derivative/scenario tree seals trước outcome.
+8. Full-PDF audit Alonso-Mora/Gschwind/Simonetto/Engelhardt/Zalesak/Schulz chỉ cho
+   phép exact same-state/same-route reuse. Không thêm direction/random/sparse prune;
+   work counters/output giữ exact, local process time giảm khoảng 20–23%, không SLA.
+
+**Evidence:** `docs/benchmarking/wp8-006..014`, amendments `wp8-011a/011b`,
+`docs/reviews/wp1-wp8-final`, frontier external 25/25, `.NET 840/840`, pinned Python
+suite hiện hành, freeze verifier PASS với `H3` nêu trên.
+
+**Consequences:** `RB-WP8-001..014 Done`; WP8 Complete. WP9 mở theo
+`docs/tasks/39-wp9-main-experiment-ticket-plan.md`; `RB-WP9-001 Done`,
+`RB-WP9-002` là ticket Ready duy nhất. Không confirmatory outcome tồn tại khi ADR
+này được chấp nhận. Sau smoke, mọi bug outcome-bearing phải invalidate affected run,
+không được vá lẻ hoặc đổi margin/treatment.
+
+### ADR-044 — 2026-08-21 — Accepted
+
+**Context:** Sau ADR-043 nhưng vẫn trước bất kỳ Layer-2/confirmatory outcome nào,
+receipt của Layer-1 mechanical cho thấy harness đã gọi Runner Release hiện hành
+`4c297a2c…bd2a8`, trong khi H2/H3 pin artifact cũ `16f3b5e8…3aad`. Hai DLL cùng
+174.592 byte nhưng không byte-identical. Một publish sạch từ source đã review cho
+đúng hash hiện hành; 19/19 file của publish tree byte-identical với Runner tree mà
+Layer-1 đã dùng.
+
+**Decision:**
+
+1. Chấp nhận amendment pre-outcome `WP8-011c`; đây chỉ là sửa provenance, không
+   đổi panel, policy, configs, seed, endpoint, strict margin hay analysis.
+2. Giữ H2/H3 byte-nguyên làm lịch sử. Receipt v3
+   `H4=2f7e6bf36c16784e06cb3266f9764f3103f2de6fc931f3c8e023bdc1a81a32dd`
+   là freeze vận hành hiện hành; Runner DLL là `4c297a2c…bd2a8` và Runner-tree seal
+   là `29a8195b…4589`.
+3. Freeze verifier phải bind 25 file/Runner hashes và recompute ba tree seal
+   (derivative, scenario plan, Runner artifact). Mọi job WP9 dùng đúng external
+   publish root đã pin.
+4. Layer-1 bundle ngoài repo `E:\RideBoundData\wp9\layer1\bundle-20260821-v1`
+   PASS 8/8, external verify, evidence class `mechanical`; nó đóng `RB-WP9-003`
+   nhưng không phải effectiveness/confirmatory evidence.
+
+**Evidence:** `wp8-011c-pre-outcome-runner-artifact-repin.md`,
+`freeze-receipt-v3.json`, freeze verifier PASS (25 hashes + 3 tree seals), Layer-1
+receipt `bundle-20260821-v1.receipt.json`, per-file comparison 19/19 exact.
+
+**Consequences:** `RB-WP9-001/003 Done`; `RB-WP9-002` audited smoke là ticket
+Ready duy nhất. Chưa có confirmatory outcome. H4/Runner tree và repository inventory
+phải giữ bất biến từ smoke tới full matrix; thay đổi outcome-bearing sau smoke phải
+invalidate affected runs.
+
+### ADR-045 — 2026-08-22 — Accepted
+
+**Context:** Smoke WP9 chết ở **cả hai** arm với
+`The active route could not be retained as the safety no-op candidate: MAX_RIDE_TIME`.
+Cơ chế: giao thông xấu đi làm lộ trình *đang chạy* vi phạm `MAX_RIDE_TIME`,
+`PhysicalPlanValidator` prune chính no-op đó, xe còn 0 candidate và run fail-closed.
+Vì B1 cũng chết nên đây không phải lỗi cam kết; nó cũng không làm mất hiệu lực 25 run
+frontier WP8 đã đóng. Gốc rễ là một khoảng trống ngữ nghĩa: `MAX_RIDE_TIME` chưa
+bao giờ được định nghĩa là ràng buộc *lúc lập kế hoạch* hay ràng buộc *liên tục*.
+`CommitmentBreachRecord`/`AppendBreach` đã tồn tại nhưng `AppendBreach` chỉ được gọi
+khi deserialize checkpoint — không đường quyết định nào từng ghi breach.
+`PICKUP_WINDOW` có đúng cùng lỗ hổng và cùng nguyên nhân ngoại sinh.
+
+**Decision:**
+
+1. Tách physical constraint thành hai lớp. **Structural** (`ROUTE_CONNECTIVITY`,
+   `PRECEDENCE`, `CAPACITY`, `FROZEN_PREFIX`, `ONBOARD_PRESERVATION`,
+   `ACCEPTED_PRESERVATION`, `PLAN_VERSION`, `STOP_LOCATION`, `INVALID_*`,
+   `SCHEDULE_OVERFLOW`) là bất biến của một kế hoạch well-formed: vi phạm là defect,
+   không phải giao thông, và vẫn strict ở mọi nơi. **Service-quality**
+   (`MAX_RIDE_TIME`, `PICKUP_WINDOW`) là lời hứa về thời gian và có thể bị phá vỡ
+   mà không ai quyết định gì.
+2. Service-quality là ràng buộc **lúc tạo kế hoạch**, không phải bất biến liên tục.
+   No-op an toàn luôn được giữ; nó không bao giờ bị prune bởi một dimension
+   service-quality.
+3. Vi phạm ngoại sinh được ghi nhận, không bị nuốt: `ProbeServiceQuality` chiếu lộ
+   trình *không đổi* dưới travel snapshot hiện hành và phát
+   `ExogenousServiceQualityBreach` (vehicle, request, code, dimension, contractual,
+   exogenous) vào `CandidateGenerationDiagnostics`. Xe tiếp tục phục vụ.
+4. **Chống rửa vi phạm.** Bound nới ra đúng bằng `max(contractual, exogenous)`, với
+   `exogenous` là giá trị mà *không làm gì* đã hiện thực hoá. Do đó không candidate
+   nào được phép tệ hơn no-op trên chính dimension đang breach; phần tệ hơn vẫn bị
+   prune với `Expected` là bound hiệu lực. Đây đúng là cơ chế ba chiều
+   `exogenous / decision-induced / visible` dự án đã có (`PromiseDeltaCalculator`),
+   không thêm khái niệm mới.
+5. Request chưa nằm trên lộ trình đang chạy (mọi request mới chèn) **không** có
+   entry nào trong relaxation, nên vẫn bị enforce contractual tuyệt đối. Không thể
+   nhận một khách mà lộ trình không phục vụ nổi.
+6. Relaxation là hàm thuần của `(run, vehicle, travelSnapshot, evaluationTime)` và
+   được áp dụng **đồng nhất ở cả hai arm**, nên không dịch chuyển arm nào so với arm
+   nào. Ba đường re-validate downstream (`RollingCostPolicy`, `MultiplePlanPolicy`,
+   `CommitmentDecisionValidator`, `OnlineStateCheckpointCodec`) đều chuyển sang
+   `ValidateWithExogenousRelief` để không bác chính candidate mà generator giữ hợp lệ.
+7. `ForwardSlackProfile` certify delay theo đúng bound mà validator enforce; cache key
+   bind thêm digest của relaxation. Nếu hai bên lệch nhau, một route validator chấp
+   nhận vẫn có thể mất slack certificate và bị prune.
+
+**Evidence:** `ServiceQualityAllowance`/`ProbeServiceQuality`/
+`ValidateWithExogenousRelief` trong `PhysicalPlanValidator`; 6 regression Domain
+(breach ride-time, breach pickup-window, chống rửa, structural fail-closed, no-relief
+khi không breach, scoping theo request/dimension) + 4 regression Algorithms (no-op
+sống sót, breach được báo cáo đúng số, không breach thì không báo, candidate tệ hơn
+no-op vẫn bị prune). Full solution 851/851 Debug và Release; Release `-warnaserror`
+0 warning.
+
+**Consequences:** `RB-WP9-002a/002b` hết bị chặn. Ngữ nghĩa đối xứng hai arm nên không
+đụng tính công bằng đã khoá ở ADR-043. Ba giới hạn phải giữ trong báo cáo:
+(a) `ExogenousServiceQualityBreach` hiện là diagnostic ở tầng generation — bắc cầu
+sang `CommitmentBreachRecord` trong `OperationalIncidentLedger` là công việc còn
+mở của `RB-WP9-002a`, và cho tới lúc đó breach **không** vào ledger cam kết;
+(b) breach count là secondary/descriptive, không phải endpoint đã prereg, nên không
+cứu được gate nào; (c) thay đổi này là outcome-bearing với mọi run WP9 chạy sau nó,
+nên freeze chain phải repin trước smoke và mọi run trước đó không được trộn vào cùng
+estimand.
+
 ## 8. Work package tracker
 
 | WP | Trạng thái | Bắt đầu | Kết thúc | Evidence |
@@ -3381,14 +3546,43 @@ còn lại của ADR-040 và toàn bộ claim boundary WP6/WP7.
 | WP5 BeGo integration | Complete; `001..014` Done; Q3 mechanical gate closed | 2026-08-05 | 2026-08-09 | ADR-025 + durable adapter/rollout + paired bundle + independent evidence + source/claim review; BeGo 154/154 Debug/Release |
 | WP6 Benchmark harness | Complete; `001..014` Done; common mechanical harness gate closed | 2026-08-09 | 2026-08-13 | ADR-026..036 + contract v1.0.6; fresh tiny A + medium H/I exact-source semantic reproduction, strict external verify, final review, 770/770 |
 | WP7 FleetPy | Complete; `001..014` Done; mechanical Layer-2 closed | 2026-08-13 | 2026-08-17 | ADR-037/038/039 + `tasks/35`/`tasks/36` + Runner v8 actual B1/C1 preflight/lifecycle/tiny/medium + external verifier |
-| WP8 Pilot/prereg | In progress; `001..003` Done, `004` Ready | 2026-08-18 | — | ADR-040/041 + `tasks/37`/`tasks/38` + pilot 4 đơn vị paired trên dữ liệu thật; confirmatory holdout chưa sinh |
-| WP9 Main experiments | Not started | — | — | — |
+| WP8 Pilot/prereg | Complete; `001..014` Done | 2026-08-18 | 2026-08-21 | ADR-040/041/043/044 + frontier 25/25 + oracle/verifier + fixed panel 20 cell + current H4 freeze; no confirmatory outcome |
+| WP9 Main experiments | In progress; `001/003` Done, `002a` Ready | 2026-08-21 | — | `tasks/39` + Layer-1 mechanical 8/8; ADR-045 mở khóa smoke; `wp8-011d` thêm capacity stratum; H4 phải repin thành H5 trước smoke |
 | WP10 Cross-system | Not started | — | — | — |
 | WP11 Product UX | Not started | — | — | — |
 | WP12 Paper/release | Not started | — | — | — |
 
 ## 9. Change history
 
+- 2026-08-22: Chấp nhận ADR-045 trước outcome confirmatory và mở khóa WP9. Smoke
+  chết ở cả hai arm vì `MAX_RIDE_TIME` bị enforce như bất biến liên tục, prune
+  chính safety no-op. Tách physical constraint thành structural (strict) và
+  service-quality (plan-time); no-op luôn được giữ; vi phạm ngoại sinh được ghi
+  làm `ExogenousServiceQualityBreach` với bound chống rửa `max(contractual,
+  exogenous)`; `PICKUP_WINDOW` cùng lớp nên xử lý cùng cách. 851/851 Debug và
+  Release, Release `-warnaserror` 0 warning. Cùng đợt: amendment `wp8-011d` thêm
+  capacity stratum `veh4` bên cạnh `veh8` đã prereg (80 primary job, N không tăng,
+  kết luận thành có điều kiện theo năng lực); `wp8-010` bỏ exogenous burden làm
+  negative control — sai vì exogenous baseline là hàm của quyết định trước đó —
+  và thay bằng identity chuỗi demand+travel bốn điều kiện; `wp8-008` ghi ba điều
+  bất lợi (service không đơn điệu, trượt biên −4,69 pp ở 8 xe và toàn bộ về phía
+  budget, 18% mức giảm là definitional theo lock). Đo lại tính độc lập của panel:
+  bốn file `sample_10_*` cùng ngày chồng 8,3–10,7% request id ở tầng nguồn nhưng
+  **không** lan tới panel — 2.160 slot chứa 2.157 request phân biệt, chỉ 3 lần
+  dùng lại; ràng buộc thật là travel factor hằng số theo ngày, tức 5 realization
+  chứ không phải 20. `H4` hết hiệu lực vận hành; `RB-WP9-002a` phải repin `H5`.
+- 2026-08-21: Chấp nhận ADR-044 trước outcome confirmatory. Kiểm Layer-1 receipt
+  phát hiện stale Runner pin trong H2/H3; publish sạch xác nhận DLL hiện hành
+  `4c297a2c…bd2a8` và 19/19 file khớp Runner tree Layer-1. Amendment `WP8-011c` và
+  current freeze `H4=2f7e6bf3…a32dd` bind thêm Runner-tree seal; verifier 25 hashes
+  + 3 tree seals PASS. Layer-1 mechanical 8/8 đóng `RB-WP9-003`; `RB-WP9-002` Ready.
+- 2026-08-21: Supersede ADR-042 bằng ADR-043; đóng WP8 `001..014`. Frontier
+  25/25, treatment-only fairness, BCL-only burden oracle, oriented pairing,
+  contended verifier, audited solver evidence và exact hot-path reuse đã qua gate.
+  Bác `N=62`: fixed panel có 20 unit/5 ngày và denominator 2160/arm. Hai amendment
+  pre-outcome materialize đồng nhất 108 requests và khóa analysis/source binding.
+  Freeze tại thời điểm ADR-043 là `H3=d028eae4…dd14e`; chưa có outcome WP9. Review WP1–WP8 ghi
+  đầy đủ defect đã sửa và giới hạn claim; `RB-WP9-002` là việc tiếp theo.
 - 2026-08-19: Hoàn thành `RB-WP8-002`/`003` và chấp nhận ADR-041. Normalizer chạy theo
   grid manifest, harness nhận cardinality từ driver, và pilot chạy thật trên dữ liệu
   Manhattan công khai. Pilot bác bỏ điểm vận hành cũ (decision delta bằng 0 ở cả hai arm

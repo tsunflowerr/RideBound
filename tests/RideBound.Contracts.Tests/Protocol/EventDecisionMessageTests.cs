@@ -133,6 +133,55 @@ public sealed class EventDecisionMessageTests
     }
 
     [Fact]
+    public void Solver_execution_evidence_round_trips_and_is_strictly_versioned()
+    {
+        Sha256Hex.TryCreate(new string('0', 64), out var zero);
+        using var evidenceDocument = JsonDocument.Parse(
+            """
+            {
+              "evidenceVersion":"1.0.0",
+              "generation":{},
+              "prunedCandidates":[],
+              "selection":{}
+            }
+            """);
+        var payload = new DecisionPayload(
+            DecisionProductionStatus.Produced,
+            DecisionReasonCodes.Accepted,
+            [],
+            new CertificateShell(
+                CertificateStatus.NotProduced,
+                DecisionPayloadCodec.CertificateNotAvailableReasonCode),
+            new SolverStatusShell(
+                SolverStatus.Completed,
+                evidenceDocument.RootElement.Clone()),
+            zero!,
+            zero!,
+            zero!,
+            zero!);
+
+        var encoded = DecisionPayloadCodec.Encode(payload);
+        using var encodedDocument = JsonDocument.Parse(encoded);
+        var decoded = DecisionPayloadCodec.Decode(encodedDocument.RootElement);
+
+        Assert.True(decoded.IsSuccess, decoded.Error?.Message);
+        Assert.Equal(
+            "1.0.0",
+            decoded.Value!.Solver.ExecutionEvidence!.Value
+                .GetProperty("evidenceVersion")
+                .GetString());
+
+        var unknownVersion = Encoding.UTF8.GetString(encoded).Replace(
+            "\"evidenceVersion\":\"1.0.0\"",
+            "\"evidenceVersion\":\"2.0.0\"",
+            StringComparison.Ordinal);
+        using var unknownDocument = JsonDocument.Parse(unknownVersion);
+        var rejected = DecisionPayloadCodec.Decode(unknownDocument.RootElement);
+        Assert.False(rejected.IsSuccess);
+        Assert.Equal(ProtocolPayloadErrorCode.InvalidValue, rejected.Error?.Code);
+    }
+
+    [Fact]
     public void Unknown_decision_reason_is_rejected_as_contract_drift()
     {
         var json = """

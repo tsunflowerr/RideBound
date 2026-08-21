@@ -251,11 +251,12 @@ Candidate core, và chạy lại toàn bộ actual gate trên Runner v8 —
 
 ## WP8 — Pilot và preregistration
 
-**Trạng thái hiện tại:** `RB-WP8-001 DONE`, `RB-WP8-002 READY`. ADR-040 khoá grid từ
-dữ liệu công khai thật (8 ngày, 289 file demand), tách pilot `2018-11-11`/`2018-11-12`
-khỏi confirmatory holdout `2018-11-13`→`2018-11-18`, và quyết định suy commitment budget
-từ chỉ dữ liệu pilot thành ba mức strictness. Chi tiết ở `docs/tasks/37` và
-`docs/tasks/38`. Chưa có production code và chưa có kết quả nào.
+**Trạng thái hiện tại:** **Complete**, `RB-WP8-001..014 Done`. Pilot/frontier 25/25,
+burden oracle/verifier, exact 20-cell fixed panel và preregistration đã đóng. Holdout
+dùng `2018-11-14`→`2018-11-18`, 4 demand realization/ngày, uniform 108 requests/cell.
+Ba amendment pre-outcome sửa node cap, analysis/source binding và stale Runner pin;
+freeze hiện hành là `H4=2f7e6bf3…a32dd`, bind cả publish tree. Chưa có confirmatory
+outcome tại thời điểm cập nhật freeze.
 
 ### Deliverable
 
@@ -273,6 +274,9 @@ từ chỉ dữ liệu pilot thành ba mức strictness. Chi tiết ở `docs/ta
 - sign-off trong decision log.
 
 ## WP9 — Main experiments
+
+**Trạng thái hiện tại:** In progress; `RB-WP9-001/003 Done`, `RB-WP9-002a Ready`.
+Ordered queue và exact closure gate ở `docs/tasks/39-wp9-main-experiment-ticket-plan.md`.
 
 ### Deliverable
 

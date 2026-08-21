@@ -123,7 +123,8 @@ public sealed class HardVectorCandidateAssessor
                         set.VehicleId,
                         candidate.NewRequestIds,
                         witness.Code,
-                        witness.Message);
+                        witness.Message,
+                        CommitmentWitnesses: validation.Witnesses);
                     pruned.Add(prune);
                     hardPruned.Add(prune);
                     hardValidationWitnesses.Add(

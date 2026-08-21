@@ -224,10 +224,11 @@ public static class BenchmarkContractCodec
             && type != typeof(FailureRecord)
             && type != typeof(ExclusionRecord)
             && type != typeof(MetricRow)
-            && type != typeof(LogicalBundleManifest))
+            && type != typeof(LogicalBundleManifest)
+            && type != typeof(ExperimentalUnitIdentity))
         {
             throw new NotSupportedException(
-                $"Type '{type.FullName}' is not a WP6 benchmark document.");
+                $"Type '{type.FullName}' is not a supported benchmark document.");
         }
     }
 }

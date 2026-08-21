@@ -5,6 +5,7 @@ using RideBound.Domain.Requests;
 using RideBound.Domain.Routes;
 using RideBound.Domain.Runs;
 using RideBound.Domain.Vehicles;
+using RideBound.Domain.Validation;
 
 namespace RideBound.Algorithms.Candidates;
 
@@ -60,12 +61,20 @@ public sealed record ForwardSlackProfileBuildResult
 
 public interface IForwardSlackProfileBuilder
 {
+    /// <param name="serviceQuality">
+    /// The vehicle's exogenous service-quality relaxation (ADR-045), or
+    /// <c>null</c> for strict contractual deadlines. The profile certifies delay
+    /// against the same bounds the physical validator enforces; if the two
+    /// disagreed, a route the validator accepts could still lose its slack
+    /// certificate and be pruned.
+    /// </param>
     ForwardSlackProfileBuildResult Build(
         OnlineState state,
         VehicleState vehicle,
         RoutePlan route,
         TravelTimeSnapshot travelTimes,
-        SimTime evaluationTime);
+        SimTime evaluationTime,
+        ServiceQualityAllowance? serviceQuality = null);
 }
 
 public sealed class ForwardSlackProfileBuilder : IForwardSlackProfileBuilder
@@ -83,7 +92,8 @@ public sealed class ForwardSlackProfileBuilder : IForwardSlackProfileBuilder
         VehicleState vehicle,
         RoutePlan route,
         TravelTimeSnapshot travelTimes,
-        SimTime evaluationTime)
+        SimTime evaluationTime,
+        ServiceQualityAllowance? serviceQuality = null)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(vehicle);
@@ -155,7 +165,10 @@ public sealed class ForwardSlackProfileBuilder : IForwardSlackProfileBuilder
 
             if (stop.Kind == RouteStopKind.Pickup)
             {
-                localSlack[index] = request.LatestPickup.Milliseconds
+                localSlack[index] = (serviceQuality?.LatestPickupBound(
+                        request.Id,
+                        request.LatestPickup.Milliseconds)
+                    ?? request.LatestPickup.Milliseconds)
                     - scheduled.ArrivalTime.Milliseconds;
             }
             else
@@ -178,7 +191,11 @@ public sealed class ForwardSlackProfileBuilder : IForwardSlackProfileBuilder
 
                 var rideTime = scheduled.ArrivalTime.Milliseconds
                     - pickupTime.Value.Milliseconds;
-                localSlack[index] = request.MaxRideTime.Milliseconds - rideTime;
+                localSlack[index] = (serviceQuality?.MaxRideTimeBound(
+                        request.Id,
+                        request.MaxRideTime.Milliseconds)
+                    ?? request.MaxRideTime.Milliseconds)
+                    - rideTime;
             }
 
             if (localSlack[index] < 0)
@@ -271,7 +288,8 @@ public sealed class ForwardSlackCacheKey : IEquatable<ForwardSlackCacheKey>
         RoutePlan route,
         SimTime evaluationTime,
         long travelSnapshotVersion,
-        string travelSnapshotHash)
+        string travelSnapshotHash,
+        string serviceQualityDigest)
     {
         RunSnapshot = runSnapshot;
         VehicleSnapshot = vehicleSnapshot;
@@ -280,6 +298,7 @@ public sealed class ForwardSlackCacheKey : IEquatable<ForwardSlackCacheKey>
         EvaluationTime = evaluationTime;
         TravelSnapshotVersion = travelSnapshotVersion;
         TravelSnapshotHash = travelSnapshotHash;
+        ServiceQualityDigest = serviceQualityDigest;
         _hash = ComputeHash(this);
     }
 
@@ -297,12 +316,20 @@ public sealed class ForwardSlackCacheKey : IEquatable<ForwardSlackCacheKey>
 
     public string TravelSnapshotHash { get; }
 
+    /// <summary>
+    /// Identity of the service-quality relaxation the profile was certified
+    /// under. Two relaxations produce different slack certificates for the same
+    /// route, so they must not share a memo entry.
+    /// </summary>
+    public string ServiceQualityDigest { get; }
+
     public static ForwardSlackCacheKey Create(
         OnlineState state,
         VehicleState vehicle,
         RoutePlan route,
         TravelTimeSnapshot travelTimes,
-        SimTime evaluationTime)
+        SimTime evaluationTime,
+        ServiceQualityAllowance? serviceQuality = null)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(vehicle);
@@ -316,7 +343,8 @@ public sealed class ForwardSlackCacheKey : IEquatable<ForwardSlackCacheKey>
             route,
             evaluationTime,
             travelTimes.Version,
-            travelTimes.SnapshotHash);
+            travelTimes.SnapshotHash,
+            serviceQuality?.Digest ?? string.Empty);
     }
 
     public bool Equals(ForwardSlackCacheKey? other)
@@ -342,6 +370,9 @@ public sealed class ForwardSlackCacheKey : IEquatable<ForwardSlackCacheKey>
             && StringComparer.Ordinal.Equals(
                 TravelSnapshotHash,
                 other.TravelSnapshotHash)
+            && StringComparer.Ordinal.Equals(
+                ServiceQualityDigest,
+                other.ServiceQualityDigest)
             && RoutesEqual(Route, other.Route);
     }
 
@@ -392,6 +423,7 @@ public sealed class ForwardSlackCacheKey : IEquatable<ForwardSlackCacheKey>
         hash.Add(key.EvaluationTime);
         hash.Add(key.TravelSnapshotVersion);
         hash.Add(key.TravelSnapshotHash, StringComparer.Ordinal);
+        hash.Add(key.ServiceQualityDigest, StringComparer.Ordinal);
         hash.Add(key.Route.Version);
         hash.Add(key.Route.ExecutedStopCount);
         AddStops(ref hash, key.Route.FrozenPrefix);
@@ -467,14 +499,16 @@ public sealed class ForwardSlackProfileCache
         VehicleState vehicle,
         RoutePlan route,
         TravelTimeSnapshot travelTimes,
-        SimTime evaluationTime)
+        SimTime evaluationTime,
+        ServiceQualityAllowance? serviceQuality = null)
     {
         var key = ForwardSlackCacheKey.Create(
             state,
             vehicle,
             route,
             travelTimes,
-            evaluationTime);
+            evaluationTime,
+            serviceQuality);
 
         lock (_gate)
         {
@@ -495,7 +529,8 @@ public sealed class ForwardSlackProfileCache
             vehicle,
             route,
             travelTimes,
-            evaluationTime);
+            evaluationTime,
+            serviceQuality);
 
         if (!built.IsSuccess)
         {

@@ -426,6 +426,154 @@ public sealed class PhysicalPlanValidatorTests
         Assert.Equal(first.Witness, second.Witness);
     }
 
+    [Fact]
+    public void Probe_records_exogenous_ride_time_breach_and_keeps_active_route()
+    {
+        var state = WaitingRun(TestData.PendingRequest(maxRideTimeMs: 50));
+        var validator = new PhysicalPlanValidator();
+
+        var probe = validator.ProbeServiceQuality(
+            state,
+            TestData.VehicleOne,
+            CompleteTravel(),
+            new SimTime(1000));
+
+        Assert.True(probe.IsSuccess, probe.Witness?.Message);
+        var breach = Assert.Single(probe.Allowance.Breaches);
+        Assert.Equal(PhysicalViolationCodes.MaxRideTime, breach.Code);
+        Assert.Equal(new RequestId("r-1"), breach.RequestId);
+        Assert.Equal(50, breach.ContractualMilliseconds);
+        Assert.Equal(100, breach.ExogenousMilliseconds);
+
+        var relaxed = validator.ValidateWithExogenousRelief(
+            state,
+            TestData.VehicleOne,
+            state.Vehicles[TestData.VehicleOne].Route,
+            CompleteTravel(),
+            new SimTime(1000));
+
+        Assert.True(relaxed.IsFeasible, relaxed.Witness?.Message);
+    }
+
+    [Fact]
+    public void Probe_records_exogenous_pickup_window_breach_and_keeps_active_route()
+    {
+        var state = WaitingRun(
+            TestData.PendingRequest(earliestPickupMs: 1000, latestPickupMs: 1050));
+        var validator = new PhysicalPlanValidator();
+
+        var probe = validator.ProbeServiceQuality(
+            state,
+            TestData.VehicleOne,
+            CompleteTravel(),
+            new SimTime(1000));
+
+        Assert.True(probe.IsSuccess, probe.Witness?.Message);
+        var breach = Assert.Single(probe.Allowance.Breaches);
+        Assert.Equal(PhysicalViolationCodes.PickupWindow, breach.Code);
+        Assert.Equal(1050, breach.ContractualMilliseconds);
+        Assert.Equal(1100, breach.ExogenousMilliseconds);
+
+        var relaxed = validator.ValidateWithExogenousRelief(
+            state,
+            TestData.VehicleOne,
+            state.Vehicles[TestData.VehicleOne].Route,
+            CompleteTravel(),
+            new SimTime(1000));
+
+        Assert.True(relaxed.IsFeasible, relaxed.Witness?.Message);
+    }
+
+    [Fact]
+    public void Exogenous_relief_still_rejects_a_candidate_worse_than_doing_nothing()
+    {
+        var state = WaitingRun(TestData.PendingRequest(maxRideTimeMs: 50));
+
+        // Detour n-1 -> n-2 -> n-1 -> n-2 before the drop. The relief only
+        // covers the 100 ms the unchanged route already realizes, so the extra
+        // 200 ms this candidate adds is still charged to the decision.
+        var candidate = state.Vehicles[TestData.VehicleOne]
+            .Route
+            .ReplaceMutableSuffix(
+                [
+                    TestData.Pickup(),
+                    TestData.Waypoint("detour-out", TestData.NodeTwo),
+                    TestData.Waypoint("detour-back", TestData.NodeOne),
+                    TestData.DropOff(),
+                ])
+            .Value!;
+
+        var result = new PhysicalPlanValidator().ValidateWithExogenousRelief(
+            state,
+            TestData.VehicleOne,
+            candidate,
+            CompleteTravel(),
+            new SimTime(1000));
+
+        AssertViolation(
+            result,
+            PhysicalViolationCodes.MaxRideTime,
+            "r-1",
+            "drop",
+            "maxRideTimeMs");
+        Assert.Equal(100, result.Witness?.Expected);
+        Assert.Equal(300, result.Witness?.Actual);
+    }
+
+    [Fact]
+    public void Probe_fails_closed_on_a_structural_violation_of_the_active_route()
+    {
+        var state = WaitingRun(TestData.PendingRequest(partySize: 5));
+
+        var probe = new PhysicalPlanValidator().ProbeServiceQuality(
+            state,
+            TestData.VehicleOne,
+            CompleteTravel(),
+            new SimTime(1000));
+
+        Assert.False(probe.IsSuccess);
+        Assert.Equal(PhysicalViolationCodes.Capacity, probe.Witness?.Code);
+        Assert.Empty(probe.Allowance.Breaches);
+    }
+
+    [Fact]
+    public void Probe_of_a_route_that_meets_every_deadline_grants_no_relief()
+    {
+        var state = WaitingRun(TestData.PendingRequest());
+
+        var probe = new PhysicalPlanValidator().ProbeServiceQuality(
+            state,
+            TestData.VehicleOne,
+            CompleteTravel(),
+            new SimTime(1000));
+
+        Assert.True(probe.IsSuccess, probe.Witness?.Message);
+        Assert.Same(ServiceQualityAllowance.Strict, probe.Allowance);
+        Assert.Empty(probe.Allowance.Digest);
+    }
+
+    [Fact]
+    public void Relief_is_scoped_to_the_breached_request_and_dimension()
+    {
+        var allowance = ServiceQualityAllowance.FromBreaches(
+            [
+                new ServiceQualityBreach(
+                    new RequestId("r-1"),
+                    PhysicalViolationCodes.MaxRideTime,
+                    "maxRideTimeMs",
+                    50,
+                    100),
+            ]);
+
+        Assert.Equal(100, allowance.MaxRideTimeBound(new RequestId("r-1"), 50));
+        Assert.Equal(50, allowance.LatestPickupBound(new RequestId("r-1"), 50));
+        Assert.Equal(50, allowance.MaxRideTimeBound(new RequestId("r-2"), 50));
+
+        // Relief never tightens a bound either: a contractual limit above the
+        // exogenous value wins.
+        Assert.Equal(400, allowance.MaxRideTimeBound(new RequestId("r-1"), 400));
+    }
+
     private static RideBoundRun WaitingRun(RideRequest request)
     {
         var route = TestData.Route(

@@ -8,6 +8,7 @@ import collections
 import csv
 import hashlib
 import json
+import os
 import pathlib
 import subprocess
 import sys
@@ -228,7 +229,7 @@ def _operator_settings(
         "ridebound_additional_artifacts": [str(path) for path in additional],
         "ridebound_run_id": f"wp7-medium-{arguments.label}",
         "ridebound_scenario_id": "fleetpy-manhattan-v1-medium-wp7-physical-closure",
-        "ridebound_master_seed": 7,
+        "ridebound_master_seed": arguments.master_seed,
         "ridebound_service_class": "fleetpy-tlc-public-derivative-v1",
         "ridebound_commitment_policy_id": "wp6-synthetic-policy-overlay-v1",
         "ridebound_timeout_seconds": 60,
@@ -736,6 +737,62 @@ def _git_head_commit(repository):
     return completed.stdout.strip()
 
 
+def _repository_inventory_sha256(repository):
+    head = _git_head_commit(repository).encode("ascii")
+    completed = subprocess.run(
+        [
+            "git",
+            "-C",
+            str(repository),
+            "ls-files",
+            "-z",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+        ],
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=30,
+    )
+    relative_paths = sorted(
+        value for value in completed.stdout.split(b"\0") if value
+    )
+    if len(relative_paths) != len(set(relative_paths)):
+        raise RuntimeError("repository inventory contains duplicate paths")
+    digest = hashlib.sha256(b"RideBound.Wp9RepositoryInventory.v1\0")
+    digest.update(len(head).to_bytes(8, "big"))
+    digest.update(head)
+    for relative_bytes in relative_paths:
+        relative = pathlib.Path(os.fsdecode(relative_bytes))
+        path = (repository / relative).resolve()
+        try:
+            path.relative_to(repository)
+        except ValueError as failure:
+            raise RuntimeError("repository inventory path escaped root") from failure
+        if not path.is_file():
+            raise RuntimeError(f"repository inventory file is missing: {relative}")
+        digest.update(len(relative_bytes).to_bytes(8, "big"))
+        digest.update(relative_bytes)
+        length = path.stat().st_size
+        digest.update(length.to_bytes(8, "big"))
+        with path.open("rb") as source:
+            for chunk in iter(lambda: source.read(1024 * 1024), b""):
+                digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _validate_master_seed(value):
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, int)
+        or value < 0
+        or value > 2_147_483_647
+    ):
+        raise ValueError("master seed must be in the non-negative Int32 range")
+    return value
+
+
 def run(arguments):
     adapter_root = pathlib.Path(__file__).parent.resolve()
     arguments.repository_root = adapter_root.parents[1]
@@ -777,6 +834,16 @@ def run(arguments):
     ]["nodeCount"]:
         raise RuntimeError("complete travel snapshot bound must equal node count")
     commit_before = _git_head_commit(arguments.repository_root)
+    inventory_before = _repository_inventory_sha256(arguments.repository_root)
+    expected_inventory = getattr(
+        arguments,
+        "expected_repository_inventory_sha256",
+        None,
+    )
+    if expected_inventory is not None and inventory_before != expected_inventory:
+        raise RuntimeError(
+            "repository inventory differs from the frozen matrix source state"
+        )
     output = arguments.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
     reports = []
@@ -803,11 +870,17 @@ def run(arguments):
     # say so: diagnosing it from an opaque "repeats diverged" message cost a
     # full transcript diff once already.
     commit_after = _git_head_commit(arguments.repository_root)
+    inventory_after = _repository_inventory_sha256(arguments.repository_root)
     if commit_after != commit_before:
         raise RuntimeError(
             "core commit drifted during the matrix "
             f"({commit_before} -> {commit_after}); the source tree must stay "
             "frozen for the whole repeat matrix"
+        )
+    if inventory_after != inventory_before:
+        raise RuntimeError(
+            "repository content inventory drifted during the matrix run; "
+            "the Git-visible source tree must stay frozen"
         )
     hashes = {report["semanticHash"] for report in reports}
     if len(hashes) != 1:
@@ -818,6 +891,7 @@ def run(arguments):
         "label": arguments.label,
         "repeatCount": len(reports),
         "semanticHash": reports[0]["semanticHash"],
+        "repositoryInventorySha256": inventory_before,
         "sourceScenarioContentSha256": actual_source_hash,
         "runs": [
             {
@@ -856,9 +930,26 @@ def main():
     parser.add_argument("--driver", required=True, type=pathlib.Path)
     parser.add_argument("--output", required=True, type=pathlib.Path)
     parser.add_argument("--repeats", type=int, default=3)
+    parser.add_argument("--master-seed", type=int, default=7)
+    parser.add_argument("--expected-repository-inventory-sha256")
     arguments = parser.parse_args()
     if arguments.repeats < 1:
         parser.error("--repeats must be positive")
+    try:
+        _validate_master_seed(arguments.master_seed)
+    except ValueError as failure:
+        parser.error(f"--master-seed {failure}")
+    if (
+        arguments.expected_repository_inventory_sha256 is not None
+        and (
+            len(arguments.expected_repository_inventory_sha256) != 64
+            or any(
+                character not in "0123456789abcdef"
+                for character in arguments.expected_repository_inventory_sha256
+            )
+        )
+    ):
+        parser.error("--expected-repository-inventory-sha256 must be lowercase SHA-256")
     run(arguments)
     return 0
 

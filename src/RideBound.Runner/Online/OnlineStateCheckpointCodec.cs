@@ -571,13 +571,12 @@ public static class OnlineStateCheckpointCodec
                         "or assigned request decisions.";
                 }
 
-                var validation = validator.Validate(
-                    new PhysicalValidationContext(
-                        run,
-                        vehiclePlan.VehicleId,
-                        vehiclePlan.Route,
-                        travel,
-                        run.SimulationTime));
+                var validation = validator.ValidateWithExogenousRelief(
+                    run,
+                    vehiclePlan.VehicleId,
+                    vehiclePlan.Route,
+                    travel,
+                    run.SimulationTime);
 
                 if (!validation.IsFeasible)
                 {

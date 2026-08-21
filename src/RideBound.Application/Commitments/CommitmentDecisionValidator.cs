@@ -633,13 +633,12 @@ public sealed class CommitmentDecisionValidator
                              || value.Id == context.ScopedVehicleId)
                      .OrderBy(value => value.Id.Value, StringComparer.Ordinal))
         {
-            var validation = _physicalValidator.Validate(
-                new PhysicalValidationContext(
-                    context.ReducedState.Run,
-                    vehicle.Id,
-                    vehicle.Route,
-                    context.ReducedState.TravelTimes!,
-                    context.ReducedState.Run.SimulationTime));
+            var validation = _physicalValidator.ValidateWithExogenousRelief(
+                context.ReducedState.Run,
+                vehicle.Id,
+                vehicle.Route,
+                context.ReducedState.TravelTimes!,
+                context.ReducedState.Run.SimulationTime);
 
             if (!validation.IsFeasible)
             {

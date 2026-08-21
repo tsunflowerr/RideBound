@@ -84,13 +84,12 @@ public sealed class RollingCostPolicy
     {
         foreach (var plan in selection.VehiclePlans)
         {
-            var validation = validator.Validate(
-                new PhysicalValidationContext(
-                    state.Run,
-                    plan.VehicleId,
-                    plan.Candidate.Route,
-                    state.TravelTimes!,
-                    state.Run.SimulationTime));
+            var validation = validator.ValidateWithExogenousRelief(
+                state.Run,
+                plan.VehicleId,
+                plan.Candidate.Route,
+                state.TravelTimes!,
+                state.Run.SimulationTime);
 
             if (!validation.IsFeasible)
             {
@@ -243,14 +242,19 @@ public sealed class RollingCostPolicy
         RequestId requestId,
         IReadOnlyList<CandidatePruneWitness> pruned)
     {
-        var witness = pruned
+        var reasonCodes = pruned
             .Where(value => value.NewRequestIds.Contains(requestId))
-            .OrderBy(
-                value => value.NewRequestIds.Count == 1 ? 0 : 1)
-            .ThenBy(value => value.CandidateId, StringComparer.Ordinal)
-            .FirstOrDefault();
+            .SelectMany(
+                value => value.CommitmentWitnesses is { Count: > 0 }
+                    ? value.CommitmentWitnesses.Select(witness => witness.Code)
+                    : [value.Code])
+            .Distinct(StringComparer.Ordinal)
+            .Take(2)
+            .ToArray();
 
-        return witness?.Code ?? RollingCostReasonCodes.NoFeasibleInsertion;
+        return reasonCodes.Length == 1
+            ? reasonCodes[0]
+            : RollingCostReasonCodes.NoFeasibleInsertion;
     }
 
     private static RollingCostDecisionResult ApplyFailure(

@@ -6,7 +6,9 @@
 - Vehicle-level: VHT/VMT, occupancy.
 - Epoch-level: runtime, candidate count, reject reason.
 - Run-level: service rate và aggregates.
-- Experimental unit chính: **scenario-seed pair**, không coi từng rider phụ thuộc trong cùng run là mẫu độc lập.
+- Experimental unit chính: **scenario/demand/travel realization**. Seed chỉ điều khiển
+  tie-breaking của solver trên cùng realization nên là robustness/blocking factor,
+  không tự tạo mẫu độc lập. Không coi rider phụ thuộc trong cùng run là mẫu độc lập.
 
 ## 2. Primary outcome đề xuất
 
@@ -16,7 +18,7 @@ Quy trình:
 
 1. Với mỗi rider đã accept, cộng decision-induced pickup ETA variation qua vòng đời.
 2. Tính `p95` trong mỗi run.
-3. So paired difference giữa C1 và B1 qua các scenario-seed.
+3. So paired difference giữa C1 và B1 qua các realization đã khóa.
 
 Lý do:
 
@@ -101,7 +103,7 @@ Operational cost có thể có margin riêng hoặc report Pareto; không tự c
 
 ## 6. Paired design
 
-Với mỗi `(scenario, seed, travel realization)` chạy B1 và C1. Tính:
+Với mỗi `(scenario, demand realization, travel realization)` chạy B1 và C1. Tính:
 
 \[
 D_j = Metric_{C1,j} - Metric_{B1,j}
@@ -109,7 +111,8 @@ D_j = Metric_{C1,j} - Metric_{B1,j}
 
 Sử dụng:
 
-- paired/block bootstrap 95% CI trên experimental units;
+- paired/block bootstrap 95% CI trên experimental units khi số realization/cụm
+  độc lập đủ cho suy luận đã preregister;
 - median paired difference;
 - Wilcoxon signed-rank như sensitivity nếu phù hợp;
 - standardized/nonparametric effect size.
@@ -120,7 +123,7 @@ Không chạy unpaired test nếu có paired design.
 
 Rider cùng run phụ thuộc do chia xe/route. Hai cách:
 
-- aggregate mỗi run rồi bootstrap run/scenario block;
+- aggregate mỗi run rồi bootstrap realization/scenario block khi thiết kế cho phép;
 - hierarchical model với random effect scenario/run trong phân tích bổ sung.
 
 Không giả định hàng triệu rider là hàng triệu mẫu độc lập.
@@ -195,7 +198,13 @@ Không chọn bằng “ít nhất 90” máy móc. Sau pilot:
 - cộng dự phòng failed runs;
 - khóa danh sách scenario/seed.
 
-Số run lớn không sửa được dataset bias hoặc sai experimental unit.
+Số run hoặc solver seed lớn không sửa được dataset bias hoặc sai experimental unit.
+
+WP8 chốt một ngoại lệ minh bạch cho panel Manhattan hiện có: 5 ngày × 4 demand
+realization chỉ tạo 20 cell và 5 travel-day cluster. Exact sign-flip theo ngày có
+p-value nhỏ nhất 0,03125, nên WP9 dùng finite-panel exact estimand và không phát
+population-level CI/p-value. Muốn suy luận dân số phải thu thập thêm realization
+độc lập; không được dùng solver seed để nhân N.
 
 ## 13. Failed run
 

@@ -387,13 +387,12 @@ public sealed class MultiplePlanFleetSelector
                 return false;
             }
 
-            var validation = _validator.Validate(
-                new PhysicalValidationContext(
-                    state.Run,
-                    plan.VehicleId,
-                    plan.Candidate.Route,
-                    state.TravelTimes!,
-                    state.Run.SimulationTime));
+            var validation = _validator.ValidateWithExogenousRelief(
+                state.Run,
+                plan.VehicleId,
+                plan.Candidate.Route,
+                state.TravelTimes!,
+                state.Run.SimulationTime);
 
             if (!validation.IsFeasible)
             {

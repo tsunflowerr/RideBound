@@ -79,6 +79,7 @@ public sealed class InsertionCandidateGenerator
             .ToArray();
         var vehicleSets = new List<VehicleCandidateSet>();
         var omissions = new List<CandidateOmissionWitness>();
+        var breaches = new List<ExogenousServiceQualityBreach>();
 
         if (omittedRequests.Length > 0)
         {
@@ -112,6 +113,7 @@ public sealed class InsertionCandidateGenerator
 
             vehicleSets.Add(generated.Candidates!);
             omissions.AddRange(generated.Omissions);
+            breaches.AddRange(generated.Breaches);
         }
 
         return CandidateGenerationResult.Success(
@@ -121,7 +123,8 @@ public sealed class InsertionCandidateGenerator
                 requests.Length,
                 omittedRequests.Length,
                 vehicleSets.Select(set => set.Loss!).ToArray(),
-                omissions.AsReadOnly()));
+                omissions.AsReadOnly(),
+                breaches.AsReadOnly()));
     }
 
     private VehicleGenerationResult GenerateForVehicle(
@@ -155,6 +158,47 @@ public sealed class InsertionCandidateGenerator
                     "maximumRepairRequestsConsideredPerVehicle"));
         }
 
+        // ADR-045. Probe the unchanged active route first. Whatever it can no
+        // longer honour on the two service-quality dimensions is exogenous by
+        // construction, and the resulting relaxation is what keeps the safety
+        // no-op alive without letting any candidate hide behind the breach:
+        // the relaxed bound is exactly what doing nothing already realizes.
+        var probe = _validator.ProbeServiceQuality(
+            state.Run,
+            vehicle.Id,
+            state.TravelTimes!,
+            state.Run.SimulationTime);
+
+        if (!probe.IsSuccess)
+        {
+            return VehicleGenerationResult.Failure(
+                new CandidateGenerationWitness(
+                    CandidateGenerationFailureCodes.ActiveRouteInfeasible,
+                    "The active route violates a structural physical constraint: " +
+                    $"{probe.Witness!.Code}: {probe.Witness.Message}" +
+                    FormatPhysicalDetails(probe.Witness),
+                    vehicle.Id,
+                    probe.Witness.RequestId,
+                    probe.Witness.Dimension ?? probe.Witness.Code));
+        }
+
+        var serviceQuality = probe.Allowance;
+        var breaches = serviceQuality.Breaches
+            .Select(
+                value => new ExogenousServiceQualityBreach(
+                    vehicle.Id,
+                    value.RequestId,
+                    value.Code,
+                    value.Dimension,
+                    value.ContractualMilliseconds,
+                    value.ExogenousMilliseconds))
+            .ToArray();
+
+        var noOpCandidateId = CandidateIdentity.Create(
+            state,
+            vehicle.Id,
+            vehicle.Route,
+            []);
         EvaluateRoute(
             state,
             vehicle,
@@ -163,8 +207,27 @@ public sealed class InsertionCandidateGenerator
             isNoOp: true,
             repairedIncumbentRequestId: null,
             options,
+            serviceQuality,
             feasibleById,
             prunedById);
+
+        if (!feasibleById.TryGetValue(noOpCandidateId, out var noOp)
+            || !noOp.IsNoOp)
+        {
+            prunedById.TryGetValue(noOpCandidateId, out var prune);
+            return VehicleGenerationResult.Failure(
+                new CandidateGenerationWitness(
+                    CandidateGenerationFailureCodes.ActiveRouteInfeasible,
+                    prune is null
+                        ? "The active route could not be retained as the safety " +
+                          "no-op candidate."
+                        : "The active route could not be retained as the safety " +
+                          $"no-op candidate: {prune.Code}: {prune.Message}" +
+                          FormatPhysicalDetails(prune.PhysicalWitness),
+                    vehicle.Id,
+                    prune?.PhysicalWitness?.RequestId,
+                    prune?.PhysicalWitness?.Dimension ?? prune?.Code));
+        }
 
         var exploration = ExploreBestFirst(
             state,
@@ -172,6 +235,7 @@ public sealed class InsertionCandidateGenerator
             pendingRequests,
             repair.Seeds,
             options,
+            serviceQuality,
             feasibleById,
             prunedById);
 
@@ -267,7 +331,8 @@ public sealed class InsertionCandidateGenerator
             exploration.OmissionCountWasSaturated,
             repair.EligibleRequestIds.Count,
             repair.ConsideredRequestIds.Count,
-            repair.OmittedRequestIds.Count);
+            repair.OmittedRequestIds.Count,
+            vehicle.Id);
         var wasTruncated = requestsWereOmitted
             || loss.WorkBudgetExhausted
             || loss.CandidateCapApplied
@@ -284,8 +349,20 @@ public sealed class InsertionCandidateGenerator
                     .ToArray(),
                 wasTruncated,
                 loss),
-            omissions.AsReadOnly());
+            omissions.AsReadOnly(),
+            breaches);
     }
+
+    private static string FormatPhysicalDetails(
+        PhysicalViolationWitness? witness) =>
+        witness is null
+            ? string.Empty
+            : $" [vehicleId={witness.VehicleId.Value};" +
+              $"requestId={witness.RequestId?.Value ?? "<none>"};" +
+              $"stopId={witness.StopId?.Value ?? "<none>"};" +
+              $"dimension={witness.Dimension ?? "<none>"};" +
+              $"expected={witness.Expected?.ToString() ?? "<none>"};" +
+              $"actual={witness.Actual?.ToString() ?? "<none>"}]";
 
     private ExplorationResult ExploreBestFirst(
         OnlineState state,
@@ -293,6 +370,7 @@ public sealed class InsertionCandidateGenerator
         IReadOnlyList<RideRequest> requests,
         IReadOnlyList<WaitingIncumbentRepairSeed> repairSeeds,
         CandidateGenerationOptions options,
+        ServiceQualityAllowance serviceQuality,
         IDictionary<string, InsertionCandidate> feasibleById,
         IDictionary<string, CandidatePruneWitness> prunedById)
     {
@@ -319,7 +397,7 @@ public sealed class InsertionCandidateGenerator
 
         foreach (var root in roots)
         {
-            frontier.Enqueue(root, CreatePriority(state, vehicle, requests, root));
+            frontier.Enqueue(root, CreatePriority(state, vehicle, requests, serviceQuality, root));
         }
         var workUnits = 0L;
         var evaluatedPaths = 0L;
@@ -350,8 +428,10 @@ public sealed class InsertionCandidateGenerator
                         isNoOp: false,
                         node.RepairedIncumbentRequestId,
                         options,
+                        serviceQuality,
                         feasibleById,
-                        prunedById);
+                        prunedById,
+                        node.SlackLookup);
                 }
 
                 continue;
@@ -361,7 +441,7 @@ public sealed class InsertionCandidateGenerator
                 .Select(
                     child => new PrioritizedNode(
                         child,
-                        CreatePriority(state, vehicle, requests, child)))
+                        CreatePriority(state, vehicle, requests, serviceQuality, child)))
                 .ToList();
             children.Sort(
                 (left, right) => SearchPriorityComparer.Instance.Compare(
@@ -493,18 +573,12 @@ public sealed class InsertionCandidateGenerator
         OnlineState state,
         VehicleState vehicle,
         IReadOnlyList<RideRequest> requests,
+        ServiceQualityAllowance serviceQuality,
         ExplorationNode node)
     {
         var remaining = requests.Count - node.RequestIndex;
         var potentialAccepted = node.InsertedRequestIds.Count + remaining;
-        var mandatoryService = 0L;
-
-        foreach (var stop in node.Suffix)
-        {
-            mandatoryService = SaturatingAdd(
-                mandatoryService,
-                stop.ServiceDuration.Milliseconds);
-        }
+        var mandatoryService = node.MandatoryServiceMilliseconds;
 
         // The ordinary root is the current route, but a B4 repair root already
         // carries a different mutable suffix. Ranking that root by the current
@@ -525,7 +599,9 @@ public sealed class InsertionCandidateGenerator
                 vehicle,
                 route,
                 state.TravelTimes!,
-                state.Run.SimulationTime);
+                state.Run.SimulationTime,
+                serviceQuality);
+            node.SetSlackLookup(profile);
 
             if (profile.Result.IsSuccess)
             {
@@ -629,8 +705,10 @@ public sealed class InsertionCandidateGenerator
         bool isNoOp,
         RequestId? repairedIncumbentRequestId,
         CandidateGenerationOptions options,
+        ServiceQualityAllowance serviceQuality,
         IDictionary<string, InsertionCandidate> feasibleById,
-        IDictionary<string, CandidatePruneWitness> prunedById)
+        IDictionary<string, CandidatePruneWitness> prunedById,
+        ForwardSlackCacheLookup? prefetchedProfile = null)
     {
         var orderedRequests = insertedRequestIds
             .OrderBy(value => value.Value, StringComparer.Ordinal)
@@ -653,7 +731,8 @@ public sealed class InsertionCandidateGenerator
                 vehicle.Id,
                 route,
                 state.TravelTimes!,
-                state.Run.SimulationTime));
+                state.Run.SimulationTime,
+                serviceQuality));
 
         if (!validation.IsFeasible)
         {
@@ -669,12 +748,27 @@ public sealed class InsertionCandidateGenerator
             return;
         }
 
-        var profileLookup = _slackCache.GetOrBuild(
-            state,
-            vehicle,
-            route,
-            state.TravelTimes!,
-            state.Run.SimulationTime);
+        if (prefetchedProfile is not null
+            && !prefetchedProfile.Key.Equals(
+                ForwardSlackCacheKey.Create(
+                    state,
+                    vehicle,
+                    route,
+                    state.TravelTimes!,
+                    state.Run.SimulationTime,
+                    serviceQuality)))
+        {
+            throw new InvalidOperationException(
+                "A prefetched slack profile must match the exact candidate state and route.");
+        }
+
+        var profileLookup = prefetchedProfile ?? _slackCache.GetOrBuild(
+                state,
+                vehicle,
+                route,
+                state.TravelTimes!,
+                state.Run.SimulationTime,
+                serviceQuality);
 
         if (!profileLookup.Result.IsSuccess)
         {
@@ -718,7 +812,8 @@ public sealed class InsertionCandidateGenerator
                         vehicle.Id,
                         transformed.Route,
                         state.TravelTimes!,
-                        state.Run.SimulationTime));
+                        state.Run.SimulationTime,
+                        serviceQuality));
 
                 if (!transformedValidation.IsFeasible)
                 {
@@ -739,7 +834,8 @@ public sealed class InsertionCandidateGenerator
                     vehicle,
                     transformed.Route,
                     state.TravelTimes!,
-                    state.Run.SimulationTime);
+                    state.Run.SimulationTime,
+                    serviceQuality);
 
                 if (!transformedProfile.Result.IsSuccess
                     || !HasExactServiceEquivalence(
@@ -826,6 +922,7 @@ public sealed class InsertionCandidateGenerator
     {
         private string? _stableId;
         private DomainResult<RoutePlan>? _projection;
+        private long? _mandatoryServiceMilliseconds;
 
         public int RequestIndex { get; } = requestIndex;
 
@@ -837,6 +934,15 @@ public sealed class InsertionCandidateGenerator
         public RequestId? RepairedIncumbentRequestId { get; } =
             repairedIncumbentRequestId;
 
+        public ForwardSlackCacheLookup? SlackLookup { get; private set; }
+
+        public long MandatoryServiceMilliseconds =>
+            _mandatoryServiceMilliseconds ??= Suffix.Aggregate(
+                0L,
+                (total, stop) => SaturatingAdd(
+                    total,
+                    stop.ServiceDuration.Milliseconds));
+
         public string StableId => _stableId ??= $"{RequestIndex:D8}:" +
             CandidateIdentity.CreateSearchNodeDigest(
                 Suffix.Select(stop => stop.StopId.Value)
@@ -846,6 +952,19 @@ public sealed class InsertionCandidateGenerator
 
         public DomainResult<RoutePlan> Project(VehicleState vehicle) =>
             _projection ??= vehicle.Route.ReplaceMutableSuffix(Suffix);
+
+        public void SetSlackLookup(ForwardSlackCacheLookup lookup)
+        {
+            ArgumentNullException.ThrowIfNull(lookup);
+
+            if (SlackLookup is not null && SlackLookup != lookup)
+            {
+                throw new InvalidOperationException(
+                    "A search node cannot be ranked against two slack profiles.");
+            }
+
+            SlackLookup = lookup;
+        }
     }
 
     private sealed record PrioritizedNode(
@@ -921,15 +1040,17 @@ public sealed class InsertionCandidateGenerator
     private sealed record VehicleGenerationResult(
         VehicleCandidateSet? Candidates,
         IReadOnlyList<CandidateOmissionWitness> Omissions,
-        CandidateGenerationWitness? Witness)
+        CandidateGenerationWitness? Witness,
+        IReadOnlyList<ExogenousServiceQualityBreach> Breaches)
     {
         public static VehicleGenerationResult Success(
             VehicleCandidateSet candidates,
-            IReadOnlyList<CandidateOmissionWitness> omissions) =>
-            new(candidates, omissions, null);
+            IReadOnlyList<CandidateOmissionWitness> omissions,
+            IReadOnlyList<ExogenousServiceQualityBreach> breaches) =>
+            new(candidates, omissions, null, breaches);
 
         public static VehicleGenerationResult Failure(
             CandidateGenerationWitness witness) =>
-            new(null, [], witness);
+            new(null, [], witness, []);
     }
 }

@@ -1,3 +1,4 @@
+using RideBound.Application.Commitments;
 using RideBound.Domain.Common;
 using RideBound.Domain.Routes;
 using RideBound.Domain.Validation;
@@ -45,7 +46,8 @@ public sealed record CandidatePruneWitness(
     IReadOnlyList<RequestId> NewRequestIds,
     string Code,
     string Message,
-    PhysicalViolationWitness? PhysicalWitness = null);
+    PhysicalViolationWitness? PhysicalWitness = null,
+    IReadOnlyList<CommitmentValidationWitness>? CommitmentWitnesses = null);
 
 public sealed record VehicleCandidateSet(
     VehicleId VehicleId,
@@ -76,15 +78,38 @@ public sealed record VehicleCandidateLoss(
     bool OmissionCountWasSaturated = false,
     long EligibleRepairRequestCount = 0,
     long ConsideredRepairRequestCount = 0,
-    long OmittedRepairRequestCount = 0);
+    long OmittedRepairRequestCount = 0,
+    VehicleId? VehicleId = null);
+
+/// <summary>
+/// A service-quality deadline the vehicle's unchanged active route can no longer
+/// meet under the current travel snapshot (ADR-045). It is attributed to traffic,
+/// not to the decision about to be taken, and it never removes the safety no-op.
+/// <see cref="ExogenousMilliseconds"/> doubles as the anti-laundering bound: no
+/// candidate in this epoch may be worse than it on this dimension.
+/// </summary>
+public sealed record ExogenousServiceQualityBreach(
+    VehicleId VehicleId,
+    RequestId RequestId,
+    string Code,
+    string Dimension,
+    long ContractualMilliseconds,
+    long ExogenousMilliseconds);
 
 public sealed record CandidateGenerationDiagnostics(
     long TotalPendingRequestCount,
     long ConsideredRequestCount,
     long OmittedRequestCount,
     IReadOnlyList<VehicleCandidateLoss> VehicleLosses,
-    IReadOnlyList<CandidateOmissionWitness> Omissions)
+    IReadOnlyList<CandidateOmissionWitness> Omissions,
+    /// <summary>
+    /// Exogenous service-quality breaches observed this epoch, ordered by
+    /// vehicle, then request, then dimension. These are diagnostic: they never
+    /// prune a candidate and never fail the epoch.
+    /// </summary>
+    IReadOnlyList<ExogenousServiceQualityBreach> ExogenousServiceQualityBreaches)
 {
+
     public bool IsComplete => OmittedRequestCount == 0
         && VehicleLosses.All(
             loss => loss.OmittedUnexpandedCandidatePathCount == 0
@@ -224,6 +249,7 @@ public sealed record CandidateGenerationOptions
 
 public static class CandidateGenerationFailureCodes
 {
+    public const string ActiveRouteInfeasible = "ACTIVE_ROUTE_INFEASIBLE";
     public const string TravelSnapshotRequired = "TRAVEL_SNAPSHOT_REQUIRED";
     public const string ExactSmallRequestBoundExceeded =
         "EXACT_SMALL_REQUEST_BOUND_EXCEEDED";

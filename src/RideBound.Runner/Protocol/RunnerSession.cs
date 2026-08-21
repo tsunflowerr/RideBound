@@ -1032,13 +1032,17 @@ public sealed class RunnerSession
                 SolverStatus.Completed,
             _ => SolverStatus.NotRun,
         };
+        var solverExecutionEvidence =
+            _wp4Configuration?.EmitSolverExecutionEvidence == true
+                ? SolverExecutionEvidenceMapper.Map(decision.Decision)
+                : null;
         return OnlineDecisionBuildResult.Success(
             OnlineStateCanonicalizer.CalculateHash(
                 stateToStage),
             reasonCode,
             actions,
             certificate,
-            new SolverStatusShell(solverStatus));
+            new SolverStatusShell(solverStatus, solverExecutionEvidence));
     }
 
     private RunnerSessionResult PayloadError(

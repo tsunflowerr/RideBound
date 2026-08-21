@@ -427,3 +427,55 @@ không có gì được áp dụng, và lý do là kỷ luật chứ không ph�
 toàn bộ frontier; thuật toán sẽ phải refine lần lượt tất cả rồi mới pop được node
 đầu tiên, tức là tính đúng bằng số slack như cũ cộng thêm chi phí xáo heap. Ghi lại ở
 đây để lần sau không ai đề xuất lại mà không kèm cận dưới chặt hơn.
+
+## 23. Consistency–cost trade-off là prior art — tra cứu cho WP8, 2026-08-19
+
+Pilot WP8 cho thấy C1 là *có ràng buộc* so với B1 *không ràng buộc*, nên câu hỏi đúng là
+cái giá của ràng buộc chứ không phải ai thắng. Tra cứu cho thấy đây là một dòng nghiên
+cứu đã có tên và đã có kết quả.
+
+| Nguồn | Điều rút ra | Áp dụng / không áp dụng |
+|---|---|---|
+| *A multi-period dial-a-ride problem with driver consistency* (DC-DARP), Transportation Research Part B | Giới hạn số tài xế khác nhau phục vụ một khách qua nhiều kỳ; khách nhạy cảm với thay đổi trong thói quen, gồm cả người lái | Tương tự `vehicle_switch_count`. Đây là **prior art**: RideBound không được claim ý tưởng "giới hạn thay đổi để giữ ổn định" là mới; khác biệt của RideBound phải nằm ở intra-trip, path-dependent revision ledger như `docs/03` đã khoá |
+| Cùng nguồn | Báo cáo rằng phục vụ bằng **2 tài xế** là compromise tốt giữa consistency và cost | Điểm vận hành tốt nằm ở **mức trung gian**, không phải mức chặt nhất. Cấu hình C1 hiện tại đặt cả ba hard limit ở `0` — tức cực đoan nhất — và pilot cho thấy đúng là nó trả giá bằng dịch vụ |
+| *On service consistency in multi-period vehicle routing*, EJOR | Kế hoạch nhất quán cho **mọi** khách thường quá đắt; phải tìm compromise giữa cost và consistency | Xác nhận rằng cách trình bày hợp lệ là **đường đánh đổi**, không phải một con số thắng thua. Đúng với `revision-service Pareto curve` mà `docs/11` §15 đã yêu cầu |
+
+Giới hạn đọc nguồn: cả ba đều paywall tại ngày kiểm tra, nên chỉ dùng ở mức
+abstract/metadata. Không dòng code nào được viết dựa trên nội dung chưa đọc được; kết
+luận rút ra ở đây là về **cách thiết kế và trình bày thí nghiệm**, không phải về thuật
+toán.
+
+Hệ quả cho WP8: `RB-WP8-008` phải chạy ít nhất ba mức strictness và báo cáo frontier.
+Chọn sẵn mức chặt nhất rồi báo cáo một con số là vừa sai phương pháp vừa mâu thuẫn với
+kinh nghiệm đã công bố của chính dòng nghiên cứu này.
+
+## 24. Full-PDF recheck và optimization boundary trước WP9 — 2026-08-21
+
+Mục này supersede giới hạn đọc ở §22 dòng 382–385: full text đã được thu thập và
+đọc từ PDF, không còn dựa trên title/abstract. File được giữ ngoài repo có chủ đích
+tại `E:\RideBoundData\research\pdf-20260820`; hash dưới đây làm provenance:
+
+| PDF đã đọc | Trang | SHA-256 | Kết luận áp dụng |
+|---|---:|---|---|
+| Alonso-Mora et al. 2017, main | 6 | `edbb62156e36479b742a1a7381e5920673a4b6a3130bba39aed74cb8364c12ea` | Giữ separation request/trip/vehicle/assignment và bounded feasible set; không copy reassignment |
+| Alonso-Mora et al. 2017, supplement | 32 | `0d7e37aba541035bdbc60da0eb35e81a63859eb96850a28d9a8fba116760ddd5` | Xác nhận feasibility/assignment phụ thuộc exact state; reuse chỉ hợp lệ khi key bind toàn route/state |
+| Gschwind & Drexl 2019 | 39 | `16b82b489c6ae925581bebd00223d4aa8bce7541f1b561b2bd2320529ad18e61` | Constant-time insertion dùng preprocessing/slack exact trong model của paper; không chuyển nguyên xi qua capacity/frozen-prefix/commitment validator |
+| Simonetto, Monteil & Gambella 2019 | 30 | `9f5e31a8d69a63b1286fbe55577d07a8449585356aa6802df9fb734d75ae3868` | Sparse/batched linear assignment là hướng scale, nhưng đổi batching/candidate pool nên không dùng trước confirmatory |
+| Engelhardt, Dandl & Bogenberger 2020 | 11 | `5b3d20b26e701da7837a149eb2953e1a828d0bf4fab780dbe5a50eb6defd01ed` | Direction/distance/random filters có runtime–quality trade-off; không đưa vào comparator khi chưa có loss bound |
+| Zalesak, Hu & Samaranayake 2025 | 23 | `744193567e9033de631bc63604530239955d70575ddb8614b7d75fcf078ba086` | Route stability và exact/heuristic generation là các mechanism tách biệt; không coi stability là novelty RideBound |
+| Schulz & Pfeiffer 2026 | 46 | `9a4d4997cdecc7242521ff733f8d474b6b57dc1856ce261734b7923b25a8c8d7` | Reoptimization/insertion cho thấy state reuse cần explicit invalidation; chỉ dùng như kiểm tra boundary, không nhập thuật toán chưa benchmark |
+
+### Thay đổi code thực sự từ full-text audit
+
+Không có heuristic prune mới. Candidate hot path chỉ bỏ công việc exact bị lặp:
+
+- schedule/slack lookup tái sử dụng kết quả khi **cùng state và cùng route key cấu
+  trúc**, không dựa hash có thể va chạm;
+- stable identity được lazy-cache nhưng input framing/output không đổi;
+- full physical/commitment validator vẫn chạy, candidate cap/loss diagnostics và
+  solver pool không đổi giữa B1/C1.
+
+Work-profile exact counters giữ nguyên; ba process measurement giảm khoảng 20–23%
+wall/process time ở fixture đo. Đây là local engineering result, không phải claim
+speed-up `3,8×` của Gschwind–Drexl, không phải SLA, và không suy quality preservation
+ra workload khác ngoài exact differential đã chạy.

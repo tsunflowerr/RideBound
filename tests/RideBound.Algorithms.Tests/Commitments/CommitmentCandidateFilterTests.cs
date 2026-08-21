@@ -41,10 +41,12 @@ public sealed class CommitmentCandidateFilterTests
 
         var set = Assert.Single(filtered);
         Assert.Single(set.Candidates, value => value.IsNoOp);
-        Assert.Contains(
+        var prune = Assert.Single(
             set.PrunedCandidates,
             value => value.NewRequestIds.Contains(request.Id)
                 && value.Code == "COMMITMENT_POLICY_NOT_FOUND");
+        var commitmentWitness = Assert.Single(prune.CommitmentWitnesses!);
+        Assert.Equal("COMMITMENT_POLICY_NOT_FOUND", commitmentWitness.Code);
     }
 
     private sealed class NoDistances : IStopDistanceLookup

@@ -140,6 +140,7 @@ public sealed class Wp4RunnerIntegrationTests
 
         Assert.True(first.IsSuccess, first.Error?.Message);
         Assert.Equal(SolverStatus.Completed, first.Value!.Solver.Status);
+        Assert.Null(first.Value.Solver.ExecutionEvidence);
         Assert.Equal(CertificateStatus.Produced, first.Value.Certificate.Status);
         Assert.Contains(
             first.Value.Actions,
@@ -160,6 +161,54 @@ public sealed class Wp4RunnerIntegrationTests
         Assert.Null(applied.Response);
         Assert.Equal(1, setup.Session.AppliedEpoch);
         Assert.Single(setup.Session.CommittedOnlineState!.Commitments.Histories);
+    }
+
+    [Fact]
+    public void Audited_solver_evidence_is_hash_bound_complete_and_excludes_wall_time()
+    {
+        var commitment = CommitmentConfiguration();
+        var wp4 = PublishedWp4Configuration(
+            commitment,
+            emitSolverExecutionEvidence: true);
+        var setup = CreateSession(wp4, commitmentConfiguration: commitment);
+        var response = setup.Session.Process(
+            ReadFixture("wp2/valid-bootstrap-event-batch.json")).Response!;
+        var decision = DecisionPayloadCodec.Decode(response.Payload);
+
+        Assert.True(decision.IsSuccess, decision.Error?.Message);
+        var evidence = decision.Value!.Solver.ExecutionEvidence;
+        Assert.NotNull(evidence);
+        Assert.Equal(
+            "1.0.0",
+            evidence.Value.GetProperty("evidenceVersion").GetString());
+        var generation = evidence.Value.GetProperty("generation");
+        Assert.True(generation.GetProperty("totalPendingRequestCount").GetInt64() > 0);
+        Assert.All(
+            generation.GetProperty("vehicleLosses").EnumerateArray(),
+            loss => Assert.False(string.IsNullOrEmpty(
+                loss.GetProperty("vehicleId").GetString())));
+        var selection = evidence.Value.GetProperty("selection");
+        Assert.Equal("optimal", selection.GetProperty("primarySolveStatus").GetString());
+        Assert.Equal("optimal", selection.GetProperty("finalSolveStatus").GetString());
+        Assert.Equal(
+            "validatedIncumbent",
+            selection.GetProperty("executionPath").GetString());
+        Assert.NotEmpty(
+            selection.GetProperty("finalSolverDiagnostics")
+                .GetProperty("objectiveBounds")
+                .EnumerateArray());
+        Assert.DoesNotContain(
+            "wallTime",
+            evidence.Value.GetRawText(),
+            StringComparison.OrdinalIgnoreCase);
+
+        var encoded = DecisionPayloadCodec.Encode(decision.Value);
+        using var encodedDocument = JsonDocument.Parse(encoded);
+        var roundTrip = DecisionPayloadCodec.Decode(encodedDocument.RootElement);
+        Assert.True(roundTrip.IsSuccess, roundTrip.Error?.Message);
+        Assert.Equal(
+            evidence.Value.GetRawText(),
+            roundTrip.Value!.Solver.ExecutionEvidence!.Value.GetRawText());
     }
 
     [Fact]
@@ -468,15 +517,27 @@ public sealed class Wp4RunnerIntegrationTests
     }
 
     private static Wp4RunnerConfiguration PublishedWp4Configuration(
-        CommitmentPolicyConfiguration? commitmentConfiguration = null)
+        CommitmentPolicyConfiguration? commitmentConfiguration = null,
+        bool emitSolverExecutionEvidence = false)
     {
         var commitment = commitmentConfiguration ?? CommitmentConfiguration();
+        var json = File.ReadAllText(Path.Combine(
+            RepositoryRoot(),
+            "benchmarks",
+            "configurations",
+            "wp4-rolling-cost-boundary-v1.json"));
+
+        if (emitSolverExecutionEvidence)
+        {
+            json = json.Replace(
+                "\"policyVersion\": \"wp4-boundary-v1\"",
+                "\"policyVersion\": \"wp4-boundary-v1\",\n  " +
+                "\"emitSolverExecutionEvidence\": true",
+                StringComparison.Ordinal);
+        }
+
         return Wp4RunnerConfiguration.Decode(
-            File.ReadAllBytes(Path.Combine(
-                RepositoryRoot(),
-                "benchmarks",
-                "configurations",
-                "wp4-rolling-cost-boundary-v1.json")),
+            Encoding.UTF8.GetBytes(json),
             commitment);
     }
 

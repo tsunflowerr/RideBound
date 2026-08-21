@@ -514,6 +514,73 @@ public sealed class ExactSmallCommitmentDifferentialTests
     }
 
     [Fact]
+    public void An_exhausted_budget_prunes_disturbing_candidates_but_retains_zero_delta_options()
+    {
+        // The gate-level safety property that makes a finite commitment budget
+        // usable: the no-op
+        // carries a zero decision delta for everyone, so `after == before` and
+        // it can never be pruned by the budget gate. Without this invariant a
+        // tight budget could remove the safety option and take the assessor down
+        // through C1_VEHICLE_HAS_NO_FEASIBLE_CANDIDATE.
+        var fixture = CreateState(seed: 3);
+        var generated = new InsertionCandidateGenerator().Generate(
+            fixture.State,
+            CandidateGenerationOptions.ExactSmall);
+        Assert.True(generated.IsSuccess, generated.Witness?.Message);
+        Assert.True(
+            generated.VehicleCandidates!.Single().Candidates.Count > 1,
+            "The fixture must offer more than the no-op for this to prove anything.");
+
+        // One millisecond of cumulative drop-ETA drift: anything that touches a
+        // live promise is out.
+        var exhausted = new CommitmentMechanismContext(
+            fixture.BeforeEventState,
+            fixture.State,
+            new CommitmentPolicyCatalog([EtaPolicy(1)]),
+            NoDistances.Instance,
+            "c1-exhausted-budget",
+            1);
+
+        var assessed = new HardVectorCandidateAssessor().AssessAndFilter(
+            exhausted,
+            generated.VehicleCandidates!);
+
+        Assert.True(assessed.IsSuccess, assessed.Witness?.Message);
+        var retained = assessed.Batch!.FeasibleCandidateSets.Single().Candidates;
+
+        // The budget bites: some plan that disturbed a live promise was removed.
+        Assert.True(
+            retained.Count < generated.VehicleCandidates!.Single().Candidates.Count,
+            "A one-millisecond budget must prune at least one disturbing plan.");
+
+        // But the vehicle always keeps a legal option. This test stops at the
+        // assessor boundary; it deliberately makes no claim about the later
+        // fleet-selection action (accept, defer or reject).
+        Assert.Contains(retained, candidate => candidate.IsNoOp);
+        var commitmentPrunes = assessed.Batch.FeasibleCandidateSets.Single()
+            .PrunedCandidates
+            .Where(value => value.CommitmentWitnesses is { Count: > 0 })
+            .ToArray();
+        Assert.NotEmpty(commitmentPrunes);
+        Assert.All(
+            commitmentPrunes,
+            value => Assert.All(
+                value.CommitmentWitnesses!,
+                witness => Assert.False(string.IsNullOrWhiteSpace(witness.Code))));
+
+        // Serving a newcomer is not itself a budget cost. A plan that seats one
+        // without delaying anybody's promised drop-off stays legal at any
+        // budget. Whether such an option is selected is tested at the policy
+        // boundary elsewhere.
+        Assert.All(
+            retained,
+            candidate => Assert.Equal(
+                0,
+                assessed.Batch.Assessments[candidate.CandidateId]
+                    .DecisionInducedRevision.DropEtaTotalMs));
+    }
+
+    [Fact]
     public void C1_fails_closed_with_a_typed_witness_when_a_vehicle_loses_every_candidate()
     {
         // A configuration whose policy catalog does not declare the policy the

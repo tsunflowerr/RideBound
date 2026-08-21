@@ -37,7 +37,9 @@ public sealed record CertificateShell(
     string ReasonCode,
     CommitmentCertificateBody? Body = null);
 
-public sealed record SolverStatusShell(SolverStatus Status);
+public sealed record SolverStatusShell(
+    SolverStatus Status,
+    JsonElement? ExecutionEvidence = null);
 
 public sealed record DecisionPayload(
     DecisionProductionStatus Status,
@@ -155,6 +157,16 @@ public static class DecisionPayloadCodec
         new HashSet<string>(StringComparer.Ordinal)
         {
             "status",
+            "executionEvidence",
+        };
+
+    private static readonly IReadOnlySet<string> SolverEvidenceFields =
+        new HashSet<string>(StringComparer.Ordinal)
+        {
+            "evidenceVersion",
+            "generation",
+            "prunedCandidates",
+            "selection",
         };
 
     public static ProtocolPayloadDecodeResult<DecisionPayload> Decode(
@@ -398,6 +410,12 @@ public static class DecisionPayloadCodec
                 writer.WriteString(
                     "status",
                     ToProtocolValue(payload.Solver.Status));
+
+                if (payload.Solver.ExecutionEvidence is { } executionEvidence)
+                {
+                    writer.WritePropertyName("executionEvidence");
+                    executionEvidence.WriteTo(writer);
+                }
                 writer.WriteEndObject();
                 writer.WriteString(
                     "stateBeforeHash",
@@ -466,6 +484,16 @@ public static class DecisionPayloadCodec
         ArgumentNullException.ThrowIfNull(payload.Certificate);
         ArgumentNullException.ThrowIfNull(payload.Solver);
 
+        if (payload.Solver.ExecutionEvidence is { } executionEvidence)
+        {
+            var evidenceError = ValidateSolverExecutionEvidence(executionEvidence);
+
+            if (evidenceError is not null)
+            {
+                throw new ArgumentException(evidenceError.Message, nameof(payload));
+            }
+        }
+
         if (!DecisionReasonCodes.All.Contains(
                 payload.ReasonCode,
                 StringComparer.Ordinal)
@@ -529,7 +557,8 @@ public static class DecisionPayloadCodec
         if (status == DecisionProductionStatus.NotProduced
             && (actions.Count != 0
                 || certificate.Status != CertificateStatus.NotProduced
-                || solver.Status != SolverStatus.NotRun))
+                || solver.Status != SolverStatus.NotRun
+                || solver.ExecutionEvidence is not null))
         {
             return new ProtocolPayloadError(
                 ProtocolPayloadErrorCode.InvalidValue,
@@ -706,8 +735,78 @@ public static class DecisionPayloadCodec
                     "Unknown solver status."));
         }
 
+        JsonElement? executionEvidence = null;
+
+        if (element.TryGetProperty("executionEvidence", out var evidenceElement))
+        {
+            var evidenceError = ValidateSolverExecutionEvidence(evidenceElement);
+
+            if (evidenceError is not null)
+            {
+                return ProtocolPayloadDecodeResult<SolverStatusShell>.Failure(
+                    evidenceError);
+            }
+
+            executionEvidence = evidenceElement.Clone();
+        }
+
         return ProtocolPayloadDecodeResult<SolverStatusShell>.Success(
-            new SolverStatusShell(status));
+            new SolverStatusShell(status, executionEvidence));
+    }
+
+    private static ProtocolPayloadError? ValidateSolverExecutionEvidence(
+        JsonElement evidence)
+    {
+        const string path = "$.payload.solver.executionEvidence";
+        var objectError = ProtocolPayloadReader.ValidateObject(
+            evidence,
+            path,
+            SolverEvidenceFields);
+
+        if (objectError is not null)
+        {
+            return objectError;
+        }
+
+        var version = ProtocolPayloadReader.ReadRequiredString(
+            evidence,
+            path,
+            "evidenceVersion");
+        var generation = ProtocolPayloadReader.ReadRequiredProperty(
+            evidence,
+            path,
+            "generation");
+        var pruned = ProtocolPayloadReader.ReadRequiredProperty(
+            evidence,
+            path,
+            "prunedCandidates");
+        var selection = ProtocolPayloadReader.ReadRequiredProperty(
+            evidence,
+            path,
+            "selection");
+        var error = HelloPayloadCodec.FirstError(
+            version.Error,
+            generation.Error,
+            pruned.Error,
+            selection.Error);
+
+        if (error is not null)
+        {
+            return error;
+        }
+
+        if (version.Value != "1.0.0"
+            || generation.Value.ValueKind != JsonValueKind.Object
+            || pruned.Value.ValueKind != JsonValueKind.Array
+            || selection.Value.ValueKind != JsonValueKind.Object)
+        {
+            return new ProtocolPayloadError(
+                ProtocolPayloadErrorCode.InvalidValue,
+                path,
+                "Solver execution evidence must use version 1.0.0 and the canonical generation/prune/selection shapes.");
+        }
+
+        return null;
     }
 
     private static bool TryReadHash(string? value, out Sha256Hex? hash) =>

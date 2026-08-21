@@ -12,6 +12,11 @@ import re
 
 
 _HASH = re.compile(r"^[0-9a-f]{64}$")
+_ZERO_HASH = "0" * 64
+_GENERATED_ACTION_FIELDS = {
+    "candidateId",
+    "publicationId",
+}
 _RECORD_FIELDS = {
     "schemaVersion",
     "ordinal",
@@ -52,6 +57,402 @@ def _canonical(value):
         separators=(",", ":"),
         allow_nan=False,
     ).encode("utf-8")
+
+
+def _framed_hash(domain, tag, value):
+    tag_bytes = tag.encode("utf-8")
+    if len(tag_bytes) > 65535:
+        raise ValueError("hash frame tag is too long")
+    digest = hashlib.sha256()
+    digest.update(domain)
+    digest.update(len(tag_bytes).to_bytes(2, "big"))
+    digest.update(tag_bytes)
+    digest.update(len(value).to_bytes(8, "big"))
+    digest.update(value)
+    return digest.hexdigest()
+
+
+def _manifest_hash(manifest):
+    if not isinstance(manifest, dict):
+        raise RuntimeError("manifest is not an object")
+    conversions = manifest.get("sourceUnitConversions")
+    selection = manifest.get("capabilitySelection")
+    if (
+        not isinstance(conversions, list)
+        or any(not isinstance(item, dict) for item in conversions)
+        or not isinstance(selection, dict)
+        or not isinstance(selection.get("capabilities"), list)
+        or any(
+            not isinstance(capability, str)
+            for capability in selection["capabilities"]
+        )
+    ):
+        raise RuntimeError("manifest normalized fields are invalid")
+    normalized = dict(manifest)
+    normalized["sourceUnitConversions"] = sorted(
+        conversions,
+        key=lambda item: item.get("quantity", ""),
+    )
+    normalized_selection = dict(selection)
+    normalized_selection["capabilities"] = sorted(
+        set(selection["capabilities"])
+    )
+    normalized["capabilitySelection"] = normalized_selection
+    return _framed_hash(
+        b"RideBound.ManifestHash.v1\0",
+        "canonicalManifest",
+        _canonical(normalized),
+    )
+
+
+def _checkpoint_hash(content):
+    return _framed_hash(
+        b"RideBound.CheckpointHash.v1\0",
+        "canonicalCheckpointContent",
+        _canonical(content),
+    )
+
+
+def _semantic_hash(semantic):
+    return hashlib.sha256(
+        b"RideBound.Wp7ActualFleetPyMedium.v1\0" + _canonical(semantic)
+    ).hexdigest()
+
+
+def _without_generated_action_fields(value):
+    if isinstance(value, dict):
+        return {
+            key: _without_generated_action_fields(child)
+            for key, child in value.items()
+            if key not in _GENERATED_ACTION_FIELDS
+        }
+    if isinstance(value, list):
+        return [_without_generated_action_fields(child) for child in value]
+    return value
+
+
+def _behavioral_projection_hash(decisions):
+    return _framed_hash(
+        b"RideBound.FleetPyBehavioralProjection.v1\0",
+        "canonicalBehavioralProjection",
+        _canonical(decisions),
+    )
+
+
+def _require_unique_strings(values, field):
+    if (
+        not isinstance(values, list)
+        or any(not isinstance(value, str) or not value for value in values)
+        or len(values) != len(set(values))
+    ):
+        raise RuntimeError(f"{field} must contain unique non-empty strings")
+    return set(values)
+
+
+def _require_fields(value, field, required, optional=()):
+    if not isinstance(value, dict):
+        raise RuntimeError(f"{field} must be an object")
+    actual = set(value)
+    required = set(required)
+    allowed = required | set(optional)
+    if not required <= actual or not actual <= allowed:
+        raise RuntimeError(
+            f"{field} fields differ: missing={sorted(required-actual)!r}; "
+            f"extra={sorted(actual-allowed)!r}"
+        )
+    return value
+
+
+def _nonnegative_integer(value, field):
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise RuntimeError(f"{field} must be a non-negative integer")
+    return value
+
+
+def _optional_hash(value, field):
+    if value is not None and (
+        not isinstance(value, str) or _HASH.fullmatch(value) is None
+    ):
+        raise RuntimeError(f"{field} must be a lowercase SHA-256")
+
+
+def _verify_audited_solver_evidence(solver, epoch):
+    field = f"epoch {epoch} solver evidence"
+    if solver.get("status") != "completed":
+        raise RuntimeError(f"{field}: solver shell is not completed")
+    evidence = _require_fields(
+        solver.get("executionEvidence"),
+        field,
+        {"evidenceVersion", "generation", "prunedCandidates", "selection"},
+    )
+    if evidence["evidenceVersion"] != "1.0.0":
+        raise RuntimeError(f"{field}: unknown evidence version")
+    generation = _require_fields(
+        evidence["generation"],
+        f"{field}.generation",
+        {
+            "totalPendingRequestCount",
+            "consideredRequestCount",
+            "omittedRequestCount",
+            "vehicleLosses",
+            "omissions",
+        },
+    )
+    for name in (
+        "totalPendingRequestCount",
+        "consideredRequestCount",
+        "omittedRequestCount",
+    ):
+        _nonnegative_integer(generation[name], f"{field}.generation.{name}")
+    if (
+        generation["consideredRequestCount"]
+        + generation["omittedRequestCount"]
+        != generation["totalPendingRequestCount"]
+    ):
+        raise RuntimeError(f"{field}: request generation accounting differs")
+    losses = generation["vehicleLosses"]
+    omissions = generation["omissions"]
+    if not isinstance(losses, list) or not isinstance(omissions, list):
+        raise RuntimeError(f"{field}: generation evidence arrays are invalid")
+    loss_fields = {
+        "vehicleId",
+        "explorationWorkUnits",
+        "evaluatedCandidatePathCount",
+        "uniqueFeasibleCandidateCountBeforeCap",
+        "retainedCandidateCount",
+        "physicallyOrSchedulePrunedCount",
+        "omittedUnexpandedCandidatePathCount",
+        "omittedFeasibleCandidateCountByCap",
+        "workBudgetExhausted",
+        "candidateCapApplied",
+        "omissionCountWasSaturated",
+        "eligibleRepairRequestCount",
+        "consideredRepairRequestCount",
+        "omittedRepairRequestCount",
+    }
+    vehicle_ids = set()
+    generation_work = 0
+    for index, loss in enumerate(losses):
+        loss_field = f"{field}.generation.vehicleLosses[{index}]"
+        _require_fields(loss, loss_field, loss_fields)
+        vehicle_id = loss["vehicleId"]
+        if (
+            not isinstance(vehicle_id, str)
+            or not vehicle_id
+            or vehicle_id in vehicle_ids
+        ):
+            raise RuntimeError(f"{loss_field}.vehicleId is invalid/duplicate")
+        vehicle_ids.add(vehicle_id)
+        for name in loss_fields - {
+            "vehicleId",
+            "workBudgetExhausted",
+            "candidateCapApplied",
+            "omissionCountWasSaturated",
+        }:
+            _nonnegative_integer(loss[name], f"{loss_field}.{name}")
+        for name in (
+            "workBudgetExhausted",
+            "candidateCapApplied",
+            "omissionCountWasSaturated",
+        ):
+            if not isinstance(loss[name], bool):
+                raise RuntimeError(f"{loss_field}.{name} must be boolean")
+        if loss["omissionCountWasSaturated"]:
+            raise RuntimeError(f"{loss_field}: saturated evidence is not auditable")
+        generation_work += loss["explorationWorkUnits"]
+    omitted_candidate_count = 0
+    omission_fields = {"code", "count", "stableDigest", "countWasSaturated"}
+    for index, omission in enumerate(omissions):
+        omission_field = f"{field}.generation.omissions[{index}]"
+        _require_fields(
+            omission,
+            omission_field,
+            omission_fields,
+            {"vehicleId", "requestIds"},
+        )
+        if not isinstance(omission["code"], str) or not omission["code"]:
+            raise RuntimeError(f"{omission_field}.code is invalid")
+        _nonnegative_integer(omission["count"], f"{omission_field}.count")
+        _optional_hash(omission["stableDigest"], f"{omission_field}.stableDigest")
+        if not isinstance(omission["countWasSaturated"], bool):
+            raise RuntimeError(f"{omission_field}.countWasSaturated must be boolean")
+        if omission["countWasSaturated"]:
+            raise RuntimeError(f"{omission_field}: saturated evidence is not auditable")
+        if "vehicleId" in omission and (
+            not isinstance(omission["vehicleId"], str)
+            or not omission["vehicleId"]
+        ):
+            raise RuntimeError(f"{omission_field}.vehicleId is invalid")
+        if "requestIds" in omission:
+            _require_unique_strings(
+                omission["requestIds"],
+                f"{omission_field}.requestIds",
+            )
+        omitted_candidate_count += omission["count"]
+
+    pruned = evidence["prunedCandidates"]
+    if not isinstance(pruned, list):
+        raise RuntimeError(f"{field}.prunedCandidates must be an array")
+    for index, witness in enumerate(pruned):
+        witness_field = f"{field}.prunedCandidates[{index}]"
+        _require_fields(
+            witness,
+            witness_field,
+            {
+                "candidateId",
+                "vehicleId",
+                "newRequestIds",
+                "code",
+                "commitmentWitnesses",
+            },
+            {"physicalWitness"},
+        )
+        for name in ("candidateId", "vehicleId", "code"):
+            if not isinstance(witness[name], str) or not witness[name]:
+                raise RuntimeError(f"{witness_field}.{name} is invalid")
+        _require_unique_strings(
+            witness["newRequestIds"],
+            f"{witness_field}.newRequestIds",
+        )
+        if not isinstance(witness["commitmentWitnesses"], list):
+            raise RuntimeError(f"{witness_field}.commitmentWitnesses is invalid")
+        if "physicalWitness" in witness:
+            _require_fields(
+                witness["physicalWitness"],
+                f"{witness_field}.physicalWitness",
+                {"code", "vehicleId"},
+                {"requestId", "stopId", "dimension", "expected", "actual"},
+            )
+        for commitment_index, commitment in enumerate(
+            witness["commitmentWitnesses"]
+        ):
+            commitment_field = (
+                f"{witness_field}.commitmentWitnesses[{commitment_index}]"
+            )
+            _require_fields(
+                commitment,
+                commitment_field,
+                {"stage", "code"},
+                {
+                    "vehicleId",
+                    "requestId",
+                    "dimension",
+                    "rule",
+                    "limit",
+                    "before",
+                    "delta",
+                    "after",
+                },
+            )
+
+    selection = _require_fields(
+        evidence["selection"],
+        f"{field}.selection",
+        {
+            "consumedGenerationWorkUnits",
+            "consumedValidationWorkUnits",
+            "omittedCandidateCount",
+            "omissionCountWasSaturated",
+            "primarySolveStatus",
+            "primarySolverDiagnostics",
+            "finalSolveStatus",
+            "finalSolverDiagnostics",
+            "executionPath",
+            "fallbackValidationAttempts",
+            "primaryIncumbentRejected",
+            "validationWitnesses",
+        },
+        {"omissionDigest"},
+    )
+    for name in (
+        "consumedGenerationWorkUnits",
+        "consumedValidationWorkUnits",
+        "omittedCandidateCount",
+        "fallbackValidationAttempts",
+    ):
+        _nonnegative_integer(selection[name], f"{field}.selection.{name}")
+    if (
+        selection["consumedGenerationWorkUnits"] != generation_work
+        or selection["omittedCandidateCount"] != omitted_candidate_count
+        or selection["omissionCountWasSaturated"] is not False
+        or selection["primarySolveStatus"] != "optimal"
+        or selection["finalSolveStatus"] != "optimal"
+        or selection["executionPath"] != "validatedIncumbent"
+        or selection["fallbackValidationAttempts"] != 0
+        or selection["primaryIncumbentRejected"] is not False
+        or selection["validationWitnesses"] != []
+    ):
+        raise RuntimeError(f"{field}: solver execution is not audited-optimal")
+    _optional_hash(selection.get("omissionDigest"), f"{field}.selection.omissionDigest")
+    if (selection["omittedCandidateCount"] == 0) != (
+        "omissionDigest" not in selection
+    ):
+        raise RuntimeError(f"{field}: omission digest/count pairing differs")
+    primary = _verify_audited_solver_diagnostics(
+        selection["primarySolverDiagnostics"],
+        f"{field}.selection.primarySolverDiagnostics",
+    )
+    final = _verify_audited_solver_diagnostics(
+        selection["finalSolverDiagnostics"],
+        f"{field}.selection.finalSolverDiagnostics",
+    )
+    if primary != final:
+        raise RuntimeError(f"{field}: primary/final optimal diagnostics differ")
+
+
+def _verify_audited_solver_diagnostics(diagnostics, field):
+    _require_fields(
+        diagnostics,
+        field,
+        {
+            "consumedWorkUnits",
+            "consumedDeterministicTimeMicros",
+            "objectiveBounds",
+        },
+        {"detailCode"},
+    )
+    _nonnegative_integer(diagnostics["consumedWorkUnits"], f"{field}.consumedWorkUnits")
+    _nonnegative_integer(
+        diagnostics["consumedDeterministicTimeMicros"],
+        f"{field}.consumedDeterministicTimeMicros",
+    )
+    bounds = diagnostics["objectiveBounds"]
+    if not isinstance(bounds, list) or not bounds:
+        raise RuntimeError(f"{field}.objectiveBounds must be non-empty")
+    for index, bound in enumerate(bounds):
+        bound_field = f"{field}.objectiveBounds[{index}]"
+        _require_fields(
+            bound,
+            bound_field,
+            {
+                "levelIndex",
+                "objectiveName",
+                "incumbentValue",
+                "bestBound",
+                "gapNumerator",
+                "gapDenominator",
+                "isProvenOptimal",
+            },
+        )
+        for name in (
+            "levelIndex",
+            "incumbentValue",
+            "bestBound",
+            "gapNumerator",
+            "gapDenominator",
+        ):
+            _nonnegative_integer(bound[name], f"{bound_field}.{name}")
+        if (
+            bound["levelIndex"] != index
+            or not isinstance(bound["objectiveName"], str)
+            or not bound["objectiveName"]
+            or bound["incumbentValue"] != bound["bestBound"]
+            or bound["gapNumerator"] != 0
+            or bound["gapDenominator"] < 1
+            or bound["isProvenOptimal"] is not True
+        ):
+            raise RuntimeError(f"{bound_field}: objective is not exactly optimal")
+    return diagnostics
 
 
 def _sha256(path):
@@ -145,7 +546,12 @@ def _expect(frames, index, direction, message_type):
     return envelope
 
 
-def verify_transcript(path, report):
+def verify_transcript(
+    path,
+    report,
+    include_behavioral_hash=False,
+    require_audited_solver_evidence=False,
+):
     frames = decode_transcript(path)
     hello = _expect(frames, 0, "adapterToRunner", "hello")
     hello_ack = _expect(frames, 1, "runnerToAdapter", "helloAck")
@@ -166,9 +572,25 @@ def verify_transcript(path, report):
         or initialized.get("scenarioId") != scenario_id
     ):
         raise RuntimeError("initialize identity mismatch")
+    manifest = initialize.get("payload", {}).get("manifest")
+    if not isinstance(manifest, dict):
+        raise RuntimeError("initialize manifest is missing")
     manifest_hash = initialized.get("payload", {}).get("manifestHash")
+    if manifest_hash != _manifest_hash(manifest):
+        raise RuntimeError("initialized manifest hash is not independently valid")
     if manifest_hash != report["semantic"]["manifestHash"]:
         raise RuntimeError("initialized/report manifest hash mismatch")
+
+    initial_state = initialized.get("payload", {}).get("initialStateIdentity")
+    if (
+        not isinstance(initial_state, dict)
+        or initial_state.get("epochId") != 0
+        or initial_state.get("nextEventSeq") != 1
+        or initial_state.get("simTimeMs") != 0
+        or not isinstance(initial_state.get("stateHash"), str)
+        or _HASH.fullmatch(initial_state["stateHash"]) is None
+    ):
+        raise RuntimeError("initialized state identity is invalid")
 
     next_epoch = 1
     next_event_sequence = 1
@@ -186,6 +608,7 @@ def verify_transcript(path, report):
     accepted = []
     rejected = []
     publications = []
+    behavioral_decisions = []
     checkpoint = None
     index = 4
     while index < len(frames):
@@ -259,16 +682,22 @@ def verify_transcript(path, report):
         ):
             raise RuntimeError(f"epoch {next_epoch}: decision context mismatch")
         payload = decision.get("payload", {})
+        if not isinstance(payload, dict):
+            raise RuntimeError(f"epoch {next_epoch}: decision payload is invalid")
         decision_hash = payload.get("decisionHash")
         if not isinstance(decision_hash, str) or _HASH.fullmatch(decision_hash) is None:
             raise RuntimeError(f"epoch {next_epoch}: invalid decision hash")
-        if prior_decision_hash is not None and payload.get(
-            "previousDecisionHash"
-        ) != prior_decision_hash:
+        expected_previous_decision = (
+            _ZERO_HASH if prior_decision_hash is None else prior_decision_hash
+        )
+        expected_state_before = (
+            initial_state["stateHash"]
+            if prior_state_after is None
+            else prior_state_after
+        )
+        if payload.get("previousDecisionHash") != expected_previous_decision:
             raise RuntimeError(f"epoch {next_epoch}: decision hash chain broke")
-        if prior_state_after is not None and payload.get(
-            "stateBeforeHash"
-        ) != prior_state_after:
+        if payload.get("stateBeforeHash") != expected_state_before:
             raise RuntimeError(f"epoch {next_epoch}: state hash chain broke")
         state_after = payload.get("stateAfterHash")
         if not isinstance(state_after, str) or _HASH.fullmatch(state_after) is None:
@@ -276,6 +705,23 @@ def verify_transcript(path, report):
         actions = payload.get("actions")
         if not isinstance(actions, list):
             raise RuntimeError(f"epoch {next_epoch}: actions are invalid")
+        solver = payload.get("solver")
+        if (
+            not isinstance(solver, dict)
+            or not isinstance(solver.get("status"), str)
+            or not solver["status"]
+        ):
+            raise RuntimeError(f"epoch {next_epoch}: solver status is invalid")
+        if require_audited_solver_evidence:
+            _verify_audited_solver_evidence(solver, next_epoch)
+        behavioral_decisions.append(
+            {
+                "epochId": next_epoch,
+                "simTimeMs": batch["simTimeMs"],
+                "solverStatus": solver["status"],
+                "actions": _without_generated_action_fields(actions),
+            }
+        )
         for action in actions:
             action_type = action.get("decisionType")
             action_payload = action.get("payload", {})
@@ -316,11 +762,17 @@ def verify_transcript(path, report):
 
     if index != len(frames) or checkpoint is None:
         raise RuntimeError("transcript lacks final checkpoint/shutdown closure")
-    content = checkpoint.get("payload", {}).get("content")
+    checkpoint_payload = checkpoint.get("payload", {})
+    content = checkpoint_payload.get("content")
     if not isinstance(content, dict):
         raise RuntimeError("final checkpoint content is missing")
     if (
-        content.get("manifestHash") != manifest_hash
+        checkpoint.get("schemaVersion") != "1.0.0"
+        or checkpoint.get("runId") != run_id
+        or checkpoint.get("scenarioId") != scenario_id
+        or checkpoint_payload.get("checkpointVersion") != "1.0.0"
+        or checkpoint_payload.get("checkpointHash") != _checkpoint_hash(content)
+        or content.get("manifestHash") != manifest_hash
         or content.get("previousDecisionHash") != prior_decision_hash
         or content.get("stateHash") != prior_state_after
         or content.get("appliedEpoch") != next_epoch - 1
@@ -329,35 +781,62 @@ def verify_transcript(path, report):
     ):
         raise RuntimeError("final checkpoint identity/state boundary mismatch")
 
-    semantic = report["semantic"]
+    semantic = report.get("semantic")
     if (
-        semantic["requestCount"] != 128
+        not isinstance(semantic, dict)
+        or report.get("semanticHash") != _semantic_hash(semantic)
+        or isinstance(semantic.get("requestCount"), bool)
+        or not isinstance(semantic.get("requestCount"), int)
+        or semantic["requestCount"] < 0
         or semantic["nextEpoch"] != next_epoch
         or semantic["nextEventSeq"] != next_event_sequence
         or semantic["finalSimulationTimeMs"] != prior_sim_time
         or semantic["travelSnapshotVersion"] != 1
+        or not isinstance(semantic.get("finalVehiclePositions"), list)
+        or not isinstance(semantic.get("checkpointBindingHash"), str)
+        or _HASH.fullmatch(semantic["checkpointBindingHash"]) is None
     ):
         raise RuntimeError("report/transcript terminal counters differ")
-    arrived = lifecycle["requestArrived"]
-    booked = lifecycle["bookingConfirmed"]
-    boarded = lifecycle["passengerBoarded"]
-    alighted = lifecycle["passengerAlighted"]
+    arrived = _require_unique_strings(
+        lifecycle["requestArrived"],
+        "requestArrived",
+    )
+    booked = _require_unique_strings(
+        lifecycle["bookingConfirmed"],
+        "bookingConfirmed",
+    )
+    boarded = _require_unique_strings(
+        lifecycle["passengerBoarded"],
+        "passengerBoarded",
+    )
+    alighted = _require_unique_strings(
+        lifecycle["passengerAlighted"],
+        "passengerAlighted",
+    )
+    accepted_set = _require_unique_strings(accepted, "requestAccepted")
+    rejected_set = _require_unique_strings(rejected, "requestRejected")
+    semantic_accepted = _require_unique_strings(
+        semantic.get("acceptedRequestIds"),
+        "semantic.acceptedRequestIds",
+    )
+    semantic_rejected = _require_unique_strings(
+        semantic.get("rejectedRequestIds"),
+        "semantic.rejectedRequestIds",
+    )
     if not (
-        len(arrived)
-        == len(set(arrived))
-        == len(booked)
-        == len(set(booked))
-        == len(boarded)
-        == len(set(boarded))
-        == len(alighted)
-        == len(set(alighted))
-        == semantic["requestCount"]
-        and set(arrived) == set(booked) == set(boarded) == set(alighted)
+        len(arrived) == semantic["requestCount"]
+        and not (accepted_set & rejected_set)
+        and accepted_set | rejected_set == arrived
+        and booked == accepted_set
+        and boarded == booked
+        and alighted == boarded
         and not lifecycle["requestCancelledBeforeAcceptance"]
         and not lifecycle["requestCancelledAfterAcceptance"]
-        and len(accepted) == len(set(accepted)) == semantic["requestCount"]
-        and set(accepted) == set(arrived)
-        and not rejected
+        and not (semantic_accepted & semantic_rejected)
+        and len(semantic_accepted) == len(accepted_set)
+        and len(semantic_rejected) == len(rejected_set)
+        and len(semantic_accepted | semantic_rejected)
+        == semantic["requestCount"]
     ):
         raise RuntimeError("request lifecycle/outcome conservation failed")
     if len(publications) != semantic["publicationCount"]:
@@ -366,27 +845,66 @@ def verify_transcript(path, report):
     if publication_digest != semantic["publicationDigest"]:
         raise RuntimeError("publication digest differs from raw decisions")
     online_state = content.get("onlineState")
-    if (
-        not isinstance(online_state, dict)
-        or len(online_state.get("requests", [])) != semantic["requestCount"]
-        or any(
-            request.get("lifecycle") != "completed"
-            for request in online_state.get("requests", [])
-        )
-        or len(online_state.get("vehicles", [])) != 32
+    if not isinstance(online_state, dict):
+        raise RuntimeError("terminal checkpoint did not drain requests/fleet")
+    checkpoint_requests = online_state.get("requests")
+    checkpoint_vehicles = online_state.get("vehicles")
+    if not isinstance(checkpoint_requests, list) or not isinstance(
+        checkpoint_vehicles,
+        list,
     ):
         raise RuntimeError("terminal checkpoint did not drain requests/fleet")
-    return {
+    checkpoint_outcomes = {}
+    for request in checkpoint_requests:
+        if not isinstance(request, dict):
+            raise RuntimeError("terminal checkpoint request is invalid")
+        request_id = request.get("requestId")
+        lifecycle_state = request.get("lifecycle")
+        if (
+            not isinstance(request_id, str)
+            or not request_id
+            or request_id in checkpoint_outcomes
+            or lifecycle_state not in {"completed", "rejected"}
+        ):
+            raise RuntimeError("terminal checkpoint request is invalid")
+        checkpoint_outcomes[request_id] = lifecycle_state
+    completed_ids = {
+        request_id
+        for request_id, lifecycle_state in checkpoint_outcomes.items()
+        if lifecycle_state == "completed"
+    }
+    rejected_ids = {
+        request_id
+        for request_id, lifecycle_state in checkpoint_outcomes.items()
+        if lifecycle_state == "rejected"
+    }
+    if (
+        len(checkpoint_outcomes) != semantic["requestCount"]
+        or completed_ids != accepted_set
+        or rejected_ids != rejected_set
+        or len(checkpoint_vehicles) != len(semantic["finalVehiclePositions"])
+    ):
+        raise RuntimeError("terminal checkpoint did not drain requests/fleet")
+    result = {
         "frameCount": len(frames),
         "epochCount": next_epoch - 1,
         "eventCount": next_event_sequence - 1,
         "requestCount": len(arrived),
         "publicationCount": len(publications),
-        "checkpointHash": checkpoint["payload"].get("checkpointHash"),
+        "checkpointHash": checkpoint_payload.get("checkpointHash"),
     }
+    if include_behavioral_hash:
+        result["behavioralProjectionHash"] = _behavioral_projection_hash(
+            behavioral_decisions
+        )
+    return result
 
 
-def verify_bundle(directory):
+def verify_bundle(
+    directory,
+    include_behavioral_hash=False,
+    require_audited_solver_evidence=False,
+):
     manifest_path = directory / "bundle-manifest.json"
     manifest = _read_json(manifest_path)
     if set(manifest) != {"schemaVersion", "bundleType", "files"} or (
@@ -406,6 +924,11 @@ def verify_bundle(directory):
             or pathlib.PurePosixPath(relative).is_absolute()
             or ".." in pathlib.PurePosixPath(relative).parts
             or relative in declared
+            or isinstance(item.get("lengthBytes"), bool)
+            or not isinstance(item.get("lengthBytes"), int)
+            or item["lengthBytes"] < 0
+            or not isinstance(item.get("sha256"), str)
+            or _HASH.fullmatch(item["sha256"]) is None
         ):
             raise RuntimeError("bundle manifest path is invalid/duplicate")
         declared[relative] = item
@@ -427,7 +950,14 @@ def verify_bundle(directory):
         ):
             raise RuntimeError(f"bundle artifact drift: {relative}")
     summary = _read_json(directory / "summary.json")
-    if summary.get("status") != "pass" or summary.get("repeatCount") < 1:
+    if (
+        summary.get("status") != "pass"
+        or isinstance(summary.get("repeatCount"), bool)
+        or not isinstance(summary.get("repeatCount"), int)
+        or summary["repeatCount"] < 1
+        or not isinstance(summary.get("semanticHash"), str)
+        or _HASH.fullmatch(summary["semanticHash"]) is None
+    ):
         raise RuntimeError("medium summary is not a pass")
     runs = []
     for repeat in range(summary["repeatCount"]):
@@ -443,22 +973,42 @@ def verify_bundle(directory):
             verify_transcript(
                 directory / f"transcript-{repeat:02d}.ndjson",
                 report,
+                include_behavioral_hash,
+                require_audited_solver_evidence,
             )
         )
-    return {
+    result = {
         "schemaVersion": "1.0.0",
         "status": "pass",
         "repeatCount": len(runs),
         "semanticHash": summary["semanticHash"],
         "runs": runs,
     }
+    if include_behavioral_hash:
+        behavioral_hashes = {
+            run["behavioralProjectionHash"]
+            for run in runs
+        }
+        if len(behavioral_hashes) != 1:
+            raise RuntimeError("behavioral projection repeats diverged")
+        result["behavioralProjectionHash"] = next(iter(behavioral_hashes))
+    return result
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--bundle", required=True, type=pathlib.Path)
+    parser.add_argument("--include-behavioral-hash", action="store_true")
+    parser.add_argument(
+        "--require-audited-solver-evidence",
+        action="store_true",
+    )
     arguments = parser.parse_args()
-    result = verify_bundle(arguments.bundle.resolve())
+    result = verify_bundle(
+        arguments.bundle.resolve(),
+        arguments.include_behavioral_hash,
+        arguments.require_audited_solver_evidence,
+    )
     print(json.dumps(result, sort_keys=True, separators=(",", ":")))
     return 0
 

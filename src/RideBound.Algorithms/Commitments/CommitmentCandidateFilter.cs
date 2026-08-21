@@ -96,7 +96,8 @@ public sealed class CommitmentCandidateFilter
                         set.VehicleId,
                         candidate.NewRequestIds,
                         witness.Code,
-                        witness.Message));
+                        witness.Message,
+                        CommitmentWitnesses: validation.Witnesses));
             }
 
             result.Add(

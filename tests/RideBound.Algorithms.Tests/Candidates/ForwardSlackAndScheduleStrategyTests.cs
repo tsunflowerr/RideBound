@@ -413,6 +413,32 @@ public sealed class ForwardSlackAndScheduleStrategyTests
             second.VehicleCandidates!.Single().Candidates.Select(c => c.CandidateId));
     }
 
+    [Fact]
+    public void Terminal_evaluation_reuses_a_failed_profile_from_the_same_search_node()
+    {
+        var request = WaitingRequest();
+        var vehicle = AlgorithmTestData.Vehicle();
+        var state = AlgorithmTestData.CreateState(
+            [request],
+            [vehicle],
+            arcs: UnitArcs());
+        var builder = new FailingNonEmptyProfileBuilder();
+        var generator = new InsertionCandidateGenerator(
+            slackCache: new ForwardSlackProfileCache(builder));
+
+        var result = generator.Generate(
+            state,
+            new CandidateGenerationOptions(100, 1, exactSmallMode: true));
+
+        Assert.True(result.IsSuccess, result.Witness?.Message);
+        var candidates = Assert.Single(result.VehicleCandidates!);
+        Assert.Single(candidates.Candidates, candidate => candidate.IsNoOp);
+        Assert.Contains(
+            candidates.PrunedCandidates,
+            witness => witness.Code == "TEST_PROFILE_FAILURE");
+        Assert.Equal(1, builder.NonEmptyBuildCount);
+    }
+
     private static (OnlineState State, VehicleState Vehicle, RoutePlan Route)
         WaitingRoute()
     {
@@ -479,9 +505,42 @@ public sealed class ForwardSlackAndScheduleStrategyTests
             VehicleState vehicle,
             RoutePlan route,
             TravelTimeSnapshot travelTimes,
-            SimTime evaluationTime)
+            SimTime evaluationTime,
+            ServiceQualityAllowance? serviceQuality = null)
         {
             BuildCount++;
+            return _inner.Build(
+                state,
+                vehicle,
+                route,
+                travelTimes,
+                evaluationTime,
+                serviceQuality);
+        }
+    }
+
+    private sealed class FailingNonEmptyProfileBuilder : IForwardSlackProfileBuilder
+    {
+        private readonly ForwardSlackProfileBuilder _inner = new();
+
+        public int NonEmptyBuildCount { get; private set; }
+
+        public ForwardSlackProfileBuildResult Build(
+            OnlineState state,
+            VehicleState vehicle,
+            RoutePlan route,
+            TravelTimeSnapshot travelTimes,
+            SimTime evaluationTime,
+            ServiceQualityAllowance? serviceQuality = null)
+        {
+            if (route.RemainingStops.Any())
+            {
+                NonEmptyBuildCount++;
+                return ForwardSlackProfileBuildResult.Failure(
+                    "TEST_PROFILE_FAILURE",
+                    "Synthetic failed profile used to prove node-local reuse.");
+            }
+
             return _inner.Build(
                 state,
                 vehicle,

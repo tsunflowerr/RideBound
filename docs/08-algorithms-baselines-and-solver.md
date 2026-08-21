@@ -428,3 +428,44 @@ Hai kết luận về hướng đi tiếp:
   budget, nên nhiều nhất nó thay được tầng schedule/slack và vẫn phải chạy full
   validator sau. Chi tiết và giới hạn đọc nguồn ở
   [paper-to-design §22](21-paper-to-design-evidence.md).
+
+## 19. Hai lớp ràng buộc physical — khóa bởi ADR-045
+
+`PhysicalPlanValidator` chia constraint thành hai lớp có ngữ nghĩa khác nhau.
+
+**Structural** — `ROUTE_CONNECTIVITY`, `PRECEDENCE`, `CAPACITY`, `FROZEN_PREFIX`,
+`ONBOARD_PRESERVATION`, `ACCEPTED_PRESERVATION`, `PLAN_VERSION`, `STOP_LOCATION`,
+`INVALID_POSITION`, `INVALID_ROUTE_STOP`, `SCHEDULE_OVERFLOW`, `UNKNOWN_*`. Đây là
+bất biến của một kế hoạch well-formed. Vi phạm là defect chứ không phải giao
+thông, nên vẫn strict ở mọi call site và fail-closed như cũ. Ride time âm cũng
+thuộc lớp này: đó là lỗi precedence, không phải deadline.
+
+**Service-quality** — `MAX_RIDE_TIME` và `PICKUP_WINDOW`. Đây là lời hứa về thời
+gian và có thể bị phá vỡ mà không ai quyết định gì. Chúng là ràng buộc **lúc tạo
+kế hoạch**, không phải bất biến liên tục.
+
+Cơ chế:
+
+1. `ProbeServiceQuality(run, vehicleId, travelTimes, evaluationTime)` chiếu lộ
+   trình **không đổi** của xe dưới travel snapshot hiện hành và trả
+   `ServiceQualityAllowance` chứa mọi deadline nó không còn đáp ứng.
+2. Bound hiệu lực cho mỗi request là `max(contractual, exogenous)`. No-op an toàn
+   luôn thoả bound này nên không bao giờ bị prune vì lý do service-quality; đó là
+   điều giữ cho xe không rơi về 0 candidate.
+3. Vì `exogenous` đúng bằng giá trị mà *không làm gì* đã hiện thực hoá, không
+   candidate nào được phép tệ hơn no-op trên dimension đang breach. Witness khi
+   prune báo `Expected` là bound hiệu lực, không phải bound hợp đồng.
+4. Request chưa nằm trên lộ trình đang chạy không có entry nào trong allowance,
+   nên mọi request mới chèn vẫn bị enforce contractual tuyệt đối.
+5. Breach được phát ra thành `ExogenousServiceQualityBreach` trong
+   `CandidateGenerationDiagnostics`. Nó là diagnostic: không prune candidate nào
+   và không fail epoch nào.
+
+`ForwardSlackProfile` certify delay theo đúng bound mà validator enforce và cache
+key bind digest của allowance; nếu hai bên lệch nhau, một route validator chấp
+nhận vẫn có thể mất slack certificate rồi bị prune. Bốn đường re-validate
+downstream — `RollingCostPolicy`, `MultiplePlanPolicy`, `CommitmentDecisionValidator`
+và `OnlineStateCheckpointCodec` — dùng `ValidateWithExogenousRelief` vì lý do đó.
+
+Allowance là hàm thuần của `(run, vehicle, travelSnapshot, evaluationTime)` và áp
+dụng đồng nhất ở cả hai arm, nên nó không dịch chuyển arm nào so với arm nào.

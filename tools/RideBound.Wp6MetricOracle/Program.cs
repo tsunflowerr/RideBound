@@ -8,10 +8,24 @@ static int Run(string[] arguments)
     try
     {
         var options = Arguments(arguments);
-        var request = OracleRequest.Load(options["--request"]);
-        var result = OracleCalculator.Calculate(request);
-        WriteNew(options["--rows-out"], result.CanonicalRows);
-        WriteNew(options["--summary-out"], result.Summary());
+        if (options.ContainsKey("--request"))
+        {
+            var request = OracleRequest.Load(FullPath(options, "--request"));
+            var result = OracleCalculator.Calculate(request);
+            WriteNew(FullPath(options, "--rows-out"), result.CanonicalRows);
+            WriteNew(FullPath(options, "--summary-out"), result.Summary());
+        }
+        else
+        {
+            var result = DecisionInducedBurdenOracle.Calculate(
+                options["--burden-run-id"],
+                options["--burden-arm-id"],
+                options["--burden-policy-id"],
+                File.ReadAllBytes(FullPath(options, "--input-transcript")),
+                File.ReadAllBytes(FullPath(options, "--output-transcript")));
+            WriteNew(FullPath(options, "--burden-out"), result.Encode());
+        }
+
         return 0;
     }
     catch (OracleException exception)
@@ -33,29 +47,44 @@ static int Run(string[] arguments)
 
 static Dictionary<string, string> Arguments(string[] arguments)
 {
-    if (arguments.Length != 6)
+    if (arguments.Length is not 6 and not 12)
     {
-        throw new ArgumentException("Expected request, rows output and summary output arguments.");
+        throw new ArgumentException("Oracle argument count is invalid.");
     }
 
     var values = new Dictionary<string, string>(StringComparer.Ordinal);
 
     for (var index = 0; index < arguments.Length; index += 2)
     {
-        if (!values.TryAdd(arguments[index], Path.GetFullPath(arguments[index + 1])))
+        if (!values.TryAdd(arguments[index], arguments[index + 1]))
         {
             throw new ArgumentException("Oracle argument is duplicated.");
         }
     }
 
-    if (!values.Keys.ToHashSet(StringComparer.Ordinal)
-            .SetEquals(["--request", "--rows-out", "--summary-out"]))
+    var keys = values.Keys.ToHashSet(StringComparer.Ordinal);
+    var metricMode = keys.SetEquals(
+        ["--request", "--rows-out", "--summary-out"]);
+    var burdenMode = keys.SetEquals(
+        [
+            "--burden-run-id",
+            "--burden-arm-id",
+            "--burden-policy-id",
+            "--input-transcript",
+            "--output-transcript",
+            "--burden-out",
+        ]);
+
+    if (!metricMode && !burdenMode)
     {
         throw new ArgumentException("Oracle arguments are invalid.");
     }
 
     return values;
 }
+
+static string FullPath(IReadOnlyDictionary<string, string> values, string key) =>
+    Path.GetFullPath(values[key]);
 
 static void WriteNew(string path, byte[] bytes)
 {

@@ -1,7 +1,7 @@
 # RideBound — bản đồ tài liệu
 
-> Trạng thái: WP0–WP7 mechanical closure hoàn thành; WP7 `001..014` DONE
-> Cập nhật: 2026-08-16
+> Trạng thái: WP0–WP8 hoàn thành; WP9 đã mở, `001/003 Done`, `RB-WP9-002a` Ready (repin H5 sau ADR-045 và `wp8-011d`)
+> Cập nhật: 2026-08-21
 > Nguồn sự thật về tiến độ: [18-status-and-decision-log.md](18-status-and-decision-log.md)
 
 ## 1. Mục đích của bộ tài liệu
@@ -120,14 +120,21 @@ Bộ tài liệu này trả lời năm câu hỏi:
 | [36-wp7-fleetpy-layer2-ticket-plan.md](tasks/36-wp7-fleetpy-layer2-ticket-plan.md) | Ordered queue WP7 `002..014`; Candidate portfolio, pin/env, mapping, Runner client, FleetControl, plan/lock, preflight và closed loop |
 | [37-wp8-pilot-and-preregistration-refinement.md](tasks/37-wp8-pilot-and-preregistration-refinement.md) | WP8 refinement: ba khoảng trống còn lại, grid từ dữ liệu thật, tách pilot/confirmatory, vấn đề synthetic budget và phương pháp non-inferiority |
 | [38-wp8-pilot-and-preregistration-ticket-plan.md](tasks/38-wp8-pilot-and-preregistration-ticket-plan.md) | Ordered queue WP8 `002..014`; grid manifest, pilot execution, variance/power, budget derivation, margin, preregistration freeze và leakage audit |
+| [39-wp9-main-experiment-ticket-plan.md](tasks/39-wp9-main-experiment-ticket-plan.md) | Ordered queue WP9 `001..008`; freeze, audited smoke, Layer 1/2, exact analysis, robustness và reproducibility closure |
 | [wp7-014-fleetpy-layer2-closure-evidence-2026-08-15.md](benchmarking/wp7-014-fleetpy-layer2-closure-evidence-2026-08-15.md) | Historical Runner v6 receipt: actual FleetPy B1/C1 preflight/tiny/medium evidence, verifier và claim boundary |
 | [wp7-015-hot-path-and-semantics-closure-evidence-2026-08-17.md](benchmarking/wp7-015-hot-path-and-semantics-closure-evidence-2026-08-17.md) | ADR-039: ngữ nghĩa được khóa, đo hot path, work-profile gate, cross-binary differential và receipt hiện hành trên Runner v8 |
+| [wp8-001-pilot-operating-point-evidence-2026-08-19.md](benchmarking/wp8-001-pilot-operating-point-evidence-2026-08-19.md) | Pilot WP8: điểm vận hành cũ không phân biệt được, endpoint pickup-ETA bị loại, đánh đổi dịch vụ xuất hiện |
+| [wp8-002-paired-benchmark-report-2026-08-19.md](benchmarking/wp8-002-paired-benchmark-report-2026-08-19.md) | Báo cáo benchmark paired WP8: cấu hình, dữ liệu thật, hai điểm vận hành, bảng 4 đơn vị, lý do từ chối, giới hạn claim |
+| [wp8-011c-pre-outcome-runner-artifact-repin.md](benchmarking/wp8-011c-pre-outcome-runner-artifact-repin.md) | Amendment pre-outcome: sửa stale Runner pin, bind DLL và toàn publish tree, không đổi thiết kế |
+| [wp8-011d-pre-outcome-capacity-stratum-amendment.md](benchmarking/wp8-011d-pre-outcome-capacity-stratum-amendment.md) | Amendment pre-outcome: thêm capacity stratum `veh4` cạnh `veh8`, N không tăng, kết luận thành có điều kiện theo năng lực |
+| [wp8-014-closure-evidence-2026-08-21.md](benchmarking/wp8-014-closure-evidence-2026-08-21.md) | WP8 closure: frontier, fixed panel, verifier/oracle, four pre-outcome amendments và current freeze H4 |
 | [wp6-contract-v1.md](benchmarking/wp6-contract-v1.md) | Equivalent contract v1 cho common benchmark harness, public data và reproduction bundle |
 | [wp6-benchmark-reproducibility-evidence-2026-08-09.md](research/wp6-benchmark-reproducibility-evidence-2026-08-09.md) | Primary-source evidence và claim boundary cho WP6 |
 | [reviews/wp1-wp3/README.md](reviews/wp1-wp3/README.md) | Review chi tiết code, invariant, tối ưu thật và khoảng trống WP1–WP3 |
 | [reviews/wp1-wp4-final/README.md](reviews/wp1-wp4-final/README.md) | Final logic/code/paper/evidence review WP1–WP4; thay thế trạng thái cũ của review WP1–WP3 |
 | [reviews/wp1-wp5-final/README.md](reviews/wp1-wp5-final/README.md) | Final source/logic/optimization/claim review WP1–WP5 và verdict có điều kiện |
 | [reviews/wp1-wp7-final/README.md](reviews/wp1-wp7-final/README.md) | Final Vietnamese source/logic/code walkthrough WP1–WP7, Candidate proof và FleetPy Layer 2 closure |
+| [reviews/wp1-wp8-final/README.md](reviews/wp1-wp8-final/README.md) | Review hiện hành WP1–WP8: logic, defect đã sửa, determinism/fairness, residual claim boundary |
 | [reviews/wp1-wp6-final/README.md](reviews/wp1-wp6-final/README.md) | Handoff hiện hành: kiến trúc, logic, file map, paper, benchmark, risk và reproduction WP1–WP6 |
 | [research/README.md](research/README.md) | Archive báo cáo, audit và evidence matrix nền |
 | [wp5-distributed-integration-evidence-2026-08-05.md](research/wp5-distributed-integration-evidence-2026-08-05.md) | Paper/official evidence cho outbox, idempotency, worker lease và crash recovery WP5 |
@@ -167,10 +174,9 @@ không chép lại thuật toán RideBound bằng Python hoặc C++.
 - Repository độc lập: `https://github.com/tsunflowerr/RideBound`.
 - WP0 scaffold bắt đầu với 7 source/2 test project; sau WP6 solution hiện có 9
   production source project và 9 test project.
-- Logical inventory hiện tại có 135 Contracts, 135 Domain, 69 Application,
-  136 Algorithms, 7 OR-Tools, 72 Runner, 71 Benchmarking.Contracts,
-  135 Benchmarking và 10 Architecture test: tổng **770**. Required
-  `dotnet test RideBound.slnx` pass **770/770** ngày 2026-08-13. Các lần
+- Required `dotnet test RideBound.slnx` hiện pass **840/840**, 0 fail/skip ngày
+  2026-08-21; pinned FleetPy/Python suite pass **77/77**, không skip. Các count
+  WP6/WP7 cũ được giữ trong evidence lịch sử, không dùng làm baseline hiện hành. Các lần
   `0x800711C7` trước đó được giữ trong `18` như historical environment evidence,
   không còn là blocker hiện tại.
 - BeGo hiện đạt 154/154 backend pass, 0 skip ở cả Debug và Release
@@ -263,3 +269,8 @@ không chép lại thuật toán RideBound bằng Python hoặc C++.
   required suite lên `798/798` và mọi actual receipt chuyển sang Runner v8. Review hiện
   hành ở [reviews/wp1-wp7-final/README.md](reviews/wp1-wp7-final/README.md). Kết quả vẫn
   không phải effectiveness, SLA, fairness, non-inferiority hoặc satisfaction claim.
+- WP8 `001..014` đã complete: frontier 25/25, oracle/verifier/pairing, fixed panel
+  20 cell, strict 1 pp gate và current freeze `H4=2f7e6bf3…a32dd`. Review hiện hành ở
+  [reviews/wp1-wp8-final/README.md](reviews/wp1-wp8-final/README.md). WP9 đã mở nhưng
+  chưa có confirmatory outcome; Layer-1 mechanical 8/8 (`RB-WP9-003`) đã Done và
+  `RB-WP9-002a` repin freeze là ticket Ready; audited smoke là `002b`.

@@ -127,6 +127,36 @@ public sealed class InsertionCandidateGeneratorTests
     }
 
     [Fact]
+    public void Physically_invalid_active_route_fails_with_original_no_op_witness()
+    {
+        var waypoint = new RouteStop(
+            new StopId("unreachable"),
+            AlgorithmTestData.NodeOne,
+            RouteStopKind.Waypoint,
+            null,
+            new Duration(0));
+        var state = AlgorithmTestData.CreateState(
+            [],
+            [AlgorithmTestData.Vehicle(mutableSuffix: [waypoint])],
+            arcs: AlgorithmTestData.CompleteArcs().Where(
+                pair => pair.Key != new RideBound.Application.Travel.TravelArc(
+                    AlgorithmTestData.NodeZero,
+                    AlgorithmTestData.NodeOne)));
+
+        var result = _generator.Generate(
+            state,
+            new CandidateGenerationOptions(100, 1, exactSmallMode: true));
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(
+            CandidateGenerationFailureCodes.ActiveRouteInfeasible,
+            result.Witness?.Code);
+        Assert.Equal(AlgorithmTestData.VehicleOne, result.Witness?.VehicleId);
+        Assert.Equal("routeConnectivity", result.Witness?.Dimension);
+        Assert.Contains("ROUTE_CONNECTIVITY", result.Witness?.Message);
+    }
+
+    [Fact]
     public void Exact_mode_fails_instead_of_silently_truncating()
     {
         var request = AlgorithmTestData.PendingRequest();

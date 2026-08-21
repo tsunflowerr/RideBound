@@ -119,6 +119,37 @@ public sealed class RollingCostPolicyTests
     }
 
     [Fact]
+    public void Mixed_prune_causes_use_the_generic_rejection_reason()
+    {
+        var request = AlgorithmTestData.PendingRequest(
+            latestPickup: 1_050,
+            partySize: 5);
+        var state = AlgorithmTestData.CreateState(
+            [request],
+            [
+                AlgorithmTestData.Vehicle(
+                    AlgorithmTestData.VehicleOne,
+                    capacity: 4,
+                    position: AlgorithmTestData.NodeOne),
+                AlgorithmTestData.Vehicle(
+                    AlgorithmTestData.VehicleTwo,
+                    capacity: 6,
+                    position: AlgorithmTestData.NodeThree),
+            ]);
+
+        var result = new RollingCostPolicy().Decide(state, ExactOptions);
+
+        Assert.True(result.IsSuccess, result.Witness?.Message);
+        var action = Assert.Single(result.Decision!.RequestActions);
+        Assert.Equal(RequestDecisionOutcome.Rejected, action.Outcome);
+        Assert.Equal(RollingCostReasonCodes.NoFeasibleInsertion, action.ReasonCode);
+        Assert.Contains(result.Decision.PrunedCandidates, value => value.Code == "CAPACITY");
+        Assert.Contains(
+            result.Decision.PrunedCandidates,
+            value => value.Code == "PICKUP_WINDOW");
+    }
+
+    [Fact]
     public void Feasible_unselected_request_is_deferred_and_stays_pending()
     {
         var first = AlgorithmTestData.PendingRequest(

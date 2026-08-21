@@ -1,6 +1,6 @@
 # RB-WP8-001 — Pilot và preregistration refinement
 
-> Trạng thái: In progress — 2026-08-18
+> Trạng thái: Done — 2026-08-21; WP8 đóng bằng ADR-043, freeze vận hành hiện hành H4
 >
 > Đây là ticket refinement. Nó **không** viết production code và **không** tạo kết quả.
 > Nó quyết định thí nghiệm sẽ trông như thế nào, rồi khoá quyết định đó bằng ADR trước
@@ -172,3 +172,77 @@ không chỉ ước lượng burden.
 - không đổi thuật toán để kết quả đẹp hơn;
 - không mở O-001/O-002/O-003/O-004;
 - không tuyên bố bất kỳ kết quả effectiveness nào.
+
+## 5.4 Hai arm không đối xứng — điều này quyết định cách được phép kết luận
+
+Đọc `SolverBackedRidePoolingPolicy.Decide` cho thấy khác biệt cấu trúc, không phải khác
+biệt tham số:
+
+- `RollingCost` (B1) đi thẳng qua `switch` mà **không có bộ lọc cam kết nào**; solver
+  nhận toàn bộ pool candidate.
+- `RideBoundHardVector` (C1) chạy `_hardAssessor.AssessAndFilter`, **loại bỏ** mọi
+  candidate không qua validator cam kết.
+
+Vì vậy **pool của C1 là tập con của pool của B1**. Cùng solver, cùng accepted-count xếp
+đầu trong objective, nên accepted count của C1 **không thể lớn hơn** B1 ở từng epoch, và
+chênh lệch tích luỹ qua các epoch.
+
+Ba hệ quả bắt buộc cho preregistration:
+
+1. Phát biểu "C1 phục vụ ít hơn" gần như là hệ quả cấu trúc, **không phải kết quả thực
+   nghiệm**. Preregister nó như một hypothesis là vô nghĩa.
+2. Ngược lại, bất kỳ headline dạng "C1 tốt hơn B1" đều **sai về bản chất phép so**: đây
+   không phải hai đối thủ ngang hàng mà là *có ràng buộc* so với *không ràng buộc*.
+3. Kết luận hợp lệ duy nhất là **đường đánh đổi**: thêm bảo đảm cam kết thì mất bao nhiêu
+   dịch vụ. Đó đúng là `revision-service Pareto curve` mà `docs/11` §15 đã liệt kê là
+   bảng/plot bắt buộc.
+
+Kiểm chứng kèm theo: trong bốn đơn vị pilot, **100% rejection ở cả hai arm là
+`PICKUP_WINDOW` hoặc `MAX_RIDE_TIME`** — không một rejection nào do ngân sách cam kết.
+Nghĩa là thiếu hụt dịch vụ do `PhysicalPlanValidator` tuyên bố, một trọng tài dùng chung
+và giống hệt nhau ở hai arm, chứ không do luật nào dự án tự viết ra cho có lợi.
+
+## 5.5 Ba giới hạn cứng hiện **không ràng buộc gì** — kiểm chứng bằng thực nghiệm
+
+§4 mới chỉ nghi ngờ điều này từ việc đọc config. Pilot đã kiểm chứng trực tiếp.
+
+Một stratum nới lỏng được tạo bằng cách bỏ `hardLimit` khỏi `pickup_stop_switch_count`
+và `drop_stop_switch_count`, giữ `vehicle_switch_count = 0` vì O-001 ràng buộc cả hai
+arm. Chạy lại C1 trên cùng cell `C-d20181112-r2`:
+
+| | completed | burden | material | prePickupInserted |
+|---|---:|---:|---:|---:|
+| C1 @ strict (cả ba limit = 0) | 99 | 758.435 | 10 | 3 |
+| C1 @ relaxed (bỏ hai stop-switch limit) | **99** | **758.435** | **10** | **3** |
+
+Giống hệt tới từng chữ số. Kết luận: **hai giới hạn đó chưa bao giờ cắt một candidate
+nào**. Generator không di dời stop của khách hiện hữu, nên chúng luôn tự thoả.
+
+Ba hệ quả:
+
+1. Trong cấu hình hiện tại, **C1 thuần tuý là một chính sách xếp hạng theo revision**.
+   Phần "hard vector" — thứ được coi là đóng góp chính của treatment — đang không hoạt
+   động. Mọi claim về "hard commitment budget" hiện **không có bằng chứng nào chống lưng**.
+2. Thiệt hại dịch vụ **không đến từ ràng buộc cứng**. Nó đến từ thứ tự ưu tiên: trong số
+   các plan cùng accepted count, C1 chọn plan ít xáo trộn nhất, và plan đó đặt đội xe vào
+   vị trí kém hơn cho các yêu cầu đến sau. Đây là tổn thất **myopic tích luỹ**, không phải
+   pruning.
+3. Núm điều chỉnh để dựng Pareto vì thế **không phải** các hard limit. Nó là vị trí của
+   revision vector trong thứ tự lexicographic so với cost. Ackermann & Rieck cùng dòng
+   service-consistency đều đã cảnh báo rằng tối ưu cứng một mục tiêu làm giảm flexibility;
+   cơ chế soft-limit của C2 (`commit-soft-hard-hybrid`) là điểm trung gian **đã được khai
+   báo sẵn** trong dự án và là ứng viên đúng cho frontier.
+
+`RB-WP8-008` vì thế đo trực tiếp C1 qua bốn mức drop-ETA budget và tách hai giá:
+B1 → C1 unbounded là giá của lock/ranking; C1 unbounded → C1 finite là giá thêm
+của budget. C2 không được dùng để cứu cổng chính sau khi nhìn pilot; nó chỉ còn là
+ablation thăm dò WP9 với nhãn claim riêng.
+
+## 5.6 Hiệu chỉnh đơn vị thí nghiệm sau audit
+
+`masterSeed` đi vào solver tie-breaking, không tạo demand hay travel realization mới.
+Do đó đơn vị canonical là `(scenarioHash, demandRealizationHash,
+travelRealizationHash)`. Năm ngày holdout × bốn sample của publisher tạo đúng 20
+đơn vị hữu hạn, không phải 62. WP9 đánh giá fixed panel và không claim population
+non-inferiority; thay đổi seed chỉ là robustness. Quyết định này giữ nguyên margin
+1,0 pp và tránh pseudo-replication.

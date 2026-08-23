@@ -24,7 +24,7 @@ internal static class SolverExecutionEvidenceMapper
         using (var writer = new Utf8JsonWriter(buffer))
         {
             writer.WriteStartObject();
-            writer.WriteString("evidenceVersion", "1.0.0");
+            writer.WriteString("evidenceVersion", "1.1.0");
             writer.WritePropertyName("generation");
             WriteGeneration(writer, decision.GenerationDiagnostics);
             writer.WritePropertyName("prunedCandidates");
@@ -144,6 +144,30 @@ internal static class SolverExecutionEvidenceMapper
                 writer.WriteEndArray();
             }
 
+            writer.WriteEndObject();
+        }
+
+        writer.WriteEndArray();
+        writer.WritePropertyName("exogenousServiceQualityBreaches");
+        writer.WriteStartArray();
+
+        foreach (var breach in diagnostics.ExogenousServiceQualityBreaches
+                     .OrderBy(value => value.VehicleId.Value, StringComparer.Ordinal)
+                     .ThenBy(value => value.RequestId.Value, StringComparer.Ordinal)
+                     .ThenBy(value => value.Code, StringComparer.Ordinal)
+                     .ThenBy(value => value.Dimension, StringComparer.Ordinal))
+        {
+            writer.WriteStartObject();
+            writer.WriteString("vehicleId", breach.VehicleId.Value);
+            writer.WriteString("requestId", breach.RequestId.Value);
+            writer.WriteString("code", breach.Code);
+            writer.WriteString("dimension", breach.Dimension);
+            writer.WriteNumber(
+                "contractualMilliseconds",
+                breach.ContractualMilliseconds);
+            writer.WriteNumber(
+                "exogenousMilliseconds",
+                breach.ExogenousMilliseconds);
             writer.WriteEndObject();
         }
 

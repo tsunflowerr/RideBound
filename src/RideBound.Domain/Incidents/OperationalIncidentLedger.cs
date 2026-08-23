@@ -1,6 +1,7 @@
 using System.Collections.Frozen;
 using RideBound.Domain.Commitments;
 using RideBound.Domain.Common;
+using RideBound.Domain.Validation;
 
 namespace RideBound.Domain.Incidents;
 
@@ -114,6 +115,12 @@ public sealed record OperationalIncident
     }
 }
 
+public enum CommitmentBreachKind
+{
+    OperationalIncident,
+    ExogenousServiceQuality,
+}
+
 public sealed record CommitmentBreachRecord
 {
     public CommitmentBreachRecord(
@@ -130,6 +137,41 @@ public sealed record CommitmentBreachRecord
         long sourceEventSequence,
         long recordedEpoch,
         SimTime recordedAt)
+        : this(
+            breachId,
+            CommitmentBreachKind.OperationalIncident,
+            incidentId,
+            requestId,
+            previousPromise,
+            exogenousProjection,
+            safetyProjection,
+            deltas,
+            budgetBefore,
+            attemptedBudgetAfter,
+            witnessCodes,
+            [],
+            sourceEventSequence,
+            recordedEpoch,
+            recordedAt)
+    {
+    }
+
+    private CommitmentBreachRecord(
+        string breachId,
+        CommitmentBreachKind kind,
+        IncidentId? incidentId,
+        RequestId requestId,
+        PublishedPromise previousPromise,
+        PromiseProjection exogenousProjection,
+        PromiseProjection safetyProjection,
+        ThreeWayPromiseDelta deltas,
+        CommitmentVector budgetBefore,
+        CommitmentVector attemptedBudgetAfter,
+        IEnumerable<string> witnessCodes,
+        IEnumerable<ServiceQualityBreach> serviceQualityWitnesses,
+        long sourceEventSequence,
+        long recordedEpoch,
+        SimTime recordedAt)
     {
         ArgumentNullException.ThrowIfNull(previousPromise);
         ArgumentNullException.ThrowIfNull(exogenousProjection);
@@ -138,6 +180,7 @@ public sealed record CommitmentBreachRecord
         ArgumentNullException.ThrowIfNull(budgetBefore);
         ArgumentNullException.ThrowIfNull(attemptedBudgetAfter);
         ArgumentNullException.ThrowIfNull(witnessCodes);
+        ArgumentNullException.ThrowIfNull(serviceQualityWitnesses);
 
         if (previousPromise.Projection.RequestId != requestId
             || exogenousProjection.RequestId != requestId
@@ -156,20 +199,6 @@ public sealed record CommitmentBreachRecord
             throw new ArgumentOutOfRangeException(nameof(sourceEventSequence));
         }
 
-        var decisionAfter = budgetBefore.Add(deltas.DecisionInduced);
-        var visibleAfter = budgetBefore.Add(deltas.Visible);
-
-        if ((!decisionAfter.IsSuccess
-                || decisionAfter.Value != attemptedBudgetAfter)
-            && (!visibleAfter.IsSuccess
-                || visibleAfter.Value != attemptedBudgetAfter))
-        {
-            throw new ArgumentException(
-                "Attempted breach budget must equal budgetBefore plus the " +
-                "decision-induced or customer-visible charged delta.",
-                nameof(attemptedBudgetAfter));
-        }
-
         var witnesses = witnessCodes
             .Select(value => DomainIdentifier.Require(value, nameof(witnessCodes)))
             .Distinct(StringComparer.Ordinal)
@@ -183,7 +212,79 @@ public sealed record CommitmentBreachRecord
                 nameof(witnessCodes));
         }
 
+        var serviceWitnesses = serviceQualityWitnesses
+            .OrderBy(value => value.RequestId.Value, StringComparer.Ordinal)
+            .ThenBy(value => value.Code, StringComparer.Ordinal)
+            .ThenBy(value => value.Dimension, StringComparer.Ordinal)
+            .ToArray();
+
+        if (kind == CommitmentBreachKind.ExogenousServiceQuality)
+        {
+            if (incidentId is not null
+                || !ProjectionEquals(exogenousProjection, safetyProjection)
+                || deltas.DecisionInduced != CommitmentVector.Zero
+                || deltas.Exogenous != deltas.Visible
+                || attemptedBudgetAfter != budgetBefore)
+            {
+                throw new ArgumentException(
+                    "An exogenous breach requires identical no-op projections, " +
+                    "zero decision delta and an unchanged budget.");
+            }
+
+            if (serviceWitnesses.Length == 0
+                || serviceWitnesses.Any(
+                    value => value.RequestId != requestId
+                        || value.ContractualMilliseconds < 0
+                        || value.ExogenousMilliseconds
+                            <= value.ContractualMilliseconds
+                        || value.Code == PhysicalViolationCodes.PickupWindow
+                            && value.Dimension != "latestPickupMs"
+                        || value.Code == PhysicalViolationCodes.MaxRideTime
+                            && value.Dimension != "maxRideTimeMs"
+                        || value.Code is not (
+                            PhysicalViolationCodes.PickupWindow
+                            or PhysicalViolationCodes.MaxRideTime))
+                || serviceWitnesses
+                    .Select(value => (value.RequestId, value.Code, value.Dimension))
+                    .Distinct()
+                    .Count() != serviceWitnesses.Length
+                || !witnesses.SequenceEqual(
+                    serviceWitnesses
+                        .Select(value => value.Code)
+                        .Distinct(StringComparer.Ordinal)
+                        .Order(StringComparer.Ordinal),
+                    StringComparer.Ordinal))
+            {
+                throw new ArgumentException(
+                    "Exogenous breach witnesses must be exact, unique service-quality overruns.",
+                    nameof(serviceQualityWitnesses));
+            }
+        }
+        else
+        {
+            if (incidentId is null || serviceWitnesses.Length != 0)
+            {
+                throw new ArgumentException(
+                    "An operational breach requires an incident and cannot carry exogenous witnesses.");
+            }
+
+            var decisionAfter = budgetBefore.Add(deltas.DecisionInduced);
+            var visibleAfter = budgetBefore.Add(deltas.Visible);
+
+            if ((!decisionAfter.IsSuccess
+                    || decisionAfter.Value != attemptedBudgetAfter)
+                && (!visibleAfter.IsSuccess
+                    || visibleAfter.Value != attemptedBudgetAfter))
+            {
+                throw new ArgumentException(
+                    "Attempted breach budget must equal budgetBefore plus the " +
+                    "decision-induced or customer-visible charged delta.",
+                    nameof(attemptedBudgetAfter));
+            }
+        }
+
         BreachId = DomainIdentifier.Require(breachId, nameof(breachId));
+        Kind = kind;
         IncidentId = incidentId;
         RequestId = requestId;
         PreviousPromise = previousPromise;
@@ -193,6 +294,7 @@ public sealed record CommitmentBreachRecord
         BudgetBefore = budgetBefore;
         AttemptedBudgetAfter = attemptedBudgetAfter;
         WitnessCodes = Array.AsReadOnly(witnesses);
+        ServiceQualityWitnesses = Array.AsReadOnly(serviceWitnesses);
         SourceEventSequence = sourceEventSequence;
         RecordedEpoch = recordedEpoch;
         RecordedAt = recordedAt;
@@ -200,7 +302,9 @@ public sealed record CommitmentBreachRecord
 
     public string BreachId { get; }
 
-    public IncidentId IncidentId { get; }
+    public CommitmentBreachKind Kind { get; }
+
+    public IncidentId? IncidentId { get; }
 
     public RequestId RequestId { get; }
 
@@ -218,6 +322,8 @@ public sealed record CommitmentBreachRecord
 
     public IReadOnlyList<string> WitnessCodes { get; }
 
+    public IReadOnlyList<ServiceQualityBreach> ServiceQualityWitnesses { get; }
+
     public long SourceEventSequence { get; }
 
     public long RecordedEpoch { get; }
@@ -225,6 +331,56 @@ public sealed record CommitmentBreachRecord
     public SimTime RecordedAt { get; }
 
     public bool NormalOperation => false;
+
+    public static CommitmentBreachRecord CreateExogenousServiceQuality(
+        string breachId,
+        RequestId requestId,
+        PublishedPromise previousPromise,
+        PromiseProjection exogenousProjection,
+        PromiseProjection safetyProjection,
+        ThreeWayPromiseDelta deltas,
+        CommitmentVector budgetBefore,
+        CommitmentVector attemptedBudgetAfter,
+        IEnumerable<string> witnessCodes,
+        IEnumerable<ServiceQualityBreach> serviceQualityWitnesses,
+        long sourceEventSequence,
+        long recordedEpoch,
+        SimTime recordedAt)
+    {
+        ArgumentNullException.ThrowIfNull(witnessCodes);
+        ArgumentNullException.ThrowIfNull(serviceQualityWitnesses);
+        var materialized = serviceQualityWitnesses.ToArray();
+
+        return new CommitmentBreachRecord(
+            breachId,
+            CommitmentBreachKind.ExogenousServiceQuality,
+            null,
+            requestId,
+            previousPromise,
+            exogenousProjection,
+            safetyProjection,
+            deltas,
+            budgetBefore,
+            attemptedBudgetAfter,
+            witnessCodes,
+            materialized,
+            sourceEventSequence,
+            recordedEpoch,
+            recordedAt);
+    }
+
+    private static bool ProjectionEquals(
+        PromiseProjection left,
+        PromiseProjection right) =>
+        left.RequestId == right.RequestId
+        && left.VehicleId == right.VehicleId
+        && left.PickupStopId == right.PickupStopId
+        && left.PickupNodeId == right.PickupNodeId
+        && left.DropStopId == right.DropStopId
+        && left.DropNodeId == right.DropNodeId
+        && left.PickupEta == right.PickupEta
+        && left.DropEta == right.DropEta
+        && left.ServiceOrder.SequenceEqual(right.ServiceOrder);
 }
 
 public sealed record IncidentLedgerResult
@@ -359,13 +515,23 @@ public sealed class OperationalIncidentLedger
                 "breachId");
         }
 
-        if (!_incidents.TryGetValue(breach.IncidentId, out var incident)
+        if (breach.Kind == CommitmentBreachKind.ExogenousServiceQuality)
+        {
+            return IncidentLedgerResult.Success(
+                new OperationalIncidentLedger(
+                    _incidents,
+                    _breaches.Append(breach)));
+        }
+
+        var incidentId = breach.IncidentId!.Value;
+
+        if (!_incidents.TryGetValue(incidentId, out var incident)
             || !incident.IsOpen)
         {
             return IncidentLedgerResult.Fail(
                 IncidentFailureCodes.IncidentNotOpen,
                 "A breach can only be recorded against an open incident.",
-                breach.IncidentId.Value,
+                incidentId.Value,
                 "incidentId");
         }
 

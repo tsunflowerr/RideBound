@@ -17,6 +17,39 @@ import pathlib
 
 _EVENTS = ("requestArrived", "passengerAlighted")
 
+# The analysis manifest names the arms by their declared preregistered identity,
+# which is not the short token the execution plan and job IDs use.  Splicing the
+# declared identity straight into an expected job ID made every cell fail closed
+# with "primary job binding differs", so the mapping is explicit and the pair is
+# pinned in orientation: B1 is the baseline, C1 the treatment, never the reverse.
+_PRIMARY_ARMS = {
+    "b1-rolling-cost": (
+        "b1",
+        "benchmarks/configurations/wp9-fleetpy-rolling-cost-audited-v1.json",
+    ),
+    "c1-hard-vector-tight-30s": (
+        "c1",
+        "benchmarks/configurations/"
+        "wp9-fleetpy-ridebound-hard-vector-audited-v1.json",
+    ),
+}
+_PRIMARY_ORIENTATION = ("b1-rolling-cost", "c1-hard-vector-tight-30s")
+
+# Panel B (WP8-011d capacity panel) is a separate derivative tree, driver set and
+# execution plan; panel A is untouched.
+_JOB_PREFIX = {"a": "p", "b": "pb"}
+_DRIVER_SUFFIX = {"a": ".driver.json", "b": ".veh4.driver.json"}
+_FIXTURE_ROOT = {
+    "a": (
+        "benchmarks/fixtures/wp6/public/fleetpy-manhattan-v1/"
+        "wp9-confirmatory-fixed-panel-v2"
+    ),
+    "b": (
+        "benchmarks/fixtures/wp6/public/fleetpy-manhattan-v1/"
+        "wp9-confirmatory-fixed-panel-v3-veh4"
+    ),
+}
+
 
 def _canonical(value):
     return json.dumps(
@@ -297,12 +330,21 @@ def _read_manifest(path):
     }
     if set(manifest) != required or manifest["schemaVersion"] != "1.0.0":
         raise RuntimeError("analysis manifest fields/version differ")
+    if (
+        manifest["baselineArmId"],
+        manifest["treatmentArmId"],
+    ) != _PRIMARY_ORIENTATION:
+        raise RuntimeError(
+            "analysis manifest arm orientation differs from the preregistered "
+            "pairing"
+        )
     cells = manifest["cells"]
     if (
         not isinstance(cells, list)
         or not cells
         or any(set(cell) != {"cellId", "baselineBundle", "treatmentBundle"}
                for cell in cells)
+        or any(cell["baselineBundle"] == cell["treatmentBundle"] for cell in cells)
         or len({cell["cellId"] for cell in cells}) != len(cells)
     ):
         raise RuntimeError("analysis manifest cells are invalid or duplicate")
@@ -322,26 +364,31 @@ def _load_matrix_program(adapter_root):
     return module
 
 
-def _validate_primary_job(job, cell_id, arm_id, bundle_name):
-    expected_wp4 = {
-        "b1": "benchmarks/configurations/wp9-fleetpy-rolling-cost-audited-v1.json",
-        "c1": "benchmarks/configurations/wp9-fleetpy-ridebound-hard-vector-audited-v1.json",
-    }
+def _validate_primary_job(job, cell_id, declared_arm_id, bundle_name, panel="a"):
+    resolved = _PRIMARY_ARMS.get(declared_arm_id)
+    if resolved is None:
+        raise RuntimeError(
+            f"primary arm is not preregistered: {declared_arm_id!r}"
+        )
+    arm_id, wp4_config = resolved
     expected = {
         "armId": arm_id,
         "cellId": cell_id,
         "commitmentConfig": (
             "benchmarks/configurations/wp8-drop-eta-budget-tight-v1.json"
         ),
-        "driver": f"benchmarks/scenarios/wp9-confirmatory/{cell_id}.driver.json",
-        "jobId": f"p-{cell_id}-{arm_id}-tight-s7",
+        "driver": (
+            f"benchmarks/scenarios/wp9-confirmatory/{cell_id}"
+            f"{_DRIVER_SUFFIX[panel]}"
+        ),
+        "jobId": f"{_JOB_PREFIX[panel]}-{cell_id}-{arm_id}-tight-s7",
         "masterSeed": 7,
         "phase": "primary",
-        "wp4Config": expected_wp4.get(arm_id),
+        "wp4Config": wp4_config,
     }
     if bundle_name != expected["jobId"] or job != expected:
         raise RuntimeError(
-            f"primary job binding differs for cell {cell_id}, arm {arm_id}"
+            f"primary job binding differs for cell {cell_id}, arm {declared_arm_id}"
         )
 
 
@@ -352,14 +399,30 @@ def main():
     parser.add_argument("--repository", required=True, type=pathlib.Path)
     parser.add_argument("--bundle-root", required=True, type=pathlib.Path)
     parser.add_argument("--require-audited-solver-evidence", action="store_true")
+    parser.add_argument("--panel", choices=sorted(_JOB_PREFIX), default="a")
     arguments = parser.parse_args()
 
     adapter_root = pathlib.Path(__file__).parent.resolve()
     manifest = _read_manifest(arguments.manifest.resolve())
     matrix = _load_matrix_program(adapter_root)
     plan = matrix._load_plan(arguments.execution_plan.resolve())
-    matrix._validate_frozen_design(plan)
+    matrix._validate_frozen_design(plan, arguments.panel)
     jobs = {job["jobId"]: job for job in plan["jobs"]}
+
+    # The freeze receipt pins this manifest, but the analyzer is the thing that
+    # emits the confirmatory number and must not fail open on its own.  A
+    # manifest listing 19 of 20 cells previously validated, analysed, and
+    # reported "pass" on a silently smaller denominator.
+    planned_cells = {
+        job["cellId"] for job in plan["jobs"] if job["phase"] == "primary"
+    }
+    manifest_cells = {cell["cellId"] for cell in manifest["cells"]}
+    if manifest_cells != planned_cells:
+        raise RuntimeError(
+            "analysis manifest panel is not the exact frozen primary cell set: "
+            f"{len(manifest_cells)} of {len(planned_cells)} cells"
+        )
+
     repository = arguments.repository.resolve()
     repository_inventory_sha256 = matrix._repository_inventory_sha256(repository)
     verifier = _load_verifier(adapter_root)
@@ -374,17 +437,21 @@ def main():
             cell["cellId"],
             manifest["baselineArmId"],
             cell["baselineBundle"],
+            arguments.panel,
         )
         _validate_primary_job(
             treatment_job,
             cell["cellId"],
             manifest["treatmentArmId"],
             cell["treatmentBundle"],
+            arguments.panel,
         )
-        scenario = repository / (
-            "benchmarks/fixtures/wp6/public/fleetpy-manhattan-v1/"
-            "wp9-confirmatory-fixed-panel-v2"
-        ) / cell["cellId"] / "scenario-content.json"
+        scenario = (
+            repository
+            / _FIXTURE_ROOT[arguments.panel]
+            / cell["cellId"]
+            / "scenario-content.json"
+        )
         scenario_sha256 = _sha256(scenario)
         baseline = _read_observation(
             (arguments.bundle_root / cell["baselineBundle"]).resolve(),

@@ -179,10 +179,13 @@ public sealed class Wp4RunnerIntegrationTests
         var evidence = decision.Value!.Solver.ExecutionEvidence;
         Assert.NotNull(evidence);
         Assert.Equal(
-            "1.0.0",
+            "1.1.0",
             evidence.Value.GetProperty("evidenceVersion").GetString());
         var generation = evidence.Value.GetProperty("generation");
         Assert.True(generation.GetProperty("totalPendingRequestCount").GetInt64() > 0);
+        Assert.Equal(
+            JsonValueKind.Array,
+            generation.GetProperty("exogenousServiceQualityBreaches").ValueKind);
         Assert.All(
             generation.GetProperty("vehicleLosses").EnumerateArray(),
             loss => Assert.False(string.IsNullOrEmpty(

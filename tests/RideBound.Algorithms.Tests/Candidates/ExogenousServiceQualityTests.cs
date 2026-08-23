@@ -73,7 +73,7 @@ public sealed class ExogenousServiceQualityTests
     }
 
     [Fact]
-    public void A_candidate_worse_than_the_breach_is_still_pruned_on_that_dimension()
+    public void Every_changed_candidate_is_judged_against_the_contractual_bound()
     {
         var state = CommittedState(withPendingRequest: true);
 
@@ -84,9 +84,10 @@ public sealed class ExogenousServiceQualityTests
         Assert.True(result.IsSuccess, result.Witness?.Message);
         var vehicle = Assert.Single(result.VehicleCandidates!);
 
-        // The detour through node-3 lengthens the incumbent's ride beyond the
-        // 5,000 ms the unchanged route already realizes. The relief covers the
-        // traffic, never the decision.
+        // ADR-047: relief reaches the safety no-op and nothing else. A changed
+        // candidate carrying the breached incumbent is pruned against the
+        // published 150 ms bound, not the 5,000 ms the traffic already caused —
+        // so RideBound never proposes a plan the simulator would reject.
         var pruned = vehicle.PrunedCandidates
             .Where(value => value.Code == PhysicalViolationCodes.MaxRideTime)
             .ToArray();
@@ -96,16 +97,30 @@ public sealed class ExogenousServiceQualityTests
             value =>
             {
                 Assert.Equal(Incumbent, value.PhysicalWitness?.RequestId);
-                Assert.Equal(5_000, value.PhysicalWitness?.Expected);
-                Assert.True(
-                    value.PhysicalWitness?.Actual > 5_000,
-                    "A candidate is only pruned here for being strictly worse " +
-                    "than doing nothing.");
+                Assert.Equal(150, value.PhysicalWitness?.Expected);
             });
 
-        // The relaxation is not a free pass in the other direction either: a
-        // candidate that does not worsen the breach is still generated.
-        Assert.Contains(vehicle.Candidates, value => !value.IsNoOp);
+        // The no-op survives regardless; that is the whole point of the relief.
+        Assert.Single(vehicle.Candidates, value => value.IsNoOp);
+    }
+
+    [Fact]
+    public void The_breached_incumbent_leaves_the_vehicle_with_only_the_no_op()
+    {
+        var state = CommittedState(withPendingRequest: true);
+
+        var result = _generator.Generate(
+            state,
+            new CandidateGenerationOptions(100, 1, exactSmallMode: true));
+
+        Assert.True(result.IsSuccess, result.Witness?.Message);
+        var vehicle = Assert.Single(result.VehicleCandidates!);
+
+        // Once the active route is in breach, no changed plan can honour the
+        // contract for the incumbent, so the vehicle rides out its current
+        // route. That is a real service cost and it must not be hidden: the run
+        // continues, the pending request simply is not inserted here.
+        Assert.All(vehicle.Candidates, value => Assert.True(value.IsNoOp));
     }
 
     /// <summary>

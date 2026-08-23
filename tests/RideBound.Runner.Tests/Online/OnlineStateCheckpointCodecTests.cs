@@ -8,6 +8,7 @@ using RideBound.Domain.Incidents;
 using RideBound.Domain.Requests;
 using RideBound.Domain.Routes;
 using RideBound.Domain.Runs;
+using RideBound.Domain.Validation;
 using RideBound.Domain.Vehicles;
 using RideBound.Runner.Online;
 
@@ -127,6 +128,31 @@ public sealed class OnlineStateCheckpointCodecTests
             incidentId,
             4,
             new SimTime(3)).Ledger!;
+        incidents = incidents.AppendBreach(
+            CommitmentBreachRecord.CreateExogenousServiceQuality(
+                "exogenous-breach-1",
+                requestId,
+                promises.Histories[requestId].Current.PublishedPromise,
+                projection,
+                projection,
+                new ThreeWayPromiseDelta(
+                    CommitmentVector.Zero,
+                    CommitmentVector.Zero,
+                    CommitmentVector.Zero),
+                CommitmentVector.Zero,
+                CommitmentVector.Zero,
+                [PhysicalViolationCodes.MaxRideTime],
+                [
+                    new ServiceQualityBreach(
+                        requestId,
+                        PhysicalViolationCodes.MaxRideTime,
+                        "maxRideTimeMs",
+                        100,
+                        101),
+                ],
+                4,
+                1,
+                new SimTime(3))).Ledger!;
         var travel = TravelTimeSnapshot.Create(
             1,
             new string('a', 64),
@@ -151,8 +177,19 @@ public sealed class OnlineStateCheckpointCodecTests
         var restoredIncident = Assert.Single(
             decoded.State!.Incidents.Incidents).Value;
         Assert.False(restoredIncident.IsOpen);
-        Assert.Equal("breach-1", Assert.Single(
-            decoded.State.Incidents.Breaches).BreachId);
+        Assert.Collection(
+            decoded.State.Incidents.Breaches,
+            breach => Assert.Equal("breach-1", breach.BreachId),
+            breach =>
+            {
+                Assert.Equal("exogenous-breach-1", breach.BreachId);
+                Assert.Equal(
+                    CommitmentBreachKind.ExogenousServiceQuality,
+                    breach.Kind);
+                Assert.Null(breach.IncidentId);
+                Assert.Single(breach.ServiceQualityWitnesses);
+                Assert.Equal(breach.BudgetBefore, breach.AttemptedBudgetAfter);
+            });
         Assert.Equal(
             OnlineStateCanonicalizer.Canonicalize(state),
             OnlineStateCanonicalizer.Canonicalize(decoded.State));
@@ -166,5 +203,16 @@ public sealed class OnlineStateCheckpointCodecTests
 
         Assert.False(rejected.IsSuccess);
         Assert.Contains("promise/run boundary", rejected.Error);
+
+        var forgedExogenous = JsonNode.Parse(document.RootElement.GetRawText())!;
+        forgedExogenous["incidentLedger"]!["breaches"]![1]![
+            "attemptedBudgetAfter"]!["pickupEtaTotalMs"] = 1;
+        using var forgedDocument = JsonDocument.Parse(
+            forgedExogenous.ToJsonString());
+        var forgedResult = OnlineStateCheckpointCodec.Decode(
+            forgedDocument.RootElement);
+
+        Assert.False(forgedResult.IsSuccess);
+        Assert.Contains("unchanged budget", forgedResult.Error);
     }
 }

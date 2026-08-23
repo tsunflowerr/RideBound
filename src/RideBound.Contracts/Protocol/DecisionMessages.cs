@@ -795,7 +795,7 @@ public static class DecisionPayloadCodec
             return error;
         }
 
-        if (version.Value != "1.0.0"
+        if (version.Value is not ("1.0.0" or "1.1.0")
             || generation.Value.ValueKind != JsonValueKind.Object
             || pruned.Value.ValueKind != JsonValueKind.Array
             || selection.Value.ValueKind != JsonValueKind.Object)
@@ -803,7 +803,7 @@ public static class DecisionPayloadCodec
             return new ProtocolPayloadError(
                 ProtocolPayloadErrorCode.InvalidValue,
                 path,
-                "Solver execution evidence must use version 1.0.0 and the canonical generation/prune/selection shapes.");
+                "Solver execution evidence must use a supported 1.x version and the canonical generation/prune/selection shapes.");
         }
 
         return null;

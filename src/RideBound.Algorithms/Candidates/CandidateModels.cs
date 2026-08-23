@@ -85,8 +85,9 @@ public sealed record VehicleCandidateLoss(
 /// A service-quality deadline the vehicle's unchanged active route can no longer
 /// meet under the current travel snapshot (ADR-045). It is attributed to traffic,
 /// not to the decision about to be taken, and it never removes the safety no-op.
-/// <see cref="ExogenousMilliseconds"/> doubles as the anti-laundering bound: no
-/// candidate in this epoch may be worse than it on this dimension.
+/// <see cref="ExogenousMilliseconds"/> is the exact no-op observation. ADR-047
+/// keeps every changed candidate strictly contractual; only the unchanged
+/// safety route may use this observation as its relaxed bound.
 /// </summary>
 public sealed record ExogenousServiceQualityBreach(
     VehicleId VehicleId,

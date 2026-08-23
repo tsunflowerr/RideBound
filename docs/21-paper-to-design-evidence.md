@@ -479,3 +479,26 @@ Work-profile exact counters giữ nguyên; ba process measurement giảm khoản
 wall/process time ở fixture đo. Đây là local engineering result, không phải claim
 speed-up `3,8×` của Gschwind–Drexl, không phải SLA, và không suy quality preservation
 ra workload khác ngoài exact differential đã chạy.
+
+## 25. ADR-052 — exact cache identity reuse hậu WP10
+
+Đọc full PDF không tự động cấp quyền nhập thuật toán paper. Gschwind–Drexl và
+Schulz–Pfeiffer yêu cầu preprocessing/reuse gắn với route state chính xác; nhưng
+constant-time temporal check của họ không chứng minh các constraint capacity,
+connectivity, frozen-prefix, accepted/onboard và commitment của RideBound. Thêm nữa,
+`ITravelTimeLookup` không khóa triangle inequality nên một temporal failure của partial
+route không đủ để chứng minh mọi descendant insertion đều failure. Vì vậy subtree
+prune và full constant-time test đều bị từ chối.
+
+Thay đổi được nhận chỉ là hai phép khử lặp exact:
+
+1. immutable `VehicleState` reference trong `ForwardSlackCacheKey` đã bind position;
+   không tạo thêm textual position fingerprint trên từng lookup;
+2. terminal node so trực tiếp prefetched key với exact run/vehicle/route/time/travel/
+   allowance, không allocate/hash key thứ hai.
+
+Ba process trước và ba process sau cho allocation key giảm đúng 30%; complete
+generator giảm 0,79–1,30% heap với toàn bộ work/evaluated/feasible/omitted/retained/
+slack-miss counter không đổi. Timing generator mixed nên không có speed claim.
+Raw artifact hashes, protocol và giới hạn ở
+[`post-wp10-exact-reuse-optimization-2026-08-23.md`](benchmarking/post-wp10-exact-reuse-optimization-2026-08-23.md).

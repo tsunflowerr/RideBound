@@ -35,9 +35,38 @@ _COMMITMENT_BY_LEVEL = {
 }
 _CELL_ID = re.compile(r"^d[0-9]{8}-s[1-9][0-9]*-r[1-9][0-9]*$")
 _JOB_ID = re.compile(
-    r"^[pr]-d[0-9]{8}-s[1-9][0-9]*-r[1-9][0-9]*-"
+    r"^(?:p|r|pb)-d[0-9]{8}-s[1-9][0-9]*-r[1-9][0-9]*-"
     r"(?:b1|c1|c2)-(?:tight|unbounded|loose)-s[0-9]+$"
 )
+
+# WP8-011d declares a second capacity panel. Fleet size lives inside the frozen
+# derivative, not in this plan, so panel B is a separate derivative tree, driver
+# set and execution plan rather than a field on panel A's jobs.  Panel A stays
+# byte-for-byte identical to what the preregistration froze.
+_PANELS = {
+    "a": {
+        "fixtureRoot": (
+            "benchmarks/fixtures/wp6/public/fleetpy-manhattan-v1/"
+            "wp9-confirmatory-fixed-panel-v2"
+        ),
+        "driverSuffix": ".driver.json",
+        "jobPrefixes": {"primary": "p", "robustness": "r"},
+        "primaryJobCount": 40,
+        "robustnessJobCount": 20,
+        "robustnessCellCount": 5,
+    },
+    "b": {
+        "fixtureRoot": (
+            "benchmarks/fixtures/wp6/public/fleetpy-manhattan-v1/"
+            "wp9-confirmatory-fixed-panel-v3-veh4"
+        ),
+        "driverSuffix": ".veh4.driver.json",
+        "jobPrefixes": {"primary": "pb", "robustness": "rb"},
+        "primaryJobCount": 40,
+        "robustnessJobCount": 0,
+        "robustnessCellCount": 0,
+    },
+}
 
 
 def _load_plan(path):
@@ -73,17 +102,18 @@ def _load_plan(path):
     return plan
 
 
-def _validate_frozen_design(plan):
+def _validate_frozen_design(plan, panel="a"):
+    specification = _PANELS[panel]
     jobs = plan["jobs"]
     primary = [job for job in jobs if job["phase"] == "primary"]
     robustness = [job for job in jobs if job["phase"] == "robustness"]
     primary_cells = {job["cellId"] for job in primary}
     robustness_cells = {job["cellId"] for job in robustness}
     if (
-        len(primary) != 40
-        or len(robustness) != 20
+        len(primary) != specification["primaryJobCount"]
+        or len(robustness) != specification["robustnessJobCount"]
         or len(primary_cells) != 20
-        or len(robustness_cells) != 5
+        or len(robustness_cells) != specification["robustnessCellCount"]
         or not robustness_cells.issubset(primary_cells)
     ):
         raise RuntimeError("frozen WP9 matrix denominators differ")
@@ -128,6 +158,7 @@ def _validate_frozen_design(plan):
         if actual != expected:
             raise RuntimeError(f"robustness design differs for cell {cell_id}")
 
+    suffix = specification["driverSuffix"]
     for job in jobs:
         level = next(
             (
@@ -137,7 +168,7 @@ def _validate_frozen_design(plan):
             ),
             None,
         )
-        prefix = "p" if job["phase"] == "primary" else "r"
+        prefix = specification["jobPrefixes"][job["phase"]]
         expected_job_id = (
             f"{prefix}-{job['cellId']}-{job['armId']}-{level}-s{job['masterSeed']}"
         )
@@ -145,7 +176,7 @@ def _validate_frozen_design(plan):
             level is None
             or job["wp4Config"] != _WP4_BY_ARM.get(job["armId"])
             or job["driver"]
-            != f"benchmarks/scenarios/wp9-confirmatory/{job['cellId']}.driver.json"
+            != f"benchmarks/scenarios/wp9-confirmatory/{job['cellId']}{suffix}"
             or job["jobId"] != expected_job_id
         ):
             raise RuntimeError(f"frozen WP9 job binding differs: {job['jobId']}")
@@ -262,10 +293,9 @@ def _run_job(job, arguments, repository, verifier_path):
         repository, job["commitmentConfig"], "commitmentConfig"
     )
     driver = _resolve_under(repository, job["driver"], "driver")
-    fixture = repository / (
-        "benchmarks/fixtures/wp6/public/fleetpy-manhattan-v1/"
-        "wp9-confirmatory-fixed-panel-v2"
-    ) / job["cellId"]
+    fixture = (
+        repository / _PANELS[arguments.panel]["fixtureRoot"] / job["cellId"]
+    )
     expected_scenario_sha256 = _sha256(fixture / "scenario-content.json")
     environment = dict(os.environ)
     environment["PYTHONDONTWRITEBYTECODE"] = "1"
@@ -408,13 +438,14 @@ def main():
     parser.add_argument("--parallelism", type=int, default=4)
     parser.add_argument("--resume-verified", action="store_true")
     parser.add_argument("--job-id", action="append", dest="job_ids")
+    parser.add_argument("--panel", choices=sorted(_PANELS), default="a")
     arguments = parser.parse_args()
     if not 1 <= arguments.parallelism <= 4:
         parser.error("--parallelism must be in [1,4]")
 
     repository = arguments.repository.resolve()
     plan = _load_plan(arguments.plan.resolve())
-    _validate_frozen_design(plan)
+    _validate_frozen_design(plan, arguments.panel)
     selected_jobs = _select_jobs(plan, arguments.job_ids)
     verifier = repository / (
         "simulators/fleetpy-ridebound/actual_fleetpy_medium_verify.py"

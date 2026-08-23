@@ -21,7 +21,10 @@ Thứ tự:
 3. AMoDeus là stretch.
 4. OpenRidepoolSimulator chỉ dùng khi có lý do lịch sử cụ thể.
 
-Layer 3 được coi hoàn thành khi RidePy **hoặc** AMoD2 pass gate.
+Layer 3 chỉ được coi là **được chứng minh** khi RidePy **hoặc** AMoD2 pass toàn bộ
+gate. Một work package vẫn có thể đóng bằng negative capability result nếu gate được
+thực thi đầy đủ và failure được giữ làm bằng chứng; khi đó không được viết Layer 3 đã
+được chứng minh.
 
 ## 3. RidePy
 
@@ -62,6 +65,24 @@ Có thể tái dùng `VehicleState.fast_forward_time`, `TransportSpace` và even
 - RidePy built-in flow xử lý request tuần tự; đây phù hợp event-driven RideBound nhưng khác FleetPy batch.
 - Nếu không hỗ trợ vehicle reassignment atomically, Layer 3 pin `reassignment=false` cho cả B1/C1.
 - Traffic dynamics/old-plan projection cần preflight theo `TransportSpace`.
+
+### Kết quả thực thi WP10
+
+RidePy 2.10.1 đã pass exact-source/Linux environment, same-Runner mapping, atomic
+stoplist apply và canonical 2-vehicle/5-request lifecycle. Cả B1/C1 canonical hoàn
+thành 5/5 request và reconcile đủ 5 pickup + 5 drop.
+
+Representative subset không pass. Trong `travel-update-stress-r3`, một event của xe
+khác tạo Runner epoch khi xe đang chở khách vẫn ở giữa cạnh. Capability `nodeOnly`
+chỉ báo node cuối, nên Runner còn giữ pickup ETA 178 giây trong khi RidePy native
+pickup tại 116 giây. Promise projection fail closed với mã
+`RBWP10_NODEONLY_CONCURRENT_MIDEDGE_UNSUPPORTED`. Không được nội suy directed-edge
+progress từ clock vì đó là state không được simulator cung cấp.
+
+Vì vậy WP10 đóng với negative capability result và Layer 3 claim **chưa được thiết
+lập**. AMoD2 vẫn là hướng tương lai riêng, không phải replacement hậu-outcome cho
+subset đã freeze. Chi tiết ở
+[WP10 negative capability report](benchmarking/wp10-ridepy-layer3-negative-capability-result-2026-08-23.md).
 
 ## 4. AMoD2
 
@@ -125,16 +146,17 @@ Có giá trị để hiểu implementation gần PNAS 2017, nhưng maintenance/d
 
 | Tiêu chí | RidePy | AMoD2 | AMoDeus | OpenRidepool |
 |---|---:|---:|---:|---:|
-| Build sạch trên môi trường dự án | TBD | TBD | TBD | TBD |
+| Build sạch trên môi trường dự án | Có, pinned Linux image | TBD | TBD | TBD |
 | License phù hợp | Có | Có | cần review GPL | Có |
 | Event/vehicle state rõ | Cao | Cao | Cao | Trung bình |
 | External dispatcher effort | Trung bình | Trung bình–cao | Cao | Cao |
 | Reassignment | cần subclass/capability | Có trong OSP | có thể | TBD |
-| Dynamic travel projection | TBD | hạn chế/TBD | có thể | TBD |
+| Dynamic travel projection | explicit update pass; concurrent mid-edge fail | hạn chế/TBD | có thể | TBD |
 | Reproducibility docs | Cao | Trung bình | Trung bình | Thấp |
-| Khuyến nghị | Mặc định | Thay thế | Stretch | Di sản |
+| Khuyến nghị | WP10 evaluated negative | Future alternative | Stretch | Di sản |
 
-`TBD` chỉ được đổi sau executable preflight.
+`TBD` chỉ được đổi sau executable preflight. RidePy score đã được thay bằng evidence
+thực thi WP10; không suy rộng sang AMoD2.
 
 ## 8. Canonical cross-system scenario
 

@@ -1,7 +1,7 @@
 # RideBound — bản đồ tài liệu
 
-> Trạng thái: WP0–WP8 hoàn thành; WP9 đã mở, `001/003 Done`, `RB-WP9-002a` Ready (repin H5 sau ADR-045 và `wp8-011d`)
-> Cập nhật: 2026-08-21
+> Trạng thái: WP0–WP10 hoàn thành; WP9 là kết quả confirmatory âm dưới `H6`, WP10 là negative Layer 3 capability result
+> Cập nhật: 2026-08-23
 > Nguồn sự thật về tiến độ: [18-status-and-decision-log.md](18-status-and-decision-log.md)
 
 ## 1. Mục đích của bộ tài liệu
@@ -120,14 +120,20 @@ Bộ tài liệu này trả lời năm câu hỏi:
 | [36-wp7-fleetpy-layer2-ticket-plan.md](tasks/36-wp7-fleetpy-layer2-ticket-plan.md) | Ordered queue WP7 `002..014`; Candidate portfolio, pin/env, mapping, Runner client, FleetControl, plan/lock, preflight và closed loop |
 | [37-wp8-pilot-and-preregistration-refinement.md](tasks/37-wp8-pilot-and-preregistration-refinement.md) | WP8 refinement: ba khoảng trống còn lại, grid từ dữ liệu thật, tách pilot/confirmatory, vấn đề synthetic budget và phương pháp non-inferiority |
 | [38-wp8-pilot-and-preregistration-ticket-plan.md](tasks/38-wp8-pilot-and-preregistration-ticket-plan.md) | Ordered queue WP8 `002..014`; grid manifest, pilot execution, variance/power, budget derivation, margin, preregistration freeze và leakage audit |
-| [39-wp9-main-experiment-ticket-plan.md](tasks/39-wp9-main-experiment-ticket-plan.md) | Ordered queue WP9 `001..008`; freeze, audited smoke, Layer 1/2, exact analysis, robustness và reproducibility closure |
+| [39-wp9-main-experiment-ticket-plan.md](tasks/39-wp9-main-experiment-ticket-plan.md) | WP9 `001..009` đã đóng; freeze H6, audited execution, exact negative result, robustness, reproducibility và post-outcome breach bridge |
+| [40-wp10-ridepy-layer3-ticket-plan.md](tasks/40-wp10-ridepy-layer3-ticket-plan.md) | WP10 `001..010` đã đóng; canonical pass nhưng paired subset fail closed do giới hạn RidePy `nodeOnly` concurrent mid-edge |
 | [wp7-014-fleetpy-layer2-closure-evidence-2026-08-15.md](benchmarking/wp7-014-fleetpy-layer2-closure-evidence-2026-08-15.md) | Historical Runner v6 receipt: actual FleetPy B1/C1 preflight/tiny/medium evidence, verifier và claim boundary |
 | [wp7-015-hot-path-and-semantics-closure-evidence-2026-08-17.md](benchmarking/wp7-015-hot-path-and-semantics-closure-evidence-2026-08-17.md) | ADR-039: ngữ nghĩa được khóa, đo hot path, work-profile gate, cross-binary differential và receipt hiện hành trên Runner v8 |
 | [wp8-001-pilot-operating-point-evidence-2026-08-19.md](benchmarking/wp8-001-pilot-operating-point-evidence-2026-08-19.md) | Pilot WP8: điểm vận hành cũ không phân biệt được, endpoint pickup-ETA bị loại, đánh đổi dịch vụ xuất hiện |
 | [wp8-002-paired-benchmark-report-2026-08-19.md](benchmarking/wp8-002-paired-benchmark-report-2026-08-19.md) | Báo cáo benchmark paired WP8: cấu hình, dữ liệu thật, hai điểm vận hành, bảng 4 đơn vị, lý do từ chối, giới hạn claim |
 | [wp8-011c-pre-outcome-runner-artifact-repin.md](benchmarking/wp8-011c-pre-outcome-runner-artifact-repin.md) | Amendment pre-outcome: sửa stale Runner pin, bind DLL và toàn publish tree, không đổi thiết kế |
-| [wp8-011d-pre-outcome-capacity-stratum-amendment.md](benchmarking/wp8-011d-pre-outcome-capacity-stratum-amendment.md) | Amendment pre-outcome: thêm capacity stratum `veh4` cạnh `veh8`, N không tăng, kết luận thành có điều kiện theo năng lực |
+| [wp8-011d-pre-outcome-capacity-stratum-amendment.md](benchmarking/wp8-011d-pre-outcome-capacity-stratum-amendment.md) | Amendment pre-outcome: Panel B `veh4` tách bạch cạnh Panel A `veh8`, đo được cùng demand realization, kết luận có điều kiện theo năng lực |
 | [wp8-014-closure-evidence-2026-08-21.md](benchmarking/wp8-014-closure-evidence-2026-08-21.md) | WP8 closure: frontier, fixed panel, verifier/oracle, four pre-outcome amendments và current freeze H4 |
+| [wp9-confirmatory-result-2026-08-23.md](benchmarking/wp9-confirmatory-result-2026-08-23.md) | Kết quả confirmatory H6: service gate FAIL ở cả panel 8 xe và 4 xe; burden gate PASS nhưng phần lớn do khóa/từ chối phục vụ |
+| [wp9-reproducibility-evidence-2026-08-23.md](benchmarking/wp9-reproducibility-evidence-2026-08-23.md) | Kiểm chứng độc lập 100/100 bundle, freeze/provenance/input identity, determinism và solver-seed non-replicate |
+| [wp9-009-breach-evidence-2026-08-23.md](benchmarking/wp9-009-breach-evidence-2026-08-23.md) | Evidence 1.1 và ledger bridge cho breach chất lượng dịch vụ ngoại sinh; chỉ là closure hậu outcome, không đổi verdict H6 |
+| [wp10-ridepy-layer3-negative-capability-result-2026-08-23.md](benchmarking/wp10-ridepy-layer3-negative-capability-result-2026-08-23.md) | WP10: exact RidePy/same-Runner canonical pass; representative subset fail closed, Layer 3 claim chưa được thiết lập |
+| [post-wp10-exact-reuse-optimization-2026-08-23.md](benchmarking/post-wp10-exact-reuse-optimization-2026-08-23.md) | ADR-052: full-PDF optimization boundary, exact cache-key reuse, 3+3 process benchmark và semantic-equivalence gate |
 | [wp6-contract-v1.md](benchmarking/wp6-contract-v1.md) | Equivalent contract v1 cho common benchmark harness, public data và reproduction bundle |
 | [wp6-benchmark-reproducibility-evidence-2026-08-09.md](research/wp6-benchmark-reproducibility-evidence-2026-08-09.md) | Primary-source evidence và claim boundary cho WP6 |
 | [reviews/wp1-wp3/README.md](reviews/wp1-wp3/README.md) | Review chi tiết code, invariant, tối ưu thật và khoảng trống WP1–WP3 |
@@ -135,6 +141,8 @@ Bộ tài liệu này trả lời năm câu hỏi:
 | [reviews/wp1-wp5-final/README.md](reviews/wp1-wp5-final/README.md) | Final source/logic/optimization/claim review WP1–WP5 và verdict có điều kiện |
 | [reviews/wp1-wp7-final/README.md](reviews/wp1-wp7-final/README.md) | Final Vietnamese source/logic/code walkthrough WP1–WP7, Candidate proof và FleetPy Layer 2 closure |
 | [reviews/wp1-wp8-final/README.md](reviews/wp1-wp8-final/README.md) | Review hiện hành WP1–WP8: logic, defect đã sửa, determinism/fairness, residual claim boundary |
+| [reviews/wp1-wp10-final/README.md](reviews/wp1-wp10-final/README.md) | Review hiện hành WP1–WP10: file inventory, WP-by-WP verdict, defect WP10 đã sửa, final verification và residual risks |
+| [RideBound-WP1-WP10-final-review-2026-08-23.pdf](../output/pdf/RideBound-WP1-WP10-final-review-2026-08-23.pdf) | Báo cáo PDF 12 trang đã render/inspect: verdict, negative results, full-PDF provenance, benchmark, verification và residual risks |
 | [reviews/wp1-wp6-final/README.md](reviews/wp1-wp6-final/README.md) | Handoff hiện hành: kiến trúc, logic, file map, paper, benchmark, risk và reproduction WP1–WP6 |
 | [research/README.md](research/README.md) | Archive báo cáo, audit và evidence matrix nền |
 | [wp5-distributed-integration-evidence-2026-08-05.md](research/wp5-distributed-integration-evidence-2026-08-05.md) | Paper/official evidence cho outbox, idempotency, worker lease và crash recovery WP5 |
@@ -270,7 +278,14 @@ không chép lại thuật toán RideBound bằng Python hoặc C++.
   hành ở [reviews/wp1-wp7-final/README.md](reviews/wp1-wp7-final/README.md). Kết quả vẫn
   không phải effectiveness, SLA, fairness, non-inferiority hoặc satisfaction claim.
 - WP8 `001..014` đã complete: frontier 25/25, oracle/verifier/pairing, fixed panel
-  20 cell, strict 1 pp gate và current freeze `H4=2f7e6bf3…a32dd`. Review hiện hành ở
-  [reviews/wp1-wp8-final/README.md](reviews/wp1-wp8-final/README.md). WP9 đã mở nhưng
-  chưa có confirmatory outcome; Layer-1 mechanical 8/8 (`RB-WP9-003`) đã Done và
-  `RB-WP9-002a` repin freeze là ticket Ready; audited smoke là `002b`.
+  20 cell và strict 1 pp gate. Review nền ở
+  [reviews/wp1-wp8-final/README.md](reviews/wp1-wp8-final/README.md).
+- WP9 `001..009` đã complete dưới freeze `H6=84f6eff3…dee2`: verifier độc lập xác
+  nhận 100/100 raw bundle. Service gate FAIL ở Panel A 8 xe (`−7,13 pp`) và Panel B
+  4 xe (`−4,91 pp`); burden gate PASS nhưng không được diễn giải thành hiệu quả vận
+  hành vì cơ chế chủ yếu khóa hoặc từ chối công việc. Kết quả, robustness và giới hạn
+  suy luận ở [wp9-confirmatory-result-2026-08-23.md](benchmarking/wp9-confirmatory-result-2026-08-23.md).
+  WP10 Cross-system Layer 3 đã đóng bằng negative capability result: canonical pass
+  nhưng subset stress lộ giới hạn `nodeOnly` concurrent mid-edge; không có Layer 3
+  claim. Công việc hiện hành là review WP1–WP10, research-driven optimization và
+  benchmark/report cuối theo yêu cầu người dùng.

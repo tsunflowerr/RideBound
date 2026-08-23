@@ -160,9 +160,8 @@ public sealed class InsertionCandidateGenerator
 
         // ADR-045. Probe the unchanged active route first. Whatever it can no
         // longer honour on the two service-quality dimensions is exogenous by
-        // construction, and the resulting relaxation is what keeps the safety
-        // no-op alive without letting any candidate hide behind the breach:
-        // the relaxed bound is exactly what doing nothing already realizes.
+        // construction. The resulting relaxation is applied only to the safety
+        // no-op; ADR-047 keeps every changed candidate strictly contractual.
         var probe = _validator.ProbeServiceQuality(
             state.Run,
             vehicle.Id,
@@ -229,13 +228,20 @@ public sealed class InsertionCandidateGenerator
                     prune?.PhysicalWitness?.Dimension ?? prune?.Code));
         }
 
+        // ADR-047. The relief exists to keep the safety no-op alive, and the
+        // no-op is never handed to the simulator: the adapter only submits a
+        // plan when the route actually changed. Every *changed* candidate is
+        // therefore validated against the published contractual bounds, with no
+        // relief at all. Anything looser would let RideBound propose a plan that
+        // FleetPy's own `VehiclePlan.is_feasible` rejects — which is exactly how
+        // three Panel B jobs died, one of them by 13 ms on a pickup window.
         var exploration = ExploreBestFirst(
             state,
             vehicle,
             pendingRequests,
             repair.Seeds,
             options,
-            serviceQuality,
+            ServiceQualityAllowance.Strict,
             feasibleById,
             prunedById);
 
@@ -749,14 +755,13 @@ public sealed class InsertionCandidateGenerator
         }
 
         if (prefetchedProfile is not null
-            && !prefetchedProfile.Key.Equals(
-                ForwardSlackCacheKey.Create(
-                    state,
-                    vehicle,
-                    route,
-                    state.TravelTimes!,
-                    state.Run.SimulationTime,
-                    serviceQuality)))
+            && !prefetchedProfile.Key.Matches(
+                state,
+                vehicle,
+                route,
+                state.TravelTimes!,
+                state.Run.SimulationTime,
+                serviceQuality))
         {
             throw new InvalidOperationException(
                 "A prefetched slack profile must match the exact candidate state and route.");

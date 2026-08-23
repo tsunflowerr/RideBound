@@ -22,6 +22,7 @@
     <Project Path="tests/RideBound.Solvers.OrTools.Tests/RideBound.Solvers.OrTools.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">
+    <Project Path="tools/RideBound.CandidateHotPathBenchmark/RideBound.CandidateHotPathBenchmark.csproj" />
     <Project Path="tools/RideBound.Wp6Dataset/RideBound.Wp6Dataset.csproj" />
     <Project Path="tools/RideBound.Wp6FakeChild/RideBound.Wp6FakeChild.csproj" />
     <Project Path="tools/RideBound.Wp6MetricOracle/RideBound.Wp6MetricOracle.csproj" />

@@ -4,7 +4,7 @@ import hashlib
 import json
 import math
 from os import PathLike
-from decimal import Decimal, InvalidOperation, ROUND_HALF_EVEN
+from decimal import Decimal, InvalidOperation, ROUND_FLOOR, ROUND_HALF_EVEN
 from typing import Any, Callable, Iterable
 
 from .errors import AdapterFailure
@@ -218,7 +218,16 @@ class FleetPyProtocolMapper:
         progress = _decimal(relative, f"{path}.relativeProgress")
         if progress < 0 or progress > 1:
             raise _failure("RBWP7_EDGE_PROGRESS_RANGE_INVALID", path, str(progress))
-        permille = int((progress * Decimal(1000)).quantize(Decimal(1), rounding=ROUND_HALF_EVEN))
+        # Floor, never nearest. The wire carries edge progress at 1/1000 of an
+        # edge, so any rounding is a real position error: half a permille of a
+        # 130 s edge is 65 ms. Rounding to nearest can place the vehicle ahead
+        # of where it is, which makes every downstream ETA optimistic and lets
+        # RideBound propose a plan FleetPy's own feasibility check rejects — one
+        # Panel B job died that way, over its pickup window by 13 ms. Flooring
+        # keeps RideBound behind the true position, and the validator already
+        # rounds the remaining edge time up, so the pair is conservative on both
+        # halves.
+        permille = int((progress * Decimal(1000)).quantize(Decimal(1), rounding=ROUND_FLOOR))
         if permille <= 0:
             return {"kind": "node", "nodeId": start_id}
         if permille >= 1000:

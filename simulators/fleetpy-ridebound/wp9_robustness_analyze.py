@@ -207,6 +207,19 @@ def main():
     repository_inventory_sha256 = matrix._repository_inventory_sha256(repository)
     verifier = primary._load_verifier(adapter_root)
     manifest = _read_manifest(arguments.manifest.resolve())
+
+    # Same fail-open as the primary analyzer: a manifest listing a subset of the
+    # frozen robustness cells previously analysed and reported without saying so.
+    planned_cells = {
+        job["cellId"] for job in plan["jobs"] if job["phase"] == "robustness"
+    }
+    manifest_cells = {cell["cellId"] for cell in manifest["cells"]}
+    if manifest_cells != planned_cells:
+        raise RuntimeError(
+            "robustness manifest is not the exact frozen robustness cell set: "
+            f"{len(manifest_cells)} of {len(planned_cells)} cells"
+        )
+
     rows = []
     for cell in sorted(manifest["cells"], key=lambda value: value["cellId"]):
         scenario = repository / (

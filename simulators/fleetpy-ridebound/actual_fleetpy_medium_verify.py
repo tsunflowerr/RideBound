@@ -185,18 +185,22 @@ def _verify_audited_solver_evidence(solver, epoch):
         field,
         {"evidenceVersion", "generation", "prunedCandidates", "selection"},
     )
-    if evidence["evidenceVersion"] != "1.0.0":
+    evidence_version = evidence["evidenceVersion"]
+    if evidence_version not in {"1.0.0", "1.1.0"}:
         raise RuntimeError(f"{field}: unknown evidence version")
+    generation_fields = {
+        "totalPendingRequestCount",
+        "consideredRequestCount",
+        "omittedRequestCount",
+        "vehicleLosses",
+        "omissions",
+    }
+    if evidence_version == "1.1.0":
+        generation_fields.add("exogenousServiceQualityBreaches")
     generation = _require_fields(
         evidence["generation"],
         f"{field}.generation",
-        {
-            "totalPendingRequestCount",
-            "consideredRequestCount",
-            "omittedRequestCount",
-            "vehicleLosses",
-            "omissions",
-        },
+        generation_fields,
     )
     for name in (
         "totalPendingRequestCount",
@@ -289,6 +293,47 @@ def _verify_audited_solver_evidence(solver, epoch):
                 f"{omission_field}.requestIds",
             )
         omitted_candidate_count += omission["count"]
+
+    if evidence_version == "1.1.0":
+        breaches = generation["exogenousServiceQualityBreaches"]
+        if not isinstance(breaches, list):
+            raise RuntimeError(
+                f"{field}.generation.exogenousServiceQualityBreaches must be an array"
+            )
+        previous_key = None
+        breach_fields = {
+            "vehicleId",
+            "requestId",
+            "code",
+            "dimension",
+            "contractualMilliseconds",
+            "exogenousMilliseconds",
+        }
+        for index, breach in enumerate(breaches):
+            breach_field = (
+                f"{field}.generation.exogenousServiceQualityBreaches[{index}]"
+            )
+            _require_fields(breach, breach_field, breach_fields)
+            for name in ("vehicleId", "requestId", "code", "dimension"):
+                if not isinstance(breach[name], str) or not breach[name]:
+                    raise RuntimeError(f"{breach_field}.{name} is invalid")
+            for name in ("contractualMilliseconds", "exogenousMilliseconds"):
+                _nonnegative_integer(breach[name], f"{breach_field}.{name}")
+            if breach["exogenousMilliseconds"] <= breach["contractualMilliseconds"]:
+                raise RuntimeError(
+                    f"{breach_field}: exogenous value does not breach the contract"
+                )
+            key = (
+                breach["vehicleId"],
+                breach["requestId"],
+                breach["code"],
+                breach["dimension"],
+            )
+            if previous_key is not None and key <= previous_key:
+                raise RuntimeError(
+                    f"{breach_field}: breaches are duplicate or non-canonical"
+                )
+            previous_key = key
 
     pruned = evidence["prunedCandidates"]
     if not isinstance(pruned, list):

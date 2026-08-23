@@ -5,8 +5,8 @@ using RideBound.Application.Travel;
 using RideBound.Domain.Common;
 using RideBound.Domain.Requests;
 using RideBound.Domain.Routes;
-using RideBound.Domain.Vehicles;
 using RideBound.Domain.Validation;
+using RideBound.Domain.Vehicles;
 
 namespace RideBound.Algorithms.Tests.Candidates;
 

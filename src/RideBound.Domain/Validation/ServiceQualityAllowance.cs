@@ -16,12 +16,47 @@ namespace RideBound.Domain.Validation;
 /// The value the unchanged active route now realizes. This is the anti-laundering
 /// bound: no candidate may be worse than doing nothing.
 /// </param>
-public sealed record ServiceQualityBreach(
-    RequestId RequestId,
-    string Code,
-    string Dimension,
-    long ContractualMilliseconds,
-    long ExogenousMilliseconds);
+public sealed record ServiceQualityBreach
+{
+    public ServiceQualityBreach(
+        RequestId requestId,
+        string code,
+        string dimension,
+        long contractualMilliseconds,
+        long exogenousMilliseconds)
+    {
+        var isKnownPair = code == PhysicalViolationCodes.PickupWindow
+                && dimension == "latestPickupMs"
+            || code == PhysicalViolationCodes.MaxRideTime
+                && dimension == "maxRideTimeMs";
+
+        if (!isKnownPair
+            || contractualMilliseconds is < 0 or > DomainLimits.MaxCanonicalInteger
+            || exogenousMilliseconds is < 0 or > DomainLimits.MaxCanonicalInteger
+            || exogenousMilliseconds <= contractualMilliseconds)
+        {
+            throw new ArgumentException(
+                "A service-quality breach requires a known deadline dimension " +
+                "and a canonical exogenous value above its contract.");
+        }
+
+        RequestId = requestId;
+        Code = code;
+        Dimension = dimension;
+        ContractualMilliseconds = contractualMilliseconds;
+        ExogenousMilliseconds = exogenousMilliseconds;
+    }
+
+    public RequestId RequestId { get; }
+
+    public string Code { get; }
+
+    public string Dimension { get; }
+
+    public long ContractualMilliseconds { get; }
+
+    public long ExogenousMilliseconds { get; }
+}
 
 /// <summary>
 /// Per-request relaxation of the two service-quality dimensions
@@ -44,6 +79,14 @@ public sealed record ServiceQualityBreach(
 /// did not cause. Requests with no stop on the active route (every newly
 /// inserted request) have no entry and stay strictly contractual, so a request
 /// can never be accepted into a route that cannot serve it.</para>
+///
+/// <para>ADR-047 narrows where the relief may be applied. The candidate
+/// generator grants it to the safety no-op only; every changed candidate is
+/// generated under <see cref="Strict"/>. The reason is external: the simulator
+/// keeps its own hard feasibility check and applies it to any plan RideBound
+/// proposes, but never re-checks a route it is already executing. Relief on the
+/// no-op therefore costs nothing, while relief on a changed plan would make
+/// RideBound propose plans the simulator rejects.</para>
 ///
 /// <para>The relaxation is a pure function of
 /// <c>(run, vehicle, travelSnapshot, evaluationTime)</c> and is applied

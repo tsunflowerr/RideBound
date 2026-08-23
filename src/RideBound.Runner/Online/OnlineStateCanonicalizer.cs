@@ -452,7 +452,16 @@ public static class OnlineStateCanonicalizer
         {
             writer.WriteStartObject();
             writer.WriteString("breachId", breach.BreachId);
-            writer.WriteString("incidentId", breach.IncidentId.Value);
+
+            if (breach.Kind == CommitmentBreachKind.OperationalIncident)
+            {
+                writer.WriteString("incidentId", breach.IncidentId!.Value.Value);
+            }
+            else
+            {
+                writer.WriteString("kind", "exogenousServiceQuality");
+            }
+
             writer.WriteString("requestId", breach.RequestId.Value);
             writer.WritePropertyName("previousPromise");
             WritePublishedPromise(writer, breach.PreviousPromise);
@@ -474,6 +483,30 @@ public static class OnlineStateCanonicalizer
             writer.WritePropertyName("attemptedBudgetAfter");
             WriteVector(writer, breach.AttemptedBudgetAfter);
             WriteIdentifiers(writer, "witnessCodes", breach.WitnessCodes);
+
+            if (breach.Kind == CommitmentBreachKind.ExogenousServiceQuality)
+            {
+                writer.WritePropertyName("serviceQualityWitnesses");
+                writer.WriteStartArray();
+
+                foreach (var witness in breach.ServiceQualityWitnesses)
+                {
+                    writer.WriteStartObject();
+                    writer.WriteString("requestId", witness.RequestId.Value);
+                    writer.WriteString("code", witness.Code);
+                    writer.WriteString("dimension", witness.Dimension);
+                    writer.WriteNumber(
+                        "contractualMilliseconds",
+                        witness.ContractualMilliseconds);
+                    writer.WriteNumber(
+                        "exogenousMilliseconds",
+                        witness.ExogenousMilliseconds);
+                    writer.WriteEndObject();
+                }
+
+                writer.WriteEndArray();
+            }
+
             writer.WriteNumber("sourceEventSeq", breach.SourceEventSequence);
             writer.WriteNumber("recordedEpoch", breach.RecordedEpoch);
             writer.WriteNumber("recordedAtMs", breach.RecordedAt.Milliseconds);

@@ -1,7 +1,7 @@
 # Trạng thái và decision log
 
 > Tệp sống — cập nhật ở cuối mọi task RideBound
-> Cập nhật gần nhất: 2026-08-21
+> Cập nhật gần nhất: 2026-08-23
 
 ## 1. Trạng thái tổng thể
 
@@ -9,13 +9,13 @@
 |---|---|
 | Research direction | `LOCKED_FOR_IMPLEMENTATION_PLANNING` |
 | Documentation | `MIGRATED_AND_VERIFIED_V1` |
-| Implementation | `WP1_Q1_COMPLETE; WP2_COMPLETE; WP3_COMPLETE_14_OF_14; WP4_COMPLETE_14_OF_14; WP5_COMPLETE_14_OF_14; WP6_COMPLETE_14_OF_14; WP7_COMPLETE_14_OF_14; WP8_COMPLETE_14_OF_14; WP9_IN_PROGRESS_2_OF_8` |
-| Current work package | `WP9 — main experiments; RB-WP9-001/003 Done, RB-WP9-002a freeze repin Ready` |
+| Implementation | `WP1_Q1_COMPLETE; WP2_COMPLETE; WP3_COMPLETE_14_OF_14; WP4_COMPLETE_14_OF_14; WP5_COMPLETE_14_OF_14; WP6_COMPLETE_14_OF_14; WP7_COMPLETE_14_OF_14; WP8_COMPLETE_14_OF_14; WP9_COMPLETE_001_TO_009; WP10_COMPLETE_NEGATIVE_CAPABILITY_001_TO_010` |
+| Current work package | `Post-WP10 assurance COMPLETE: full review, paper-driven optimization, benchmark and rendered final report` |
 | Repository | `https://github.com/tsunflowerr/RideBound` |
 | Main baseline | B1 `rolling-cost` |
 | Main treatment | C1 `ridebound-hard-vector` |
 | Layer 2 | FleetPy 1.0.2 |
-| Layer 3 default | RidePy v2.10.1; AMoD2 alternate |
+| Layer 3 | RidePy v2.10.1 evaluated; canonical PASS, representative subset FAIL CLOSED; AMoD2 unevaluated alternate |
 
 ## 2. Đã hoàn thành
 
@@ -374,22 +374,18 @@
 
 ## 3. Chưa làm
 
-- WP4 đã có B1–B5/C1/C2 và pinned OR-Tools mechanical evidence; chưa có paired
-  BeGo/FleetPy demand replay nên chưa chứng minh treatment hiệu quả hơn B1.
+- Chưa có bằng chứng RideBound tốt hơn B1. WP9 cho kết quả âm có điều kiện ở 4/8 xe;
+  WP10 không rescue và cũng không thiết lập Layer 3 claim.
+- Layer 3 còn thiếu simulator có đủ observable mid-edge state. RidePy `nodeOnly`
+  fail closed trên một workload concurrent-mid-edge; AMoD2 chưa được thực thi.
 - O-001 vẫn khóa cross-vehicle reassignment. B4 chỉ là same-vehicle waiting-
   incumbent repair; không được báo thành reassignment optimizer.
-- Incident recovery optimizer chưa có; WP3 chỉ đảm bảo breach được ghi đúng và
-  không bị certificate normal-operation che lấp.
-- WP5 và WP6 đã complete mechanical integration/common-harness gate. WP7 đã khóa
-  refinement, cải tiến bounded Candidate portfolio và executable FleetPy source/env/
-  capability pin; closed-loop control adapter chưa hoàn tất.
-- Full BeGo format audit đã sạch sau khi ba whitespace-only legacy file
-  `FindMeetPointHandler`, `WeightedGeometricMedianCalculator` và
-  `MapboxTransportModeMapper` được format cơ học; không có logic change ở chúng.
-- FleetPy public source đã tải/freeze cho WP6 mechanical derivative; chưa freeze
-  confirmatory experiment/holdout cho WP8–WP9.
-- Chưa pilot hoặc preregister.
-- Chưa có bất kỳ kết quả chứng minh RideBound tốt hơn baseline.
+- Incident recovery optimizer chưa có; ledger chỉ ghi breach đúng và không che nó
+  bằng certificate normal-operation.
+- Chưa có cross-city inference, SLA, satisfaction, fairness hoặc novelty claim.
+- Công việc hiện hành theo yêu cầu người dùng: review file-by-file WP1–WP10, đối
+  chiếu full PDF, thử optimization exploratory không rescue H6, benchmark và báo cáo
+  PDF cuối.
 
 ## 4. Baseline verification
 
@@ -1630,28 +1626,45 @@ Review: docs/reviews/wp1-wp6-final/README.md
 Date: 2026-08-13
 ```
 
+### RB-WP10-001..010 RidePy Layer 3 closure
+
+```text
+Exact source/environment verifier: PASS; 8/8 tests
+RidePy pinned-container unit/integration/analyzer suite: 23/23
+Generic RunnerClient targeted regression: 14/14
+Canonical actual B1/C1: 5/5 completed each; 5 pickup + 5 drop each
+Canonical independent verifier: PASS; 5/5 mutation classes caught
+Frozen representative subset: 24 planned arm jobs; 22 PASS; 1 FAIL CLOSED; 1 NOT RUN
+Subset independent verifier: PASS over 11 valid pairs + retained failure transcript
+WP10 full .NET/FleetPy/format/Release/static gates: PASS in final cross-WP review
+Date: 2026-08-23
+```
+
 ## 5. Next action
 
-WP1–WP7 Complete mechanically; WP3 validator/certificate/checkpoint vẫn là publication
-boundary cho mọi write path. WP5 durable adapter, WP6 harness và WP7 FleetPy mapping
-không được tái tính hoặc nới boundary đó.
+WP1–WP10 Complete. WP9 H6 vẫn âm ở cả hai điểm năng lực: service gate FAIL tại 8
+xe (`−7.1296 pp`) và 4 xe (`−4.9074 pp`). WP10 canonical pass nhưng representative
+subset fail closed bằng `RBWP10_NODEONLY_CONCURRENT_MIDEDGE_UNSUPPORTED`; Layer 3
+claim chưa được thiết lập. Không được thay margin, pool panel, bỏ failed job hoặc dùng
+WP10 để cứu primary.
 
-Không có ticket active. WP8 chỉ được mở bằng refinement/preregistration explicit để
-khóa endpoint, denominator, seed, margin và analysis trước pilot; không dùng raw WP7
-timing/publication để chọn các giá trị này. Không tự chọn O-002/O-003/O-004 hoặc mở
-O-001. Ordered evidence ở [tasks/36](tasks/36-wp7-fleetpy-layer2-ticket-plan.md),
-closure receipt ở [WP7 evidence](benchmarking/wp7-014-fleetpy-layer2-closure-evidence-2026-08-15.md)
-và review hiện hành là [wp1-wp7-final](reviews/wp1-wp7-final/README.md).
+Final review/optimization goal đã hoàn tất bằng ADR-052. Evidence hiện hành gồm
+[WP9 result](benchmarking/wp9-confirmatory-result-2026-08-23.md),
+[WP10 negative capability report](benchmarking/wp10-ridepy-layer3-negative-capability-result-2026-08-23.md),
+[optimization benchmark](benchmarking/post-wp10-exact-reuse-optimization-2026-08-23.md),
+[WP1–WP10 review](reviews/wp1-wp10-final/README.md) và
+[rendered PDF report](../output/pdf/RideBound-WP1-WP10-final-review-2026-08-23.pdf).
+
+Không tự động mở WP11/WP12. Next action cần user chọn Product UX hay manuscript/
+release rồi tạo refinement/ADR mới. Mọi hướng sau phải giữ H6/WP10 negative outcome,
+không đổi margin/panel/failed-job treatment hoặc dùng intermediate policy để rescue
+confirmatory result hậu outcome.
 
 ## 6. Open decisions
 
 | ID | Câu hỏi | Khi nào khóa |
 |---|---|---|
-| O-002 | Budget vector cụ thể và mức loose/medium/tight? | WP8 pilot |
-| O-003 | Material ETA revision threshold/bucket? | WP8 pilot |
-| O-004 | Service non-inferiority margin cuối? | WP8 prereg |
-| O-005 | RidePy hay AMoD2 là Layer 3 final? | WP10 preflight |
-| O-008 | Cross-city confirmatory hay robustness only? | WP8 |
+| — | Không còn open decision từ O-001..O-008; hướng optimization hậu WP10 phải có ADR/evidence mới và giữ exploratory boundary | Khi chọn optimization |
 
 O-001 đã được khóa bởi ADR-018: B1 WP2 không cho incumbent accepted request đổi
 vehicle; WP4 chỉ mở lại bằng ADR superseding và atomic multi-vehicle evidence.
@@ -1660,6 +1673,9 @@ HTTP/gRPC chỉ mở lại khi có cross-host operational requirement và ADR m�
 O-006 được khóa bởi ADR-037 và executable probe trên exact FleetPy 1.0.2: position
 `(start,end,relative)` có direction/range ổn định và `SimulationVehicle._move` cập nhật
 `veh_obj.pos`; drift phải fail closed, không suy diễn fraction từ clock.
+O-002/O-003/O-004/O-008 được khóa trong WP8/ADR-040..044. O-005 được khóa bởi
+ADR-050/051: RidePy là framework đã đánh giá cho WP10 và cho kết quả năng lực âm;
+AMoD2 chỉ là hướng tương lai riêng.
 
 ## 7. Decision log
 
@@ -3526,14 +3542,269 @@ no-op vẫn bị prune). Full solution 851/851 Debug và Release; Release `-warn
 
 **Consequences:** `RB-WP9-002a/002b` hết bị chặn. Ngữ nghĩa đối xứng hai arm nên không
 đụng tính công bằng đã khoá ở ADR-043. Ba giới hạn phải giữ trong báo cáo:
-(a) `ExogenousServiceQualityBreach` hiện là diagnostic ở tầng generation — bắc cầu
-sang `CommitmentBreachRecord` trong `OperationalIncidentLedger` là công việc còn
-mở của `RB-WP9-002a`, và cho tới lúc đó breach **không** vào ledger cam kết;
-(b) breach count là secondary/descriptive, không phải endpoint đã prereg, nên không
-cứu được gate nào; (c) thay đổi này là outcome-bearing với mọi run WP9 chạy sau nó,
+(a) `ExogenousServiceQualityBreach` hiện **chỉ tồn tại trong tiến trình**:
+`SolverExecutionEvidenceMapper.WriteGeneration` liệt kê field tường minh nên breach
+không được serialize vào `solver.executionEvidence`, và `SolverEvidenceFields` của
+contract là tập đóng nên thêm nó là một thay đổi contract. Vì vậy breach hiện
+**không** vào transcript, **không** vào `CommitmentBreachRecord`/`AppendBreach`, và
+**không đo được** từ bundle. Bắc cầu cả hai — evidence và ledger — là `RB-WP9-002c`;
+(b) cho tới khi `002c` đóng, không tài liệu nào được báo cáo breach count như một
+đại lượng đã đo. Sau `002c` nó vẫn là secondary/descriptive, không phải endpoint đã
+prereg, nên không cứu được gate nào; (c) thay đổi này là outcome-bearing với mọi run WP9 chạy sau nó,
 nên freeze chain phải repin trước smoke và mọi run trước đó không được trộn vào cùng
 estimand.
 
+
+### ADR-046 — 2026-08-22 — Accepted
+
+**Context:** Review toàn bộ WP8 trước khi mở ma trận WP9 tìm được ba defect trong
+đường phân tích confirmatory — nơi con số kết luận thực sự được sinh ra — mà toàn
+bộ test suite trước đó không bắt được.
+
+1. **Blocker.** `wp9_fixed_panel_analyze.py` không chạy được trên chính manifest đã
+   đóng băng. Manifest khai arm bằng danh tính preregistered
+   (`b1-rolling-cost`, `c1-hard-vector-tight-30s`), còn analyzer nối thẳng chuỗi đó
+   vào `f"p-{cell}-{arm}-tight-s7"` để dựng jobId kỳ vọng, trong khi execution plan
+   dùng token ngắn `b1`/`c1`. Mọi cell raise `primary job binding differs`. Nghĩa
+   là `RB-WP9-005` chưa từng chạy end-to-end; unit test cũ chỉ truyền token ngắn
+   tổng hợp nên không bao giờ chạm vào artifact thật.
+2. **Fail-open.** Cả analyzer chính lẫn analyzer robustness chỉ kiểm manifest
+   "không rỗng, cellId không trùng". Một manifest liệt kê 19/20 cell qua được mọi
+   kiểm tra và cho ra verdict `pass` trên mẫu số nhỏ hơn mà không nói gì.
+3. **Fail-open.** Orientation arm không bị chặn ở tầng Python. `PairedComparisonDesign`
+   trong `ExperimentalUnitModels.cs` chặn đúng, nhưng analyzer confirmatory là một
+   cài đặt Python độc lập không dùng contract đó; `experimentalUnitModelsSha256`
+   trong freeze receipt vì thế cho một cảm giác an toàn sai.
+
+**Decision:**
+
+1. Analyzer bind arm bằng registry tường minh `_PRIMARY_ARMS`
+   (danh tính preregistered → token plan + wp4 config) và pin orientation
+   `_PRIMARY_ORIENTATION`; arm lạ hoặc đảo chỗ baseline/treatment fail closed.
+2. Cả hai analyzer bắt buộc tập cell của manifest **bằng đúng** tập cell primary/
+   robustness của execution plan đã đóng băng. Không còn phân tích được panel cụt.
+3. Regression mới bind vào **artifact thật** (`analysis-manifest-v1.json` +
+   `execution-plan-v1.json`), không phải dict tổng hợp. Đây là gốc rễ vì sao lỗi 1
+   sống sót qua nhiều vòng review.
+4. Cell dùng lại một bundle cho cả hai arm fail closed.
+
+**Evidence:** Python suite 77 → **86** pass, 0 skip (với `RIDEBOUND_FLEETPY_ROOT`).
+`FrozenManifestBindingTests` chứng minh 20/20 cell của manifest thật bind đúng vào
+plan thật; `CapacityPanelBindingTests` chứng minh Panel A/B không lẫn nhau.
+
+**Consequences:** `analysisProgramSha256` và `robustnessAnalysisProgramSha256` đổi,
+nên `H4` mất hiệu lực và `H5` phải repin — trùng với yêu cầu của ADR-045. Bài học
+giữ lại: một freeze receipt pin hash của file không chứng minh file đó *chạy được*;
+mọi program nằm trên đường outcome phải có ít nhất một test chạy nó trên đúng
+artifact đã đóng băng.
+
+### ADR-047 — 2026-08-22 — Accepted
+
+**Context:** Panel B (`veh4`) bắt được hai defect mà Panel A (`veh8`) chạy 60/60
+sạch vẫn không lộ. Đây chính là lý do phải có điểm năng lực căng: ở 8 xe lộ trình
+còn dư thời gian nên không bao giờ chạm biên deadline; ở 4 xe thì chạm liên tục.
+3/9 job Panel B đầu tiên chết với `RBWP7_FLEETPY_PLAN_INFEASIBLE`.
+
+**Defect 1 — phạm vi relief của ADR-045 quá rộng.** ADR-045 nới bound
+service-quality cho *mọi* candidate. Nhưng adapter chỉ gửi kế hoạch sang FleetPy
+khi lộ trình **đổi** (`fleet_control.py` bỏ qua route không đổi), và FleetPy giữ
+`VehiclePlan.is_feasible()` của riêng nó theo deadline hợp đồng gốc. Hệ quả:
+RideBound đề xuất một kế hoạch mà simulator từ chối. Relief đúng ra chỉ cần cho
+no-op — thứ không bao giờ được gửi đi.
+
+**Defect 2 — lượng tử hoá vị trí xe làm ETA lạc quan.** `mapping.py` mã hoá tiến
+độ trên cạnh thành permille bằng `ROUND_HALF_EVEN`. Permille là 1/1000 cạnh, nên
+nửa permille của một cạnh 130 s là 65 ms. Làm tròn tới gần nhất có thể đặt xe
+*trước* vị trí thật, khiến mọi ETA hạ nguồn lạc quan. Một job chết vì vượt cửa sổ
+đón đúng **13 ms** (`latest 1916000 ms`, FleetPy tính `1916013 ms`) trong khi
+RideBound tính ra đúng hạn. Defect này có từ trước ADR-045 và độc lập với nó.
+
+**Decision:**
+
+1. Relief chỉ áp cho **safety no-op**. Mọi candidate đã đổi được sinh dưới
+   `ServiceQualityAllowance.Strict`. RideBound vì thế không bao giờ đề xuất kế
+   hoạch mà FleetPy từ chối, và tính chống rửa vi phạm mạnh lên mức tối đa.
+   Hệ quả hành vi phải nói rõ: một xe có lộ trình đang breach sẽ **chỉ còn no-op**
+   cho tới khi breach trôi qua — đó là chi phí dịch vụ thật, không được giấu.
+2. Lượng tử hoá permille đổi sang `ROUND_FLOOR`. Kết hợp với `DivideRoundUp` sẵn
+   có cho phần thời gian còn lại của cạnh, RideBound bảo thủ ở **cả hai** nửa và
+   không bao giờ lạc quan hơn FleetPy.
+3. Freeze receipt lên schema `5.0.0` và bind thêm
+   `adapterPackageTreeSealSha256` trên `simulators/fleetpy-ridebound/ridebound_fleetpy`.
+   Toàn bộ package adapter là outcome-bearing nhưng trước đó **không được pin**:
+   một dòng đổi rounding trong `mapping.py` dịch chuyển mọi ETA mà freeze không
+   hề biết.
+
+**Evidence:** 3/3 job Panel B từng hỏng nay `completedVerified` — 2 job đầu do
+Decision 1, job còn lại chỉ qua sau Decision 2. `.NET 852/852`; pinned Python
+86/86, 0 skip.
+
+**Consequences:** Đây là thay đổi **outcome-bearing**. Theo `RB-WP8-014` §5,
+mọi dữ liệu confirmatory đã chạy dưới `H5` bị **vô hiệu** và phải chạy lại dưới
+freeze mới:
+
+- Panel A 60/60 dưới `H5` và kết quả `Δ_service_panel = −7,08 pp` **không còn là
+  outcome confirmatory**. Nó được giữ nguyên byte làm bằng chứng vận hành và
+  bằng chứng rằng đường phân tích chạy được end-to-end, **không** được trích dẫn
+  như kết quả.
+- Panel B 6/40 dưới `H5` cũng bị bỏ.
+- Không được tái sử dụng bundle `H5` nào bằng cách so hash rồi giữ lại cái trùng:
+  đó là chọn lọc phụ thuộc outcome. Chạy lại toàn bộ hai panel.
+
+Bài học: điểm năng lực căng không chỉ là một điểm dữ liệu thêm — nó là công cụ
+kiểm lỗi. Hai defect này sống sót qua toàn bộ WP7/WP8 vì mọi thứ trước đó đều
+chạy ở mức đội xe dư.
+
+### ADR-048 — 2026-08-23 — Accepted
+
+**Context:** Toàn bộ ma trận H6 đã hoàn tất: Panel A 60/60 bundle (40 primary,
+20 robustness) và Panel B 40/40 primary. Hai analyzer canonical chạy trên đúng
+manifest/plan đã freeze. Service gate preregistered thất bại ở cả hai capacity,
+trong khi burden gate đạt. Robustness tách được chi phí lock/ranking và hard
+budget nhưng không thể thay đổi gate primary.
+
+**Decision:**
+
+1. Chấp nhận và công bố kết quả âm: Panel A `1735 → 1581`, `−7.1296 pp`; Panel B
+   `966 → 860`, `−4.9074 pp`; margin là `−1.00 pp`, không đổi hậu outcome.
+2. Không pool hai panel. Demand/travel realization giống nhau nhưng fleet state và
+   `scenarioHash` khác; between-capacity chỉ là heterogeneity mô tả.
+3. Burden reduction phải đi cùng locked/earned decomposition và service result.
+   Không gọi `99%+` là cùng công việc được làm tốt hơn khi treatment có thể từ chối
+   công việc. Pickup-ETA lock là definitional.
+4. Robustness giữ `confirmatoryGate:null`; C1 unbounded, C2 loose và seed19 không
+   cứu primary. Seed19 là non-replicate và tăng N bằng 0.
+5. Giữ finite-panel boundary: 20 cell nhưng 5 travel realization, precision đạt
+   khoảng `1.40 pp`, sign-flip floor `0.03125`; không CI/p-value population.
+
+**Evidence:** `wp9-confirmatory-result-2026-08-23.md`; analysis SHA-256 Panel A
+`72f052d7…880e0`, Panel B `3f6a339c…bbe3f`, robustness `ce87ea75…9533b`;
+receipt Panel A `8c7cf66a…96a5a`, Panel B `cb86aa4a…2165`.
+
+**Consequences:** `RB-WP9-004..008 Done`. WP9 verdict là kết quả âm có điều kiện
+theo đúng hai điểm 4/8 xe. Không có claim population, SLA, satisfaction, fairness
+hoặc novelty. WP10 phải giữ kết quả này và chỉ đo heterogeneity cross-system.
+
+### ADR-049 — 2026-08-23 — Accepted
+
+**Context:** ADR-045 tạo `ExogenousServiceQualityBreach` trong generation
+diagnostics nhưng evidence v1.0 không serialize nó và runtime không append ledger.
+Vì H6 đã hoàn tất, bridge có thể được cài đặt mà không làm thay đổi estimand đã
+freeze. Review deserialize cũng cho thấy redundant safety/budget fields cần được
+Domain kiểm trực tiếp, không chỉ dựa vào outer checkpoint hash.
+
+**Decision:**
+
+1. Evidence v1.1 thêm canonical `exogenousServiceQualityBreaches`; contract và
+   verifier vẫn nhận v1.0 để tái kiểm H6, nhưng bác version/shape/value/order sai.
+2. Thêm loại ledger `ExogenousServiceQuality` không cần operational incident giả.
+   Exogenous projection phải bằng safety projection, decision delta bằng zero,
+   visible bằng exogenous, budget không đổi, witness phải là overrun đúng dimension.
+3. Runtime bridge reproject reduced pre-decision state, append breach trước stage,
+   và hash certificate/state sau bridge. Lỗi bridge fail session, không nuốt evidence.
+4. Checkpoint cũ giữ byte shape; record mới có explicit kind/witness array và decode
+   kiểm toàn bộ projection/delta/budget/witness đã serialize.
+5. Mọi probe v1.1 là post-outcome mechanism evidence, không được trộn vào H6.
+
+**Evidence:** `.NET` targeted Domain/Runner tests PASS; Python verifier 93/93 trước
+final full gate. Real FleetPy Panel A/B1 probe PASS independent verifier: 800 epoch,
+43 evidence observation và đúng 43 ledger record; zero decision charge, zero budget
+change, zero invalid witness. Empty branch Panel B/C1 PASS 353 epoch với 0/0.
+Hash chi tiết ở `benchmarking/evidence/wp9-009-breach-bridge-smoke-v1.json`.
+
+**Consequences:** `RB-WP9-009 Done`; ADR-045 consequence “breach chưa vào transcript/
+ledger” bị supersede. H6 outcome và freeze không đổi. WP9 `001..009` đóng; WP10 là
+work package active kế tiếp.
+
+### ADR-050 — 2026-08-23 — Accepted
+
+**Context:** WP9 đã đóng với negative confirmatory result. WP10 cần một framework
+độc lập nhưng không được thay Runner hoặc reimplement decision logic. Official source
+audit xác nhận RidePy tag `v2.10.1` ở commit `bf1863e…9f14`, MIT, có extension point
+`FleetState`/`VehicleState`/`TransportSpace`. Upstream pin POSIX/Linux và Windows
+CPython 3.10 không có binary wheel. Graph CPE không expose directed-edge fraction
+ổn định.
+
+**Decision:** (1) RidePy là Layer 3 final mặc định; AMoD2 chỉ fallback nếu named gate
+thất bại. (2) Checkout/vendor build nằm ngoài repo, bind commit + exact `lru-cache`/
+`googletest` submodule commits + 527-file tree inventory `d99ffac8…d891e` + license
+hash. (3) Environment là Linux container với
+base digest `a365ce6a…0e235`; không sửa vendor để chạy Windows. (4) Adapter subclass
+`FleetState`, dùng native fast-forward/space/events nhưng mọi B1/C1 decision đi qua
+cùng versioned Runner. (5) Position model downgrade explicit thành `nodeOnly`;
+party size pin 1; main reassignment false. (6) WP10 subset chỉ là descriptive paired
+heterogeneity, không pool hoặc rescue H6. (7) Queue/gates chính thức là
+`tasks/40-wp10-ridepy-layer3-ticket-plan.md`.
+
+**Consequences:** `RB-WP10-001 Done`, `RB-WP10-002 Ready`. Source/env verifier phải
+pass trước code adapter; canonical scenario phải reconcile native pickup/drop trước
+freeze paired subset. O-005 được đóng chọn RidePy, nhưng có rollback named sang
+AMoD2 nếu capability gate fail.
+
+### ADR-051 — 2026-08-23 — Accepted
+
+**Context:** Exact RidePy source/runtime và same-Runner canonical scenario đều pass.
+Canonical B1/C1 mỗi arm hoàn thành 5/5 request, reconcile 5 pickup + 5 drop và giữ
+Runner publish tree bất biến. Final frozen representative subset đã chạy 22/24 arm
+jobs: 22 pass, B1 `travel-update-stress-r3` fail closed tại epoch 17 và C1 paired arm
+không chạy theo no-partial-reuse policy. Failure xảy ra sau native pickup tại 116 giây
+trong khi Runner chỉ quan sát node cuối và còn giữ pickup ETA 178 giây. Một event xe
+khác đã tạo epoch khi xe này giữa cạnh; RidePy CPE không cung cấp directed-edge
+progress cho capability `nodeOnly`.
+
+**Decision:** (1) Đóng `RB-WP10-002..010` và WP10 bằng **negative capability result**.
+(2) Gán mã `RBWP10_NODEONLY_CONCURRENT_MIDEDGE_UNSUPPORTED`; không suy diễn progress
+từ clock, không đổi manifest, không bỏ failed job và không chạy paired arm còn lại.
+(3) Giữ freeze/output v1/v2/v3 để audit; chỉ v3 là terminal attempt được diễn giải.
+(4) Báo 11 valid pairs riêng: B1 `54/62`, C1 `49/62`, `−8.06 pp`, descriptive only;
+không coi đây là planned-subset estimand, không CI/population inference và không pool
+H6. (5) Không chuyển AMoD2 hậu-outcome; nếu làm sẽ là work package/ADR mới.
+
+**Consequences:** Exact-source/environment, same Runner, mapping, native lifecycle,
+canonical và verifier gates PASS; representative subset gate FAIL CLOSED. Layer 3
+cross-system claim **not established**. WP10 vẫn hoàn tất vì failure được giữ và gate
+được đánh giá trung thực. Evidence chính là
+`benchmarking/wp10-ridepy-layer3-negative-capability-result-2026-08-23.md`; external
+receipts bind source `2b431062…0775`, freeze v3 `18a74fa3…6672`, strengthened
+subset analysis v2 `be3e9077…cca3` và failure transcript `0ee5e3ec…a85`.
+
+### ADR-052 — 2026-08-23 — Accepted
+
+**Context:** Final WP1–WP10 review đọc full PDF Alonso-Mora, Gschwind–Drexl,
+Simonetto, Engelhardt, Zalesak và Schulz–Pfeiffer, đồng thời đo lại candidate hot
+path. Full constant-time temporal insertion check không thể được nhập nguyên xi:
+RideBound còn kiểm structural/commitment constraints và generic travel snapshot không
+cam kết triangle inequality. Review cũng tìm thấy `ForwardSlackCacheKey` tạo textual
+position identity dù immutable `VehicleState` đã bind position, và terminal node tạo
+key thứ hai chỉ để xác nhận lookup do chính node đó prefetched.
+
+**Decision:** (1) Không thêm heuristic prune, sparse/direction/random filter hay
+paper-derived default. (2) Bỏ position string dư khỏi process-local cache key; vehicle
+reference tiếp tục bind toàn immutable snapshot. (3) Thêm exact `Matches` trên key đã
+tạo để kiểm run/vehicle/route/evaluation/travel/allowance mà không allocate/hash key
+thứ hai. (4) Giữ nguyên full physical validator, cache-failure lifecycle, search order,
+work/candidate caps, candidate identity và solver input. (5) Thêm source-controlled
+Release harness và chạy 3 baseline + 3 optimized process; timing chỉ descriptive.
+
+**Evidence:** Key construction giảm allocation `40,000,072 → 28,000,072` byte mỗi
+250.000 lookup (−30%) ở cả route 4/8/16 stop. Complete generator giảm 0,79–1,30%
+allocation; timing mixed (`−4,9%`, `+2,8%`, `−1,9%`) nên không có speed claim. Sáu
+semantic work counters exact ở mọi run; required .NET 855/855, FleetPy 95/95,
+RidePy 23/23, Release/format/vulnerability/static gates pass. Evidence ở
+`benchmarking/post-wp10-exact-reuse-optimization-2026-08-23.md` và review
+`reviews/wp1-wp10-final/README.md`.
+
+**Consequences:** Tối ưu được giữ vì allocation benefit xác định và semantic
+equivalence, không vì một effectiveness/SLA claim. H6/WP9 và WP10 terminal verdict
+không đổi. Exact RidePy image đã archive/load lại với SHA-256
+`4783c541…9a872`; đây là restore evidence, không biến Dockerfile apt/pip thành future
+byte-reproducible rebuild. Final PDF 12 trang đã render/inspect, SHA-256
+`066168872d7ead11362b3f0f7b5832e8e1147bb655f281cc3ec08d939c29b20b`.
+
+**Final test execution note:** Một attempt chạy suite đồng thời với Release build/
+format làm medium public-drain chạm đúng `resource.cpu-time-exceeded` (`854/855`).
+Không đổi ceiling và không reclassify. Rerun exact `dotnet test RideBound.slnx`
+hoàn toàn đơn độc pass 855/855; đó là final baseline.
 ## 8. Work package tracker
 
 | WP | Trạng thái | Bắt đầu | Kết thúc | Evidence |
@@ -3546,14 +3817,67 @@ estimand.
 | WP5 BeGo integration | Complete; `001..014` Done; Q3 mechanical gate closed | 2026-08-05 | 2026-08-09 | ADR-025 + durable adapter/rollout + paired bundle + independent evidence + source/claim review; BeGo 154/154 Debug/Release |
 | WP6 Benchmark harness | Complete; `001..014` Done; common mechanical harness gate closed | 2026-08-09 | 2026-08-13 | ADR-026..036 + contract v1.0.6; fresh tiny A + medium H/I exact-source semantic reproduction, strict external verify, final review, 770/770 |
 | WP7 FleetPy | Complete; `001..014` Done; mechanical Layer-2 closed | 2026-08-13 | 2026-08-17 | ADR-037/038/039 + `tasks/35`/`tasks/36` + Runner v8 actual B1/C1 preflight/lifecycle/tiny/medium + external verifier |
-| WP8 Pilot/prereg | Complete; `001..014` Done | 2026-08-18 | 2026-08-21 | ADR-040/041/043/044 + frontier 25/25 + oracle/verifier + fixed panel 20 cell + current H4 freeze; no confirmatory outcome |
-| WP9 Main experiments | In progress; `001/003` Done, `002a` Ready | 2026-08-21 | — | `tasks/39` + Layer-1 mechanical 8/8; ADR-045 mở khóa smoke; `wp8-011d` thêm capacity stratum; H4 phải repin thành H5 trước smoke |
-| WP10 Cross-system | Not started | — | — | — |
+| WP8 Pilot/prereg | Complete; `001..014` Done | 2026-08-18 | 2026-08-21 | ADR-040/041/043/044 + frontier 25/25 + oracle/verifier + fixed panel/amendments; H6 kế thừa freeze chain |
+| WP9 Main experiments | Complete; `001..009` Done; negative result | 2026-08-21 | 2026-08-23 | ADR-045..049 + H6 100/100 raw bundles verified; both service gates FAIL, burden gates PASS; robustness descriptive; breach bridge post-outcome verified |
+| WP10 Cross-system | Complete; `001..010 Done`; negative capability result | 2026-08-23 | 2026-08-23 | ADR-050/051 + exact RidePy/Linux image + same-Runner canonical PASS; representative subset FAIL CLOSED; Layer 3 not established |
+| Post-WP10 assurance | Complete | 2026-08-23 | 2026-08-23 | ADR-052 + WP1–WP10 final review + 3+3 process optimization benchmark + 12-page rendered PDF |
 | WP11 Product UX | Not started | — | — | — |
 | WP12 Paper/release | Not started | — | — | — |
 
 ## 9. Change history
 
+- 2026-08-23: Chấp nhận ADR-052 và hoàn tất final review WP1–WP10. Review toàn cây
+  sửa WP10 analyzer để bind exact terminal inventory/freeze/full Runner/seed, sửa
+  format drift, và giữ negative outcomes không đổi. Full-PDF audit chỉ cho phép exact
+  cache reuse: key allocation giảm 30%, complete generator heap giảm 0,79–1,30%,
+  semantic work counters exact; timing mixed nên không claim speed. Final gates:
+  .NET 855/855, FleetPy 95/95, RidePy 23/23, Release/format/NuGet/static pass. Exact
+  RidePy image archive load lại đúng image ID; future Dockerfile rebuild vẫn không
+  được claim byte-reproducible. Báo cáo PDF 12 trang đã render/inspect, SHA-256
+  `066168872d7ead11362b3f0f7b5832e8e1147bb655f281cc3ec08d939c29b20b`.
+- 2026-08-23: Đóng WP10 `001..010` bằng ADR-051. Exact RidePy 2.10.1 source/Linux
+  image và same-Runner canonical B1/C1 pass; mỗi arm 5/5 completed, đủ native pickup/
+  drop, artifact tree bất biến và five-class mutation verifier pass. Frozen subset
+  plan 24 arm jobs kết thúc 22 pass, một B1 fail closed, paired C1 không chạy. Mười
+  một valid pairs cho B1 `54/62`, C1 `49/62` (`−8.06 pp`) nhưng chỉ descriptive.
+  Failure `RBWP10_NODEONLY_CONCURRENT_MIDEDGE_UNSUPPORTED` chứng minh `nodeOnly`
+  không đủ khi các xe đồng thời giữa cạnh; không nội suy state, không đổi manifest,
+  không fallback hậu-outcome. Layer 3 claim chưa được thiết lập.
+- 2026-08-23: Đóng WP9 `001..009` với kết quả âm dưới H6. Panel A (8 xe)
+  `1735 → 1581`, `−7.1296 pp`; Panel B (4 xe) `966 → 860`, `−4.9074 pp`; cả hai
+  service gate FAIL so với `−1 pp`, burden gate PASS. Independent verifier đọc
+  100/100 raw bundle, bốn falsification condition và repeat deterministic PASS;
+  seed19 tăng N bằng 0. Robustness cho thấy lock/ranking và 30-second budget mỗi
+  phần `−3.7037 pp`; C2 không rescue. Sau khi matrices đóng mới cài evidence v1.1
+  và exogenous ledger bridge; real FleetPy probe ghi 43/43 evidence/ledger breach,
+  không charge decision budget. Đây chỉ là mechanism evidence hậu-kết-quả. Chấp
+  nhận ADR-048/049; WP10 trở thành next work package.
+- 2026-08-22 (tối): Chấp nhận ADR-047 và **vô hiệu hoá toàn bộ dữ liệu confirmatory
+  dưới `H5`**. Panel A đã chạy 60/60 sạch và analyzer cho `Δ_service_panel =
+  −7,08 pp` (20/20 cell âm, service gate trượt, burden gate đạt) — nhưng kết quả
+  đó không còn là outcome confirmatory vì semantics đã đổi sau đó. Panel B (`veh4`)
+  phát hiện hai defect mà Panel A không thể lộ: (1) relief của ADR-045 áp cho cả
+  candidate đã đổi, khiến RideBound đề xuất kế hoạch mà `VehiclePlan.is_feasible()`
+  của FleetPy từ chối; (2) `mapping.py` lượng tử hoá tiến độ cạnh bằng
+  `ROUND_HALF_EVEN`, đặt xe trước vị trí thật và làm ETA lạc quan — một job vượt
+  cửa sổ đón đúng 13 ms. Sửa: relief chỉ cho no-op; permille dùng `ROUND_FLOOR`.
+  3/3 job từng hỏng nay `completedVerified`. Freeze lên schema 5.0.0, bind thêm
+  `adapterPackageTreeSealSha256` vì toàn bộ package adapter là outcome-bearing mà
+  trước đó không được pin. `.NET 852/852`, Python 86/86.
+- 2026-08-22 (chiều): Chấp nhận ADR-046 và đóng `RB-WP9-002a`. Review WP8 tìm ba
+  defect trong đường phân tích confirmatory: analyzer chính **không chạy được**
+  trên manifest đã đóng băng (arm khai bằng danh tính preregistered nhưng bị nối
+  thẳng vào jobId), và cả hai analyzer chấp nhận manifest thiếu cell hoặc đảo
+  orientation. Đã sửa cả ba, regression giờ bind vào artifact thật; Python 77 → 86
+  pass, 0 skip. Materialize Panel B (`grid-v3-veh4`, 20/20 cell, 108 request/cell)
+  và **đo được** điều kiện tiên quyết: 20/20 cell chọn đúng cùng tập request và
+  cùng travel realization như Panel A; chỉ vị trí đội xe khác, đã ghi thành giới
+  hạn. Freeze `H5=6720acca…25da6` (schema 4.0.0) bind 30 file hash + 4 tree seal,
+  verifier PASS, 4/4 mutation bị từ chối. Xác nhận ADR-045 trên dữ liệu thật:
+  cặp diagnostic `d20181114-s10-r1` chạy hết ở **cả hai arm** (B1 738.769 ms,
+  C1 650.215 ms, `status: pass`, C1 `completedVerified`), trong khi cùng cặp đó
+  trước ADR-045 chết giữa chừng ở transcript 14,7 MB. Một lần chạy hỏng vì tài liệu
+  bị sửa giữa ma trận — frozen-source guard bắt đúng, ghi lại làm quy tắc vận hành.
 - 2026-08-22: Chấp nhận ADR-045 trước outcome confirmatory và mở khóa WP9. Smoke
   chết ở cả hai arm vì `MAX_RIDE_TIME` bị enforce như bất biến liên tục, prune
   chính safety no-op. Tách physical constraint thành structural (strict) và

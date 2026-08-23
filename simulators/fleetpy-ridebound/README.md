@@ -39,3 +39,19 @@ directory, check out the exact tag, and give that root to the probe:
 The process exits non-zero and emits a typed JSON failure if source, environment,
 position semantics or the non-forced assignment path drifts. A successful report
 is diagnostic evidence only; it is not a simulator-effectiveness claim.
+
+## Run the adapter test suite
+
+The suite lives in `tests/` and has no `__init__.py`, so discovery must start
+inside that directory. Thirteen FleetPy contract tests skip silently unless
+`RIDEBOUND_FLEETPY_ROOT` points at the pinned checkout — a bare run reports
+`OK (skipped=13)`, which is not the documented 77/77 baseline:
+
+```powershell
+$env:RIDEBOUND_FLEETPY_ROOT = 'E:\RideBoundData\wp7\FleetPy-1.0.2'
+cd .\simulators\fleetpy-ridebound\tests
+& 'E:\RideBoundData\wp7\envs\fleetpy-1.0.2\python.exe' -m unittest discover -s . -t . -p 'test_*.py'
+```
+
+`pytest` is not installed in the pinned environment; `unittest` is the supported
+runner.

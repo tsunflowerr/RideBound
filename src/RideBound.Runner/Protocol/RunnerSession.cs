@@ -52,6 +52,7 @@ public sealed class RunnerSession
     private readonly IStopDistanceLookup? _stopDistances;
     private readonly Sha256Hex? _commitmentPolicyConfigurationHash;
     private readonly CommitmentDecisionValidator _commitmentValidator;
+    private readonly ExogenousServiceQualityBreachBridge _breachBridge;
     private readonly Wp4RunnerConfiguration? _wp4Configuration;
     private readonly SolverBackedRidePoolingPolicy? _solverBackedPolicy;
     private readonly bool _useManifestSolverSeed;
@@ -101,6 +102,7 @@ public sealed class RunnerSession
         _commitmentPolicyConfigurationHash = commitmentPolicyConfigurationHash;
         _commitmentValidator = commitmentValidator
             ?? new CommitmentDecisionValidator();
+        _breachBridge = new ExogenousServiceQualityBreachBridge();
         _wp4Configuration = wp4Configuration;
         _useManifestSolverSeed = useManifestSolverSeed;
         _solverBackedPolicy = wp4Configuration is not null
@@ -972,6 +974,30 @@ public sealed class RunnerSession
 
             stateToStage = validation.ValidatedState!;
             publications = validation.Publications;
+
+            if (decision.Decision.GenerationDiagnostics is { } diagnostics
+                && diagnostics.ExogenousServiceQualityBreaches.Count != 0)
+            {
+                var bridged = _breachBridge.Apply(
+                    reduced.ProposedState!,
+                    stateToStage,
+                    diagnostics,
+                    validationPolicies,
+                    _stopDistances!,
+                    sourceEventSequence);
+
+                if (!bridged.IsSuccess)
+                {
+                    _onlineCoordinator.DiscardPendingProposal();
+                    return OnlineDecisionBuildResult.Fail(
+                        "EXOGENOUS_BREACH_BRIDGE_FAILED",
+                        ProtocolFailureDisposition.FailSession,
+                        bridged.Error!);
+                }
+
+                stateToStage = bridged.State!;
+            }
+
             var afterHash = OnlineStateCanonicalizer.CalculateHash(stateToStage);
             certificate = new CertificateShell(
                 CertificateStatus.Produced,

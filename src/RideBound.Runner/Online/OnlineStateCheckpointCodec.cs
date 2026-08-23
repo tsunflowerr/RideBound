@@ -357,22 +357,68 @@ public static class OnlineStateCheckpointCodec
 
         foreach (var value in element.GetProperty("breaches").EnumerateArray())
         {
-            var breach = new CommitmentBreachRecord(
-                Text(value, "breachId"),
-                new IncidentId(Text(value, "incidentId")),
-                new RequestId(Text(value, "requestId")),
-                ReadPublishedPromise(value.GetProperty("previousPromise")),
-                ReadPromiseProjection(value.GetProperty("exogenousProjection")),
-                ReadPromiseProjection(value.GetProperty("safetyProjection")),
-                ReadDeltas(value.GetProperty("deltas")),
-                ReadVector(value.GetProperty("budgetBefore")),
-                ReadVector(value.GetProperty("attemptedBudgetAfter")),
-                value.GetProperty("witnessCodes")
-                    .EnumerateArray()
-                    .Select(item => item.GetString()!),
-                Integer(value, "sourceEventSeq"),
-                Integer(value, "recordedEpoch"),
-                new SimTime(Integer(value, "recordedAtMs")));
+            var requestId = new RequestId(Text(value, "requestId"));
+            var previousPromise = ReadPublishedPromise(
+                value.GetProperty("previousPromise"));
+            var exogenousProjection = ReadPromiseProjection(
+                value.GetProperty("exogenousProjection"));
+            var deltas = ReadDeltas(value.GetProperty("deltas"));
+            var budgetBefore = ReadVector(value.GetProperty("budgetBefore"));
+            CommitmentBreachRecord breach;
+
+            if (value.TryGetProperty("kind", out var kind))
+            {
+                if (kind.GetString() != "exogenousServiceQuality")
+                {
+                    throw new InvalidOperationException(
+                        "Unknown commitment breach kind.");
+                }
+
+                breach = CommitmentBreachRecord.CreateExogenousServiceQuality(
+                    Text(value, "breachId"),
+                    requestId,
+                    previousPromise,
+                    exogenousProjection,
+                    ReadPromiseProjection(value.GetProperty("safetyProjection")),
+                    deltas,
+                    budgetBefore,
+                    ReadVector(value.GetProperty("attemptedBudgetAfter")),
+                    value.GetProperty("witnessCodes")
+                        .EnumerateArray()
+                        .Select(item => item.GetString()!),
+                    value.GetProperty("serviceQualityWitnesses")
+                        .EnumerateArray()
+                        .Select(
+                            item => new ServiceQualityBreach(
+                                new RequestId(Text(item, "requestId")),
+                                Text(item, "code"),
+                                Text(item, "dimension"),
+                                Integer(item, "contractualMilliseconds"),
+                                Integer(item, "exogenousMilliseconds"))),
+                    Integer(value, "sourceEventSeq"),
+                    Integer(value, "recordedEpoch"),
+                    new SimTime(Integer(value, "recordedAtMs")));
+            }
+            else
+            {
+                breach = new CommitmentBreachRecord(
+                    Text(value, "breachId"),
+                    new IncidentId(Text(value, "incidentId")),
+                    requestId,
+                    previousPromise,
+                    exogenousProjection,
+                    ReadPromiseProjection(value.GetProperty("safetyProjection")),
+                    deltas,
+                    budgetBefore,
+                    ReadVector(value.GetProperty("attemptedBudgetAfter")),
+                    value.GetProperty("witnessCodes")
+                        .EnumerateArray()
+                        .Select(item => item.GetString()!),
+                    Integer(value, "sourceEventSeq"),
+                    Integer(value, "recordedEpoch"),
+                    new SimTime(Integer(value, "recordedAtMs")));
+            }
+
             var appended = ledger.AppendBreach(breach);
             ledger = appended.IsSuccess
                 ? appended.Ledger!

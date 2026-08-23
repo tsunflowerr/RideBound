@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import copy
 import hashlib
 import json
 import pathlib
@@ -80,6 +81,37 @@ class MediumVerifierTests(unittest.TestCase):
                     legacy,
                     require_audited_solver_evidence=True,
                 )
+
+    def test_audited_solver_evidence_v11_validates_exogenous_breaches(self):
+        evidence = _audited_evidence_v11()
+
+        verifier._verify_audited_solver_evidence(
+            {"status": "completed", "executionEvidence": evidence},
+            1,
+        )
+
+        invalid = copy.deepcopy(evidence)
+        invalid["generation"]["exogenousServiceQualityBreaches"][0][
+            "exogenousMilliseconds"
+        ] = 100
+        with self.assertRaisesRegex(RuntimeError, "does not breach"):
+            verifier._verify_audited_solver_evidence(
+                {"status": "completed", "executionEvidence": invalid},
+                1,
+            )
+
+    def test_audited_solver_evidence_v11_requires_canonical_unique_breaches(self):
+        evidence = _audited_evidence_v11()
+        duplicate = copy.deepcopy(
+            evidence["generation"]["exogenousServiceQualityBreaches"][0]
+        )
+        evidence["generation"]["exogenousServiceQualityBreaches"].append(duplicate)
+
+        with self.assertRaisesRegex(RuntimeError, "duplicate or non-canonical"):
+            verifier._verify_audited_solver_evidence(
+                {"status": "completed", "executionEvidence": evidence},
+                1,
+            )
 
 
 class MediumPreflightSeedTests(unittest.TestCase):
@@ -446,6 +478,22 @@ def _audited_evidence():
             "validationWitnesses": [],
         },
     }
+
+
+def _audited_evidence_v11():
+    evidence = copy.deepcopy(_audited_evidence())
+    evidence["evidenceVersion"] = "1.1.0"
+    evidence["generation"]["exogenousServiceQualityBreaches"] = [
+        {
+            "vehicleId": "veh-a",
+            "requestId": "req-a",
+            "code": "PICKUP_WINDOW",
+            "dimension": "pickupEtaMs",
+            "contractualMilliseconds": 100,
+            "exogenousMilliseconds": 101,
+        }
+    ]
+    return evidence
 
 
 def _transcript_record(ordinal, direction, envelope):

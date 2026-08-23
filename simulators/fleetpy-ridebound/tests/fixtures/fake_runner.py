@@ -73,7 +73,7 @@ for line in sys.stdin:
                 "selectedSchemaVersion": "1.0.0",
                 "capabilitySelection": {
                     "status": "accepted",
-                    "positionModel": "directedEdgeProgress",
+                    "positionModel": "nodeOnly" if MODE == "node-only" else "directedEdgeProgress",
                     "capabilities": [
                         "dynamicTravelTimes",
                         "exactEventOrdering",

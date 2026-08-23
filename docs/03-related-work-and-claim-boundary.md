@@ -92,7 +92,7 @@ Kết luận: ETA update, max delay, reassignment và consent riêng lẻ không
 | [Optimal Online Dispatch, ICRA 2021](https://www.cs.bham.ac.uk/~parkerdx/papers/icra21samod.pdf) | OSP/online dispatch baseline trong AMoD2 | Tối ưu schedule không đồng nghĩa ổn định lời hứa |
 | Savelsbergh 1992, forward time slack | Định nghĩa gốc của slack mà `ForwardSlackProfile` hiện thực | Slack là early prune, không thay full validator |
 | Cordeau & Laporte 2003, eight-step scheme | Mô tả đúng lớp chi phí RideBound đang trả khi dựng lại lịch cho từng candidate | Không phải chuẩn tối ưu; chỉ là baseline chi phí |
-| [Gschwind & Drexl, Transportation Science 2019](https://doi.org/10.1287/trsc.2018.0837) | Constant-time insertion feasibility test, exact, báo `3,8×` so eight-step | **Chưa áp dụng.** Full text chưa đọc được ngày 2026-08-17; chỉ phủ chiều thời gian, không phủ capacity/connectivity/frozen prefix/commitment budget |
+| [Gschwind & Drexl, Transportation Science 2019](https://doi.org/10.1287/trsc.2018.0837) | Constant-time insertion feasibility test, exact, báo `3,8×` so eight-step | Full PDF 39 trang đã đọc/hash ngày 2026-08-23. **Không nhập full constant-time test** vì model RideBound còn capacity/connectivity/frozen-prefix/commitment và travel contract không khóa triangle inequality. Chỉ áp exact same-state/route cache reuse; benchmark riêng không dùng `3,8×` làm claim |
 
 ## 5. Framework đã xác minh ngày 2026-07-27
 

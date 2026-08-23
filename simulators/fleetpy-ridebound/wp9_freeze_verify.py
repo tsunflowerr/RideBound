@@ -13,6 +13,9 @@ _REPOSITORY_HASH_FIELDS = {
     "supersedesFreezeReceiptV2Sha256": (
         "benchmarks/scenarios/wp9-confirmatory/freeze-receipt-v2.json"
     ),
+    "supersedesFreezeReceiptV3Sha256": (
+        "benchmarks/scenarios/wp9-confirmatory/freeze-receipt-v3.json"
+    ),
     "preregistrationSha256": "docs/benchmarking/wp8-011-preregistration-v1.md",
     "preOutcomeNodeCapAmendmentSha256": (
         "docs/benchmarking/wp8-011a-pre-outcome-node-cap-amendment.md"
@@ -23,6 +26,9 @@ _REPOSITORY_HASH_FIELDS = {
     "preOutcomeRunnerRepinAmendmentSha256": (
         "docs/benchmarking/wp8-011c-pre-outcome-runner-artifact-repin.md"
     ),
+    "preOutcomeCapacityPanelAmendmentSha256": (
+        "docs/benchmarking/wp8-011d-pre-outcome-capacity-stratum-amendment.md"
+    ),
     "gridSha256": "benchmarks/scenarios/wp9-confirmatory/grid-v2.json",
     "executionPlanSha256": (
         "benchmarks/scenarios/wp9-confirmatory/execution-plan-v1.json"
@@ -32,6 +38,13 @@ _REPOSITORY_HASH_FIELDS = {
     ),
     "robustnessManifestSha256": (
         "benchmarks/scenarios/wp9-confirmatory/robustness-manifest-v1.json"
+    ),
+    "panelBGridSha256": "benchmarks/scenarios/wp9-confirmatory/grid-v3-veh4.json",
+    "panelBExecutionPlanSha256": (
+        "benchmarks/scenarios/wp9-confirmatory/execution-plan-panel-b-v1.json"
+    ),
+    "panelBAnalysisManifestSha256": (
+        "benchmarks/scenarios/wp9-confirmatory/analysis-manifest-panel-b-v1.json"
     ),
     "analysisProgramSha256": "simulators/fleetpy-ridebound/wp9_fixed_panel_analyze.py",
     "robustnessAnalysisProgramSha256": (
@@ -81,6 +94,9 @@ _LITERAL_FIELDS = {
     "frozenAtUtc",
     "legacyDerivativeTreeSha256",
     "derivativeTreeSealSha256",
+    "panelBDerivativeTreeSealSha256",
+    "adapterPackageTreeSealSha256",
+    "plannedPanelBPrimaryRunCount",
     "scenarioPlanSealSha256",
     "runnerSha256",
     "runnerTreeSealSha256",
@@ -142,7 +158,7 @@ def _load_matrix(repository):
 def verify_receipt(receipt_path, repository, runner_root):
     receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
     required = set(_REPOSITORY_HASH_FIELDS) | _LITERAL_FIELDS
-    if set(receipt) != required or receipt["schemaVersion"] != "3.0.0":
+    if set(receipt) != required or receipt["schemaVersion"] != "5.0.0":
         raise RuntimeError("freeze receipt fields/version differ")
     for field, relative in _REPOSITORY_HASH_FIELDS.items():
         actual = _sha256(repository / relative)
@@ -169,6 +185,28 @@ def verify_receipt(receipt_path, repository, runner_root):
     )
     if receipt["derivativeTreeSealSha256"] != derivative_seal:
         raise RuntimeError("freeze hash differs: derivativeTreeSealSha256")
+    panel_b_root = repository / (
+        "benchmarks/fixtures/wp6/public/fleetpy-manhattan-v1/"
+        "wp9-confirmatory-fixed-panel-v3-veh4"
+    )
+    panel_b_seal = _tree_sha256(
+        panel_b_root,
+        b"RideBound.Wp9DerivativeTree.v3Veh4",
+    )
+    if receipt["panelBDerivativeTreeSealSha256"] != panel_b_seal:
+        raise RuntimeError("freeze hash differs: panelBDerivativeTreeSealSha256")
+
+    # ADR-047. The adapter package decides what RideBound sees and what it may
+    # propose: a one-line rounding change in mapping.py moved every ETA. It was
+    # outcome-bearing and completely unpinned, so the freeze would have accepted
+    # a silently different experiment.
+    adapter_seal = _tree_sha256(
+        repository / "simulators/fleetpy-ridebound/ridebound_fleetpy",
+        b"RideBound.Wp9AdapterPackage.v1",
+        {"__pycache__"},
+    )
+    if receipt["adapterPackageTreeSealSha256"] != adapter_seal:
+        raise RuntimeError("freeze hash differs: adapterPackageTreeSealSha256")
     scenario_seal = _tree_sha256(
         repository / "benchmarks/scenarios/wp9-confirmatory",
         b"RideBound.Wp9ScenarioPlanTree.v2",
@@ -176,6 +214,8 @@ def verify_receipt(receipt_path, repository, runner_root):
             "freeze-receipt-v1.json",
             "freeze-receipt-v2.json",
             "freeze-receipt-v3.json",
+            "freeze-receipt-v4.json",
+            "freeze-receipt-v5.json",
         },
     )
     if receipt["scenarioPlanSealSha256"] != scenario_seal:
@@ -185,7 +225,12 @@ def verify_receipt(receipt_path, repository, runner_root):
     plan = matrix._load_plan(
         repository / "benchmarks/scenarios/wp9-confirmatory/execution-plan-v1.json"
     )
-    matrix._validate_frozen_design(plan)
+    matrix._validate_frozen_design(plan, "a")
+    panel_b_plan = matrix._load_plan(
+        repository
+        / "benchmarks/scenarios/wp9-confirmatory/execution-plan-panel-b-v1.json"
+    )
+    matrix._validate_frozen_design(panel_b_plan, "b")
     primary_count = sum(job["phase"] == "primary" for job in plan["jobs"])
     robustness_count = sum(job["phase"] == "robustness" for job in plan["jobs"])
     unit_count = len(
@@ -199,11 +244,14 @@ def verify_receipt(receipt_path, repository, runner_root):
         or receipt["solverSeedsAreReplicates"] is not False
         or receipt["repositoryInventoryAlgorithm"]
         != "RideBound.Wp9RepositoryInventory.v1"
+        or receipt["plannedPanelBPrimaryRunCount"] != len(panel_b_plan["jobs"])
     ):
         raise RuntimeError("freeze design counts/semantics differ")
     return {
         "checkedFileHashCount": len(_REPOSITORY_HASH_FIELDS) + 1,
         "derivativeTreeSealSha256": derivative_seal,
+        "panelBDerivativeTreeSealSha256": panel_b_seal,
+        "adapterPackageTreeSealSha256": adapter_seal,
         "freezeReceiptSha256": _sha256(receipt_path),
         "runnerTreeSealSha256": runner_tree_seal,
         "scenarioPlanSealSha256": scenario_seal,

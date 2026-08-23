@@ -95,6 +95,9 @@ class FixedPanelAnalysisTests(unittest.TestCase):
             )
 
     def test_swapped_primary_arm_binding_is_rejected(self):
+        # The job carries the execution-plan token; the caller passes the arm's
+        # declared preregistered identity. A C1 bundle offered as the baseline
+        # must not validate.
         job = {
             "armId": "c1",
             "cellId": "cell",
@@ -112,7 +115,9 @@ class FixedPanelAnalysisTests(unittest.TestCase):
         }
 
         with self.assertRaisesRegex(RuntimeError, "job binding"):
-            _MODULE._validate_primary_job(job, "cell", "b1", job["jobId"])
+            _MODULE._validate_primary_job(
+                job, "cell", "b1-rolling-cost", job["jobId"]
+            )
 
     def test_valid_bundle_with_wrong_expected_label_is_rejected(self):
         class FakeVerifier:
@@ -144,6 +149,159 @@ class FixedPanelAnalysisTests(unittest.TestCase):
                     "expected-job",
                     "a" * 64,
                 )
+
+
+class FrozenManifestBindingTests(unittest.TestCase):
+    """The unit tests used synthetic short arm tokens, so they never noticed that
+    the frozen manifest names arms by their declared preregistered identity.
+    Every cell raised "primary job binding differs" and the confirmatory analysis
+    could not run at all.  These bind against the real frozen artifacts."""
+
+    _REPOSITORY = _ROOT.parents[1]
+    _SCENARIOS = _REPOSITORY / "benchmarks/scenarios/wp9-confirmatory"
+
+    def _manifest(self):
+        return json.loads(
+            (self._SCENARIOS / "analysis-manifest-v1.json").read_text(
+                encoding="utf-8"
+            )
+        )
+
+    def _plan_jobs(self):
+        plan = json.loads(
+            (self._SCENARIOS / "execution-plan-v1.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        return {job["jobId"]: job for job in plan["jobs"]}, plan
+
+    def test_every_frozen_cell_binds_to_its_frozen_execution_plan_job(self):
+        manifest = self._manifest()
+        jobs, _ = self._plan_jobs()
+        for cell in manifest["cells"]:
+            _MODULE._validate_primary_job(
+                jobs[cell["baselineBundle"]],
+                cell["cellId"],
+                manifest["baselineArmId"],
+                cell["baselineBundle"],
+            )
+            _MODULE._validate_primary_job(
+                jobs[cell["treatmentBundle"]],
+                cell["cellId"],
+                manifest["treatmentArmId"],
+                cell["treatmentBundle"],
+            )
+
+    def test_frozen_manifest_is_accepted_and_covers_the_whole_primary_panel(self):
+        manifest = _MODULE._read_manifest(
+            self._SCENARIOS / "analysis-manifest-v1.json"
+        )
+        _, plan = self._plan_jobs()
+        planned = {
+            job["cellId"] for job in plan["jobs"] if job["phase"] == "primary"
+        }
+        self.assertEqual(20, len(planned))
+        self.assertEqual(
+            planned, {cell["cellId"] for cell in manifest["cells"]}
+        )
+
+    def test_unknown_declared_arm_is_rejected_rather_than_spliced(self):
+        jobs, _ = self._plan_jobs()
+        with self.assertRaisesRegex(RuntimeError, "not preregistered"):
+            _MODULE._validate_primary_job(
+                jobs["p-d20181114-s10-r1-b1-tight-s7"],
+                "d20181114-s10-r1",
+                "b1",
+                "p-d20181114-s10-r1-b1-tight-s7",
+            )
+
+    def test_swapped_arm_orientation_in_the_manifest_is_rejected(self):
+        manifest = self._manifest()
+        manifest["baselineArmId"], manifest["treatmentArmId"] = (
+            manifest["treatmentArmId"],
+            manifest["baselineArmId"],
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = pathlib.Path(directory) / "manifest.json"
+            path.write_text(json.dumps(manifest), encoding="utf-8")
+            with self.assertRaisesRegex(RuntimeError, "arm orientation"):
+                _MODULE._read_manifest(path)
+
+    def test_cell_reusing_one_bundle_for_both_arms_is_rejected(self):
+        manifest = self._manifest()
+        manifest["cells"][0]["treatmentBundle"] = manifest["cells"][0][
+            "baselineBundle"
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            path = pathlib.Path(directory) / "manifest.json"
+            path.write_text(json.dumps(manifest), encoding="utf-8")
+            with self.assertRaisesRegex(RuntimeError, "invalid or duplicate"):
+                _MODULE._read_manifest(path)
+
+
+class CapacityPanelBindingTests(unittest.TestCase):
+    """WP8-011d adds a second capacity panel with its own derivative tree,
+    drivers and execution plan. Panel A must stay byte-for-byte frozen, and a
+    bundle or plan from one panel must never validate as the other."""
+
+    _SCENARIOS = _ROOT.parents[1] / "benchmarks/scenarios/wp9-confirmatory"
+
+    def _matrix(self):
+        specification = importlib.util.spec_from_file_location(
+            "wp9_run_matrix_for_panel_tests", _ROOT / "wp9_run_matrix.py"
+        )
+        module = importlib.util.module_from_spec(specification)
+        specification.loader.exec_module(module)
+        return module
+
+    def test_panel_b_plan_and_manifest_bind_end_to_end(self):
+        matrix = self._matrix()
+        plan = matrix._load_plan(self._SCENARIOS / "execution-plan-panel-b-v1.json")
+        matrix._validate_frozen_design(plan, "b")
+        jobs = {job["jobId"]: job for job in plan["jobs"]}
+        manifest = _MODULE._read_manifest(
+            self._SCENARIOS / "analysis-manifest-panel-b-v1.json"
+        )
+        self.assertEqual(20, len(manifest["cells"]))
+        self.assertEqual(40, len(plan["jobs"]))
+        for cell in manifest["cells"]:
+            _MODULE._validate_primary_job(
+                jobs[cell["baselineBundle"]],
+                cell["cellId"],
+                manifest["baselineArmId"],
+                cell["baselineBundle"],
+                "b",
+            )
+
+    def test_panel_a_plan_is_rejected_as_panel_b(self):
+        matrix = self._matrix()
+        plan = matrix._load_plan(self._SCENARIOS / "execution-plan-v1.json")
+        with self.assertRaisesRegex(RuntimeError, "denominators differ"):
+            matrix._validate_frozen_design(plan, "b")
+
+    def test_panel_a_job_is_rejected_when_analysed_as_panel_b(self):
+        matrix = self._matrix()
+        plan = matrix._load_plan(self._SCENARIOS / "execution-plan-v1.json")
+        jobs = {job["jobId"]: job for job in plan["jobs"]}
+        with self.assertRaisesRegex(RuntimeError, "job binding"):
+            _MODULE._validate_primary_job(
+                jobs["p-d20181114-s10-r1-b1-tight-s7"],
+                "d20181114-s10-r1",
+                "b1-rolling-cost",
+                "p-d20181114-s10-r1-b1-tight-s7",
+                "b",
+            )
+
+    def test_both_panels_declare_the_same_twenty_cells(self):
+        a = _MODULE._read_manifest(self._SCENARIOS / "analysis-manifest-v1.json")
+        b = _MODULE._read_manifest(
+            self._SCENARIOS / "analysis-manifest-panel-b-v1.json"
+        )
+        self.assertEqual(
+            {cell["cellId"] for cell in a["cells"]},
+            {cell["cellId"] for cell in b["cells"]},
+        )
+        self.assertNotEqual(a["panelId"], b["panelId"])
 
 
 if __name__ == "__main__":

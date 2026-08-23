@@ -49,6 +49,12 @@ class RunnerClient:
         maximum_input_line_bytes: int | None = None,
         maximum_output_line_bytes: int | None = None,
         maximum_stderr_bytes: int = 1024 * 1024,
+        expected_position_model: str = "directedEdgeProgress",
+        required_capabilities: Iterable[str] = (
+            "exactEventOrdering",
+            "dynamicTravelTimes",
+            "oldPlanProjection",
+        ),
         transcript_writer: Callable[[str, bytes], None] | None = None,
     ) -> None:
         self._command = tuple(str(part) for part in command)
@@ -71,11 +77,18 @@ class RunnerClient:
         )
         if maximum_input < 256 or maximum_output < 256 or maximum_stderr_bytes < 1:
             raise ValueError("invalid stream bounds")
+        if not isinstance(expected_position_model, str) or not expected_position_model:
+            raise ValueError("expected_position_model cannot be empty")
+        required = tuple(required_capabilities)
+        if not required or any(not isinstance(value, str) or not value for value in required):
+            raise ValueError("required_capabilities must contain non-empty strings")
         self._timeout = timeout_seconds
         self._shutdown_timeout = shutdown_timeout_seconds
         self._maximum_input_line_bytes = maximum_input
         self._maximum_output_line_bytes = maximum_output
         self._maximum_stderr_bytes = maximum_stderr_bytes
+        self._expected_position_model = expected_position_model
+        self._required_capabilities = frozenset(required)
         self._transcript_writer = transcript_writer
         self._process: subprocess.Popen[bytes] | None = None
         self._stdout: queue.Queue[bytes | object | BaseException] = queue.Queue()
@@ -150,11 +163,12 @@ class RunnerClient:
             self._fail("RBWP7_RUNNER_ACK_INVALID", "missing capabilitySelection")
         if selection.get("status") != "accepted":
             self._fail("RBWP7_RUNNER_CAPABILITY_DOWNGRADE", repr(selection))
-        if selection.get("positionModel") != "directedEdgeProgress":
+        if selection.get("positionModel") != self._expected_position_model:
             self._fail("RBWP7_RUNNER_POSITION_DOWNGRADE", repr(selection))
-        required = {"exactEventOrdering", "dynamicTravelTimes", "oldPlanProjection"}
         capabilities = selection.get("capabilities")
-        if not isinstance(capabilities, list) or not required.issubset(set(capabilities)):
+        if not isinstance(capabilities, list) or not self._required_capabilities.issubset(
+            set(capabilities)
+        ):
             self._fail("RBWP7_RUNNER_CAPABILITY_MISSING", repr(capabilities))
         self._state = "negotiated"
         return acknowledgement

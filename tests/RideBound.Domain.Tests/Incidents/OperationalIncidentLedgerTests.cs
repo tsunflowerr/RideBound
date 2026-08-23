@@ -2,6 +2,7 @@ using RideBound.Domain.Commitments;
 using RideBound.Domain.Common;
 using RideBound.Domain.Incidents;
 using RideBound.Domain.Tests.Commitments;
+using RideBound.Domain.Validation;
 
 namespace RideBound.Domain.Tests.Incidents;
 
@@ -104,6 +105,122 @@ public sealed class OperationalIncidentLedgerTests
             IncidentFailureCodes.BreachIncidentMismatch,
             opened.AppendBreach(
                 Breach(id, vehicleId: TestData.VehicleTwo)).Failure?.Code);
+    }
+
+    [Fact]
+    public void Exogenous_service_quality_breach_needs_no_incident_and_charges_no_budget()
+    {
+        var projection = CommitmentTestData.Projection();
+        var previous = new PublishedPromise(
+            new PromiseVersion(1),
+            1,
+            new SimTime(1_000),
+            projection);
+        var breach = CommitmentBreachRecord.CreateExogenousServiceQuality(
+            "exogenous-breach-1",
+            TestData.RequestOne,
+            previous,
+            projection,
+            projection,
+            new ThreeWayPromiseDelta(
+                CommitmentVector.Zero,
+                CommitmentVector.Zero,
+                CommitmentVector.Zero),
+            CommitmentTestData.Vector(
+                CommitmentDimension.PickupEtaTotalMs,
+                7),
+            CommitmentTestData.Vector(
+                CommitmentDimension.PickupEtaTotalMs,
+                7),
+            [PhysicalViolationCodes.PickupWindow],
+            [
+                new ServiceQualityBreach(
+                    TestData.RequestOne,
+                    PhysicalViolationCodes.PickupWindow,
+                    "latestPickupMs",
+                    100,
+                    101),
+            ],
+            11,
+            2,
+            new SimTime(2_000));
+
+        var appended = OperationalIncidentLedger.Empty.AppendBreach(breach);
+
+        Assert.True(appended.IsSuccess, appended.Failure?.Message);
+        var stored = Assert.Single(appended.Ledger!.Breaches);
+        Assert.Equal(
+            CommitmentBreachKind.ExogenousServiceQuality,
+            stored.Kind);
+        Assert.Null(stored.IncidentId);
+        Assert.Equal(stored.BudgetBefore, stored.AttemptedBudgetAfter);
+        Assert.Equal(CommitmentVector.Zero, stored.Deltas.DecisionInduced);
+        Assert.Single(stored.ServiceQualityWitnesses);
+    }
+
+    [Fact]
+    public void Exogenous_service_quality_breach_rejects_non_breach_and_wrong_dimension()
+    {
+        var projection = CommitmentTestData.Projection();
+        var previous = new PublishedPromise(
+            new PromiseVersion(1),
+            1,
+            new SimTime(1_000),
+            projection);
+
+        Assert.Throws<ArgumentException>(
+            () => CommitmentBreachRecord.CreateExogenousServiceQuality(
+                "exogenous-breach-1",
+                TestData.RequestOne,
+                previous,
+                projection,
+                projection,
+                new ThreeWayPromiseDelta(
+                    CommitmentVector.Zero,
+                    CommitmentVector.Zero,
+                    CommitmentVector.Zero),
+                CommitmentVector.Zero,
+                CommitmentVector.Zero,
+                [PhysicalViolationCodes.PickupWindow],
+                [
+                    new ServiceQualityBreach(
+                        TestData.RequestOne,
+                        PhysicalViolationCodes.PickupWindow,
+                        "maxRideTimeMs",
+                        100,
+                        100),
+                ],
+                11,
+                2,
+                new SimTime(2_000)));
+
+        Assert.Throws<ArgumentException>(
+            () => CommitmentBreachRecord.CreateExogenousServiceQuality(
+                "exogenous-breach-2",
+                TestData.RequestOne,
+                previous,
+                projection,
+                projection,
+                new ThreeWayPromiseDelta(
+                    CommitmentVector.Zero,
+                    CommitmentVector.Zero,
+                    CommitmentVector.Zero),
+                CommitmentVector.Zero,
+                CommitmentTestData.Vector(
+                    CommitmentDimension.PickupEtaTotalMs,
+                    1),
+                [PhysicalViolationCodes.PickupWindow],
+                [
+                    new ServiceQualityBreach(
+                        TestData.RequestOne,
+                        PhysicalViolationCodes.PickupWindow,
+                        "latestPickupMs",
+                        100,
+                        101),
+                ],
+                11,
+                2,
+                new SimTime(2_000)));
     }
 
     private static CommitmentBreachRecord Breach(

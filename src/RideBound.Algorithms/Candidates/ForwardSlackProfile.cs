@@ -4,8 +4,8 @@ using RideBound.Domain.Common;
 using RideBound.Domain.Requests;
 using RideBound.Domain.Routes;
 using RideBound.Domain.Runs;
-using RideBound.Domain.Vehicles;
 using RideBound.Domain.Validation;
+using RideBound.Domain.Vehicles;
 
 namespace RideBound.Algorithms.Candidates;
 
@@ -284,7 +284,6 @@ public sealed class ForwardSlackCacheKey : IEquatable<ForwardSlackCacheKey>
     private ForwardSlackCacheKey(
         RideBoundRun runSnapshot,
         VehicleState vehicleSnapshot,
-        string positionFingerprint,
         RoutePlan route,
         SimTime evaluationTime,
         long travelSnapshotVersion,
@@ -293,7 +292,6 @@ public sealed class ForwardSlackCacheKey : IEquatable<ForwardSlackCacheKey>
     {
         RunSnapshot = runSnapshot;
         VehicleSnapshot = vehicleSnapshot;
-        PositionFingerprint = positionFingerprint;
         Route = route;
         EvaluationTime = evaluationTime;
         TravelSnapshotVersion = travelSnapshotVersion;
@@ -305,8 +303,6 @@ public sealed class ForwardSlackCacheKey : IEquatable<ForwardSlackCacheKey>
     public RideBoundRun RunSnapshot { get; }
 
     public VehicleState VehicleSnapshot { get; }
-
-    public string PositionFingerprint { get; }
 
     public RoutePlan Route { get; }
 
@@ -339,7 +335,6 @@ public sealed class ForwardSlackCacheKey : IEquatable<ForwardSlackCacheKey>
         return new ForwardSlackCacheKey(
             state.Run,
             vehicle,
-            PositionIdentity(vehicle.Position),
             route,
             evaluationTime,
             travelTimes.Version,
@@ -362,9 +357,6 @@ public sealed class ForwardSlackCacheKey : IEquatable<ForwardSlackCacheKey>
             && EqualityComparer<VehicleState>.Default.Equals(
                 VehicleSnapshot,
                 other.VehicleSnapshot)
-            && StringComparer.Ordinal.Equals(
-                PositionFingerprint,
-                other.PositionFingerprint)
             && EvaluationTime == other.EvaluationTime
             && TravelSnapshotVersion == other.TravelSnapshotVersion
             && StringComparer.Ordinal.Equals(
@@ -374,6 +366,39 @@ public sealed class ForwardSlackCacheKey : IEquatable<ForwardSlackCacheKey>
                 ServiceQualityDigest,
                 other.ServiceQualityDigest)
             && RoutesEqual(Route, other.Route);
+    }
+
+    /// <summary>
+    /// Checks an already-created lookup against the exact inputs of a terminal
+    /// evaluation without allocating and hashing a second cache key. Run and
+    /// vehicle snapshots are immutable reference objects; binding the vehicle
+    /// reference therefore already binds its position, load, rider sets and
+    /// active route.
+    /// </summary>
+    internal bool Matches(
+        OnlineState state,
+        VehicleState vehicle,
+        RoutePlan route,
+        TravelTimeSnapshot travelTimes,
+        SimTime evaluationTime,
+        ServiceQualityAllowance? serviceQuality = null)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(vehicle);
+        ArgumentNullException.ThrowIfNull(route);
+        ArgumentNullException.ThrowIfNull(travelTimes);
+
+        return ReferenceEquals(RunSnapshot, state.Run)
+            && ReferenceEquals(VehicleSnapshot, vehicle)
+            && EvaluationTime == evaluationTime
+            && TravelSnapshotVersion == travelTimes.Version
+            && StringComparer.Ordinal.Equals(
+                TravelSnapshotHash,
+                travelTimes.SnapshotHash)
+            && StringComparer.Ordinal.Equals(
+                ServiceQualityDigest,
+                serviceQuality?.Digest ?? string.Empty)
+            && RoutesEqual(Route, route);
     }
 
     public override bool Equals(object? obj) =>
@@ -419,7 +444,6 @@ public sealed class ForwardSlackCacheKey : IEquatable<ForwardSlackCacheKey>
         var hash = new HashCode();
         hash.Add(key.RunSnapshot);
         hash.Add(key.VehicleSnapshot);
-        hash.Add(key.PositionFingerprint, StringComparer.Ordinal);
         hash.Add(key.EvaluationTime);
         hash.Add(key.TravelSnapshotVersion);
         hash.Add(key.TravelSnapshotHash, StringComparer.Ordinal);
@@ -443,15 +467,6 @@ public sealed class ForwardSlackCacheKey : IEquatable<ForwardSlackCacheKey>
         }
     }
 
-    private static string PositionIdentity(VehiclePosition position) =>
-        position switch
-        {
-            NodePosition node => $"node:{node.NodeId.Value}",
-            EdgeProgressPosition edge =>
-                $"edge:{edge.FromNodeId.Value}:{edge.ToNodeId.Value}:" +
-                $"{edge.EdgeId}:{edge.ProgressPermille}",
-            _ => $"unknown:{position.GetType().FullName}",
-        };
 }
 
 public sealed record ForwardSlackCacheLookup(

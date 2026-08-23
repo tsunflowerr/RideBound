@@ -72,6 +72,26 @@ class RunnerClientTests(unittest.TestCase):
         self.assertEqual("closed", client.state)
         self.assertEqual(client.artifact_receipts["before"], client.artifact_receipts["after"])
 
+    def test_node_only_capability_can_be_selected_explicitly(self) -> None:
+        client = self.make_client("node-only", expected_position_model="nodeOnly")
+        try:
+            client.start()
+            acknowledgement = client.negotiate(hello())
+            selection = acknowledgement["payload"]["capabilitySelection"]
+            self.assertEqual("nodeOnly", selection["positionModel"])
+        finally:
+            client.shutdown()
+
+    def test_position_model_mismatch_remains_fail_closed(self) -> None:
+        client = self.make_client(expected_position_model="nodeOnly")
+        try:
+            client.start()
+            with self.assertRaises(AdapterFailure) as raised:
+                client.negotiate(hello())
+            self.assertEqual("RBWP7_RUNNER_POSITION_DOWNGRADE", raised.exception.code)
+        finally:
+            client.shutdown()
+
     def test_adapter_policy_setting_must_be_declared_by_commitment_config(self) -> None:
         config = {"policies": [{"policyId": "declared-policy"}]}
         _require_declared_commitment_policy(

@@ -275,8 +275,12 @@ outcome tại thời điểm cập nhật freeze.
 
 ## WP9 — Main experiments
 
-**Trạng thái hiện tại:** In progress; `RB-WP9-001/003 Done`, `RB-WP9-002a Ready`.
-Ordered queue và exact closure gate ở `docs/tasks/39-wp9-main-experiment-ticket-plan.md`.
+**Trạng thái hiện tại:** **Complete**, `RB-WP9-001..009 Done` dưới freeze H6.
+Panel A 8 xe (`−7,13 pp`) và Panel B 4 xe (`−4,91 pp`) đều FAIL service gate;
+burden gate PASS nhưng không cứu primary. 100/100 raw bundle đã qua verifier độc lập.
+Ordered queue, kết quả âm và exact closure gate ở
+`docs/tasks/39-wp9-main-experiment-ticket-plan.md` và
+`docs/benchmarking/wp9-confirmatory-result-2026-08-23.md`.
 
 ### Deliverable
 
@@ -295,6 +299,13 @@ Ordered queue và exact closure gate ở `docs/tasks/39-wp9-main-experiment-tick
 
 ## WP10 — Cross-system Layer 3
 
+**Trạng thái hiện tại:** **Complete — negative capability result**;
+`RB-WP10-001..010 Done`. RidePy `v2.10.1`/`bf1863e…9f14` đã chạy trong exact pinned
+Linux container qua cùng versioned RideBound Runner, không tái hiện logic RideBound
+trong Python. Canonical gate pass; representative subset fail closed vì `nodeOnly`
+không biểu diễn concurrent mid-edge progress. Layer 3 claim chưa được thiết lập.
+Ordered queue và outcome: `docs/tasks/40-wp10-ridepy-layer3-ticket-plan.md`.
+
 ### Deliverable
 
 - RidePy hoặc AMoD2 adapter;
@@ -308,6 +319,9 @@ Ordered queue và exact closure gate ở `docs/tasks/39-wp9-main-experiment-tick
 - canonical scenario pass;
 - cross-system results/report;
 - không reimplement RideBound.
+
+Exit gate đã được đánh giá đầy đủ nhưng representative paired-subset gate không đạt.
+WP10 được phép đóng bằng kết quả âm theo ADR-051; không báo thành Layer 3 success.
 
 ## WP11 — Product UX
 
@@ -383,6 +397,13 @@ Cắt trước:
 - mọi ablation ở Layer 3.
 
 ## 4. Bước tiếp theo cụ thể
+
+**Cập nhật 2026-08-23:** WP1–WP10 và final cross-WP review đã đóng. WP9 là negative
+confirmatory result; WP10 là negative capability result. ADR-052 hoàn tất full-PDF
+audit, exact-reuse optimization, benchmark không đổi semantics và báo cáo PDF 12
+trang đã render/inspect. Không tự động mở WP11/WP12 trong cùng experiment; bước tiếp
+theo cần một refinement/decision mới, giữ nguyên H6 và không dùng UI/release work để
+diễn giải lại outcome.
 
 WP0 được thực hiện trực tiếp trong repository RideBound mới theo yêu cầu của
 người dùng. Sau khi WP0 qua exit gate:

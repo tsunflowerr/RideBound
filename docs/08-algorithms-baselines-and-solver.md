@@ -422,12 +422,13 @@ Hai kết luận về hướng đi tiếp:
 - *Lazy priority* **không dùng được** ở thiết kế hiện tại: stop chèn có
   `ServiceDuration = 0` nên mọi insertion child đồng hạng ở cả hai key rẻ, khiến cận
   dưới phẳng trên gần như toàn frontier.
-- Constant-time feasibility test (Gschwind & Drexl 2019) là hướng WP8 **chưa áp dụng**.
-  Nó exact chứ không phải filter nên không làm yếu comparator, nhưng chỉ phủ chiều thời
-  gian; validator ở đây còn quyết capacity, connectivity, frozen prefix và commitment
-  budget, nên nhiều nhất nó thay được tầng schedule/slack và vẫn phải chạy full
-  validator sau. Chi tiết và giới hạn đọc nguồn ở
-  [paper-to-design §22](21-paper-to-design-evidence.md).
+- Full constant-time feasibility test (Gschwind & Drexl 2019) vẫn **không được
+  áp dụng** sau khi đã đọc full PDF. Nó exact trong model của paper nhưng chỉ phủ
+  chiều thời gian; validator ở đây còn quyết capacity, connectivity, frozen prefix
+  và commitment budget, còn travel snapshot chung không cam kết triangle inequality.
+  ADR-052 chỉ bỏ allocation/key verification exact bị lặp; full validator và toàn
+  work profile giữ nguyên. Evidence ở
+  [post-WP10 optimization](benchmarking/post-wp10-exact-reuse-optimization-2026-08-23.md).
 
 ## 19. Hai lớp ràng buộc physical — khóa bởi ADR-045
 

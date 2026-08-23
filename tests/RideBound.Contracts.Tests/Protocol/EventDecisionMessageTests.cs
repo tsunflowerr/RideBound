@@ -171,6 +171,14 @@ public sealed class EventDecisionMessageTests
                 .GetProperty("evidenceVersion")
                 .GetString());
 
+        var currentVersion = Encoding.UTF8.GetString(encoded).Replace(
+            "\"evidenceVersion\":\"1.0.0\"",
+            "\"evidenceVersion\":\"1.1.0\"",
+            StringComparison.Ordinal);
+        using var currentDocument = JsonDocument.Parse(currentVersion);
+        var current = DecisionPayloadCodec.Decode(currentDocument.RootElement);
+        Assert.True(current.IsSuccess, current.Error?.Message);
+
         var unknownVersion = Encoding.UTF8.GetString(encoded).Replace(
             "\"evidenceVersion\":\"1.0.0\"",
             "\"evidenceVersion\":\"2.0.0\"",

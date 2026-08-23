@@ -131,15 +131,21 @@ class PositionAndRequestMappingTests(unittest.TestCase):
     def setUp(self) -> None:
         self.mapper = FleetPyProtocolMapper()
 
-    def test_node_and_directed_edge_progress_are_exactly_normalized(self) -> None:
+    def test_edge_progress_floors_so_the_vehicle_is_never_placed_ahead(self) -> None:
+        # Permille is 1/1000 of an edge, so rounding to nearest can put the
+        # vehicle ahead of where it actually is and make every downstream ETA
+        # optimistic. Flooring keeps RideBound behind the true position.
         node = self.mapper.position((10, None, None))
         start = self.mapper.position((10, 20, Decimal("0.0005")))
         edge = self.mapper.position((10, 20, Decimal("0.0015")))
-        end = self.mapper.position((10, 20, Decimal("0.9995")))
+        almost_end = self.mapper.position((10, 20, Decimal("0.9995")))
+        end = self.mapper.position((10, 20, Decimal("1")))
         self.assertEqual("node", node["kind"])
         self.assertEqual(node, start)
         self.assertEqual("edgeProgress", edge["kind"])
-        self.assertEqual(2, edge["progressPermille"])
+        self.assertEqual(1, edge["progressPermille"])
+        self.assertEqual("edgeProgress", almost_end["kind"])
+        self.assertEqual(999, almost_end["progressPermille"])
         self.assertEqual(self.mapper.node_id(20), end["nodeId"])
         self.assertNotEqual(edge["fromNodeId"], edge["toNodeId"])
 

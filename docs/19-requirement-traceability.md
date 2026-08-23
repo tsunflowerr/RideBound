@@ -6,23 +6,23 @@
 |---|---|---|---|---|---|
 | R-001 | Hệ thống RideBound độc lập | `05` | `Domain/Application/Runner` trong Git repo riêng | 5 architecture rules + 2 cross-platform path cases | WP0 verified; Linux CI rerun pending |
 | R-002 | Gắn được vào BeGo | `02`, `14`, `32` | BeGo adapter/API | integration replay | WP5 `002..014` có Application, persistence, intake/lease, Runner, bootstrap/API, fenced T2/T3 recovery, Applied-only outbox/SignalR, rebuildable timeline, default-off Shadow/Live rollout và paired Layer-1 bundle |
-| R-003 | Core mang sang benchmark | `05`, `06`, `24`, `26`, `32` | contracts + runner | same binary hash | WP1/WP2 runner verified; WP5 BeGo bootstrap/decision/recovery uses pinned published artifact hash; cross-simulator proof pending |
-| R-004 | Layer 1 cùng codebase | `09`, `32`, `34`, `39` | B1/C1 chung RideBound engine; BeGo/WP6 paired harness | paired runs | Mechanical same-Runner evidence verified WP5/WP6; fresh WP9 Layer-1 ticket queued, không dùng làm effectiveness |
-| R-005 | Layer 2 simulator chung | `09`, `12`, `35`, `36`, ADR-038 | FleetPy adapter gọi same Runner | capability/preflight + actual lifecycle/tiny/medium closed-loop + external verifier | WP7 `001..014` DONE: pinned actual FleetPy 1.0.2 calls Runner v6; B1/C1 raw medium loops reconcile. Mechanical only, not effectiveness |
-| R-006 | Layer 3 framework độc lập | `09`, `13` | RidePy/AMoD2 adapter | Layer 3 gate | Planned |
+| R-003 | Core mang sang benchmark | `05`, `06`, `24`, `26`, `32`, `36`, `40` | contracts + runner | same binary hash | WP1/WP2 verified; WP5 BeGo and WP7 FleetPy use pinned Runner; WP10 RidePy canonical uses same exact Runner tree, representative Layer 3 subset fails for position capability rather than a second decision implementation |
+| R-004 | Layer 1 cùng codebase | `09`, `32`, `34`, `39` | B1/C1 chung RideBound engine; BeGo/WP6 paired harness | paired runs | Mechanical same-Runner evidence verified WP5/WP6/WP9 Layer 1; không nâng thành effectiveness |
+| R-005 | Layer 2 simulator chung | `09`, `12`, `35`, `36`, ADR-038/048 | FleetPy adapter gọi same Runner | capability/preflight + actual lifecycle/tiny/medium/confirmatory closed-loop + external verifier | WP7 mechanical complete; WP9 H6 FleetPy effectiveness có 100/100 raw bundle verified và kết quả âm có điều kiện |
+| R-006 | Layer 3 framework độc lập | `09`, `13`, `40`, ADR-050/051 | RidePy adapter gọi same Runner | exact source/env + canonical + paired Layer 3 gate | WP10 complete negative: source/env/same-Runner/canonical PASS; paired subset FAIL CLOSED do `nodeOnly` concurrent mid-edge; Layer 3 claim not established |
 | R-007 | Giới hạn cumulative revision | `04`, `07`, `28` | ledger/validator | property/mutation tests | WP3 implemented: independent hard-vector recomputation + immutable ledger + certificate |
 | R-008 | Nhiều chiều promise | `04`, `07`, `28` | promise vector | golden fixtures | WP3 implemented: 10 dimensions, projection, three-way delta, strict wire actions và tiny replay |
 | R-009 | Certificate/witness | `07`, `28` | certificate DTO/validator | invalid-plan mutations | WP3 implemented: physical→lock→budget stages, normal/witness body và decision/publication cross-binding |
 | R-010 | Đánh giá bằng data rõ | `10`, `18`, `33`, `34`, WP6 contract | immutable public-source registry + deterministic normalization + scenario identity | source checksum/license/schema/vector gates | WP6 `002..004` complete: strict contracts, verified FleetPy source and exact tiny/medium canonical derivatives |
-| R-011 | Metric/statistics rõ | `11`, `18`, `33`, `34`, WP6 contract, WP8 reports | raw observations + explicit denominator/missingness + independent oracle | golden/mutation/recompute gates | WP8 complete: 10D calculator ↔ BCL-only process oracle, 20-cell finite-panel estimand, exact integer service gate; WP9 analysis H4 frozen |
+| R-011 | Metric/statistics rõ | `11`, `18`, `33`, `34`, WP6 contract, WP8/WP9 reports | raw observations + explicit denominator/missingness + independent oracle | golden/mutation/recompute gates | WP9 H6 complete: exact two-panel service/burden gates, locked/earned split, robustness non-rescue và finite-panel precision boundary |
 | R-012 | Dùng paper nhưng không làm lại | `03`, `21` | claim ledger + full-PDF provenance | novelty re-audit | WP1–WP8 mapped; full PDFs Alonso-Mora/Gschwind/Simonetto/Engelhardt/Zalesak/Schulz read and hashed; only exact same-state reuse applied, no random/direction/sparse prune |
 | R-013 | Nêu công nghệ và tối ưu | `05`, `08`, `12`–`14` | projects/adapters | build/performance | WP4 solver + WP5 DB/Runner/concurrency/local curves implemented; no SLA claim |
 | R-014 | Nêu thêm/bỏ gì | `02`, mục 2 dưới | migration plan | code review | Docs v1 |
-| R-015 | Agent sau biết tiếp tục | `00`, `17`, `18`, `23`–`39` | root `AGENTS.md` + ordered queue | reading order + closed queue/evidence/review | WP1–WP8 DONE; WP9 `001/003 Done`, `RB-WP9-002a` Ready |
+| R-015 | Agent sau biết tiếp tục | `00`, `17`, `18`, `23`–`40` | root `AGENTS.md` + ordered queue | reading order + closed queue/evidence/review | WP1–WP10 DONE; WP10 negative result/next action/receipts được ghi ở ADR-051 và report |
 | R-016 | Thuật ngữ dễ hiểu | `22` | glossary | doc review | Docs v1 |
 | R-017 | Không bias bằng dữ liệu giả | `01`, `10`, `11`, WP8 prereg/amendments | pilot/holdout | prereg + leakage audit | Pilot ngày 11–12 tách holdout ngày 14–18; node-cap, integrity và Runner-repin amendments đều pre-outcome confirmatory; margin 1 pp giữ dù pilot bất lợi |
-| R-018 | Tái lập | `06`, `15`, `24`, `26`, `28`, `32`–`39`, WP6/WP7/WP8 evidence | identities + seed tree + strict bundle + pinned FleetPy/Runner + repository content inventory | tamper/no-extra/source/assembly/hash + actual lifecycle/verifier + freeze verifier | WP8 H4 recompute 25 file/Runner hashes + derivative/scenario/Runner tree seals; every WP9 run binds Git-visible content+HEAD pre/post; no independent-reproduction claim |
-| R-019 | Fair paired effectiveness design | `11`, `18`, `37`–`39` | oriented pair + fixed panel + locked/earned decomposition | arm swap/config/label/scenario/inventory mutations | WP8 complete; WP9 primary/robustness programs frozen, outcome pending |
+| R-018 | Tái lập | `06`, `15`, `24`, `26`, `28`, `32`–`39`, WP6/WP7/WP8/WP9 evidence | identities + seed tree + strict bundle + pinned FleetPy/Runner + repository content inventory | tamper/no-extra/source/assembly/hash + actual lifecycle/verifier + freeze verifier | H6 recompute 30 file hashes + 5 tree seals; independent verifier PASS 100 raw bundle, cross-panel identity và deterministic repeat; không claim independent reproduction |
+| R-019 | Fair paired effectiveness design | `11`, `18`, `37`–`39`, ADR-048 | oriented pair + fixed panel + locked/earned decomposition | arm swap/config/label/scenario/inventory mutations | WP9 complete: cả hai service gate FAIL, burden gate PASS; panel không pool và robustness không rescue |
 
 ## 2. Những gì cần thêm
 
@@ -500,7 +500,93 @@ Baseline sau ADR-045: `.NET 851/851` Debug và Release, Release `-warnaserror`
 0 warning. `H4` hết hiệu lực vận hành vì ADR-045 và `wp8-011d` đều outcome-bearing;
 `RB-WP9-002a` phải repin `H5` trước audited smoke.
 
-Còn mở: `ExogenousServiceQualityBreach` mới ở tầng generation diagnostics. Bắc cầu
-sang `CommitmentBreachRecord`/`AppendBreach` trong `OperationalIncidentLedger` là
-`RB-WP9-002c`; tới lúc đó breach **không** vào ledger cam kết và không được trích
-như evidence ledger.
+Đã đóng bởi ADR-049/RB-WP9-009: evidence v1.1 serialize breach và runtime append
+`ExogenousServiceQuality` ledger không charge budget. H6 vẫn dùng v1.0 nên không
+có breach count confirmatory; 43 observation từ probe v1.1 chỉ là post-outcome
+mechanism evidence.
+
+## 18. ADR-046 traceability — đường phân tích confirmatory
+
+| Requirement | Cài đặt/evidence | Gate |
+|---|---|---|
+| Analyzer chạy được trên artifact đã đóng băng | `_PRIMARY_ARMS` registry trong `wp9_fixed_panel_analyze.py` | `FrozenManifestBindingTests`: 20/20 cell của manifest thật bind vào plan thật |
+| Không phân tích được panel cụt | manifest cell set phải bằng plan primary/robustness cell set, cả hai analyzer | test panel completeness + `denominators differ` |
+| Orientation arm không đảo được | `_PRIMARY_ORIENTATION` pin `(b1, c1)` | test swapped orientation bị từ chối |
+| Một bundle không phục vụ hai arm | `baselineBundle != treatmentBundle` | test duplicate bundle bị từ chối |
+| Hai panel không lẫn nhau | `--panel` parameterize prefix/driver/fixture root; `_validate_frozen_design(plan, panel)` | `CapacityPanelBindingTests`: plan A bị từ chối làm panel B và ngược lại |
+| Panel B chia sẻ demand realization của Panel A | đo 20/20 selection frame + request tuple | ghi trong `wp8-011d`; fail closed nếu lệch |
+| Freeze bind cả hai panel | `H5` schema 4.0.0: 30 file hash + derivative A/B, scenario plan, Runner tree seal | verifier PASS; 4/4 mutation rejected |
+
+Baseline sau ADR-046: `.NET 851/851` Debug và Release (Release `-warnaserror` 0
+warning); pinned Python **86/86**, 0 skip với `RIDEBOUND_FLEETPY_ROOT` đặt sẵn.
+`H5=6720accacdb6c1f685d9d27a196a7aa924cada02f535b35d7787074a5e625da6`.
+
+Bài học giữ lại: freeze receipt pin *hash* của một program không chứng minh program
+đó *chạy được* trên artifact nó pin. Mọi program nằm trên đường outcome phải có ít
+nhất một test thực thi nó trên đúng artifact đã đóng băng.
+
+## 19. ADR-047/048 traceability — H6 và kết quả WP9
+
+| Requirement | Cài đặt/evidence | Gate |
+|---|---|---|
+| Adapter rounding không lạc quan | `ROUND_FLOOR` trong FleetPy mapping + `DivideRoundUp` Runner | boundary/mutation mapping tests; adapter package tree seal H6 |
+| Relief chỉ dành cho safety no-op | changed candidate dùng `ServiceQualityAllowance.Strict` | Algorithms regression; 3/3 diagnostic job từng hỏng hoàn tất |
+| Freeze outcome-bearing đầy đủ | H6 schema 5.0.0 | 30 file hash + derivative A/B, scenario, Runner, adapter tree seal PASS |
+| Primary result đúng orientation | two canonical panel analyses | 20/20 cell mỗi panel; exact denominators; service và burden gate độc lập |
+| Không oversell burden | locked/earned table cạnh service loss | pickup definitional component và zero-burden cell count bắt buộc trong report |
+| Robustness không rescue | analyzer output `confirmatoryGate:null` | C1 unbounded/C2/seed19 descriptive only; seed tăng N bằng 0 |
+| Reproducibility raw | `wp9_reproducibility_verify.py` + compact JSON receipt | 100/100 bundle; bốn falsification conditions; repeat deterministic; 5 mutations |
+| Claim boundary | `wp9-confirmatory-result-2026-08-23.md` | finite panel, 5 travel realization, precision ~1.40 pp, cấm population/SLA/satisfaction |
+
+## 20. ADR-049 traceability — breach evidence/ledger
+
+| Requirement | Cài đặt/evidence | Gate |
+|---|---|---|
+| Evidence tương thích ngược | mapper v1.1; Contracts/Python nhận 1.0/1.1 | v1.0 H6 pass; unknown version và bad v1.1 shape/value/order fail |
+| Không incident giả | `CommitmentBreachKind.ExogenousServiceQuality`, nullable incident chỉ cho kind mới | Domain append succeeds without incident; operational path unchanged |
+| Không rửa decision budget | exact no-op exogenous=safety, decision delta zero, budget unchanged | Domain forged projection/delta/budget/witness mutations fail |
+| Runtime không nuốt breach | `ExogenousServiceQualityBreachBridge` trước state staging/hash | fail-session on bridge error; real FleetPy 43 evidence = 43 ledger |
+| Checkpoint tương thích và strict | old operational shape unchanged; new kind/witness array | exact round-trip + forged serialized budget rejection |
+| Outcome boundary | post-outcome evidence report/receipt | 43 observations không trộn H6 và không rescue primary |
+
+## 21. ADR-050 traceability — WP10 RidePy Layer 3 refinement
+
+| Requirement | Cài đặt/evidence | Gate |
+|---|---|---|
+| Exact independent source | RidePy v2.10.1 `bf1863e…9f14`, exact two submodules, MIT, external checkout | commit + 527-file tree + license/submodule mutation verifier |
+| Supported isolated runtime | pinned Linux container base `a365ce6a…0e235` | image build/import/version/runtime receipt; Windows wheel absence recorded |
+| Same decision implementation | RidePy adapter calls versioned `RideBound.Runner`; no Python solver/budget/locks | publish-tree pre/post hashes + transcript proof |
+| Honest capability | `nodeOnly`, unit party, reassignment false, explicit traffic updates | negotiation/downgrade/mapping/mutation tests |
+| Native simulator semantics | subclass `FleetState`, native fast-forward/space/pickup/drop | 2-vehicle/5-request canonical reconciliation |
+| Fair Layer 3 comparison | B1/C1 paired on exact same exogenous inputs | frozen subset identity verifier; oriented per-cell analysis |
+| Outcome boundary | descriptive heterogeneity only | no pooled H6 gate/CI/SLA/satisfaction/novelty claim |
+
+## 22. ADR-051 traceability — WP10 negative capability closure
+
+| Requirement | Cài đặt/evidence | Gate |
+|---|---|---|
+| Reproducible source/runtime | external source/env receipt `2b431062…0775`; image `5468b9cb…e573` | source mutations, actual import/Graph smoke và 8/8 verifier tests pass |
+| Generic same-Runner client | explicit position/capability parameters, unchanged FleetPy defaults | 14/14 targeted regression; wrong downgrade fails |
+| Strict RidePy adapter | identity/time/travel/route mapping; incremental native clock; atomic stoplist apply | pinned-container suite 20/20; no Python solver/lock/budget implementation |
+| Canonical equivalence | B1/C1 5/5 completed, 5 pickup + 5 drop, 22 decisions | independent five-class mutation verifier; Runner tree pre/post identity |
+| Pre-outcome subset binding | repo manifest `72ca34d2…b337`; external freeze v3 `18a74fa3…6672` | source/image/Runner/adapter/config seals before terminal execution |
+| Failure retention/no partial reuse | 22 pass, B1 stress job fail at epoch 17, paired C1 not run | exact failure transcript `0ee5e3ec…a85`; no missing-job denominator laundering |
+| Named capability boundary | `RBWP10_NODEONLY_CONCURRENT_MIDEDGE_UNSUPPORTED` | native pickup 116000 ms vs last nodeOnly ETA 178000 ms; no invented progress |
+| Descriptive analysis only | 11 valid pairs: B1 54/62, C1 49/62, `−8.06 pp` | strengthened analysis v2 `be3e9077…cca3` binds exact terminal inventory/full Runner/seed; not planned estimand, no CI/pooling/H6 rescue |
+| Layer 3 verdict | representative subset gate FAIL CLOSED | WP10 complete negative; cross-system Layer 3 claim not established |
+
+## 23. ADR-052 traceability — final review và exact-reuse optimization
+
+| Requirement | Cài đặt/evidence | Gate |
+|---|---|---|
+| Full paper thay vì title-only | six local full PDFs, page count + exact SHA-256 in `docs/21` | every page extracted/read; applied/rejected mechanism recorded |
+| Không nhập heuristic thiếu loss bound | no subtree/direction/random/sparse prune | search work/evaluated/feasible/omitted/retained counters unchanged |
+| Cache identity không yếu đi | immutable run/vehicle refs + exact route/time/travel/allowance comparison | moved vehicle/run/route/travel tests miss; cached/uncached equivalence pass |
+| Terminal reuse không bypass validator | `ForwardSlackCacheKey.Matches`; `_validator.Validate` remains before profile use | physical-capacity regression still prunes despite injected successful profile |
+| Benchmark có raw provenance | `RideBound.CandidateHotPathBenchmark`; 3 baseline + 3 optimized JSON hashes | exact allocation and six semantic counters; timing labelled machine-local |
+| Review không chỉ dựa test count | 1,226-file full-tree scan + high-risk manual read + mutation/differential/actual simulators | `reviews/wp1-wp10-final` findings and residual-risk ledger |
+| WP10 analyzer exact terminal inventory | strengthened v2 analyzer binds freeze/full Runner/seed/job/arm/failure | 7/7 mutation classes; analysis SHA `be3e9077…cca3` |
+| Runtime restore honesty | exact Docker image archive SHA `4783c541…9a872`, load returns image `5468b9cb…e573` | restore PASS; no future byte-rebuild claim |
+| Final quality baseline | isolated `.NET 855/855`, FleetPy 95/95, RidePy 23/23 | concurrent attempt's CPU guard retained; isolated rerun PASS; Release 0 warning/error; format/diff/vulnerability/static gates PASS |
+| Separate BeGo baseline not hidden | read-only current dirty tree, no mutation | backend 149 pass + 5 explicit opt-in skip; frontend 9/9 |
+| Proper rendered report | `output/pdf/RideBound-WP1-WP10-final-review-2026-08-23.pdf` | 12/12 pages rendered/visually inspected; SHA `06616887…9b20b` |

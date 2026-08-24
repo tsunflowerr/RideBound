@@ -79,7 +79,8 @@ public sealed record SolverBackedRidePoolingPolicyOptions
         DeterministicCandidateSelectionExecutionBudget executionBudget,
         Duration? freezeHorizon = null,
         PromiseLock freezeLocks = PromiseLock.None,
-        int maximumRepairRequestsConsideredPerVehicle = 0)
+        int maximumRepairRequestsConsideredPerVehicle = 0,
+        bool captureCandidatePortfolioEvidence = false)
     {
         ArgumentNullException.ThrowIfNull(executionBudget);
 
@@ -132,6 +133,7 @@ public sealed record SolverBackedRidePoolingPolicyOptions
         FreezeLocks = freezeLocks;
         MaximumRepairRequestsConsideredPerVehicle =
             maximumRepairRequestsConsideredPerVehicle;
+        CaptureCandidatePortfolioEvidence = captureCandidatePortfolioEvidence;
     }
 
     public RidePoolingPolicyKind PolicyKind { get; }
@@ -143,6 +145,8 @@ public sealed record SolverBackedRidePoolingPolicyOptions
     public PromiseLock FreezeLocks { get; }
 
     public int MaximumRepairRequestsConsideredPerVehicle { get; }
+
+    public bool CaptureCandidatePortfolioEvidence { get; }
 }
 
 public sealed record SolverBackedPolicyDecision(
@@ -353,10 +357,37 @@ public sealed class SolverBackedRidePoolingPolicy
             return SolverBackedPolicyDecisionResult.Failure(finished.Witness!);
         }
 
+        CandidatePortfolioEvidenceSnapshot? portfolioEvidence = null;
+
+        if (policyOptions.CaptureCandidatePortfolioEvidence)
+        {
+            var captured = CandidatePortfolioEvidenceSnapshot.Create(
+                profile,
+                generated.VehicleCandidates!,
+                candidates,
+                selected.Selection.Problem,
+                selected.Selection.Selection.VehiclePlans
+                    .Select(value => value.Candidate.CandidateId)
+                    .ToArray());
+
+            if (!captured.IsSuccess)
+            {
+                return SolverBackedPolicyDecisionResult.Failure(
+                    new RollingCostWitness(
+                        captured.Failure!.Code,
+                        captured.Failure.Message,
+                        CandidateId: captured.Failure.EntityId,
+                        Dimension: captured.Failure.Dimension));
+            }
+
+            portfolioEvidence = captured.Value;
+        }
+
         var decision = finished.Decision! with
         {
             SelectionExecution = selected.Selection.Execution,
             GenerationDiagnostics = generated.Diagnostics,
+            CandidatePortfolioEvidence = portfolioEvidence,
         };
         return SolverBackedPolicyDecisionResult.Success(
             new SolverBackedPolicyDecision(decision, effectivePolicies));

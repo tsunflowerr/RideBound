@@ -1,7 +1,7 @@
 # RideBound — bản đồ tài liệu
 
-> Trạng thái: WP0–WP10 hoàn thành; WP9 là kết quả confirmatory âm dưới `H6`, WP10 là negative Layer 3 capability result
-> Cập nhật: 2026-08-23
+> Trạng thái: WP0–WP10 hoàn thành; WP13 đang ở closure decision hậu full audit
+> Cập nhật: 2026-08-24
 > Nguồn sự thật về tiến độ: [18-status-and-decision-log.md](18-status-and-decision-log.md)
 
 ## 1. Mục đích của bộ tài liệu
@@ -122,6 +122,10 @@ Bộ tài liệu này trả lời năm câu hỏi:
 | [38-wp8-pilot-and-preregistration-ticket-plan.md](tasks/38-wp8-pilot-and-preregistration-ticket-plan.md) | Ordered queue WP8 `002..014`; grid manifest, pilot execution, variance/power, budget derivation, margin, preregistration freeze và leakage audit |
 | [39-wp9-main-experiment-ticket-plan.md](tasks/39-wp9-main-experiment-ticket-plan.md) | WP9 `001..009` đã đóng; freeze H6, audited execution, exact negative result, robustness, reproducibility và post-outcome breach bridge |
 | [40-wp10-ridepy-layer3-ticket-plan.md](tasks/40-wp10-ridepy-layer3-ticket-plan.md) | WP10 `001..010` đã đóng; canonical pass nhưng paired subset fail closed do giới hạn RidePy `nodeOnly` concurrent mid-edge |
+| [41-wp13-post-h6-mechanism-diagnostics-refinement.md](tasks/41-wp13-post-h6-mechanism-diagnostics-refinement.md) | ADR-053/refinement WP13; khóa H6, evidence sufficiency, equal-observed-input alignment và claim boundary |
+| [42-wp13-post-h6-mechanism-diagnostics-ticket-plan.md](tasks/42-wp13-post-h6-mechanism-diagnostics-ticket-plan.md) | Ordered queue WP13 `001..013`; toàn bộ `001..013 Done`, WP13 Complete |
+| [43-wp14-exploratory-ablation-refinement.md](tasks/43-wp14-exploratory-ablation-refinement.md) | ADR-066/refinement WP14; bốn factor bị loại bằng phép đo, sáu factor F1–F6 và ba ràng buộc cứng chống leakage |
+| [44-wp14-exploratory-ablation-ticket-plan.md](tasks/44-wp14-exploratory-ablation-ticket-plan.md) | Ordered queue WP14 `001..014`; `001 Done`, `RB-WP14-002` degenerate-level pre-solve skip là queue head |
 | [wp7-014-fleetpy-layer2-closure-evidence-2026-08-15.md](benchmarking/wp7-014-fleetpy-layer2-closure-evidence-2026-08-15.md) | Historical Runner v6 receipt: actual FleetPy B1/C1 preflight/tiny/medium evidence, verifier và claim boundary |
 | [wp7-015-hot-path-and-semantics-closure-evidence-2026-08-17.md](benchmarking/wp7-015-hot-path-and-semantics-closure-evidence-2026-08-17.md) | ADR-039: ngữ nghĩa được khóa, đo hot path, work-profile gate, cross-binary differential và receipt hiện hành trên Runner v8 |
 | [wp8-001-pilot-operating-point-evidence-2026-08-19.md](benchmarking/wp8-001-pilot-operating-point-evidence-2026-08-19.md) | Pilot WP8: điểm vận hành cũ không phân biệt được, endpoint pickup-ETA bị loại, đánh đổi dịch vụ xuất hiện |
@@ -134,6 +138,21 @@ Bộ tài liệu này trả lời năm câu hỏi:
 | [wp9-009-breach-evidence-2026-08-23.md](benchmarking/wp9-009-breach-evidence-2026-08-23.md) | Evidence 1.1 và ledger bridge cho breach chất lượng dịch vụ ngoại sinh; chỉ là closure hậu outcome, không đổi verdict H6 |
 | [wp10-ridepy-layer3-negative-capability-result-2026-08-23.md](benchmarking/wp10-ridepy-layer3-negative-capability-result-2026-08-23.md) | WP10: exact RidePy/same-Runner canonical pass; representative subset fail closed, Layer 3 claim chưa được thiết lập |
 | [post-wp10-exact-reuse-optimization-2026-08-23.md](benchmarking/post-wp10-exact-reuse-optimization-2026-08-23.md) | ADR-052: full-PDF optimization boundary, exact cache-key reuse, 3+3 process benchmark và semantic-equivalence gate |
+| [wp13-002-h6-evidence-inventory-2026-08-23.md](benchmarking/wp13-002-h6-evidence-inventory-2026-08-23.md) | WP13-002: 100-bundle/57.806-epoch evidence inventory, operational alignment, sufficiency và closure gates |
+| [wp13-003-first-divergence-records-2026-08-24.md](benchmarking/wp13-003-first-divergence-records-2026-08-24.md) | WP13-003: strict versioned schema và 40/40 exact paired first-divergence records, noncausal/read-only boundary |
+| [wp13-004-paired-behavioral-comparator-2026-08-24.md](benchmarking/wp13-004-paired-behavioral-comparator-2026-08-24.md) | WP13-004: 80-transcript full scan; 40 exact action-level comparisons và immediate/noncausal boundary |
+| [wp13-005-recorded-witness-relaxation-2026-08-24.md](benchmarking/wp13-005-recorded-witness-relaxation-2026-08-24.md) | WP13-005: 41 selected-candidate links; exact recorded budget/lock witness clearance với fail-fast boundary |
+| [wp13-006-mechanism-classification-2026-08-24.md](benchmarking/wp13-006-mechanism-classification-2026-08-24.md) | WP13-006: first-divergence evidence classes cross-tab với immediate acceptance; descriptive/noncausal boundary |
+| [wp13-007-option-set-sufficiency-2026-08-24.md](benchmarking/wp13-007-option-set-sufficiency-2026-08-24.md) | WP13-007: 80 target decisions; count-only option-set covariates, explicit missing fields và evidence-vNext verdict |
+| [wp13-008-runner-retained-portfolio-evidence-2026-08-24.md](benchmarking/wp13-008-runner-retained-portfolio-evidence-2026-08-24.md) | WP13-008: opt-in v1.2 generated/eligible/selected portfolio, full route/schedule/objectives và backward-compatible strict gates |
+| [wp13-009-exploratory-retained-portfolio-replay-2026-08-24.md](benchmarking/wp13-009-exploratory-retained-portfolio-replay-2026-08-24.md) | WP13-009: frozen E1 replay 80/80 arm, 44.156/44.156 v1.2 decisions, zero failure và descriptive-only inventory |
+| [wp13-010-e1-evidence-falsification-2026-08-24.md](benchmarking/wp13-010-e1-evidence-falsification-2026-08-24.md) | WP13-010: 80-bundle independent rebuild, 31/31 typed mutants rejected và E1↔H6 80/80 behavioral equivalence |
+| [wp13-011-e1-candidate-descriptive-aggregation-2026-08-24.md](benchmarking/wp13-011-e1-candidate-descriptive-aggregation-2026-08-24.md) | WP13-011: 40-pair candidate signature aggregation; 33 pruned, 7 eligible-not-selected, 1 selected và strict noncausal/non-additive boundary |
+| [wp13-012-full-source-logic-claim-audit-2026-08-24.md](benchmarking/wp13-012-full-source-logic-claim-audit-2026-08-24.md) | WP13-012: 80-file source/logic/claim audit, deep H6/E1 verification, zero unresolved P0–P2 và explicit closure limitations |
+| [wp13-013-closure-decision-2026-08-24.md](benchmarking/wp13-013-closure-decision-2026-08-24.md) | WP13-013: closure manifest, bảy exit gate, ba P3 resolution và verdict `openExploratoryAblationOnly` cho WP14 |
+| [wp13-evidence-retention-and-successor-policy-v1.md](benchmarking/wp13-evidence-retention-and-successor-policy-v1.md) | Contract retention/archive 5,516 GB E1, derived-output transaction và versioned successor-verifier boundary |
+| [post-h6-mechanism-diagnostics-full-pdf-evidence-2026-08-23.md](research/post-h6-mechanism-diagnostics-full-pdf-evidence-2026-08-23.md) | 106/106 trang từ ba full PDF; quyết định áp dụng/từ chối cho WP13–WP20 |
+| [wp14-ablation-pareto-full-pdf-evidence-2026-08-24.md](research/wp14-ablation-pareto-full-pdf-evidence-2026-08-24.md) | 77/77 trang từ năm full PDF; ratchet vs freeze, GenConVRP penalty/ε-constraint và giới hạn baseline |
 | [wp6-contract-v1.md](benchmarking/wp6-contract-v1.md) | Equivalent contract v1 cho common benchmark harness, public data và reproduction bundle |
 | [wp6-benchmark-reproducibility-evidence-2026-08-09.md](research/wp6-benchmark-reproducibility-evidence-2026-08-09.md) | Primary-source evidence và claim boundary cho WP6 |
 | [reviews/wp1-wp3/README.md](reviews/wp1-wp3/README.md) | Review chi tiết code, invariant, tối ưu thật và khoảng trống WP1–WP3 |
@@ -142,6 +161,7 @@ Bộ tài liệu này trả lời năm câu hỏi:
 | [reviews/wp1-wp7-final/README.md](reviews/wp1-wp7-final/README.md) | Final Vietnamese source/logic/code walkthrough WP1–WP7, Candidate proof và FleetPy Layer 2 closure |
 | [reviews/wp1-wp8-final/README.md](reviews/wp1-wp8-final/README.md) | Review hiện hành WP1–WP8: logic, defect đã sửa, determinism/fairness, residual claim boundary |
 | [reviews/wp1-wp10-final/README.md](reviews/wp1-wp10-final/README.md) | Review hiện hành WP1–WP10: file inventory, WP-by-WP verdict, defect WP10 đã sửa, final verification và residual risks |
+| [reviews/wp1-wp13-optimization-and-fairness/README.md](reviews/wp1-wp13-optimization-and-fairness/README.md) | Review hiện hành WP1–WP13: vì sao benchmark thấp đo từ raw evidence, 97% pass solver thừa, fairness/data audit và ba giới hạn claim mới |
 | [RideBound-WP1-WP10-final-review-2026-08-23.pdf](../output/pdf/RideBound-WP1-WP10-final-review-2026-08-23.pdf) | Báo cáo PDF 12 trang đã render/inspect: verdict, negative results, full-PDF provenance, benchmark, verification và residual risks |
 | [reviews/wp1-wp6-final/README.md](reviews/wp1-wp6-final/README.md) | Handoff hiện hành: kiến trúc, logic, file map, paper, benchmark, risk và reproduction WP1–WP6 |
 | [research/README.md](research/README.md) | Archive báo cáo, audit và evidence matrix nền |

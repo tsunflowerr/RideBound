@@ -77,6 +77,7 @@ public sealed class CanonicalJsonTests
     [Theory]
     [InlineData("""{"value":1.0}""", CanonicalJsonErrorCode.NonIntegerNumber)]
     [InlineData("""{"value":1e3}""", CanonicalJsonErrorCode.NonIntegerNumber)]
+    [InlineData("""{"value":1E3}""", CanonicalJsonErrorCode.NonIntegerNumber)]
     [InlineData("""{"value":-0}""", CanonicalJsonErrorCode.NonIntegerNumber)]
     [InlineData(
         """{"value":9007199254740992}""",

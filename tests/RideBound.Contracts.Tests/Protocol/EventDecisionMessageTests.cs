@@ -190,6 +190,143 @@ public sealed class EventDecisionMessageTests
     }
 
     [Fact]
+    public void Retained_portfolio_evidence_is_strict_and_cross_validated()
+    {
+        const string evidence =
+            """
+            {
+              "evidenceVersion":"1.2.0",
+              "generation":{},
+              "candidatePortfolio":{
+                "portfolioVersion":"1.0.0",
+                "schemaId":"https://ridebound.local/schemas/wp13/v1/runner-retained-candidate-portfolio-evidence.schema.json",
+                "objectiveProfile":"rollingCost",
+                "generatedCandidateCount":2,
+                "policyEligibleCandidateCount":1,
+                "selectedCandidateIds":["noop"],
+                "selectionProblem":{
+                  "vehicleIds":["v-1"],
+                  "requestIds":[],
+                  "objectiveLevels":[{
+                    "levelIndex":0,
+                    "name":"accepted-request-count",
+                    "sense":"maximize",
+                    "aggregation":"sum"
+                  }]
+                },
+                "candidates":[{
+                  "candidateId":"noop",
+                  "vehicleId":"v-1",
+                  "newRequestIds":[],
+                  "isNoOp":true,
+                  "scheduleStrategy":"earliestFeasible",
+                  "relocatedWaitMs":0,
+                  "route":{
+                    "planVersion":0,
+                    "executedStopCount":0,
+                    "frozenPrefix":[],
+                    "mutableSuffix":[]
+                  },
+                  "schedule":{"operationalCost":0,"stops":[]},
+                  "policyEligibility":"eligible",
+                  "objectiveContributions":[0]
+                },{
+                  "candidateId":"pruned",
+                  "vehicleId":"v-1",
+                  "newRequestIds":["request-not-eligible"],
+                  "isNoOp":false,
+                  "scheduleStrategy":"earliestFeasible",
+                  "relocatedWaitMs":0,
+                  "route":{
+                    "planVersion":1,
+                    "executedStopCount":0,
+                    "frozenPrefix":[],
+                    "mutableSuffix":[{
+                      "stopId":"pickup-pruned",
+                      "nodeId":"node-1",
+                      "kind":"pickup",
+                      "requestId":"request-not-eligible",
+                      "serviceDurationMs":0
+                    }]
+                  },
+                  "schedule":{
+                    "operationalCost":1,
+                    "stops":[{
+                      "stopId":"pickup-pruned",
+                      "arrivalTimeMs":1,
+                      "serviceStartTimeMs":1,
+                      "departureTimeMs":1
+                    }]
+                  },
+                  "policyEligibility":"pruned"
+                }]
+              },
+              "prunedCandidates":[],
+              "selection":{}
+            }
+            """;
+
+        var valid = DecodeSolverEvidence(evidence);
+        Assert.True(valid.IsSuccess, valid.Error?.Message);
+        Assert.Equal(
+            "1.2.0",
+            valid.Value!.Solver.ExecutionEvidence!.Value
+                .GetProperty("evidenceVersion")
+                .GetString());
+
+        var unknownNestedField = evidence.Replace(
+            "\"portfolioVersion\":\"1.0.0\",",
+            "\"portfolioVersion\":\"1.0.0\",\"unexpected\":true,",
+            StringComparison.Ordinal);
+        Assert.Equal(
+            ProtocolPayloadErrorCode.UnknownField,
+            DecodeSolverEvidence(unknownNestedField).Error?.Code);
+
+        var objectiveMismatch = evidence.Replace(
+            "\"objectiveContributions\":[0]",
+            "\"objectiveContributions\":[0,1]",
+            StringComparison.Ordinal);
+        Assert.Equal(
+            "$.payload.solver.executionEvidence.candidatePortfolio" +
+            ".candidates[0].objectiveContributions",
+            DecodeSolverEvidence(objectiveMismatch).Error?.Field);
+
+        var prunedWithInventedObjectives = evidence.Replace(
+            "\"policyEligibility\":\"pruned\"",
+            "\"policyEligibility\":\"pruned\"," +
+            "\"objectiveContributions\":[0]",
+            StringComparison.Ordinal);
+        Assert.False(
+            DecodeSolverEvidence(prunedWithInventedObjectives).IsSuccess);
+
+        var selectedPrunedCandidate = evidence.Replace(
+            "\"selectedCandidateIds\":[\"noop\"]",
+            "\"selectedCandidateIds\":[\"pruned\"]",
+            StringComparison.Ordinal);
+        Assert.Equal(
+            "$.payload.solver.executionEvidence.candidatePortfolio" +
+            ".selectedCandidateIds[0]",
+            DecodeSolverEvidence(selectedPrunedCandidate).Error?.Field);
+
+        var legacyWithPortfolio = evidence.Replace(
+            "\"evidenceVersion\":\"1.2.0\"",
+            "\"evidenceVersion\":\"1.1.0\"",
+            StringComparison.Ordinal);
+        Assert.False(DecodeSolverEvidence(legacyWithPortfolio).IsSuccess);
+
+        const string missingPortfolio =
+            """
+            {
+              "evidenceVersion":"1.2.0",
+              "generation":{},
+              "prunedCandidates":[],
+              "selection":{}
+            }
+            """;
+        Assert.False(DecodeSolverEvidence(missingPortfolio).IsSuccess);
+    }
+
+    [Fact]
     public void Unknown_decision_reason_is_rejected_as_contract_drift()
     {
         var json = """
@@ -545,6 +682,32 @@ public sealed class EventDecisionMessageTests
     {
         using var document = JsonDocument.Parse(Encoding.UTF8.GetBytes(json));
         return document.RootElement.Clone();
+    }
+
+    private static ProtocolPayloadDecodeResult<DecisionPayload>
+        DecodeSolverEvidence(string evidence)
+    {
+        using var document = JsonDocument.Parse(
+            $$"""
+            {
+              "status":"produced",
+              "reasonCode":"ACCEPTED",
+              "actions":[],
+              "certificate":{
+                "status":"notProduced",
+                "reasonCode":"COMMITMENT_VALIDATOR_NOT_AVAILABLE"
+              },
+              "solver":{
+                "status":"completed",
+                "executionEvidence":{{evidence}}
+              },
+              "stateBeforeHash":"0000000000000000000000000000000000000000000000000000000000000000",
+              "stateAfterHash":"0000000000000000000000000000000000000000000000000000000000000000",
+              "previousDecisionHash":"0000000000000000000000000000000000000000000000000000000000000000",
+              "decisionHash":"0000000000000000000000000000000000000000000000000000000000000000"
+            }
+            """);
+        return DecisionPayloadCodec.Decode(document.RootElement);
     }
 
     private static ProtocolEventPayload CreatePayload(EventType eventType)

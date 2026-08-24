@@ -4,11 +4,16 @@ using RideBound.Algorithms.Candidates;
 using RideBound.Algorithms.Policies;
 using RideBound.Application.Commitments;
 using RideBound.Application.Optimization;
+using RideBound.Domain.Routes;
 
 namespace RideBound.Runner.Protocol;
 
 internal static class SolverExecutionEvidenceMapper
 {
+    private const string CandidatePortfolioSchemaId =
+        "https://ridebound.local/schemas/wp13/v1/" +
+        "runner-retained-candidate-portfolio-evidence.schema.json";
+
     public static JsonElement? Map(RollingCostDecision decision)
     {
         ArgumentNullException.ThrowIfNull(decision);
@@ -24,9 +29,20 @@ internal static class SolverExecutionEvidenceMapper
         using (var writer = new Utf8JsonWriter(buffer))
         {
             writer.WriteStartObject();
-            writer.WriteString("evidenceVersion", "1.1.0");
+            writer.WriteString(
+                "evidenceVersion",
+                decision.CandidatePortfolioEvidence is null
+                    ? "1.1.0"
+                    : "1.2.0");
             writer.WritePropertyName("generation");
             WriteGeneration(writer, decision.GenerationDiagnostics);
+
+            if (decision.CandidatePortfolioEvidence is { } portfolio)
+            {
+                writer.WritePropertyName("candidatePortfolio");
+                WriteCandidatePortfolio(writer, portfolio);
+            }
+
             writer.WritePropertyName("prunedCandidates");
             writer.WriteStartArray();
 
@@ -48,6 +64,274 @@ internal static class SolverExecutionEvidenceMapper
         using var document = JsonDocument.Parse(buffer.WrittenMemory);
         return document.RootElement.Clone();
     }
+
+    private static void WriteCandidatePortfolio(
+        Utf8JsonWriter writer,
+        CandidatePortfolioEvidenceSnapshot snapshot)
+    {
+        var generated = snapshot.GeneratedPhysicalCandidateSets
+            .OrderBy(value => value.VehicleId.Value, StringComparer.Ordinal)
+            .SelectMany(
+                value => value.Candidates.OrderBy(
+                    candidate => candidate.CandidateId,
+                    StringComparer.Ordinal))
+            .ToArray();
+        var eligibleIds = snapshot.PolicyEligibleCandidateSets
+            .SelectMany(value => value.Candidates)
+            .Select(value => value.CandidateId)
+            .ToHashSet(StringComparer.Ordinal);
+        var options = snapshot.SelectionProblem.Options.ToDictionary(
+            value => value.OptionId,
+            StringComparer.Ordinal);
+
+        writer.WriteStartObject();
+        writer.WriteString("portfolioVersion", "1.0.0");
+        writer.WriteString("schemaId", CandidatePortfolioSchemaId);
+        writer.WriteString(
+            "objectiveProfile",
+            ObjectiveProfile(snapshot.ObjectiveProfile));
+        writer.WriteNumber("generatedCandidateCount", generated.Length);
+        writer.WriteNumber("policyEligibleCandidateCount", eligibleIds.Count);
+        writer.WritePropertyName("selectedCandidateIds");
+        writer.WriteStartArray();
+
+        foreach (var candidateId in snapshot.SelectedCandidateIds)
+        {
+            writer.WriteStringValue(candidateId);
+        }
+
+        writer.WriteEndArray();
+        writer.WritePropertyName("selectionProblem");
+        WriteSelectionProblem(writer, snapshot.SelectionProblem);
+        writer.WritePropertyName("candidates");
+        writer.WriteStartArray();
+
+        foreach (var candidate in generated)
+        {
+            WriteCandidate(
+                writer,
+                candidate,
+                eligibleIds.Contains(candidate.CandidateId)
+                    ? options[candidate.CandidateId]
+                    : null);
+        }
+
+        writer.WriteEndArray();
+        writer.WriteEndObject();
+    }
+
+    private static void WriteSelectionProblem(
+        Utf8JsonWriter writer,
+        CandidateSelectionProblem problem)
+    {
+        writer.WriteStartObject();
+        writer.WritePropertyName("vehicleIds");
+        writer.WriteStartArray();
+
+        foreach (var vehicleId in problem.VehicleIds)
+        {
+            writer.WriteStringValue(vehicleId.Value);
+        }
+
+        writer.WriteEndArray();
+        writer.WritePropertyName("requestIds");
+        writer.WriteStartArray();
+
+        foreach (var requestId in problem.RequestIds)
+        {
+            writer.WriteStringValue(requestId.Value);
+        }
+
+        writer.WriteEndArray();
+        writer.WritePropertyName("objectiveLevels");
+        writer.WriteStartArray();
+
+        for (var index = 0; index < problem.ObjectiveLevels.Count; index++)
+        {
+            var objective = problem.ObjectiveLevels[index];
+            writer.WriteStartObject();
+            writer.WriteNumber("levelIndex", index);
+            writer.WriteString("name", objective.Name);
+            writer.WriteString("sense", ObjectiveSense(objective.Sense));
+            writer.WriteString(
+                "aggregation",
+                ObjectiveAggregation(objective.Aggregation));
+            writer.WriteEndObject();
+        }
+
+        writer.WriteEndArray();
+        writer.WriteEndObject();
+    }
+
+    private static void WriteCandidate(
+        Utf8JsonWriter writer,
+        InsertionCandidate candidate,
+        CandidateSelectionOption? option)
+    {
+        writer.WriteStartObject();
+        writer.WriteString("candidateId", candidate.CandidateId);
+        writer.WriteString("vehicleId", candidate.VehicleId.Value);
+        writer.WritePropertyName("newRequestIds");
+        writer.WriteStartArray();
+
+        foreach (var requestId in candidate.NewRequestIds.OrderBy(
+                     value => value.Value,
+                     StringComparer.Ordinal))
+        {
+            writer.WriteStringValue(requestId.Value);
+        }
+
+        writer.WriteEndArray();
+        writer.WriteBoolean("isNoOp", candidate.IsNoOp);
+        writer.WriteString(
+            "scheduleStrategy",
+            ScheduleStrategy(candidate.ScheduleStrategy));
+        writer.WriteNumber(
+            "relocatedWaitMs",
+            candidate.RelocatedWaitMilliseconds);
+
+        if (candidate.CertifiedForwardSlackMilliseconds is { } slack)
+        {
+            writer.WriteNumber("certifiedForwardSlackMs", slack);
+        }
+
+        if (candidate.RepairedIncumbentRequestId is { } repaired)
+        {
+            writer.WriteString("repairedIncumbentRequestId", repaired.Value);
+        }
+
+        writer.WritePropertyName("route");
+        WriteRoute(writer, candidate.Route);
+        writer.WritePropertyName("schedule");
+        WriteSchedule(writer, candidate.Schedule);
+        writer.WriteString(
+            "policyEligibility",
+            option is null ? "pruned" : "eligible");
+
+        if (option is not null)
+        {
+            writer.WritePropertyName("objectiveContributions");
+            writer.WriteStartArray();
+
+            foreach (var contribution in option.ObjectiveContributions)
+            {
+                writer.WriteNumberValue(contribution);
+            }
+
+            writer.WriteEndArray();
+        }
+
+        writer.WriteEndObject();
+    }
+
+    private static void WriteRoute(Utf8JsonWriter writer, RoutePlan route)
+    {
+        writer.WriteStartObject();
+        writer.WriteNumber("planVersion", route.Version.Value);
+        writer.WriteNumber("executedStopCount", route.ExecutedStopCount);
+        writer.WritePropertyName("frozenPrefix");
+        WriteRouteStops(writer, route.FrozenPrefix);
+        writer.WritePropertyName("mutableSuffix");
+        WriteRouteStops(writer, route.MutableSuffix);
+        writer.WriteEndObject();
+    }
+
+    private static void WriteRouteStops(
+        Utf8JsonWriter writer,
+        IReadOnlyList<RouteStop> stops)
+    {
+        writer.WriteStartArray();
+
+        foreach (var stop in stops)
+        {
+            writer.WriteStartObject();
+            writer.WriteString("stopId", stop.StopId.Value);
+            writer.WriteString("nodeId", stop.NodeId.Value);
+            writer.WriteString("kind", RouteStopKindValue(stop.Kind));
+
+            if (stop.RequestId is { } requestId)
+            {
+                writer.WriteString("requestId", requestId.Value);
+            }
+
+            writer.WriteNumber(
+                "serviceDurationMs",
+                stop.ServiceDuration.Milliseconds);
+            writer.WriteEndObject();
+        }
+
+        writer.WriteEndArray();
+    }
+
+    private static void WriteSchedule(
+        Utf8JsonWriter writer,
+        CandidateSchedule schedule)
+    {
+        writer.WriteStartObject();
+        writer.WriteNumber("operationalCost", schedule.OperationalCost);
+        writer.WritePropertyName("stops");
+        writer.WriteStartArray();
+
+        foreach (var stop in schedule.Stops)
+        {
+            writer.WriteStartObject();
+            writer.WriteString("stopId", stop.StopId.Value);
+            writer.WriteNumber("arrivalTimeMs", stop.ArrivalTime.Milliseconds);
+            writer.WriteNumber(
+                "serviceStartTimeMs",
+                stop.ServiceStartTime.Milliseconds);
+            writer.WriteNumber("departureTimeMs", stop.DepartureTime.Milliseconds);
+            writer.WriteEndObject();
+        }
+
+        writer.WriteEndArray();
+        writer.WriteEndObject();
+    }
+
+    private static string ObjectiveProfile(SolverBackedObjectiveProfile profile) =>
+        profile switch
+        {
+            SolverBackedObjectiveProfile.RollingCost => "rollingCost",
+            SolverBackedObjectiveProfile.RevisionPenalty => "revisionPenalty",
+            SolverBackedObjectiveProfile.HardVector => "hardVector",
+            SolverBackedObjectiveProfile.SoftHardHybrid => "softHardHybrid",
+            _ => throw new ArgumentOutOfRangeException(nameof(profile)),
+        };
+
+    private static string ObjectiveSense(CandidateSelectionObjectiveSense sense) =>
+        sense switch
+        {
+            CandidateSelectionObjectiveSense.Minimize => "minimize",
+            CandidateSelectionObjectiveSense.Maximize => "maximize",
+            _ => throw new ArgumentOutOfRangeException(nameof(sense)),
+        };
+
+    private static string ObjectiveAggregation(
+        CandidateSelectionObjectiveAggregation aggregation) =>
+        aggregation switch
+        {
+            CandidateSelectionObjectiveAggregation.Sum => "sum",
+            CandidateSelectionObjectiveAggregation.Maximum => "maximum",
+            _ => throw new ArgumentOutOfRangeException(nameof(aggregation)),
+        };
+
+    private static string ScheduleStrategy(CandidateScheduleStrategy strategy) =>
+        strategy switch
+        {
+            CandidateScheduleStrategy.EarliestFeasible => "earliestFeasible",
+            CandidateScheduleStrategy.OriginHoldRelocatedWait =>
+                "originHoldRelocatedWait",
+            _ => throw new ArgumentOutOfRangeException(nameof(strategy)),
+        };
+
+    private static string RouteStopKindValue(RouteStopKind kind) =>
+        kind switch
+        {
+            RouteStopKind.Waypoint => "waypoint",
+            RouteStopKind.Pickup => "pickup",
+            RouteStopKind.DropOff => "dropOff",
+            _ => throw new ArgumentOutOfRangeException(nameof(kind)),
+        };
 
     private static void WriteGeneration(
         Utf8JsonWriter writer,

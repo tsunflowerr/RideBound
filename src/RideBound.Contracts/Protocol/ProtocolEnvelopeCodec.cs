@@ -603,7 +603,7 @@ public static class ProtocolEnvelopeCodec
         var rawNumber = element.GetRawText();
 
         if (!element.TryGetInt64(out var value)
-            || rawNumber.IndexOfAny(['.', 'e', 'E']) >= 0
+            || rawNumber.AsSpan().IndexOfAny('.', 'e', 'E') >= 0
             || rawNumber == "-0"
             || value < minimum
             || value > ProtocolLimits.MaxCanonicalInteger)

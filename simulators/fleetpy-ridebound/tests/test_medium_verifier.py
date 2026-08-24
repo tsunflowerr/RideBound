@@ -22,7 +22,10 @@ import actual_fleetpy_medium_verify as verifier
 
 class MediumVerifierTests(unittest.TestCase):
     def test_contended_bundle_passes_and_generated_ids_do_not_change_behavior(self):
-        with tempfile.TemporaryDirectory() as first_root, tempfile.TemporaryDirectory() as second_root:
+        with (
+            tempfile.TemporaryDirectory() as first_root,
+            tempfile.TemporaryDirectory() as second_root,
+        ):
             first = pathlib.Path(first_root)
             second = pathlib.Path(second_root)
             _write_bundle(first, candidate_id="candidate-a")
@@ -63,7 +66,10 @@ class MediumVerifierTests(unittest.TestCase):
                 verifier.verify_bundle(bundle)
 
     def test_audited_solver_gate_requires_exact_optimal_evidence(self):
-        with tempfile.TemporaryDirectory() as valid_root, tempfile.TemporaryDirectory() as legacy_root:
+        with (
+            tempfile.TemporaryDirectory() as valid_root,
+            tempfile.TemporaryDirectory() as legacy_root,
+        ):
             valid = pathlib.Path(valid_root)
             legacy = pathlib.Path(legacy_root)
             _write_bundle(valid, audited_evidence=True)
@@ -108,6 +114,51 @@ class MediumVerifierTests(unittest.TestCase):
         evidence["generation"]["exogenousServiceQualityBreaches"].append(duplicate)
 
         with self.assertRaisesRegex(RuntimeError, "duplicate or non-canonical"):
+            verifier._verify_audited_solver_evidence(
+                {"status": "completed", "executionEvidence": evidence},
+                1,
+            )
+
+    def test_audited_solver_evidence_v12_validates_retained_portfolio(self):
+        evidence = _audited_evidence_v12()
+
+        self.assertEqual(
+            "1.2.0",
+            verifier._verify_audited_solver_evidence(
+                {"status": "completed", "executionEvidence": evidence},
+                1,
+            ),
+        )
+
+        selected_pruned = copy.deepcopy(evidence)
+        selected_pruned["candidatePortfolio"]["selectedCandidateIds"] = [
+            "pruned"
+        ]
+        with self.assertRaisesRegex(RuntimeError, "selectedCandidateIds"):
+            verifier._verify_audited_solver_evidence(
+                {
+                    "status": "completed",
+                    "executionEvidence": selected_pruned,
+                },
+                1,
+            )
+
+    def test_audited_solver_evidence_v12_rejects_objective_and_schedule_drift(self):
+        evidence = _audited_evidence_v12()
+        del evidence["candidatePortfolio"]["candidates"][0][
+            "objectiveContributions"
+        ]
+        with self.assertRaisesRegex(RuntimeError, "eligibility/objective"):
+            verifier._verify_audited_solver_evidence(
+                {"status": "completed", "executionEvidence": evidence},
+                1,
+            )
+
+        evidence = _audited_evidence_v12()
+        evidence["candidatePortfolio"]["candidates"][1]["schedule"][
+            "stops"
+        ] = []
+        with self.assertRaisesRegex(RuntimeError, "schedule/remaining-route"):
             verifier._verify_audited_solver_evidence(
                 {"status": "completed", "executionEvidence": evidence},
                 1,
@@ -493,6 +544,88 @@ def _audited_evidence_v11():
             "exogenousMilliseconds": 101,
         }
     ]
+    return evidence
+
+
+def _audited_evidence_v12():
+    evidence = _audited_evidence_v11()
+    evidence["evidenceVersion"] = "1.2.0"
+    evidence["candidatePortfolio"] = {
+        "portfolioVersion": "1.0.0",
+        "schemaId": (
+            "https://ridebound.local/schemas/wp13/v1/"
+            "runner-retained-candidate-portfolio-evidence.schema.json"
+        ),
+        "objectiveProfile": "rollingCost",
+        "generatedCandidateCount": 2,
+        "policyEligibleCandidateCount": 1,
+        "selectedCandidateIds": ["noop"],
+        "selectionProblem": {
+            "vehicleIds": ["veh-a"],
+            "requestIds": [],
+            "objectiveLevels": [
+                {
+                    "levelIndex": 0,
+                    "name": "acceptedRequests",
+                    "sense": "maximize",
+                    "aggregation": "sum",
+                }
+            ],
+        },
+        "candidates": [
+            {
+                "candidateId": "noop",
+                "vehicleId": "veh-a",
+                "newRequestIds": [],
+                "isNoOp": True,
+                "scheduleStrategy": "earliestFeasible",
+                "relocatedWaitMs": 0,
+                "route": {
+                    "planVersion": 0,
+                    "executedStopCount": 0,
+                    "frozenPrefix": [],
+                    "mutableSuffix": [],
+                },
+                "schedule": {"operationalCost": 0, "stops": []},
+                "policyEligibility": "eligible",
+                "objectiveContributions": [0],
+            },
+            {
+                "candidateId": "pruned",
+                "vehicleId": "veh-a",
+                "newRequestIds": ["request-pruned"],
+                "isNoOp": False,
+                "scheduleStrategy": "earliestFeasible",
+                "relocatedWaitMs": 0,
+                "route": {
+                    "planVersion": 1,
+                    "executedStopCount": 0,
+                    "frozenPrefix": [],
+                    "mutableSuffix": [
+                        {
+                            "stopId": "pickup-pruned",
+                            "nodeId": "node-a",
+                            "kind": "pickup",
+                            "requestId": "request-pruned",
+                            "serviceDurationMs": 0,
+                        }
+                    ],
+                },
+                "schedule": {
+                    "operationalCost": 1,
+                    "stops": [
+                        {
+                            "stopId": "pickup-pruned",
+                            "arrivalTimeMs": 1,
+                            "serviceStartTimeMs": 1,
+                            "departureTimeMs": 1,
+                        }
+                    ],
+                },
+                "policyEligibility": "pruned",
+            },
+        ],
+    }
     return evidence
 
 

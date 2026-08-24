@@ -180,13 +180,24 @@ def _verify_audited_solver_evidence(solver, epoch):
     field = f"epoch {epoch} solver evidence"
     if solver.get("status") != "completed":
         raise RuntimeError(f"{field}: solver shell is not completed")
+    raw_evidence = solver.get("executionEvidence")
+    if not isinstance(raw_evidence, dict):
+        raise RuntimeError(f"{field}: executionEvidence must be an object")
+    evidence_version = raw_evidence.get("evidenceVersion")
+    required_evidence_fields = {
+        "evidenceVersion",
+        "generation",
+        "prunedCandidates",
+        "selection",
+    }
+    if evidence_version == "1.2.0":
+        required_evidence_fields.add("candidatePortfolio")
     evidence = _require_fields(
-        solver.get("executionEvidence"),
+        raw_evidence,
         field,
-        {"evidenceVersion", "generation", "prunedCandidates", "selection"},
+        required_evidence_fields,
     )
-    evidence_version = evidence["evidenceVersion"]
-    if evidence_version not in {"1.0.0", "1.1.0"}:
+    if evidence_version not in {"1.0.0", "1.1.0", "1.2.0"}:
         raise RuntimeError(f"{field}: unknown evidence version")
     generation_fields = {
         "totalPendingRequestCount",
@@ -195,7 +206,7 @@ def _verify_audited_solver_evidence(solver, epoch):
         "vehicleLosses",
         "omissions",
     }
-    if evidence_version == "1.1.0":
+    if evidence_version in {"1.1.0", "1.2.0"}:
         generation_fields.add("exogenousServiceQualityBreaches")
     generation = _require_fields(
         evidence["generation"],
@@ -294,7 +305,7 @@ def _verify_audited_solver_evidence(solver, epoch):
             )
         omitted_candidate_count += omission["count"]
 
-    if evidence_version == "1.1.0":
+    if evidence_version in {"1.1.0", "1.2.0"}:
         breaches = generation["exogenousServiceQualityBreaches"]
         if not isinstance(breaches, list):
             raise RuntimeError(
@@ -443,6 +454,306 @@ def _verify_audited_solver_evidence(solver, epoch):
     )
     if primary != final:
         raise RuntimeError(f"{field}: primary/final optimal diagnostics differ")
+    if evidence_version == "1.2.0":
+        _verify_retained_candidate_portfolio(
+            evidence["candidatePortfolio"],
+            f"{field}.candidatePortfolio",
+        )
+    return evidence_version
+
+
+def _verify_retained_candidate_portfolio(portfolio, field):
+    _require_fields(
+        portfolio,
+        field,
+        {
+            "portfolioVersion",
+            "schemaId",
+            "objectiveProfile",
+            "generatedCandidateCount",
+            "policyEligibleCandidateCount",
+            "selectedCandidateIds",
+            "selectionProblem",
+            "candidates",
+        },
+    )
+    if (
+        portfolio["portfolioVersion"] != "1.0.0"
+        or portfolio["schemaId"]
+        != (
+            "https://ridebound.local/schemas/wp13/v1/"
+            "runner-retained-candidate-portfolio-evidence.schema.json"
+        )
+        or portfolio["objectiveProfile"]
+        not in {"rollingCost", "revisionPenalty", "hardVector", "softHardHybrid"}
+    ):
+        raise RuntimeError(f"{field}: portfolio identity/profile differs")
+    generated_count = _nonnegative_integer(
+        portfolio["generatedCandidateCount"],
+        f"{field}.generatedCandidateCount",
+    )
+    eligible_count = _nonnegative_integer(
+        portfolio["policyEligibleCandidateCount"],
+        f"{field}.policyEligibleCandidateCount",
+    )
+    if generated_count < 1 or eligible_count < 1:
+        raise RuntimeError(f"{field}: portfolio counts must be positive")
+    selected_ids = portfolio["selectedCandidateIds"]
+    _require_unique_strings(selected_ids, f"{field}.selectedCandidateIds")
+
+    problem = _require_fields(
+        portfolio["selectionProblem"],
+        f"{field}.selectionProblem",
+        {"vehicleIds", "requestIds", "objectiveLevels"},
+    )
+    vehicle_ids = problem["vehicleIds"]
+    request_ids = problem["requestIds"]
+    _require_unique_strings(vehicle_ids, f"{field}.selectionProblem.vehicleIds")
+    _require_unique_strings(request_ids, f"{field}.selectionProblem.requestIds")
+    if (
+        not vehicle_ids
+        or vehicle_ids != sorted(vehicle_ids)
+        or request_ids != sorted(request_ids)
+    ):
+        raise RuntimeError(f"{field}: problem IDs are empty/non-canonical")
+    objectives = problem["objectiveLevels"]
+    if not isinstance(objectives, list) or not objectives:
+        raise RuntimeError(f"{field}.selectionProblem.objectiveLevels is invalid")
+    objective_names = set()
+    for index, objective in enumerate(objectives):
+        objective_field = f"{field}.selectionProblem.objectiveLevels[{index}]"
+        _require_fields(
+            objective,
+            objective_field,
+            {"levelIndex", "name", "sense", "aggregation"},
+        )
+        if (
+            objective["levelIndex"] != index
+            or not isinstance(objective["name"], str)
+            or not objective["name"]
+            or objective["name"] in objective_names
+            or objective["sense"] not in {"minimize", "maximize"}
+            or objective["aggregation"] not in {"sum", "maximum"}
+        ):
+            raise RuntimeError(f"{objective_field}: objective contract differs")
+        objective_names.add(objective["name"])
+
+    candidates = portfolio["candidates"]
+    if not isinstance(candidates, list) or len(candidates) != generated_count:
+        raise RuntimeError(f"{field}: candidate count differs")
+    candidate_by_id = {}
+    previous_key = None
+    eligible_seen = 0
+    no_op_by_vehicle = {vehicle_id: [0, 0] for vehicle_id in vehicle_ids}
+    for index, candidate in enumerate(candidates):
+        candidate_field = f"{field}.candidates[{index}]"
+        _require_fields(
+            candidate,
+            candidate_field,
+            {
+                "candidateId",
+                "vehicleId",
+                "newRequestIds",
+                "isNoOp",
+                "scheduleStrategy",
+                "relocatedWaitMs",
+                "route",
+                "schedule",
+                "policyEligibility",
+            },
+            {
+                "certifiedForwardSlackMs",
+                "repairedIncumbentRequestId",
+                "objectiveContributions",
+            },
+        )
+        candidate_id = candidate["candidateId"]
+        vehicle_id = candidate["vehicleId"]
+        if (
+            not isinstance(candidate_id, str)
+            or not candidate_id
+            or candidate_id in candidate_by_id
+            or vehicle_id not in no_op_by_vehicle
+        ):
+            raise RuntimeError(f"{candidate_field}: candidate identity differs")
+        key = (vehicle_id, candidate_id)
+        if previous_key is not None and key <= previous_key:
+            raise RuntimeError(f"{candidate_field}: candidate order differs")
+        previous_key = key
+        request_values = candidate["newRequestIds"]
+        _require_unique_strings(request_values, f"{candidate_field}.newRequestIds")
+        if request_values != sorted(request_values):
+            raise RuntimeError(f"{candidate_field}: request order differs")
+        if not isinstance(candidate["isNoOp"], bool) or (
+            candidate["isNoOp"] and request_values
+        ):
+            raise RuntimeError(f"{candidate_field}: no-op contract differs")
+        if candidate["scheduleStrategy"] not in {
+            "earliestFeasible",
+            "originHoldRelocatedWait",
+        }:
+            raise RuntimeError(f"{candidate_field}: schedule strategy differs")
+        _nonnegative_integer(
+            candidate["relocatedWaitMs"],
+            f"{candidate_field}.relocatedWaitMs",
+        )
+        if "certifiedForwardSlackMs" in candidate:
+            _nonnegative_integer(
+                candidate["certifiedForwardSlackMs"],
+                f"{candidate_field}.certifiedForwardSlackMs",
+            )
+        eligibility = candidate["policyEligibility"]
+        has_objectives = "objectiveContributions" in candidate
+        if eligibility not in {"eligible", "pruned"} or (
+            (eligibility == "eligible") != has_objectives
+        ):
+            raise RuntimeError(f"{candidate_field}: eligibility/objective shape differs")
+        if eligibility == "eligible":
+            eligible_seen += 1
+            if any(request_id not in request_ids for request_id in request_values):
+                raise RuntimeError(f"{candidate_field}: eligible request is undeclared")
+            contributions = candidate["objectiveContributions"]
+            if (
+                not isinstance(contributions, list)
+                or len(contributions) != len(objectives)
+            ):
+                raise RuntimeError(f"{candidate_field}: objective count differs")
+            for objective_index, value in enumerate(contributions):
+                _nonnegative_integer(
+                    value,
+                    f"{candidate_field}.objectiveContributions[{objective_index}]",
+                )
+        if candidate["isNoOp"]:
+            no_op_by_vehicle[vehicle_id][0] += 1
+            if eligibility == "eligible":
+                no_op_by_vehicle[vehicle_id][1] += 1
+        _verify_candidate_route_schedule(candidate, candidate_field)
+        candidate_by_id[candidate_id] = candidate
+    if eligible_seen != eligible_count or any(
+        counts != [1, 1] for counts in no_op_by_vehicle.values()
+    ):
+        raise RuntimeError(f"{field}: eligible/no-op counts differ")
+    if len(selected_ids) != len(vehicle_ids):
+        raise RuntimeError(f"{field}: selected count differs")
+    selected_requests = set()
+    for index, candidate_id in enumerate(selected_ids):
+        candidate = candidate_by_id.get(candidate_id)
+        if (
+            candidate is None
+            or candidate["policyEligibility"] != "eligible"
+            or candidate["vehicleId"] != vehicle_ids[index]
+            or any(
+                request_id in selected_requests
+                for request_id in candidate["newRequestIds"]
+            )
+        ):
+            raise RuntimeError(f"{field}.selectedCandidateIds[{index}] differs")
+        selected_requests.update(candidate["newRequestIds"])
+
+
+def _verify_candidate_route_schedule(candidate, field):
+    route = _require_fields(
+        candidate["route"],
+        f"{field}.route",
+        {"planVersion", "executedStopCount", "frozenPrefix", "mutableSuffix"},
+    )
+    _nonnegative_integer(route["planVersion"], f"{field}.route.planVersion")
+    executed = _nonnegative_integer(
+        route["executedStopCount"],
+        f"{field}.route.executedStopCount",
+    )
+    all_stop_ids = set()
+    route_ids = {}
+    for name in ("frozenPrefix", "mutableSuffix"):
+        stops = route[name]
+        if not isinstance(stops, list):
+            raise RuntimeError(f"{field}.route.{name} must be an array")
+        ids = []
+        for index, stop in enumerate(stops):
+            stop_field = f"{field}.route.{name}[{index}]"
+            _require_fields(
+                stop,
+                stop_field,
+                {"stopId", "nodeId", "kind", "serviceDurationMs"},
+                {"requestId"},
+            )
+            stop_id = stop["stopId"]
+            kind = stop["kind"]
+            if (
+                not isinstance(stop_id, str)
+                or not stop_id
+                or stop_id in all_stop_ids
+                or not isinstance(stop["nodeId"], str)
+                or not stop["nodeId"]
+                or kind not in {"waypoint", "pickup", "dropOff"}
+                or (kind == "waypoint") == ("requestId" in stop)
+                or "requestId" in stop
+                and (
+                    not isinstance(stop["requestId"], str)
+                    or not stop["requestId"]
+                )
+            ):
+                raise RuntimeError(f"{stop_field}: route stop contract differs")
+            _nonnegative_integer(
+                stop["serviceDurationMs"],
+                f"{stop_field}.serviceDurationMs",
+            )
+            all_stop_ids.add(stop_id)
+            ids.append(stop_id)
+        route_ids[name] = ids
+    if executed > len(route_ids["frozenPrefix"]):
+        raise RuntimeError(f"{field}.route.executedStopCount is outside prefix")
+    expected_schedule_ids = (
+        route_ids["frozenPrefix"][executed:] + route_ids["mutableSuffix"]
+    )
+    schedule = _require_fields(
+        candidate["schedule"],
+        f"{field}.schedule",
+        {"operationalCost", "stops"},
+    )
+    _nonnegative_integer(
+        schedule["operationalCost"],
+        f"{field}.schedule.operationalCost",
+    )
+    if not isinstance(schedule["stops"], list):
+        raise RuntimeError(f"{field}.schedule.stops must be an array")
+    actual_schedule_ids = []
+    previous_departure = None
+    for index, stop in enumerate(schedule["stops"]):
+        stop_field = f"{field}.schedule.stops[{index}]"
+        _require_fields(
+            stop,
+            stop_field,
+            {
+                "stopId",
+                "arrivalTimeMs",
+                "serviceStartTimeMs",
+                "departureTimeMs",
+            },
+        )
+        arrival = _nonnegative_integer(
+            stop["arrivalTimeMs"],
+            f"{stop_field}.arrivalTimeMs",
+        )
+        service = _nonnegative_integer(
+            stop["serviceStartTimeMs"],
+            f"{stop_field}.serviceStartTimeMs",
+        )
+        departure = _nonnegative_integer(
+            stop["departureTimeMs"],
+            f"{stop_field}.departureTimeMs",
+        )
+        if (
+            arrival > service
+            or service > departure
+            or previous_departure is not None
+            and previous_departure > arrival
+        ):
+            raise RuntimeError(f"{stop_field}: schedule times differ")
+        actual_schedule_ids.append(stop["stopId"])
+        previous_departure = departure
+    if actual_schedule_ids != expected_schedule_ids:
+        raise RuntimeError(f"{field}: schedule/remaining-route IDs differ")
 
 
 def _verify_audited_solver_diagnostics(diagnostics, field):
@@ -596,6 +907,7 @@ def verify_transcript(
     report,
     include_behavioral_hash=False,
     require_audited_solver_evidence=False,
+    require_retained_candidate_portfolio=False,
 ):
     frames = decode_transcript(path)
     hello = _expect(frames, 0, "adapterToRunner", "hello")
@@ -655,6 +967,7 @@ def verify_transcript(
     publications = []
     behavioral_decisions = []
     checkpoint = None
+    retained_portfolio_evidence_count = 0
     index = 4
     while index < len(frames):
         direction, envelope = frames[index]
@@ -758,7 +1071,13 @@ def verify_transcript(
         ):
             raise RuntimeError(f"epoch {next_epoch}: solver status is invalid")
         if require_audited_solver_evidence:
-            _verify_audited_solver_evidence(solver, next_epoch)
+            evidence_version = _verify_audited_solver_evidence(solver, next_epoch)
+            if require_retained_candidate_portfolio and evidence_version != "1.2.0":
+                raise RuntimeError(
+                    f"epoch {next_epoch}: retained portfolio evidence is required"
+                )
+            if evidence_version == "1.2.0":
+                retained_portfolio_evidence_count += 1
         behavioral_decisions.append(
             {
                 "epochId": next_epoch,
@@ -942,6 +1261,10 @@ def verify_transcript(
         result["behavioralProjectionHash"] = _behavioral_projection_hash(
             behavioral_decisions
         )
+    if require_retained_candidate_portfolio:
+        result["retainedPortfolioEvidenceCount"] = (
+            retained_portfolio_evidence_count
+        )
     return result
 
 
@@ -949,6 +1272,7 @@ def verify_bundle(
     directory,
     include_behavioral_hash=False,
     require_audited_solver_evidence=False,
+    require_retained_candidate_portfolio=False,
 ):
     manifest_path = directory / "bundle-manifest.json"
     manifest = _read_json(manifest_path)
@@ -1020,6 +1344,7 @@ def verify_bundle(
                 report,
                 include_behavioral_hash,
                 require_audited_solver_evidence,
+                require_retained_candidate_portfolio,
             )
         )
     result = {
@@ -1048,11 +1373,23 @@ def main():
         "--require-audited-solver-evidence",
         action="store_true",
     )
+    parser.add_argument(
+        "--require-retained-candidate-portfolio",
+        action="store_true",
+    )
     arguments = parser.parse_args()
+    if (
+        arguments.require_retained_candidate_portfolio
+        and not arguments.require_audited_solver_evidence
+    ):
+        parser.error(
+            "--require-retained-candidate-portfolio requires audited evidence"
+        )
     result = verify_bundle(
         arguments.bundle.resolve(),
         arguments.include_behavioral_hash,
         arguments.require_audited_solver_evidence,
+        arguments.require_retained_candidate_portfolio,
     )
     print(json.dumps(result, sort_keys=True, separators=(",", ":")))
     return 0

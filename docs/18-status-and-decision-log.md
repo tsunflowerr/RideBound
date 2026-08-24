@@ -1,7 +1,7 @@
 # Trạng thái và decision log
 
 > Tệp sống — cập nhật ở cuối mọi task RideBound
-> Cập nhật gần nhất: 2026-08-23
+> Cập nhật gần nhất: 2026-08-24
 
 ## 1. Trạng thái tổng thể
 
@@ -9,8 +9,8 @@
 |---|---|
 | Research direction | `LOCKED_FOR_IMPLEMENTATION_PLANNING` |
 | Documentation | `MIGRATED_AND_VERIFIED_V1` |
-| Implementation | `WP1_Q1_COMPLETE; WP2_COMPLETE; WP3_COMPLETE_14_OF_14; WP4_COMPLETE_14_OF_14; WP5_COMPLETE_14_OF_14; WP6_COMPLETE_14_OF_14; WP7_COMPLETE_14_OF_14; WP8_COMPLETE_14_OF_14; WP9_COMPLETE_001_TO_009; WP10_COMPLETE_NEGATIVE_CAPABILITY_001_TO_010` |
-| Current work package | `Post-WP10 assurance COMPLETE: full review, paper-driven optimization, benchmark and rendered final report` |
+| Implementation | `WP1_Q1_COMPLETE; WP2_COMPLETE; WP3_COMPLETE_14_OF_14; WP4_COMPLETE_14_OF_14; WP5_COMPLETE_14_OF_14; WP6_COMPLETE_14_OF_14; WP7_COMPLETE_14_OF_14; WP8_COMPLETE_14_OF_14; WP9_COMPLETE_001_TO_009; WP10_COMPLETE_NEGATIVE_CAPABILITY_001_TO_010; WP13_COMPLETE_001_TO_013; WP14_001_DONE_002_READY` |
+| Current work package | `WP14 Exploratory ablation IN PROGRESS; RB-WP14-002 READY; H6/WP10/WP13 frozen` |
 | Repository | `https://github.com/tsunflowerr/RideBound` |
 | Main baseline | B1 `rolling-cost` |
 | Main treatment | C1 `ridebound-hard-vector` |
@@ -1655,16 +1655,52 @@ Final review/optimization goal đã hoàn tất bằng ADR-052. Evidence hiện 
 [WP1–WP10 review](reviews/wp1-wp10-final/README.md) và
 [rendered PDF report](../output/pdf/RideBound-WP1-WP10-final-review-2026-08-23.pdf).
 
-Không tự động mở WP11/WP12. Next action cần user chọn Product UX hay manuscript/
-release rồi tạo refinement/ADR mới. Mọi hướng sau phải giữ H6/WP10 negative outcome,
-không đổi margin/panel/failed-job treatment hoặc dùng intermediate policy để rescue
-confirmatory result hậu outcome.
+ADR-053 đã mở WP13 exploratory theo yêu cầu tiếp tục tối ưu. `RB-WP13-002 Done`:
+immutable H6 inventory/alignment/report đã scan 100/100 bundle và required Debug
+856/856 pass. CPU failure 120.062/120.000 ms được giữ trong log; profile dẫn tới exact
+span-based marker check, medium public-drain pass 1/1 trong 1 phút 33 giây mà không
+đổi ceiling, protocol semantics hoặc H6 receipts. `RB-WP13-003 Done`: strict versioned
+record set bind exact 40/40 pair và report `002`. `RB-WP13-004 Done`: comparator quét
+đủ 80 primary transcripts/44.156 decisions tới EOF; C1 có immediate accepted count thấp
+hơn ở 8/40 pair, bằng ở 32/40 và không cao hơn ở pair nào. Đây là descriptive action
+comparison, không phải downstream service effect hay causal mechanism. Queue head duy
+nhất hiện tại là `RB-WP14-001` refinement. `005` đã link 41 B1 selected candidates với exact C1
+evidence: 33 commitment-pruned, 7 absent/not-recorded, 1 C1-selected; clearance chỉ
+xóa recorded witness và giữ feasibility `notEvaluated` do validator fail-fast. `006`
+đã cross-tab evidence với immediate relation: 7 budget + 1 lock occurrences ở tám
+C1-lower pair, nhưng 21 budget + 4 lock occurrences cũng ở equal pair. Đây chỉ là
+first-divergence co-occurrence, không causal decomposition. `007` đã verify 80 raw
+target decisions: generation evidence exact-equal 40/40 pair, complete 80/80 arm-
+epoch, zero cap/work/generation/selection omission. Tuy nhiên full retained IDs/routes/
+objectives vẫn `notRecorded`, nên evidence vNext là cần cho candidate-level questions.
+`008` đã đóng opt-in v1.2 retained-portfolio instrumentation, strict decoder/schema và
+capture-on/off differential. `009` sau đó khóa receipt trước execution và chạy đủ
+40 pair/80 arm E1: 8.640 requests, 44.156/44.156 solver decisions có v1.2 portfolio,
+zero failure, cùng source inventory; 5.516.098.710 raw bytes nằm ngoài H6. Inventory
+chỉ xác nhận execution/coverage, chưa có mechanism conclusion. `010` đã dựng lại
+byte-exact 80 bundle/44.156 portfolio, reject đúng typed code cho 31/31 in-memory
+mutant và xác nhận E1↔H6 80/80 same-arm behavioral projection equal, zero mismatch.
+`011` đã verify lại đủ raw E1 rồi khóa 40/40 generated signature sets equal,
+390 signature/arm, zero collision/ID drift/absent; 41 links gồm 33 pruned, 7 eligible-
+not-selected và 1 selected. Association rows overlap/non-additive và noncausal;
+objective profiles không so số trực tiếp. Required .NET 860/860, pinned Python
+191/191. `012` đã audit 80 file source/schema/test/report, deep-verify 100 H6 bundle và
+80 E1 arm, sửa một P2 verifier-composition gap bằng supplemental guard/regression và
+đóng với zero unresolved P0–P2. `013` đã đóng WP13: bảy exit gate pass, ba P3
+limitation có resolution trong
+[retention/successor policy](benchmarking/wp13-evidence-retention-and-successor-policy-v1.md),
+và verdict `openExploratoryAblationOnly` trong
+[closure decision](benchmarking/wp13-013-closure-decision-2026-08-24.md).
+WP14 chỉ được mở ở mức refinement trên development namespace/cells mới; WP15–WP20 vẫn
+roadmap-level; không đổi margin/panel/failed-job treatment hoặc rescue confirmatory
+result hậu outcome.
 
 ## 6. Open decisions
 
 | ID | Câu hỏi | Khi nào khóa |
 |---|---|---|
-| — | Không còn open decision từ O-001..O-008; hướng optimization hậu WP10 phải có ADR/evidence mới và giữ exploratory boundary | Khi chọn optimization |
+| O-010 | Mức số của F1–F6 và denominator được freeze ở giá trị nào | `RB-WP14-008` freeze manifest, derive từ development panel |
+| O-011 | Development panel của WP14 lấy nguồn và chọn mẫu ra sao mà không chạm H6 | `RB-WP14-004` |
 
 O-001 đã được khóa bởi ADR-018: B1 WP2 không cho incumbent accepted request đổi
 vehicle; WP4 chỉ mở lại bằng ADR superseding và atomic multi-vehicle evidence.
@@ -1676,6 +1712,9 @@ O-006 được khóa bởi ADR-037 và executable probe trên exact FleetPy 1.0.
 O-002/O-003/O-004/O-008 được khóa trong WP8/ADR-040..044. O-005 được khóa bởi
 ADR-050/051: RidePy là framework đã đánh giá cho WP10 và cho kết quả năng lực âm;
 AMoD2 chỉ là hướng tương lai riêng.
+O-009 được khóa bởi ADR-059: H6 đủ cho count-only covariates nhưng không ghi full
+retained candidate identities/routes/objectives hoặc post-clearance state; evidence
+vNext cần cho candidate-level portfolio/replay questions và không backfill H6.
 
 ## 7. Decision log
 
@@ -3805,6 +3844,454 @@ byte-reproducible rebuild. Final PDF 12 trang đã render/inspect, SHA-256
 format làm medium public-drain chạm đúng `resource.cpu-time-exceeded` (`854/855`).
 Không đổi ceiling và không reclassify. Rerun exact `dotnet test RideBound.slnx`
 hoàn toàn đơn độc pass 855/855; đó là final baseline.
+
+### ADR-053 — 2026-08-23 — Accepted
+
+**Context:** H6 fail service decisively ở cả 8 xe và 4 xe; robustness cho thấy
+lock/ranking và 30-second budget cùng đóng góp vào descriptive service gap, còn
+unbounded/loose policy không khôi phục đủ. Raw H6 v1 chứa full transcripts, generation
+counts, prune witnesses, selected actions và exact receipts, nhưng không chứa toàn bộ
+route/schedule của retained candidate portfolio. State hashes khác ngay epoch đầu vì
+bind policy/manifest identity dù observed events/actions còn giống nhau. Full-PDF
+review Pillac, Ulmer et al. và Ackermann et al. cho thấy service, route-plan state,
+future information và plan-pool/secondary-objective interactions phải được tách; không
+có paper-derived budget/horizon mặc định hợp lệ cho RideBound.
+
+**Decision:** (1) Giữ H6/WP10 immutable và mở WP13 như exploratory mechanism
+diagnostics. (2) Căn chỉnh arm bằng ordered observed event projection, wire decision
+projection và operational decision projection. Operational projection chỉ neutralize
+thứ tự `promisePublished` do generated publication ID; request/plan/breach order không
+đổi. State/decision hashes vẫn được verify nội bộ nhưng không định nghĩa cross-arm
+divergence. (3) Gọi downstream difference là
+`trajectoryAssociated`, không causal. (4) Chỉ tính minimal relaxation từ exact
+recorded witness; field thiếu là `notRecorded`. (5) Không rerank, tăng budget, đổi
+objective/slack, forecast hoặc tạo policy v2 trước evidence. (6) WP14–WP20 chỉ ở
+roadmap-level; ticket hóa duy nhất WP13 theo progressive elaboration.
+
+**Evidence:** 106/106 trang từ ba full PDF có local page text/render/SHA receipts tại
+`E:\RideBoundData\research\pdf-20260823-post-h6`; synthesis ở
+`research/post-h6-mechanism-diagnostics-full-pdf-evidence-2026-08-23.md`. Raw roots
+Panel A/B chứa 100 immutable bundles và đã qua independent WP9 reproducibility
+verification. Manual transcript check chứng minh equal observed input/actions ở các
+epoch đầu trong khi policy-bearing state hashes khác.
+
+**Consequences tại thời điểm chấp nhận ADR-053:** `RB-WP13-001` Done;
+`RB-WP13-002` là implementation ticket active và vào In review với một required CPU
+regression gate còn mở. ADR-054 sau đó đóng gate này mà không sửa H6.
+WP13 không rescue primary, không CI/population inference và không báo burden gần zero
+như quality optimization. Chỉ khi WP13 verifier/closure gate đạt mới quyết định mở
+WP14. Không tự tạo tag/branch trong dirty/uncommitted working tree; H6 freeze receipts
+và hashes tiếp tục là authority.
+
+### ADR-054 — 2026-08-24 — Accepted
+
+**Context:** Closure run của `RB-WP13-002` tái lập duy nhất một failure trong required
+Debug suite: medium public-drain chạm `resource.cpu-time-exceeded`. Diagnostic giữ
+nguyên ceiling đo 120.062/120.000 ms. Managed sample trace cho thấy canonical-number
+validation lặp lại collection expression `['.', 'e', 'E']` trên number-heavy state
+canonicalization path; đây là allocation/initialization thừa, không phải solver hoặc
+policy semantics.
+
+**Decision:** (1) Thay đúng bốn production call site trong protocol envelope,
+protocol payload, canonical JSON và independent WP6 oracle bằng
+`ReadOnlySpan<char>.IndexOfAny(char,char,char)`. (2) Giữ nguyên exact marker set `.`,
+`e`, `E`, rule `-0`, safe-integer bounds, error classes, property/array order và
+canonical bytes. (3) Thêm uppercase-`E` boundary test. (4) Không đổi 120-second CPU
+ceiling, không đổi Runner/solver policy và không repin hoặc rerun H6. (5) Giữ failure
+trước tối ưu như evidence, không reclassify nó thành pass.
+
+**Evidence:** Nettrace ngoài repo dài 7.298.446 byte, SHA-256
+`c336dac72440e1956ac4cc43ca2800c2eecb9059dfab927fb13f8d7871a8e469`;
+canonical tests 16/16; exact medium public-drain 1/1 pass trong 1 phút 33 giây với
+128 accepted request/801 protocol event; required `dotnet test RideBound.slnx`
+856/856 pass, zero skip.
+
+**Consequences:** `RB-WP13-002 Done`, `RB-WP13-003 Ready`. Đây là exact hot-path
+optimization và gate closure, không phải service-effectiveness/SLA claim. Frozen H6
+vẫn bind Runner artifact cũ của chính experiment; source hiện hành không được dùng để
+viết lại primary result hoặc làm mất reproducibility chain.
+
+### ADR-055 — 2026-08-24 — Accepted
+
+**Context:** Report `002` đã tìm first divergence nhưng pair object còn là internal
+report shape, dùng `null` cho missing arm và chưa có schema/tool/evidence binding ở cấp
+record. Ticket sau không được tự diễn giải cấu trúc ad-hoc hoặc biến missing evidence
+thành observed equality.
+
+**Decision:** (1) Khóa strict self-contained Draft 2020-12 record-set schema v1 và
+một record cho từng exact Panel A/B B1/C1 pair. (2) Bind exact report `002` bằng
+length/SHA, analyzer/verifier hashes, panel inventory, schema và generator source.
+(3) Dùng conditional field presence: paired divergence cần hai arm, transcript-length
+cần đúng một arm, `noneObserved` không có arm evidence; record set không chứa `null`.
+(4) Với equal-input operational divergence, yêu cầu epoch/time/input hash bằng nhau và
+operational-decision hash khác; divergence epoch bằng equal-prefix + 1. (5) State hash
+chỉ là audit field; interpretation luôn
+`descriptiveFirstDivergenceNotCausal`. (6) Generator nhận explicit immutable roots và
+cấm output nằm trong đó hoặc overwrite source report.
+
+**Evidence:** 40/40 records (20 A, 20 B), tất cả
+`operationalDecisionDivergenceOnEqualObservedInput`; output 102.746 byte SHA-256
+`bef27519b5dae4482029be83cd8d1c2b1e0ef2afa72ea63e6645f4991e425618`;
+schema `47e24bb…3d8b8`, generator `4f52b76b…f74f8`. Targeted 11/11, pinned Python
+122/122, independent schema/binding/invariant check và required Debug 856/856 pass.
+
+**Consequences:** `RB-WP13-003 Done`, `RB-WP13-004 Ready`. Contract này chỉ khóa
+where/when observed behavior first differs; mechanism class, minimal relaxation và
+downstream association vẫn phải được chứng minh ở ticket sau, không được suy ra từ
+40/40 count.
+
+### ADR-056 — 2026-08-24 — Accepted
+
+**Context:** Record `003` khóa where/when behavior khác nhưng chưa đọc lại exact raw
+actions tại epoch đó. Không được suy completed-service loss, lock/budget/ranking cause
+hoặc policy improvement từ action-type list hay policy-bearing state hash.
+
+**Decision:** (1) Comparator phải bind exact record-set/schema/generator/source-report,
+frozen Panel A/B inventory và bundle arm/unit/scenario. (2) Cả 80 primary transcripts
+phải được đọc đến shutdown/EOF; mọi frame/file receipt và solver evidence được verify,
+không return sớm sau target epoch. (3) Target bind epoch/time cùng observed,
+operational và wire projection hashes. (4) Arrived request/outcome phải song ánh;
+vehicle ID chỉ có khi accepted, không dùng `null`. (5) Ordered multi-label classes là
+disposition, accepted-vehicle assignment, request payload, vehicle plan, promise,
+solver status và other action. (6) Immediate accepted-count relation luôn gắn claim
+boundary `postOutcomeExploratory`, `descriptiveNotCausal`; downstream service không do
+artifact này đánh giá.
+
+**Evidence:** 40/40 records bind raw evidence; 80/80 transcripts và 44.156 decisions
+được verify. Panel A: C1-lower 3, equal 17, accepted delta −3; Panel B: C1-lower 5,
+equal 15, delta −5; không C1-higher. Output 79.864 byte SHA-256
+`3717f093c62c37a339da0b826323fb1604a684bd9990630d9d9dc5563fd4f7e3`;
+comparator source `f2c55e1f…dd0ee`. Targeted 13/13, pinned Python 135/135,
+independent canonical/hash/aggregate check và required Debug 856/856 pass.
+
+**Consequences:** `RB-WP13-004 Done`, `RB-WP13-005 Ready`. −8 immediate accepted
+requests không thay thế Panel A/B completed-service denominators và không chứng minh
+causation. Exact minimal relaxation chỉ được tính từ recorded prune witnesses ở `005`;
+retained portfolios vẫn `notRecorded` và không được reconstruct.
+
+### ADR-057 — 2026-08-24 — Accepted
+
+**Context:** B1 selected candidate có thể được link bằng policy-independent candidate
+identity sang C1 prune witness, nhưng H6 không lưu retained portfolio và commitment
+validator fail-fast ở blocker đầu tiên. Vì vậy “minimal relaxation” không được hiểu là
+counterfactual candidate feasibility hoặc recovered service.
+
+**Decision:** (1) Bind exact report `004`, record `003`, frozen roots và raw action/
+witness receipts bằng two-pass scan tới EOF. (2) `requestAccepted.candidateId` phải bind
+`vehiclePlanUpdated` cùng vehicle; duplicate request/candidate hoặc mixed physical/
+commitment evidence fail closed. (3) Budget witness phải chứng minh
+`after = before + delta > limit`; exact recorded-witness clearance là
+`requiredLimit = after`, additive là `after - limit`. (4) Lock witness chỉ có categorical
+`disableRecordedRuleForDimension`, không numeric amount. (5) Candidate không ở C1
+selected/pruned evidence mang `absentRetainedOrOmittedNotRecorded`. (6) Mọi record giữ
+`candidateFeasibilityAfterClearance: notEvaluated`, `recordedWitnessOnly` và
+`descriptiveNotCausal`.
+
+**Evidence:** 40 records/41 links: 33 commitment-pruned, 7 absent/not-recorded, 1
+selected-by-C1. Có 28 drop-ETA budget clearances và 5 final-confirmation pickup-ETA
+lock clearances. Numeric additive min/median/max 10.128/93.060/301.765 ms. Canonical
+output 70.531 byte SHA-256
+`cdd9a28dd12b91253aa4f848e074d3563312bd0cc13569bc98f17898f739e411`;
+schema `7834f04e…8fb1c`, calculator `1ee0abdc…5acff`. Targeted 11/11, pinned
+Python 146/146, independent verifier và required Debug 856/856 pass.
+
+**Consequences:** `RB-WP13-005 Done`, `RB-WP13-006 Ready`. Không chọn budget mới từ
+distribution này, không nói 33 candidates được cứu và không gán bảy missing links cho
+ranking/cap/omission. `006` chỉ được phân loại theo evidence support; `007` giữ missing
+field report và quyết định evidence vNext.
+
+### ADR-058 — 2026-08-24 — Accepted
+
+**Context:** Exact behavioral comparator và recorded-witness report có cùng 40
+panel/unit records nhưng một pair có thể chứa nhiều candidate links/classes. Immediate
+accepted-count relation không phải downstream completed service; evidence co-occurrence
+không phải causal attribution.
+
+**Decision:** (1) Bind exact `004`/`005` file, source và schema identities trước merge.
+(2) Classify candidate links bằng typed evidence classes: budget, lock, physical,
+shared-selected, ranking/search omission indeterminate hoặc unsupported. (3) Aggregate
+ở pair-level multi-label và cross-tab với signed immediate acceptance relation; không
+ép thành partition. (4) Missing portfolio luôn giữ
+`rankingOrSearchOmissionIndeterminate`. (5) Mỗi record khóa
+`causalAttribution: notEstablished`, `downstreamTrajectory: notEvaluated`; claim
+boundary là post-outcome exploratory/descriptive only. (6) Raw record count và unique
+inventory đều phải đúng 40 để duplicate dư không bị map projection che mất.
+
+**Evidence:** 40 records/41 links. Pair-level occurrences: budget 28, lock 5,
+indeterminate 7, shared-selected 1, physical/unsupported 0. C1-lower cross-tab có 7
+budget + 1 lock; equal có 21 budget + 4 lock + 7 indeterminate; không C1-higher.
+Canonical output 44.745 byte SHA-256
+`bcc6bed3b1dd8d9c280d7a09125b6fe2e4508eb40bd47ae4da1e2c2fb9f9e9eb`;
+schema `060ef7d0…249d`, classifier `bf11f7e1…8b14a`. Targeted 8/8, pinned Python
+154/154, independent non-importing verifier và required Debug 856/856 pass.
+
+**Consequences:** `RB-WP13-006 Done`, `RB-WP13-007 Ready`. Không suy budget/lock causal
+shares, recovered completions hay candidate feasibility. `007` phải chỉ inventory
+option-set covariates thực sự recorded và phát missing-field report; Runner evidence
+vNext chỉ được mở nếu evidence gap được chứng minh.
+
+### ADR-059 — 2026-08-24 — Accepted
+
+**Context:** H6 v1.0.0 ghi generation/vehicle-loss/prune/selection counters nhưng không
+ghi full retained candidate portfolio. Aggregate equality có thể loại một số omission
+explanations, nhưng không chứng minh candidate identity equality hoặc ranking position.
+
+**Decision:** (1) Bind exact `003`–`006`, scan 80 raw target decisions tới EOF và chỉ
+emit typed count/work/omission/status covariates. (2) `generationComplete` dùng đúng
+recorded completeness counters; cap/work/repair/request omissions và conservation phải
+fail closed. (3) Exact generation-object equality vẫn mang
+`candidateIdentityEquality: notEstablishedByAggregateEquality`. (4) Field catalog tách
+`recordedCountOnly`, `notRecorded`, `notEvaluated`. (5) Evidence vNext được yêu cầu chỉ
+cho candidate-level portfolio/replay questions; nó không authorize rerun và cấm H6
+backfill.
+
+**Evidence:** 40/40 pairs có exact-equal generation evidence; 80/80 arm-epochs complete,
+zero cap/work/generation/selection omission. Generator-retained counts bằng B1/C1:
+Panel A 254/254, Panel B 136/136. C1 có thêm 46 commitment-pruned candidates và 390
+validation work units; mọi generation deltas zero. Bảy unresolved links ở bảy pairs
+vẫn `notRecorded`. Canonical output 221.925 byte SHA-256
+`d71c669bb6da0648ccb9c5a6eaa16d990a152a9ebcd7bf0246b0b251a4037258`;
+schema `d043d814…d634`, analyzer `85cf42e9…eb75`. Targeted 10/10, pinned Python
+164/164, independent 80-target raw verifier và required Debug 856/856 pass.
+
+**Consequences:** `RB-WP13-007 Done`, `RB-WP13-008 Ready`; O-009 closed. `008` được
+thiết kế/version retained-portfolio evidence vNext cho exploratory execution tương lai,
+không thay protocol/H6 receipt lịch sử. `009` vẫn chưa được phép chạy trước freeze riêng.
+
+### ADR-060 — 2026-08-24 — Accepted
+
+**Context:** ADR-059 chứng minh H6 chỉ đủ count-level và không ghi exact retained
+candidate routes/objectives hoặc complete selected set. Evidence mới phải đủ cho
+candidate-level replay nhưng không được đổi default Runner output hay backfill H6.
+
+**Decision:** (1) Dùng explicit config profile `retained-portfolio-v1`, chỉ với
+solver-backed path và base solver evidence. (2) Profile vắng giữ execution evidence
+v1.1.0; profile bật dùng v1.2.0; historical v1.0.0 vẫn decode. (3) Capture defensive-
+copy của generated physical set, identity-preserving eligible subset, exact
+`CandidateSelectionProblem` và exact feasible selected candidate IDs. (4) Ghi full
+route/remaining schedule, eligibility và ordered objective contributions; không tạo
+objective vector cho pruned candidate. (5) Strict decoder/schema phải reconcile count,
+ordering, vehicle/no-op, selected/request, objective và route/schedule invariants.
+(6) Instrumentation không authorize simulator execution; `009` phải freeze toàn bộ
+paired target inventory trước run.
+
+**Evidence:** Schema 5.674 byte SHA-256 `1e159250…1bbe81`; mapper SHA-256
+`75996041…d06027`. Capture-on/off differential giữ status/state/actions. Snapshot/
+config/contract/schema mutations pass 4 targeted .NET + 4 schema tests; required
+Debug 860/860, pinned Python 168/168, format/diff/static gates pass. Report:
+`benchmarking/wp13-008-runner-retained-portfolio-evidence-2026-08-24.md`.
+
+**Consequences:** `RB-WP13-008 Done`, `RB-WP13-009 Ready`. H6/WP9 conclusions,
+receipts và margins không đổi; không external result artifact được tạo ở `008`.
+
+### ADR-061 — 2026-08-24 — Accepted
+
+**Context:** ADR-060 cho phép opt-in retained-portfolio evidence nhưng không authorize
+outcome-selected rerun, H6 backfill hoặc mechanism claim. E1 cần khóa exact toàn bộ
+paired target set, runtime/source/Runner/config/schema identity, output namespace,
+resource envelope và failure treatment trước khi tạo raw evidence mới.
+
+**Decision:** (1) Freeze đủ 40 pair/80 arm B1/C1 ở cả Panel A/B, seed 7, không subset
+theo outcome; configs chỉ thêm profile `retained-portfolio-v1`. (2) Bind 40 drivers,
+scenario/derivative trees, source/runtime/executable/published Runner hashes, new
+output roots, H6 forbidden roots, repeats 1, parallelism tối đa 4, timeout/line/stderr
+caps trong source-controlled receipt. (3) Staged selection chỉ được chọn full pair;
+success reuse phải independent-verify, failure không retry/replacement. (4) Ticket
+chỉ inventory exact bundle/v1.2 coverage; candidate comparison và mechanism chờ
+`010`/`011`. (5) H6 roots, gate, margins và negative result không đổi.
+
+**Evidence:** Freeze receipt 15.575 byte SHA-256 `9fcf2193…a4411`. Panel A/B mỗi
+panel hoàn tất 40/40 arm, zero failure, cùng repository inventory `22f4914e…f6afb`.
+Independent canonical inventory 67.771 byte SHA-256 `a029b978…4674` đọc 80 bundle
+tới EOF: 8.640 requests, 44.156 solver decisions, retained v1.2 coverage
+44.156/44.156, 5.516.098.710 raw bytes. Targeted 22/22, required Debug 860/860,
+pinned Python 181/181, format/diff/line gates pass. Report:
+`benchmarking/wp13-009-exploratory-retained-portfolio-replay-2026-08-24.md`.
+
+**Consequences:** `RB-WP13-009 Done`, `RB-WP13-010 Ready`. E1 là post-outcome
+exploratory inventory, không có confirmatory gate, causal inference hoặc mechanism
+conclusion; `010` phải hoàn tất falsification matrix trước `011` aggregation.
+
+### ADR-062 — 2026-08-24 — Accepted
+
+**Context:** E1 v1.2 đã complete nhưng chưa được phép aggregate candidate evidence nếu
+portfolio corruption, artifact-binding drift hoặc instrumentation-induced behavioral
+change chưa bị falsify độc lập. Receipt đầu 8.777 byte chỉ lật một boolean truncation;
+bản 8.999 byte có 26 mutant nhưng chưa có typed codes và chưa phủ hết artifact/
+selection boundary, nên cả hai được giữ làm superseded evidence.
+
+**Decision:** (1) Dựng lại canonical E1 inventory byte-exact từ 80 raw bundle trước
+mọi mutation. (2) Dùng exact 31 in-memory mutant ở 9 layer, bắt expected message,
+typed rejection code và layer; unclassified/generic error là failure. (3) Phủ job,
+summary, manifest, extra-file inventory, source, truncation/transcript/frame hash,
+version/shape/candidate/eligibility/selection/objective/route/schedule invariants.
+(4) So read-only cùng 80 E1 job với exact H6 same-arm behavioral projection; semantic
+hash không phải equality key vì instrumentation/config bind state. (5) Chỉ khi 31/31
+reject đúng code và 80/80 hành vi equal mới mở descriptive aggregation `011`.
+
+**Evidence:** Closure receipt 13.515 byte SHA-256 `78bf6313…77785`: 80 bundle,
+44.156 decisions/portfolios, 31/31 expected rejects, zero unexpected pass/failure.
+E1↔H6 receipt 66.597 byte SHA-256 `4abb24f0…babfc`: 80/80 behavioral equal,
+zero mismatch, 8.640 requests/44.156 H6 decisions; semantic hash equal 0/80 expected.
+Targeted 6/6, required Debug 860/860 và full sequential pinned Python 187/187 pass,
+zero skip; format/diff/JSON/Markdown/line gates pass. Report:
+`benchmarking/wp13-010-e1-evidence-falsification-2026-08-24.md`.
+
+**Consequences:** `RB-WP13-010 Done`, `RB-WP13-011 In progress`. `011` được phép
+đọc verified E1 portfolio cho finite-panel descriptive aggregation; H6 gate/result,
+WP10, causal/population boundary và policy v2 không đổi.
+
+### ADR-063 — 2026-08-24 — Accepted
+
+**Context:** `010` chứng minh E1 instrumentation hợp lệ nhưng H6 vẫn để bảy B1-selected
+links ở trạng thái retained/omitted `notRecorded`. Candidate-level join phải loại
+candidate ID và policy eligibility/objective khỏi semantic signature, đồng thời không
+so raw vectors giữa rolling-cost và hard-vector hoặc cộng trajectory rows có cell
+overlap như một decomposition.
+
+**Decision:** (1) Verify lại exact 80 E1 bundle/44.156 decisions rồi lấy v1.2
+portfolio tại 40 exact first-divergence pairs. (2) Join bằng vehicle/request/route/
+schedule signature; candidate ID chỉ là drift evidence. Signature collision fail
+closed. (3) Phân B1 actionful link thành C1 selected, eligible-not-selected,
+pruned-with-recorded-witness hoặc absent. (4) Objective chỉ có within-arm/vehicle
+descriptive ordinal; cross-profile numeric comparison bị cấm. (5) Aggregate pair rồi
+panel, giữ H6 outcome `trajectoryAssociatedNotCausal`; association rows có thể overlap
+và bị khóa `overlappingCellsNotAdditive`. (6) Không CI/p-value/counterfactual/service
+decomposition hoặc confirmatory rescue.
+
+**Evidence:** Closure report 116.985 byte SHA-256 `0eba293c…ddc1c`: generated set
+equal 40/40, 390 signature/arm, zero collision/ID drift, 41 links = 33 pruned
+(28 budget, 5 lock) + 7 eligible-not-selected + 1 selected + 0 absent. Mọi 8
+C1-lower cell có prune occurrence nhưng 25 prune links khác ở equal-immediate cells;
+4/7 eligible-not-selected có within-vehicle ordinal 1. Panel outcomes reconcile
+`1735→1581` và `966→860`. Targeted 4/4, required Debug 860/860, pinned Python
+191/191, format/diff/schema/JSON/Markdown/line gates pass. Report:
+`benchmarking/wp13-011-e1-candidate-descriptive-aggregation-2026-08-24.md`.
+
+**Consequences:** `RB-WP13-011 Done`, `RB-WP13-012 In progress`. Full source/logic/
+claim audit là queue head duy nhất; WP14/policy v2 chưa được mở. H6 result và mọi
+causal/population boundary giữ nguyên.
+
+### ADR-064 — 2026-08-24 — Accepted
+
+**Context:** Aggregate pass của `011` chưa đủ để đóng WP13. `012` phải đọc từng file
+instrumentation/schema/analyzer/test/report, walk lại raw-to-report DAG và kiểm claim
+text. Frozen E1 verifier còn một coverage gap: tự nó accept optional repaired-request
+identifier sai kiểu/overlength và boolean objective level index, dù C# decoder/schema
+đã reject. Mutate frozen source sẽ phá provenance, nhưng bỏ qua gap sẽ làm closure
+verifier không độc lập.
+
+**Decision:** (1) Source-control exact path/role/SHA inventory của 80 stable WP13
+files và bind external canonical audit receipt. (2) Compose historical E1 verifier
+với supplemental canonical-integer, optional-field và exact UTF-8 128-byte identifier
+guard; giữ frozen verifier byte/hash bất biến. (3) Deep-verify H6/E1 raw authorities,
+all active/superseded DAG edges, schemas, compact receipts, aggregate identities và
+62-file E1 freeze inventory. (4) Scan architecture dependency/import graph và stable
+claim documents; P0–P2 phải sửa + regression trước closure. (5) Giao ba limitation
+P3 cho `013`: successor derived-output exclusivity, E1 retention/archive và versioned
+successor verifier. (6) Audit không tạo scientific result, policy parameter hoặc
+WP14 authorization.
+
+**Evidence:** Source-controlled inventory có 80 file/1.076.880 byte, inventory SHA
+`33d89c17…01c0c4`. External receipt 25.437 byte SHA `cd863988…fad76` deep-verify
+100 H6 bundle/57.806 solver decisions và 80 E1 arm/8.640 requests/44.156 decisions/
+portfolios; zero failed DAG edge và zero freeze-file mismatch. 45 Domain/Application
+files, 115 analyzer imports và 12 stable claim documents được audit; 24 high-risk
+term occurrences đều là caveat/prohibited, zero unsafe conclusion. P2 mutation
+regression reject wrong-type/overlength identifier và boolean integer; unresolved
+P0/P1/P2 bằng 0. Targeted 8/8, required .NET 860/860, pinned Python 199/199 và
+format/diff/schema/JSON/Markdown/line gates pass. Report:
+`benchmarking/wp13-012-full-source-logic-claim-audit-2026-08-24.md`.
+
+**Consequences:** `RB-WP13-012 Done`, `RB-WP13-013 In progress`. H6/WP10 outcomes,
+candidate aggregation boundary và frozen verifier provenance không đổi. `013` là
+queue head duy nhất để xử lý ba P3 limitation và ra explicit WP13/WP14 decision;
+ablation/policy v2 chưa active.
+
+### ADR-065 — 2026-08-24 — Accepted
+
+**Context:** `013` là exit gate của WP13. Ba limitation P3 từ ADR-064 chưa có
+contract, và câu hỏi mở duy nhất còn lại là có mở WP14 hay không. Rủi ro là coi
+"audit sạch" thành lý do mặc nhiên chạy ablation matrix, hoặc để evidence sufficiency
+biến thành policy selection. H6 negative result (Panel A `−154`, Panel B `−106`) vẫn
+là authority và không được rescue.
+
+**Decision:** (1) Đóng WP13 bằng canonical closure manifest có strict schema, đánh giá
+bảy exit gate độc lập: source/logic/claim audit, provenance, architecture, claim
+boundary, raw immutability, resource readiness và WP14 separation. (2) Khóa contract
+cho ba P3: successor artifact phải raw-root reject + complete verify + canonical
+UTF-8/LF + exclusive create + explicit supersession; giữ và freeze toàn bộ
+5.516.098.710 verified raw byte, không archive/delete trong WP13; successor verifier
+phải versioned và giữ mọi historical check cộng regression vector tìm ở `012`.
+(3) Verdict `openExploratoryAblationOnly`: WP14 chỉ được mở ở mức refinement để đọc
+lại full-PDF boundary, refine factor/gate và lập ordered queue/freeze plan.
+(4) WP14 bắt buộc development namespace/cells mới, loại H6 Panel A/B khỏi mọi
+tuning/selection, freeze factor matrix/denominator/analyzer/resource envelope trước
+outcome, báo paired service–burden Pareto frontier thay vì chọn bằng một scalar hậu
+outcome, và fail closed nếu một ràng buộc không freeze được. (5) Không authorize H7,
+lifecycle policy v2, H6 backfill hay causal/population inference.
+
+**Evidence:** Closure manifest `benchmarking/evidence/wp13-closure-decision-v1.json`,
+4.463 byte, SHA-256 `4e410e2311caa4073ed219ae57b47323e3159540001298a6a085cf0858a72c9c`;
+strict schema `benchmarks/schemas/wp13/v1/closure-decision.schema.json` SHA-256
+`a4cbfb1438b672f10ea976b9abfe56af10617de2ba37a96b178ac618c9bffaca`. Retention/successor
+contract 3.751 byte SHA-256
+`fe10a9bef62cffa8974c65900e561a56f26ab200cb4ba48c663e2d8bb91e656e`. Independent
+closure/schema/hash/mutation tests 6/6 zero skip; required `dotnet test RideBound.slnx`
+860/860 zero skip; full sequential pinned CPython/FleetPy 205/205 zero skip; exact
+active/superseded artifact length/SHA resolution, canonical JSON, Draft 2020-12 schema
+và format/diff/Markdown/link/line gates pass. Report:
+`benchmarking/wp13-013-closure-decision-2026-08-24.md`.
+
+**Consequences:** `RB-WP13-013 Done`; WP13 `001..013` Complete. `RB-WP14-001`
+refinement là queue head duy nhất và chưa có WP14 implementation ticket. H6/WP10
+outcomes, margin, panels và mọi claim boundary không đổi; ablation refinement không
+phải quyết định chạy matrix.
+
+### ADR-066 — 2026-08-24 — Accepted
+
+**Context:** `RB-WP14-001` phải biến "được phép mở ablation" thành một thiết kế cụ
+thể. Trước đó chưa ai đo objective profile của C1 hay hình dạng phân phối tiêu thụ
+commitment, nên factor matrix sẽ phải đoán. Một probe read-only trên 80 bundle E1
+v1.2 đã tái lập chính xác 10/10 con số H6 rồi trả lời bốn câu hỏi tách bạch: layer
+nào cắt candidate, level lexicographic nào thực sự phân biệt, rider thấy gì so với
+metric tính gì, và phân phối tiêu thụ có hình dạng nào.
+
+**Decision:** (1) Nhận full-PDF evidence WP14 gồm Alonso-Mora et al. cùng
+supplement, khảo sát ConVRP/GenConVRP của Lespay et al., và hai paper ride-pooling;
+không lấy tham số số học nào từ chúng. (2) Loại bốn factor bằng phép đo chứ không
+bằng lập luận: one-sided charging, net-displacement anchoring, và nới các dimension
+switch/relocation — tất cả đều vô hiệu trên evidence đã ghi. (3) Nhận sáu factor
+F1–F6 với cơ chế trong code, bảo chứng literature và điều kiện falsification riêng.
+(4) Khóa ba ràng buộc cứng: không dùng số đo H6/E1 để chọn mức factor, báo frontier
+hai trục thay vì scalar hậu outcome, không rescue H6. (5) Ghi ba giới hạn claim mới
+vào boundary: `worst-hard-utilization-ppm` là hằng số trong cấu hình đã đo nên C1
+không "xếp hạng theo mức tiêu thụ commitment"; attribution `lock/ranking` của WP9
+thực chất là lock; và burden giảm 99,83% là attributed, còn experienced là 88,85%.
+(6) Ordered queue `RB-WP14-002..014`, với `002` là tối ưu solver trung tính giữa
+hai arm vì nó là điều kiện tài nguyên của matrix.
+
+**Evidence:** Probe `wp14_mechanism_probe.py` với 7 targeted test pass, bốn external
+artifact canonical:
+`mechanism-probe-b1a-v1.json` 2.151 byte SHA `3eb4cbb7…837e5d`,
+`c1a` 2.480 byte SHA `03d7a80d…09f528f`,
+`b1b` 2.159 byte SHA `c944fcb9…99d2bf`,
+`c1b` 2.486 byte SHA `c98991fc…dba7c9`;
+compact receipt `wp14-001-mechanism-probe-v1-summary.json` 5.907 byte SHA
+`58816604…a5ba9620`. Đo được: commitment prune chỉ đến từ đúng hai nguồn
+(`drop_eta_total_ms` budget 780+491, `pickup_eta_ms` final-confirmation lock
+160+92), 8/10 dimension không sinh witness nào; 534+339 vehicle choice set bị gate
+làm rỗng; 143+212 request bị chặn tức thời; B1 có **0** commitment prune ở cả hai
+panel; 94,40–97,78% lexicographic level là thoái hoá; phân phối tiêu thụ lưỡng cực
+với 76,8% bằng 0 và p95 = 234.222 ms. Full-PDF corpus 77/77 trang, inventory tại
+`E:\RideBoundDataesearch\pdf-20260824-wp14`. Review:
+`reviews/wp1-wp13-optimization-and-fairness/README.md`.
+
+**Consequences:** `RB-WP14-001 Done`, `RB-WP14-002 Ready`. H6/WP10 outcomes, margin,
+panels và frozen verifier provenance không đổi; probe chỉ đọc và không ghi vào raw
+root. Ba giới hạn claim mới thu hẹp cách mô tả treatment nhưng không đổi kết quả.
+WP15–WP20 vẫn roadmap-level.
+
 ## 8. Work package tracker
 
 | WP | Trạng thái | Bắt đầu | Kết thúc | Evidence |
@@ -3823,9 +4310,105 @@ hoàn toàn đơn độc pass 855/855; đó là final baseline.
 | Post-WP10 assurance | Complete | 2026-08-23 | 2026-08-23 | ADR-052 + WP1–WP10 final review + 3+3 process optimization benchmark + 12-page rendered PDF |
 | WP11 Product UX | Not started | — | — | — |
 | WP12 Paper/release | Not started | — | — | — |
+| WP13 Post-H6 mechanism diagnostics | Complete; `001..013 Done` | 2026-08-23 | 2026-08-24 | ADR-053..065 + `tasks/41`/`tasks/42`; closure manifest 4.463 byte SHA `4e410e23…58a72c9c`; bảy exit gate pass, zero unresolved P0–P2; H6 immutable; Debug 860/860; Python 205/205 |
+| WP14 Exploratory ablation/Pareto | In progress; `001 Done`, `002 Ready` | 2026-08-24 | — | ADR-065/066 + `tasks/43`/`tasks/44`; factor matrix F1–F6, bốn factor bị loại bằng phép đo, ba giới hạn claim mới |
+| WP15–WP20 | Roadmap-level only | — | — | Không ticket hóa trước WP14 exit gate |
 
 ## 9. Change history
 
+- 2026-08-24: `RB-WP14-001 Done`, `RB-WP14-002 Ready`. ADR-066 khoá factor matrix
+  WP14 sau khi một read-only probe trên 80 bundle E1 tái lập đúng 10/10 con số H6.
+  Mất mát dịch vụ của C1 quy về đúng hai nguồn: budget `drop_eta_total_ms` và
+  `pickup_eta_ms` final-confirmation lock; 8/10 dimension không sinh witness nào và
+  B1 có 0 commitment prune. Bốn factor bị loại bằng phép đo; sáu factor F1–F6 được
+  nhận kèm điều kiện falsification. Ghi ba giới hạn claim mới: level
+  `worst-hard-utilization-ppm` là hằng số, attribution `lock/ranking` thực chất là
+  lock, và burden giảm 99,83% là attributed còn experienced là 88,85%. Targeted 7/7;
+  H6 và WP13 outcomes không đổi.
+- 2026-08-24: `RB-WP13-013 Done`; WP13 `001..013` Complete. ADR-065 đóng bảy exit
+  gate, khóa contract cho ba P3 limitation (derived-output transaction, 5.516 GB E1
+  retention/archive, versioned successor verifier) và ra verdict
+  `openExploratoryAblationOnly`. Closure manifest 4.463 byte SHA `4e410e23…58a72c9c`;
+  targeted 6/6, required .NET 860/860, pinned Python 205/205 và static gates pass.
+  `RB-WP14-001` refinement là queue head duy nhất; H7, policy v2 và H6 backfill vẫn
+  chưa được mở.
+- 2026-08-24: `RB-WP13-012 Done`, `RB-WP13-013 In progress`. ADR-064 bind exact
+  80-file inventory và deep-verifies 100 H6 bundle plus 80 E1 arm. Audit tìm và sửa
+  một P2 verifier-composition gap bằng supplemental guard/regression mà không mutate
+  frozen verifier; zero unresolved P0–P2, zero unsafe claim conclusion và zero DAG/
+  architecture violation. Required .NET 860/860, pinned Python 199/199; ba P3
+  limitation thuộc `013`. WP14/policy v2 vẫn chưa mở.
+- 2026-08-24: `RB-WP13-011 Done`, `RB-WP13-012 In progress`. ADR-063 khóa exact
+  semantic-signature aggregation sau full 80-bundle verification: generated sets
+  equal 40/40, 390 signature/arm, zero collision/ID drift/absent; 41 B1 actionful
+  links gồm 33 pruned, 7 eligible-not-selected, 1 selected. Objective profiles không
+  so trực tiếp; association rows overlap/non-additive/noncausal. Required .NET
+  860/860, pinned Python 191/191 và static gates pass; WP14 chưa mở.
+- 2026-08-24: `RB-WP13-010 Done`, `RB-WP13-011 In progress`. ADR-062 khóa exact
+  31-mutant typed falsification matrix sau byte-exact 80-bundle E1 rebuild; 31/31
+  reject đúng layer/code, zero unexpected pass/failure. Read-only E1↔H6 comparison
+  xác nhận 80/80 same-arm behavioral equality, zero mismatch; semantic hash 0/80
+  equal là expected do v1.2 binding. Required .NET 860/860, full sequential pinned
+  Python 187/187 và static gates pass; H6/result/claim boundary không đổi.
+- 2026-08-24: `RB-WP13-009 Done`, `RB-WP13-010 Ready`. ADR-061 khóa E1 trước
+  execution và đóng exact 40 pair/80 arm replay, zero failure; independent inventory
+  verify 8.640 requests và 44.156/44.156 v1.2 solver decisions, tổng
+  5.516.098.710 raw bytes ngoài H6. Kết quả chỉ execution/coverage inventory,
+  không mechanism/causal/confirmatory conclusion; required .NET 860/860, pinned
+  Python 181/181 và static gates pass.
+- 2026-08-24: `RB-WP13-008 Done`, `RB-WP13-009 Ready`. ADR-060 khóa opt-in
+  `retained-portfolio-v1`: default evidence v1.1 không đổi; v1.2 ghi generated/
+  eligible/selected candidates, full route/schedule và exact solver-neutral objective
+  inputs. Strict nested decoder/schema, defensive-copy và capture-on/off differential
+  pass; required .NET 860/860, pinned Python 168/168, format/static gates sạch. Không
+  simulator run hoặc H6 backfill; `009` phải freeze E1 trước execution.
+- 2026-08-24: `RB-WP13-007 Done`, `RB-WP13-008 Ready`; O-009 closed. ADR-059 khóa
+  80-arm-epoch count-only sufficiency report: generation exact-equal 40/40 pair,
+  complete 80/80, zero cap/work/omission; retained identities/routes/objectives vẫn
+  `notRecorded`. Canonical SHA `d71c669b…37258`; targeted 10/10, pinned Python
+  164/164, independent raw verifier và required Debug 856/856 pass. Evidence vNext
+  không authorize rerun hoặc H6 backfill.
+- 2026-08-24: `RB-WP13-006 Done`, `RB-WP13-007 Ready`. ADR-058 khóa 40-record/
+  41-link evidence classifier và pair-level multi-label cross-tab. C1-lower có 7
+  budget + 1 lock occurrences; equal có 21 budget + 4 lock + 7 indeterminate, nên
+  kết quả chỉ co-occurrence/noncausal. Canonical SHA `bcc6bed3…f9e9eb`; targeted 8/8,
+  pinned Python 154/154, independent verifier và required Debug 856/856 pass.
+- 2026-08-24: `RB-WP13-005 Done`, `RB-WP13-006 Ready`. ADR-057 khóa strict
+  recorded-witness clearance trên 40 records/41 links: 28 budget, 5 lock, 7 absent
+  `notRecorded`, 1 selected-by-C1. Canonical SHA `cdd9a28d…9e411`; targeted 11/11,
+  pinned Python 146/146, independent verification và required Debug 856/856 pass.
+  Validator fail-fast nên feasibility sau clearance vẫn `notEvaluated`.
+- 2026-08-24: `RB-WP13-004 Done`, `RB-WP13-005 Ready`. ADR-056 khóa exact raw
+  action-level comparator: 80/80 primary transcripts, 44.156 decisions và 40/40 target
+  bindings verified; Panel A/B immediate C1-lower 3/5, equal 17/15, không C1-higher.
+  Canonical report SHA `3717f093…4f7e3`; targeted 13/13, pinned Python 135/135,
+  independent reconciliation và required Debug 856/856 pass. Kết quả chỉ
+  descriptive/noncausal, không thay completed-service outcome H6.
+- 2026-08-24: `RB-WP13-003 Done`, `RB-WP13-004 Ready`. ADR-055 khóa strict
+  first-divergence record-set schema và canonical artifact 40/40 exact pair; mọi
+  record bind report/schema/generator/panel hashes, không `null`, không same-state hay
+  causal claim. Targeted 11/11, pinned Python 122/122, independent schema/invariant
+  check và required Debug 856/856 pass.
+- 2026-08-24: `RB-WP13-002 Done`, `RB-WP13-003 Ready`. CPU profile của exact
+  medium public-drain tìm thấy canonical-number marker collection bị tạo lại trên hot
+  path. ADR-054 thay bốn call site bằng allocation-free span overload, giữ nguyên
+  number/error/canonical-byte semantics và ceiling 120 s. Uppercase-`E` boundary test,
+  targeted drain 1/1 (1 phút 33 giây) và required Debug 856/856 đều pass; H6 receipts
+  và negative result không đổi.
+- 2026-08-24: `RB-WP13-002` vào In review. Analyzer bind exact Panel A/B shape,
+  frozen inventory hashes, analyzer/verifier source hashes, LF/frame/file receipts và
+  cấm output trong H6 roots. Full scan pass 100 bundle/57.806 decision; 40/40 primary
+  pair có first operational divergence trên equal observed input; 30/40 có earlier
+  wire-only publication reorder. Targeted 16/16 và pinned FleetPy 111/111 zero skip;
+  Release build 0 warning/error, format/JSON/Markdown/NuGet/static sạch. Required
+  Debug và additional Release solution đều 854/855: duy nhất medium public-drain fail
+  `resource.cpu-time-exceeded`; diagnostic đo 120.062/120.000 ms và đã revert. Không
+  nới ceiling, không mở `003` và không claim ticket Done.
+- 2026-08-23: Chấp nhận ADR-053 và mở WP13 exploratory hậu H6. Đọc tuần tự 106/106
+  trang từ ba full PDF, khóa state/action/trajectory boundary, không nhận paper default
+  hoặc future-value claim từ slack. Thêm roadmap WP13–WP20 nhưng chỉ ticket hóa WP13;
+  `RB-WP13-002` active để inventory raw H6 và định nghĩa equal-observed-input
+  alignment, giữ H6/WP10 negative outcomes bất biến.
 - 2026-08-23: Chấp nhận ADR-052 và hoàn tất final review WP1–WP10. Review toàn cây
   sửa WP10 analyzer để bind exact terminal inventory/freeze/full Runner/seed, sửa
   format drift, và giữ negative outcomes không đổi. Full-PDF audit chỉ cho phép exact

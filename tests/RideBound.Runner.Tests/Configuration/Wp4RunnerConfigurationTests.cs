@@ -164,6 +164,91 @@ public sealed class Wp4RunnerConfigurationTests
     }
 
     [Fact]
+    public void Retained_portfolio_profile_is_strict_solver_only_and_seed_preserving()
+    {
+        var commitment = CommitmentConfiguration();
+        var baseJson = PublishedJson();
+        var optedInJson = baseJson.Replace(
+            "\"policyVersion\": \"wp4-boundary-v1\"",
+            "\"policyVersion\": \"wp4-boundary-v1\",\n  " +
+            "\"emitSolverExecutionEvidence\": true,\n  " +
+            "\"solverExecutionEvidenceProfile\": " +
+            "\"retained-portfolio-v1\"",
+            StringComparison.Ordinal);
+
+        var configuration = Wp4RunnerConfiguration.Decode(
+            Encoding.UTF8.GetBytes(optedInJson),
+            commitment);
+
+        Assert.Equal(
+            Wp4RunnerConfiguration.RetainedPortfolioEvidenceProfile,
+            configuration.SolverExecutionEvidenceProfile);
+        Assert.True(configuration.EmitSolverExecutionEvidence);
+        Assert.True(
+            configuration.SolverPolicyOptions!
+                .CaptureCandidatePortfolioEvidence);
+        var seeded = configuration.CreateSolverPolicyOptionsForRun(19);
+        Assert.True(seeded.CaptureCandidatePortfolioEvidence);
+        Assert.Equal(19, seeded.ExecutionBudget.SolverBudget.RandomSeed);
+        Assert.NotEqual(
+            Wp4RunnerConfiguration.Decode(
+                Encoding.UTF8.GetBytes(baseJson),
+                commitment).ContentHash,
+            configuration.ContentHash);
+
+        var noBaseEvidence = optedInJson.Replace(
+            "\"emitSolverExecutionEvidence\": true,\n  ",
+            string.Empty,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "emitSolverExecutionEvidence=true",
+            Assert.Throws<InvalidDataException>(
+                () => Wp4RunnerConfiguration.Decode(
+                    Encoding.UTF8.GetBytes(noBaseEvidence),
+                    commitment)).Message);
+
+        var unknown = optedInJson.Replace(
+            "retained-portfolio-v1",
+            "unknown-portfolio",
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "Unknown solverExecutionEvidenceProfile",
+            Assert.Throws<InvalidDataException>(
+                () => Wp4RunnerConfiguration.Decode(
+                    Encoding.UTF8.GetBytes(unknown),
+                    commitment)).Message);
+
+        const string nonSolver =
+            """
+            {
+              "configurationVersion":"1.0.0",
+              "policyId":"least-commitment-consensus",
+              "policyVersion":"wp13-evidence-negative-v1",
+              "candidateGeneration":{
+                "maximumCandidatesPerVehicle":10,
+                "maximumNewRequestsPerVehicle":1,
+                "exactSmallMode":false,
+                "scheduleStrategy":"earliest-feasible",
+                "maximumExplorationWorkUnits":100
+              },
+              "multiplePlan":{
+                "maximumPlanCount":2,
+                "maximumCombinationWorkUnits":100,
+                "requireCompleteEnumeration":true
+              },
+              "emitSolverExecutionEvidence":true,
+              "solverExecutionEvidenceProfile":"retained-portfolio-v1"
+            }
+            """;
+        Assert.Contains(
+            "solver-backed execution",
+            Assert.Throws<InvalidDataException>(
+                () => Wp4RunnerConfiguration.Decode(
+                    Encoding.UTF8.GetBytes(nonSolver),
+                    commitment)).Message);
+    }
+
+    [Fact]
     public void Candidate_retention_strategy_is_explicit_for_new_configs_and_legacy_when_absent()
     {
         var commitment = CommitmentConfiguration();

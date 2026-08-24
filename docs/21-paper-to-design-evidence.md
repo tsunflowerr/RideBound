@@ -502,3 +502,20 @@ generator giảm 0,79–1,30% heap với toàn bộ work/evaluated/feasible/omit
 slack-miss counter không đổi. Timing generator mixed nên không có speed claim.
 Raw artifact hashes, protocol và giới hạn ở
 [`post-wp10-exact-reuse-optimization-2026-08-23.md`](benchmarking/post-wp10-exact-reuse-optimization-2026-08-23.md).
+
+## 26. ADR-053 — full-PDF evidence cho mechanism diagnostics hậu H6
+
+Ba full PDF mới được Browser xác nhận, trích xuất và đọc tuần tự 106/106 trang. Corpus
+ngoài repo: `E:\RideBoundData\research\pdf-20260823-post-h6`.
+
+| Paper | Trang | SHA-256 | Áp dụng | Không áp dụng |
+|---|---:|---|---|---|
+| Pillac et al., review dynamic VRP | 29 | `770027591d40b271e3a2832b6cc9c4234220e8fa218fe747d04b7f2fe27f739d` | tách service guarantee, diversion, dynamism/urgency, reactiveness | không copy benchmark/threshold lịch sử |
+| Ulmer et al., route-based MDP | 42 | `5bc8131bf4d5bb1711a6658486e1f256e9ddf504f2388709696ec2af17762695` | tách pre/post-decision state, action, exogenous info và trajectory | không coi `ForwardSlackProfile` là future value |
+| Ackermann et al. 2025, multiple-plan DARP | 35 | `059a0bffc546e8588f1d9487ddb16344e7c24c559bc54dfa104979f98e223d3c` | plan-pool/secondary objective là exploratory, configuration-dependent | không copy slack/double-horizon/consensus/budget default |
+
+Thiết kế nhận được là evidence-sufficiency-first: định vị first observed divergence,
+link exact prune witness khi tồn tại, và ghi downstream result là
+`trajectoryAssociated`. H6 không có full retained candidate route/schedule, nên không
+được reconstruct/rerank. Chi tiết applied/rejected và provenance nằm tại
+[`post-h6-mechanism-diagnostics-full-pdf-evidence-2026-08-23.md`](research/post-h6-mechanism-diagnostics-full-pdf-evidence-2026-08-23.md).

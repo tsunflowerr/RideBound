@@ -357,6 +357,90 @@ WP10 được phép đóng bằng kết quả âm theo ADR-051; không báo thà
 - artifact reproducible;
 - negative results không bị giấu.
 
+## WP13 — Post-H6 evidence sufficiency và mechanism diagnostics
+
+**Trạng thái hiện tại:** **Complete**; `RB-WP13-001..013 Done`. Ordered queue:
+`docs/tasks/42-wp13-post-h6-mechanism-diagnostics-ticket-plan.md`.
+
+### Deliverable
+
+- immutable H6 evidence inventory;
+- policy-independent observed-input/decision projections;
+- versioned first-divergence và minimal-relaxation records;
+- opt-in Runner v1.2 retained/eligible/selected candidate evidence;
+- independent verifier, mutation matrix và descriptive mechanism report.
+
+### Exit gate
+
+- không dùng policy-bearing state hash làm arm alignment;
+- H6-supported và `notRecorded` fields được phân biệt bằng máy;
+- immediate evidence tách khỏi downstream `trajectoryAssociated` outcome;
+- không sửa H6 hoặc claim causal/population inference.
+
+## WP14 — Exploratory ablation và Pareto frontier
+
+**Trạng thái hiện tại:** **In progress**; `RB-WP14-001 Done`, `RB-WP14-002 Ready`.
+Ordered queue: `docs/tasks/44-wp14-exploratory-ablation-ticket-plan.md`. ADR-066 khoá
+sáu factor F1–F6 và loại bốn factor bằng phép đo. Dưới freeze exploratory mới, đo
+lock scope, penalty band, vị trí operational-cost, hold và mục tiêu phân phối; báo
+service–burden frontier thay vì chọn policy từ một scalar hậu outcome.
+
+**Ràng buộc bắt buộc:** development namespace/cells mới; H6 Panel A/B bị loại khỏi mọi
+tuning/selection; freeze factor matrix, denominator, analyzer và resource envelope
+trước outcome; không authorize H7 hoặc lifecycle policy v2.
+
+**Exit gate:** paired development evidence, independent verification, không dùng để
+rescue H6 và không chọn H7 configuration trên confirmatory cells.
+
+## WP15 — Lifecycle-aware commitment v2
+
+**Roadmap-level only.** Thiết kế commitment graduation/freeze horizon theo lifecycle
+nếu WP14 chứng minh có Pareto candidate; giữ accepted assignment, hard physical
+constraints, ledger/certificate và same Runner.
+
+**Exit gate:** formal contract, invariant/mutation/oracle tests và fallback; không
+claim future value chỉ từ slack.
+
+## WP16 — Development data, sampling và pilot v2
+
+**Roadmap-level only.** Mở data/scenario development mới, đo dynamism/urgency/capacity,
+pilot policy v2 và derive budget/margin mà không chạm H6 panels.
+
+**Exit gate:** provenance, unit/cluster definition, leakage audit và pilot-only claim.
+
+## WP17 — H7 preregistration và confirmatory v2
+
+**Roadmap-level only.** Chỉ mở khi WP15–WP16 đạt gate. Freeze estimand, panels,
+failure treatment, Runner/artifact, analysis và stopping rules trước outcome.
+
+**Exit gate:** independent freeze verification và terminal confirmatory report,
+kể cả kết quả âm.
+
+## WP18 — External validity và Layer 3 decision
+
+**Roadmap-level only.** Đánh giá thêm dataset/simulator capability. RidePy chỉ được
+mở lại nếu có representation trung thực cho concurrent mid-edge; AMoD2 hoặc alternate
+adapter cần ADR, exact source/runtime và cùng Runner.
+
+**Exit gate:** named capability result, no adapter-side policy reimplementation và
+không pool heterogeneous layers thành một estimand giả.
+
+## WP19 — Performance và SLA engineering
+
+**Roadmap-level only.** Profile/optimize sau khi policy semantics khóa; giữ exact work
+counters, correctness differential và machine-local benchmark provenance.
+
+**Exit gate:** representative workload, allocation/time distributions, regression
+budget; SLA chỉ khi có production-relevant measurement.
+
+## WP20 — BeGo rollout v2
+
+**Roadmap-level only.** Chỉ rollout policy v2 sau H7/product decision; feature flag,
+audit, privacy, rollback và language không overclaim.
+
+**Exit gate:** paired shadow/canary evidence, rollback drill và no-satisfaction claim
+khi chưa có user study.
+
 ## 2. Critical path
 
 ```mermaid
@@ -375,6 +459,16 @@ flowchart LR
     W9 --> W12["WP12"]
     W10 --> W12
     W5 --> W11["WP11"]
+    W9 --> W13["WP13"]
+    W13 --> W14["WP14"]
+    W14 --> W15["WP15"]
+    W15 --> W16["WP16"]
+    W16 --> W17["WP17"]
+    W17 --> W18["WP18"]
+    W17 --> W19["WP19"]
+    W17 --> W20["WP20"]
+    W11 --> W20
+    W18 --> W12
 ```
 
 ## 3. Thứ tự ưu tiên khi thiếu thời gian
@@ -398,12 +492,41 @@ Cắt trước:
 
 ## 4. Bước tiếp theo cụ thể
 
-**Cập nhật 2026-08-23:** WP1–WP10 và final cross-WP review đã đóng. WP9 là negative
-confirmatory result; WP10 là negative capability result. ADR-052 hoàn tất full-PDF
-audit, exact-reuse optimization, benchmark không đổi semantics và báo cáo PDF 12
-trang đã render/inspect. Không tự động mở WP11/WP12 trong cùng experiment; bước tiếp
-theo cần một refinement/decision mới, giữ nguyên H6 và không dùng UI/release work để
-diễn giải lại outcome.
+**Cập nhật 2026-08-24:** WP1–WP10 và final cross-WP review đã đóng. ADR-053 mở WP13
+exploratory để định vị cơ chế của kết quả âm H6 nhưng giữ toàn bộ H6/WP10 immutable.
+`RB-WP13-001` đã khóa refinement sau khi đọc 106/106 trang của ba full PDF;
+`RB-WP13-002` đã inventory đủ raw evidence, khóa equal-observed-input alignment và
+đóng required Debug gate 856/856. CPU profile của failure cũ dẫn tới exact no-allocation
+number-marker check; medium public-drain pass 1/1 trong 1 phút 33 giây mà không đổi
+ceiling, protocol bytes, Runner semantics hoặc H6 receipts. `RB-WP13-003` đã khóa
+strict versioned first-divergence schema và 40/40 record bind exact report 002.
+`RB-WP13-004` đã quét đủ 80 raw primary transcripts và khóa 40 paired action-level
+comparisons: C1 nhận ít hơn ngay tại divergence ở 8/40 pair, accepted count bằng ở
+32/40; kết quả chỉ descriptive/noncausal. `RB-WP13-005` đã link 41 B1 selected
+candidates: 33 commitment-pruned, 7 absent/not-recorded, 1 selected-by-C1; 28 budget
+và 5 lock clearances chỉ xóa recorded witness. `RB-WP13-006` đã cross-tab exact
+evidence classes với immediate acceptance: cả 8 C1-lower pair có recorded witness
+(7 budget, 1 lock), nhưng 25 equal pair cũng có witness; kết quả chỉ co-occurrence,
+không causal attribution. `RB-WP13-007` đã chứng minh generation count/work evidence
+exact-equal ở 40/40 pair và complete ở 80/80 arm-epoch, không cap/work/omission, nhưng
+full retained identities/routes/objectives vẫn `notRecorded`; bảy unresolved links
+không được tự gọi là ranking loss. `RB-WP13-008` đã khóa opt-in v1.2 retained-
+portfolio evidence với exact generated/eligible/selected candidates, route/schedule và
+solver-neutral objective inputs, đồng thời giữ default v1.1/H6 v1.0 compatibility.
+`RB-WP13-009` đã freeze rồi execute E1 đủ 40 pair/80 arm ở namespace mới: 8.640
+requests, 44.156/44.156 solver decisions có v1.2 portfolio, zero failure và cùng
+source inventory hash. External inventory chỉ là execution/coverage receipt, chưa
+phân tích candidate hoặc mechanism. `RB-WP13-010` đã dựng lại byte-exact 80 E1 bundle,
+reject đúng typed code cho 31/31 mutant và xác nhận 80/80 same-arm behavioral projection
+E1↔H6 bằng nhau. `RB-WP13-011` đã aggregate exact 40 pair: generated set equal 40/40, 33
+C1-pruned, 7 C1-eligible-not-selected, 1 selected, zero absent; association rows
+non-additive và noncausal. `RB-WP13-012` đã audit 80 source/schema/test/report files,
+deep-verify 100 H6 bundle và 80 E1 arm, sửa một verifier-composition P2 bằng regression
+và đóng với zero unresolved P0–P2. `RB-WP13-013` đã đóng WP13 bằng bảy exit gate pass,
+resolution cho ba P3 limitation và verdict `openExploratoryAblationOnly`. Không
+backfill/ghi H6, không CI/causal claim. WP14 chỉ được mở ở mức refinement trên
+development namespace mới; WP15–WP20 vẫn ở roadmap-level. WP11/WP12 deferred/stable và
+không được dùng để diễn giải lại outcome.
 
 WP0 được thực hiện trực tiếp trong repository RideBound mới theo yêu cầu của
 người dùng. Sau khi WP0 qua exit gate:

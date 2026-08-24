@@ -15,6 +15,9 @@ namespace RideBound.Runner.Configuration;
 
 public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
 {
+    public const string RetainedPortfolioEvidenceProfile =
+        "retained-portfolio-v1";
+
     private static readonly IReadOnlySet<string> RootFields = Fields(
         "configurationVersion",
         "policyId",
@@ -26,7 +29,8 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
         "repair",
         "multiplePlan",
         "warningProfiles",
-        "emitSolverExecutionEvidence");
+        "emitSolverExecutionEvidence",
+        "solverExecutionEvidenceProfile");
     private static readonly IReadOnlySet<string> GenerationRequiredFields = Fields(
         "maximumCandidatesPerVehicle",
         "maximumNewRequestsPerVehicle",
@@ -73,7 +77,8 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
         SolverBackedRidePoolingPolicyOptions? solverPolicyOptions,
         MultiplePlanPoolOptions? multiplePlanOptions,
         IEnumerable<CommitmentWarningProfile> warningProfiles,
-        bool emitSolverExecutionEvidence)
+        bool emitSolverExecutionEvidence,
+        string? solverExecutionEvidenceProfile)
     {
         ContentHash = contentHash;
         PolicyId = policyId;
@@ -83,6 +88,7 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
         SolverPolicyOptions = solverPolicyOptions;
         MultiplePlanOptions = multiplePlanOptions;
         EmitSolverExecutionEvidence = emitSolverExecutionEvidence;
+        SolverExecutionEvidenceProfile = solverExecutionEvidenceProfile;
         _warningProfiles = new CommitmentWarningProfileCatalog(warningProfiles);
     }
 
@@ -101,6 +107,8 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
     public MultiplePlanPoolOptions? MultiplePlanOptions { get; }
 
     public bool EmitSolverExecutionEvidence { get; }
+
+    public string? SolverExecutionEvidenceProfile { get; }
 
     public bool TryGetProfile(
         string policyId,
@@ -150,7 +158,8 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
             execution.Value!,
             source.FreezeHorizon,
             source.FreezeLocks,
-            source.MaximumRepairRequestsConsideredPerVehicle);
+            source.MaximumRepairRequestsConsideredPerVehicle,
+            source.CaptureCandidatePortfolioEvidence);
     }
 
     public static Wp4RunnerConfiguration Decode(
@@ -219,6 +228,28 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
             "emitSolverExecutionEvidence",
             out var evidenceElement)
                 && Boolean(evidenceElement, "emitSolverExecutionEvidence");
+        var solverExecutionEvidenceProfile = root.TryGetProperty(
+            "solverExecutionEvidenceProfile",
+            out _)
+                ? Text(root, "solverExecutionEvidenceProfile")
+                : null;
+
+        if (solverExecutionEvidenceProfile is not null
+            && !StringComparer.Ordinal.Equals(
+                solverExecutionEvidenceProfile,
+                RetainedPortfolioEvidenceProfile))
+        {
+            throw new InvalidDataException(
+                "Unknown solverExecutionEvidenceProfile.");
+        }
+
+        if (solverExecutionEvidenceProfile is not null
+            && (!emitSolverExecutionEvidence || !hasSolver))
+        {
+            throw new InvalidDataException(
+                "retained-portfolio-v1 requires solver-backed execution "
+                + "and emitSolverExecutionEvidence=true.");
+        }
 
         RequireVariantFields(
             policyKind,
@@ -273,7 +304,8 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
                 budget,
                 freezeHorizon,
                 freezeLocks,
-                repairCap);
+                repairCap,
+                solverExecutionEvidenceProfile is not null);
         }
 
         if (hasMultiple)
@@ -311,7 +343,8 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
             solverOptions,
             multipleOptions,
             warningProfiles,
-            emitSolverExecutionEvidence);
+            emitSolverExecutionEvidence,
+            solverExecutionEvidenceProfile);
     }
 
     private static CandidateGenerationOptions ReadGeneration(JsonElement element)

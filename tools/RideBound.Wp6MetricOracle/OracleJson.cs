@@ -137,7 +137,7 @@ internal static class OracleJson
             case JsonValueKind.Number:
                 var raw = element.GetRawText();
 
-                if (raw.IndexOfAny(['.', 'e', 'E']) >= 0
+                if (raw.AsSpan().IndexOfAny('.', 'e', 'E') >= 0
                     || raw == "-0"
                     || !element.TryGetInt64(out var integer)
                     || integer is < -SafeIntegerMaximum or > SafeIntegerMaximum)

@@ -179,7 +179,7 @@ public static class CanonicalJson
     {
         var rawValue = element.GetRawText();
 
-        if (rawValue.IndexOfAny(['.', 'e', 'E']) >= 0 || rawValue == "-0")
+        if (rawValue.AsSpan().IndexOfAny('.', 'e', 'E') >= 0 || rawValue == "-0")
         {
             throw new CanonicalJsonException(
                 CanonicalJsonErrorCode.NonIntegerNumber,

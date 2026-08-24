@@ -215,6 +215,146 @@ public sealed class Wp4RunnerIntegrationTests
     }
 
     [Fact]
+    public void Retained_portfolio_profile_is_complete_and_operationally_neutral()
+    {
+        var commitment = CommitmentConfiguration();
+        var legacySetup = CreateSession(
+            PublishedWp4Configuration(
+                commitment,
+                emitSolverExecutionEvidence: true),
+            commitmentConfiguration: commitment);
+        var portfolioSetup = CreateSession(
+            PublishedWp4Configuration(
+                commitment,
+                emitSolverExecutionEvidence: true,
+                retainCandidatePortfolio: true),
+            commitmentConfiguration: commitment);
+        var batch = ReadFixture("wp2/valid-bootstrap-event-batch.json");
+        var legacy = DecisionPayloadCodec.Decode(
+            legacySetup.Session.Process(batch).Response!.Payload);
+        var retained = DecisionPayloadCodec.Decode(
+            portfolioSetup.Session.Process(batch).Response!.Payload);
+
+        Assert.True(legacy.IsSuccess, legacy.Error?.Message);
+        Assert.True(retained.IsSuccess, retained.Error?.Message);
+        Assert.Equal(legacy.Value!.Status, retained.Value!.Status);
+        Assert.Equal(legacy.Value.ReasonCode, retained.Value.ReasonCode);
+        Assert.Equal(legacy.Value.StateBeforeHash, retained.Value.StateBeforeHash);
+        Assert.Equal(legacy.Value.StateAfterHash, retained.Value.StateAfterHash);
+        Assert.Equal(legacy.Value.Solver.Status, retained.Value.Solver.Status);
+        Assert.Equal(
+            legacy.Value.Actions.Select(value => value.GetRawText()),
+            retained.Value.Actions.Select(value => value.GetRawText()));
+
+        var legacyEvidence = legacy.Value.Solver.ExecutionEvidence!.Value;
+        var retainedEvidence = retained.Value.Solver.ExecutionEvidence!.Value;
+        Assert.Equal(
+            "1.1.0",
+            legacyEvidence.GetProperty("evidenceVersion").GetString());
+        Assert.False(legacyEvidence.TryGetProperty("candidatePortfolio", out _));
+        Assert.Equal(
+            "1.2.0",
+            retainedEvidence.GetProperty("evidenceVersion").GetString());
+        var portfolio = retainedEvidence.GetProperty("candidatePortfolio");
+        Assert.Equal(
+            "1.0.0",
+            portfolio.GetProperty("portfolioVersion").GetString());
+        Assert.Equal(
+            "https://ridebound.local/schemas/wp13/v1/" +
+            "runner-retained-candidate-portfolio-evidence.schema.json",
+            portfolio.GetProperty("schemaId").GetString());
+        Assert.Equal(
+            "rollingCost",
+            portfolio.GetProperty("objectiveProfile").GetString());
+
+        var problem = portfolio.GetProperty("selectionProblem");
+        var objectiveCount = problem.GetProperty("objectiveLevels")
+            .GetArrayLength();
+        var requestIds = problem.GetProperty("requestIds")
+            .EnumerateArray()
+            .Select(value => value.GetString()!)
+            .ToHashSet(StringComparer.Ordinal);
+        var vehicleIds = problem.GetProperty("vehicleIds")
+            .EnumerateArray()
+            .Select(value => value.GetString()!)
+            .ToHashSet(StringComparer.Ordinal);
+        var candidates = portfolio.GetProperty("candidates")
+            .EnumerateArray()
+            .ToArray();
+        Assert.NotEmpty(candidates);
+        Assert.Equal(
+            (long)candidates.Length,
+            portfolio.GetProperty("generatedCandidateCount").GetInt64());
+        Assert.Equal(
+            (long)candidates.Count(
+                value => value.GetProperty("policyEligibility").GetString()
+                    == "eligible"),
+            portfolio.GetProperty("policyEligibleCandidateCount").GetInt64());
+        Assert.Equal(
+            candidates.Length,
+            candidates.Select(
+                    value => value.GetProperty("candidateId").GetString())
+                .Distinct(StringComparer.Ordinal)
+                .Count());
+        var eligibleIds = candidates
+            .Where(
+                value => value.GetProperty("policyEligibility").GetString()
+                    == "eligible")
+            .Select(value => value.GetProperty("candidateId").GetString()!)
+            .ToHashSet(StringComparer.Ordinal);
+        var selectedIds = portfolio.GetProperty("selectedCandidateIds")
+            .EnumerateArray()
+            .Select(value => value.GetString()!)
+            .ToArray();
+        Assert.Equal(vehicleIds.Count, selectedIds.Length);
+        Assert.All(selectedIds, value => Assert.Contains(value, eligibleIds));
+
+        foreach (var candidate in candidates)
+        {
+            Assert.Contains(
+                candidate.GetProperty("vehicleId").GetString()!,
+                vehicleIds);
+            var eligible = candidate.GetProperty("policyEligibility")
+                .GetString() == "eligible";
+
+            if (eligible)
+            {
+                Assert.All(
+                    candidate.GetProperty("newRequestIds").EnumerateArray(),
+                    value => Assert.Contains(value.GetString()!, requestIds));
+            }
+
+            Assert.Equal(
+                eligible,
+                candidate.TryGetProperty(
+                    "objectiveContributions",
+                    out var contributions));
+
+            if (eligible)
+            {
+                Assert.Equal(objectiveCount, contributions.GetArrayLength());
+            }
+
+            var route = candidate.GetProperty("route");
+            var remainingStopIds = route.GetProperty("frozenPrefix")
+                .EnumerateArray()
+                .Skip(route.GetProperty("executedStopCount").GetInt32())
+                .Concat(route.GetProperty("mutableSuffix").EnumerateArray())
+                .Select(value => value.GetProperty("stopId").GetString());
+            var scheduledStopIds = candidate.GetProperty("schedule")
+                .GetProperty("stops")
+                .EnumerateArray()
+                .Select(value => value.GetProperty("stopId").GetString());
+            Assert.Equal(remainingStopIds, scheduledStopIds);
+        }
+
+        Assert.DoesNotContain(
+            "wallTime",
+            retainedEvidence.GetRawText(),
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void Booking_confirmation_C1_ranks_each_vehicle_scope_before_fleet_validation()
     {
         var commitment = CommitmentConfiguration();
@@ -521,7 +661,8 @@ public sealed class Wp4RunnerIntegrationTests
 
     private static Wp4RunnerConfiguration PublishedWp4Configuration(
         CommitmentPolicyConfiguration? commitmentConfiguration = null,
-        bool emitSolverExecutionEvidence = false)
+        bool emitSolverExecutionEvidence = false,
+        bool retainCandidatePortfolio = false)
     {
         var commitment = commitmentConfiguration ?? CommitmentConfiguration();
         var json = File.ReadAllText(Path.Combine(
@@ -530,12 +671,16 @@ public sealed class Wp4RunnerIntegrationTests
             "configurations",
             "wp4-rolling-cost-boundary-v1.json"));
 
-        if (emitSolverExecutionEvidence)
+        if (emitSolverExecutionEvidence || retainCandidatePortfolio)
         {
+            var profile = retainCandidatePortfolio
+                ? ",\n  \"solverExecutionEvidenceProfile\": " +
+                    "\"retained-portfolio-v1\""
+                : string.Empty;
             json = json.Replace(
                 "\"policyVersion\": \"wp4-boundary-v1\"",
                 "\"policyVersion\": \"wp4-boundary-v1\",\n  " +
-                "\"emitSolverExecutionEvidence\": true",
+                "\"emitSolverExecutionEvidence\": true" + profile,
                 StringComparison.Ordinal);
         }
 

@@ -22,7 +22,8 @@ public interface IFleetSelectionValidator
 
 public sealed record SolverBackedFleetSelection(
     FleetSelection Selection,
-    CandidateSelectionExecutionResult Execution);
+    CandidateSelectionExecutionResult Execution,
+    CandidateSelectionProblem Problem);
 
 public sealed record SolverBackedFleetSelectionResult
 {
@@ -130,7 +131,8 @@ public sealed class SolverBackedFleetSelector
             ? SolverBackedFleetSelectionResult.Success(
                 new SolverBackedFleetSelection(
                     selected.Selection,
-                    executed))
+                    executed,
+                    mapping.Problem!))
             : SolverBackedFleetSelectionResult.Failure(selected.Witness!);
     }
 

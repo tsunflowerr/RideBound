@@ -200,7 +200,7 @@ internal static class ProtocolPayloadReader
         var raw = property.Value.GetRawText();
 
         if (!property.Value.TryGetInt64(out var value)
-            || raw.IndexOfAny(['.', 'e', 'E']) >= 0
+            || raw.AsSpan().IndexOfAny('.', 'e', 'E') >= 0
             || raw == "-0"
             || value < minimum
             || value > maximum)

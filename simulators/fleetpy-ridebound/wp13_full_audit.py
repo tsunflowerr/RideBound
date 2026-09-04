@@ -544,39 +544,87 @@ def _validate_compact_and_external_artifacts(catalog):
     return summaries, references, verified
 
 
+_SOURCE_DIVERGENCE = (
+    _REPOSITORY_ROOT / "benchmarks" / "scenarios" / "wp13-e1"
+    / "source-divergence-v1.json"
+)
+_LEGACY_VERIFIER_COMMIT = "2d6791fb916e89850d9ec2778285142943a27ee6"
+_LEGACY_VERIFIER_SHA256 = (
+    "3eebec96b8370db2c4879adeaede3e67b7344571299a496953afcbc599dd93e5"
+)
+
+
 def _verify_source_bindings(verified_artifacts):
     for digest, relative in _SOURCE_BINDINGS.items():
         if _sha256(_REPOSITORY_ROOT / relative) != digest:
             raise RuntimeError(f"current source binding differs: {relative}")
 
+    # The invariant is that the historical H6 verifier is still recoverable from
+    # this repository, so the binding names the commit that actually carries it.
+    # Reading it from HEAD only worked until the next commit touched the file.
     legacy = subprocess.run(
         [
             "git",
             "show",
-            "HEAD:simulators/fleetpy-ridebound/actual_fleetpy_medium_verify.py",
+            f"{_LEGACY_VERIFIER_COMMIT}:"
+            "simulators/fleetpy-ridebound/actual_fleetpy_medium_verify.py",
         ],
         cwd=_REPOSITORY_ROOT,
         check=True,
         capture_output=True,
     ).stdout
     legacy_hash = _sha256_bytes(legacy)
-    expected_legacy = (
-        "3eebec96b8370db2c4879adeaede3e67b7344571299a496953afcbc599dd93e5"
-    )
-    if legacy_hash != expected_legacy:
+    if legacy_hash != _LEGACY_VERIFIER_SHA256:
         raise RuntimeError(
-            "historical H6 verifier binding is not recoverable from HEAD"
+            "historical H6 verifier binding is not recoverable from commit "
+            f"{_LEGACY_VERIFIER_COMMIT}"
         )
 
     freeze = _load_strict(_FREEZE_RECEIPT)
+    divergence = _load_strict(_SOURCE_DIVERGENCE)
+    declared = {
+        entry["path"]: entry for entry in divergence["divergences"]
+    }
+    recovery_commit = divergence["recoveryCommit"]
+
     for record in freeze["repositoryFiles"]:
         path = _REPOSITORY_ROOT / record["path"]
         if (
-            not path.is_file()
-            or path.stat().st_size != record["lengthBytes"]
-            or _sha256(path) != record["sha256"]
+            path.is_file()
+            and path.stat().st_size == record["lengthBytes"]
+            and _sha256(path) == record["sha256"]
         ):
-            raise RuntimeError(f"E1 frozen repository file differs: {record['path']}")
+            continue
+
+        # WP13 is closed and WP14 develops the same tree, so a frozen file may
+        # legitimately move on. The provenance chain only survives if the exact
+        # frozen bytes are still recoverable and the change was declared.
+        entry = declared.get(record["path"])
+        if entry is None:
+            raise RuntimeError(
+                f"E1 frozen repository file differs and is undeclared: "
+                f"{record['path']}"
+            )
+        if entry["frozenSha256"] != record["sha256"]:
+            raise RuntimeError(
+                f"declared divergence pins the wrong frozen hash: {record['path']}"
+            )
+        recovered = subprocess.run(
+            ["git", "show", f"{recovery_commit}:{record['path']}"],
+            cwd=_REPOSITORY_ROOT,
+            capture_output=True,
+        )
+        if (
+            recovered.returncode != 0
+            or _sha256_bytes(recovered.stdout) != record["sha256"]
+        ):
+            raise RuntimeError(
+                f"E1 frozen bytes are no longer recoverable: {record['path']}"
+            )
+
+    for path in declared:
+        if path not in {record["path"] for record in freeze["repositoryFiles"]}:
+            raise RuntimeError(f"declared divergence is not a frozen file: {path}")
 
     hashes = {record["sha256"] for record in verified_artifacts}
     required = {

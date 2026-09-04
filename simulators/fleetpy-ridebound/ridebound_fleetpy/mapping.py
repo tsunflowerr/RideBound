@@ -226,12 +226,27 @@ class FleetPyProtocolMapper:
         # Panel B job died that way, over its pickup window by 13 ms. Flooring
         # keeps RideBound behind the true position, and the validator already
         # rounds the remaining edge time up, so the pair is conservative on both
-        # halves.
+        # halves. Flooring is only ever applied within the edge the vehicle
+        # has already entered - it must never move the vehicle back onto the
+        # node behind it, which is a different place on a directed network.
         permille = int((progress * Decimal(1000)).quantize(Decimal(1), rounding=ROUND_FLOOR))
-        if permille <= 0:
+        if progress == 0:
+            # Still standing on the from-node: not yet committed to the edge.
             return {"kind": "node", "nodeId": start_id}
         if permille >= 1000:
             return {"kind": "node", "nodeId": end_id}
+        # Once the vehicle has entered the edge it cannot un-enter it, so the
+        # from-node is not a conservative stand-in - it is unreachable except
+        # the long way round. Measured on w14-d20181112-s10-r1-w17-b1-ref-s7:
+        # a vehicle 0.126 permille along 86->8 was reported as standing on
+        # node 86, so the core costed 86->39 at 574.616 s while the true cost
+        # from its position was 792.244 s; returning to node 86 alone costs
+        # 1352.586 s. The 217.628 s gap turned 25.384 s of believed slack into
+        # a 192.244 s pickup-window violation that FleetPy rejected outright.
+        # The wire cannot carry zero progress, so clamp to the smallest
+        # representable step: one permille is the most conservative point the
+        # contract can express, and it keeps the commitment to the edge.
+        permille = max(permille, 1)
         return {
             "kind": "edgeProgress",
             "fromNodeId": start_id,

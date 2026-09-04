@@ -54,7 +54,8 @@ public sealed record CommitmentValidationContext(
     string RevisionReasonCode = "ONLINE_REPLAN",
     VehicleId? ScopedVehicleId = null,
     InitialPromiseTrigger InitialPromiseTrigger =
-        InitialPromiseTrigger.InitialAcceptance);
+        InitialPromiseTrigger.InitialAcceptance,
+    bool CollectAllCommitmentWitnesses = false);
 
 public enum InitialPromiseTrigger
 {
@@ -178,6 +179,17 @@ public sealed class CommitmentDecisionValidator
 
         var ledger = context.ReducedState.Commitments;
         var publications = new List<PromisePublication>();
+
+        // RB-WP14-003. Fail-fast is correct on the hot path, but it makes the
+        // recorded prune witness depend on request order: the first failing
+        // request and, inside it, the first failing layer are the only ones ever
+        // reported. When an evidence profile asks for the full set, the lock and
+        // budget layers are evaluated for every request before the candidate is
+        // rejected. Structural failures still stop immediately, because there is
+        // nothing meaningful to keep scanning with.
+        var collected = context.CollectAllCommitmentWitnesses
+            ? new List<CommitmentValidationWitness>()
+            : null;
 
         foreach (var request in context.CandidateState.Run.Requests.Values
                      .Where(
@@ -342,16 +354,22 @@ public sealed class CommitmentDecisionValidator
 
             if (lockWitnesses.Count != 0)
             {
-                return CommitmentDecisionValidationResult.Invalid(
-                    lockWitnesses.Select(
-                        value => new CommitmentValidationWitness(
-                            CommitmentValidationStage.Lock,
-                            CommitmentFailureCodes.PhaseLock,
-                            "The candidate changes a phase-locked promise field.",
-                            request.AssignedVehicleId,
-                            value.RequestId,
-                            value.Dimension,
-                            value.Rule)));
+                var lockFailures = lockWitnesses.Select(
+                    value => new CommitmentValidationWitness(
+                        CommitmentValidationStage.Lock,
+                        CommitmentFailureCodes.PhaseLock,
+                        "The candidate changes a phase-locked promise field.",
+                        request.AssignedVehicleId,
+                        value.RequestId,
+                        value.Dimension,
+                        value.Rule));
+
+                if (collected is null)
+                {
+                    return CommitmentDecisionValidationResult.Invalid(lockFailures);
+                }
+
+                collected.AddRange(lockFailures);
             }
 
             var calculated = _deltaCalculator.Calculate(
@@ -384,19 +402,32 @@ public sealed class CommitmentDecisionValidator
 
             if (!budget.IsAllowed)
             {
-                return CommitmentDecisionValidationResult.Invalid(
-                    budget.Witnesses.Select(
-                        value => new CommitmentValidationWitness(
-                            CommitmentValidationStage.Budget,
-                            CommitmentFailureCodes.BudgetExceeded,
-                            "The candidate exceeds a hard commitment dimension.",
-                            request.AssignedVehicleId,
-                            value.RequestId,
-                            value.Dimension,
-                            Limit: value.Limit,
-                            Before: value.Before,
-                            Delta: value.Delta,
-                            After: value.After)));
+                var budgetFailures = budget.Witnesses.Select(
+                    value => new CommitmentValidationWitness(
+                        CommitmentValidationStage.Budget,
+                        CommitmentFailureCodes.BudgetExceeded,
+                        "The candidate exceeds a hard commitment dimension.",
+                        request.AssignedVehicleId,
+                        value.RequestId,
+                        value.Dimension,
+                        Limit: value.Limit,
+                        Before: value.Before,
+                        Delta: value.Delta,
+                        After: value.After));
+
+                if (collected is null)
+                {
+                    return CommitmentDecisionValidationResult.Invalid(budgetFailures);
+                }
+
+                collected.AddRange(budgetFailures);
+            }
+
+            if (collected is { Count: > 0 })
+            {
+                // This request already failed, so its revision must not be
+                // appended. Keep scanning only to complete the witness set.
+                continue;
             }
 
             if (calculated.Deltas.Exogenous == CommitmentVector.Zero
@@ -436,9 +467,11 @@ public sealed class CommitmentDecisionValidator
                     ledger.Histories[request.Id].Current));
         }
 
-        return CommitmentDecisionValidationResult.Valid(
-            context.CandidateState with { Commitments = ledger },
-            publications.AsReadOnly());
+        return collected is { Count: > 0 }
+            ? CommitmentDecisionValidationResult.Invalid(collected)
+            : CommitmentDecisionValidationResult.Valid(
+                context.CandidateState with { Commitments = ledger },
+                publications.AsReadOnly());
     }
 
     private static CommitmentValidationWitness? ValidateStateBoundary(

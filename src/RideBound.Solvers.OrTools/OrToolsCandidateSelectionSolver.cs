@@ -19,13 +19,50 @@ public sealed class OrToolsCandidateSelectionSolver : ICandidateSelectionSolver
         var stopwatch = Stopwatch.StartNew();
         CandidateSelectionSolution? incumbent = null;
         var bounds = new List<ObjectiveSolveBound>();
+        var fixedBounds = new List<ObjectiveSolveBound>();
         long consumedWork = 0;
         long consumedDeterministicMicros = 0;
+        var constants = budget.SkipConstantObjectiveLevels
+            ? ConstantsToSkip(problem)
+            : null;
+        var skippedLevels = 0;
 
         for (var levelIndex = 0;
              levelIndex < problem.ObjectiveLevels.Count;
              levelIndex++)
         {
+            if (constants?[levelIndex] is long constantValue)
+            {
+                // The level is the same number for every feasible assignment, so
+                // the pass would only prove the optimum of a constant and the
+                // equality it contributes to later passes is vacuous. Report the
+                // exact optimum and do not build a model. The bound is not added
+                // to the fixed set precisely because it constrains nothing.
+                var constantBound = ObjectiveSolveBound.Create(
+                    levelIndex,
+                    problem.ObjectiveLevels[levelIndex],
+                    constantValue,
+                    constantValue);
+
+                if (!constantBound.IsSuccess)
+                {
+                    return NoSolution(
+                        problem,
+                        budget,
+                        stopwatch,
+                        CandidateSelectionSolveStatus.ModelInvalid,
+                        "ORTOOLS_BOUND_INVALID",
+                        constantBound.Failure!.Message,
+                        consumedWork,
+                        consumedDeterministicMicros,
+                        bounds);
+                }
+
+                bounds.Add(constantBound.Value!);
+                skippedLevels++;
+                continue;
+            }
+
             var remainingWork = budget.MaximumWorkUnits - consumedWork;
             var remainingMicros = budget.MaximumDeterministicTimeMicros
                 - consumedDeterministicMicros;
@@ -56,7 +93,7 @@ public sealed class OrToolsCandidateSelectionSolver : ICandidateSelectionSolver
                         "level was proven optimal.");
             }
 
-            var built = BuildModel(problem, bounds);
+            var built = BuildModel(problem, fixedBounds);
 
             if (built.Error is not null)
             {
@@ -241,6 +278,7 @@ public sealed class OrToolsCandidateSelectionSolver : ICandidateSelectionSolver
             }
 
             bounds.Add(bound.Value!);
+            fixedBounds.Add(bound.Value!);
 
             if (status == CpSolverStatus.Feasible)
             {
@@ -265,9 +303,37 @@ public sealed class OrToolsCandidateSelectionSolver : ICandidateSelectionSolver
             consumedWork,
             consumedDeterministicMicros,
             bounds,
-            "ORTOOLS_OPTIMAL",
-            AdapterVersion);
+            skippedLevels == 0
+                ? "ORTOOLS_OPTIMAL"
+                : "ORTOOLS_OPTIMAL_CONSTANT_LEVELS_SKIPPED",
+            skippedLevels == 0
+                ? AdapterVersion
+                : string.Format(
+                    CultureInfo.InvariantCulture,
+                    "{0}; {1} of {2} lexicographic levels were constant over the " +
+                    "feasible set and were reported without a solve.",
+                    AdapterVersion,
+                    skippedLevels,
+                    problem.ObjectiveLevels.Count));
         return CandidateSelectionSolveResult.Optimal(incumbent!, diagnostics);
+    }
+
+    /// <summary>
+    /// Returns the constant value per level, or <c>null</c> where the level must
+    /// still be solved. At least one level is always left to solve so the pass
+    /// loop still produces an incumbent assignment.
+    /// </summary>
+    private static IReadOnlyList<long?> ConstantsToSkip(
+        CandidateSelectionProblem problem)
+    {
+        var constants = problem.ConstantObjectiveLevelValues().ToArray();
+
+        if (constants.All(value => value is not null))
+        {
+            constants[0] = null;
+        }
+
+        return constants;
     }
 
     private static BuildResult BuildModel(

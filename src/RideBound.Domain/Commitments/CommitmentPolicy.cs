@@ -133,7 +133,8 @@ public sealed class CommitmentPolicy
         MaterialRevisionRule materialRevisionRule,
         Duration? freezeHorizon = null,
         PromiseLock freezeHorizonLocks = PromiseLock.None,
-        PromiseLock finalConfirmationLocks = PromiseLock.None)
+        PromiseLock finalConfirmationLocks = PromiseLock.None,
+        PromiseLock ratchetLocks = PromiseLock.None)
     {
         ArgumentNullException.ThrowIfNull(limits);
         ArgumentNullException.ThrowIfNull(materialRevisionRule);
@@ -180,12 +181,25 @@ public sealed class CommitmentPolicy
                 nameof(finalConfirmationLocks));
         }
 
+        const PromiseLock orderedLocks =
+            PromiseLock.PickupEta | PromiseLock.DropEta;
+
+        // A ratchet needs an order on the field. Vehicle and stop identities have
+        // none, so only the two ETA fields can be relaxed this way.
+        if ((ratchetLocks & ~orderedLocks) != 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(ratchetLocks),
+                "Only pickup and drop ETA locks can be relaxed to a ratchet.");
+        }
+
         BudgetBasis = budgetBasis;
         _limits = materialized.ToFrozenDictionary(value => value.Dimension);
         MaterialRevisionRule = materialRevisionRule;
         FreezeHorizon = freezeHorizon;
         FreezeHorizonLocks = freezeHorizonLocks;
         FinalConfirmationLocks = finalConfirmationLocks;
+        RatchetLocks = ratchetLocks;
     }
 
     public string PolicyId { get; }
@@ -203,4 +217,14 @@ public sealed class CommitmentPolicy
     public PromiseLock FreezeHorizonLocks { get; }
 
     public PromiseLock FinalConfirmationLocks { get; }
+
+    /// <summary>
+    /// Locked ETA fields the decision may still improve. A field named here is
+    /// violated only when the candidate moves it later than the exogenous
+    /// projection; moving it earlier is allowed. This is the one-sided guarantee
+    /// used in the ride-pooling literature, where a matched request's latest
+    /// pickup time is tightened to the expected pickup time and never loosened.
+    /// Empty by default, so a lock keeps its exact-equality meaning.
+    /// </summary>
+    public PromiseLock RatchetLocks { get; }
 }

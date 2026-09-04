@@ -135,19 +135,54 @@ class PositionAndRequestMappingTests(unittest.TestCase):
         # Permille is 1/1000 of an edge, so rounding to nearest can put the
         # vehicle ahead of where it actually is and make every downstream ETA
         # optimistic. Flooring keeps RideBound behind the true position.
-        node = self.mapper.position((10, None, None))
-        start = self.mapper.position((10, 20, Decimal("0.0005")))
         edge = self.mapper.position((10, 20, Decimal("0.0015")))
         almost_end = self.mapper.position((10, 20, Decimal("0.9995")))
         end = self.mapper.position((10, 20, Decimal("1")))
-        self.assertEqual("node", node["kind"])
-        self.assertEqual(node, start)
         self.assertEqual("edgeProgress", edge["kind"])
         self.assertEqual(1, edge["progressPermille"])
         self.assertEqual("edgeProgress", almost_end["kind"])
         self.assertEqual(999, almost_end["progressPermille"])
         self.assertEqual(self.mapper.node_id(20), end["nodeId"])
         self.assertNotEqual(edge["fromNodeId"], edge["toNodeId"])
+
+    def test_an_entered_edge_is_never_reported_as_the_node_behind_it(self) -> None:
+        """Flooring must stay inside the edge, never step back off it.
+
+        A vehicle a fraction of a permille along 86->8 used to be reported as
+        standing on node 86. On a directed network that is not a conservative
+        approximation, it is a different place: the vehicle cannot un-enter
+        the edge. On w14-d20181112-s10-r1-w17-b1-ref-s7 the core costed 86->39
+        at 574.616 s from node 86 while the true cost from the vehicle's
+        position was 792.244 s - returning to node 86 alone costs 1352.586 s.
+        The 217.628 s gap turned 25.384 s of believed slack into a 192.244 s
+        pickup-window violation and halted the matrix.
+        """
+        node = self.mapper.position((10, None, None))
+        just_entered = self.mapper.position((10, 20, Decimal("0.000126")))
+        self.assertEqual("node", node["kind"])
+        self.assertEqual("edgeProgress", just_entered["kind"])
+        self.assertEqual(self.mapper.node_id(10), just_entered["fromNodeId"])
+        self.assertEqual(self.mapper.node_id(20), just_entered["toNodeId"])
+        # One permille is the smallest step the wire can carry, so it is the
+        # most conservative point the contract can express for an entered edge.
+        self.assertEqual(1, just_entered["progressPermille"])
+
+    def test_standing_on_the_from_node_is_still_a_node(self) -> None:
+        # Exactly zero progress means the vehicle has not entered the edge yet
+        # and is free to leave the node in any direction.
+        at_node = self.mapper.position((10, 20, Decimal("0")))
+        self.assertEqual("node", at_node["kind"])
+        self.assertEqual(self.mapper.node_id(10), at_node["nodeId"])
+
+    def test_every_entered_edge_stays_within_the_wire_contract(self) -> None:
+        # The core rejects any permille outside 1..999, so a clamp that fell
+        # to 0 or ran to 1000 would fail the conversation rather than the plan.
+        for numerator in ("0.0000001", "0.0004", "0.5", "0.9994", "0.999999"):
+            with self.subTest(progress=numerator):
+                mapped = self.mapper.position((10, 20, Decimal(numerator)))
+                self.assertEqual("edgeProgress", mapped["kind"])
+                self.assertGreaterEqual(mapped["progressPermille"], 1)
+                self.assertLessEqual(mapped["progressPermille"], 999)
 
     def test_position_rejects_partial_reverse_self_and_invalid_fraction(self) -> None:
         invalid = [

@@ -249,6 +249,147 @@ public sealed class Wp4RunnerConfigurationTests
     }
 
     [Fact]
+    public void Full_witness_collection_needs_its_own_profile()
+    {
+        var commitment = CommitmentConfiguration();
+        var baseJson = PublishedJson();
+
+        // Off by default, so the validator keeps its fail-fast path and its cost.
+        Assert.False(
+            Wp4RunnerConfiguration.Decode(
+                Encoding.UTF8.GetBytes(baseJson),
+                commitment).CollectAllCommitmentWitnesses);
+
+        // The frozen E1 configurations declare retained-portfolio-v1. Widening
+        // that profile in place would change their recorded witnesses and so
+        // their decision hashes, so it must never collect the full set.
+        var retained = Wp4RunnerConfiguration.Decode(
+            Encoding.UTF8.GetBytes(
+                WithProfile(
+                    baseJson,
+                    Wp4RunnerConfiguration.RetainedPortfolioEvidenceProfile)),
+            commitment);
+        Assert.False(retained.CollectAllCommitmentWitnesses);
+        Assert.True(
+            retained.SolverPolicyOptions!.CaptureCandidatePortfolioEvidence);
+
+        var fullWitness = Wp4RunnerConfiguration.Decode(
+            Encoding.UTF8.GetBytes(
+                WithProfile(
+                    baseJson,
+                    Wp4RunnerConfiguration
+                        .RetainedPortfolioFullWitnessEvidenceProfile)),
+            commitment);
+        Assert.True(fullWitness.CollectAllCommitmentWitnesses);
+        Assert.True(
+            fullWitness.SolverPolicyOptions!.CaptureCandidatePortfolioEvidence);
+        Assert.NotEqual(retained.ContentHash, fullWitness.ContentHash);
+
+        Assert.Throws<InvalidDataException>(
+            () => Wp4RunnerConfiguration.Decode(
+                Encoding.UTF8.GetBytes(
+                    WithProfile(baseJson, "retained-portfolio-v9")),
+                commitment));
+    }
+
+    [Fact]
+    public void Frozen_e1_configurations_do_not_collect_the_full_witness_set()
+    {
+        var commitment = CommitmentConfiguration();
+
+        foreach (var name in new[]
+                 {
+                     "wp13-e1-fleetpy-rolling-cost-retained-v1.json",
+                     "wp13-e1-fleetpy-ridebound-hard-vector-retained-v1.json",
+                 })
+        {
+            var json = File.ReadAllBytes(
+                Path.Combine(
+                    RepositoryRoot(),
+                    "benchmarks",
+                    "configurations",
+                    name));
+            var configuration = Wp4RunnerConfiguration.Decode(json, commitment);
+
+            Assert.Equal(
+                Wp4RunnerConfiguration.RetainedPortfolioEvidenceProfile,
+                configuration.SolverExecutionEvidenceProfile);
+            Assert.False(
+                configuration.CollectAllCommitmentWitnesses,
+                $"{name} must keep the evidence its freeze receipt recorded");
+        }
+    }
+
+    private static string WithProfile(string baseJson, string profile) =>
+        baseJson.Replace(
+            "\"policyVersion\": \"wp4-boundary-v1\"",
+            "\"policyVersion\": \"wp4-boundary-v1\",\n  " +
+            "\"emitSolverExecutionEvidence\": true,\n  " +
+            "\"solverExecutionEvidenceProfile\": " +
+            $"\"{profile}\"",
+            StringComparison.Ordinal);
+
+    [Fact]
+    public void Constant_level_skip_is_optional_and_off_unless_declared()
+    {
+        var commitment = CommitmentConfiguration();
+        var baseJson = PublishedJson();
+
+        // Every configuration written before RB-WP14-002 omits the field and must
+        // keep the solver work, and therefore the decision hash, it recorded.
+        var published = Wp4RunnerConfiguration.Decode(
+            Encoding.UTF8.GetBytes(baseJson),
+            commitment);
+
+        Assert.False(
+            published.SolverPolicyOptions!.ExecutionBudget.SolverBudget
+                .SkipConstantObjectiveLevels);
+        Assert.False(
+            published.CreateSolverPolicyOptionsForRun(19).ExecutionBudget
+                .SolverBudget.SkipConstantObjectiveLevels);
+
+        var optedInJson = baseJson.Replace(
+            "\"randomSeed\": 7",
+            "\"randomSeed\": 7,\n    \"skipConstantObjectiveLevels\": true",
+            StringComparison.Ordinal);
+        var optedIn = Wp4RunnerConfiguration.Decode(
+            Encoding.UTF8.GetBytes(optedInJson),
+            commitment);
+
+        Assert.True(
+            optedIn.SolverPolicyOptions!.ExecutionBudget.SolverBudget
+                .SkipConstantObjectiveLevels);
+        Assert.True(
+            optedIn.CreateSolverPolicyOptionsForRun(19).ExecutionBudget
+                .SolverBudget.SkipConstantObjectiveLevels);
+
+        // Opting in is a different configuration and must not share a hash.
+        Assert.NotEqual(published.ContentHash, optedIn.ContentHash);
+
+        var explicitlyOff = baseJson.Replace(
+            "\"randomSeed\": 7",
+            "\"randomSeed\": 7,\n    \"skipConstantObjectiveLevels\": false",
+            StringComparison.Ordinal);
+
+        Assert.False(
+            Wp4RunnerConfiguration.Decode(
+                    Encoding.UTF8.GetBytes(explicitlyOff),
+                    commitment)
+                .SolverPolicyOptions!.ExecutionBudget.SolverBudget
+                .SkipConstantObjectiveLevels);
+
+        var wrongType = baseJson.Replace(
+            "\"randomSeed\": 7",
+            "\"randomSeed\": 7,\n    \"skipConstantObjectiveLevels\": \"yes\"",
+            StringComparison.Ordinal);
+
+        Assert.Throws<InvalidDataException>(
+            () => Wp4RunnerConfiguration.Decode(
+                Encoding.UTF8.GetBytes(wrongType),
+                commitment));
+    }
+
+    [Fact]
     public void Candidate_retention_strategy_is_explicit_for_new_configs_and_legacy_when_absent()
     {
         var commitment = CommitmentConfiguration();

@@ -73,7 +73,8 @@ public sealed class CommitmentLockEvaluator
                 exogenous,
                 candidate,
                 locks,
-                rule);
+                rule,
+                policy.RatchetLocks);
         }
 
         return witnesses
@@ -89,7 +90,8 @@ public sealed class CommitmentLockEvaluator
         PromiseProjection previous,
         PromiseProjection candidate,
         PromiseLock locks,
-        string rule)
+        string rule,
+        PromiseLock ratchetLocks)
     {
         if ((locks & PromiseLock.Vehicle) != 0
             && previous.VehicleId != candidate.VehicleId)
@@ -115,17 +117,32 @@ public sealed class CommitmentLockEvaluator
         }
 
         if ((locks & PromiseLock.PickupEta) != 0
-            && previous.PickupEta != candidate.PickupEta)
+            && Violates(
+                previous.PickupEta,
+                candidate.PickupEta,
+                (ratchetLocks & PromiseLock.PickupEta) != 0))
         {
             witnesses.Add(
                 new CommitmentLockWitness(requestId, "pickup_eta_ms", rule));
         }
 
         if ((locks & PromiseLock.DropEta) != 0
-            && previous.DropEta != candidate.DropEta)
+            && Violates(
+                previous.DropEta,
+                candidate.DropEta,
+                (ratchetLocks & PromiseLock.DropEta) != 0))
         {
             witnesses.Add(
                 new CommitmentLockWitness(requestId, "drop_eta_ms", rule));
         }
     }
+
+    /// <summary>
+    /// An exact lock rejects any movement. A ratcheted lock rejects only movement
+    /// that makes the promise later, so the decision may still improve it.
+    /// </summary>
+    private static bool Violates(SimTime before, SimTime after, bool ratcheted) =>
+        ratcheted
+            ? after.Milliseconds > before.Milliseconds
+            : after != before;
 }

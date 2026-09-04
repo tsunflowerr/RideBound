@@ -113,7 +113,9 @@ public sealed class HardVectorCandidateAssessor
                         context.SourceEventSequence,
                         RevisionReasonCode: "C1_HARD_VECTOR",
                         ScopedVehicleId: set.VehicleId,
-                        InitialPromiseTrigger: context.InitialPromiseTrigger));
+                        InitialPromiseTrigger: context.InitialPromiseTrigger,
+                        CollectAllCommitmentWitnesses:
+                            context.CollectAllCommitmentWitnesses));
 
                 if (!validation.IsValid)
                 {

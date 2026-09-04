@@ -64,6 +64,94 @@ public sealed class OrToolsPolicyDifferentialTests
         }
     }
 
+    /// <summary>
+    /// RB-WP14-002 decision invariance on the production C1 mapping. The same 64
+    /// fixtures are selected with and without the constant-level skip; the chosen
+    /// candidates and every reported optimum must be identical.
+    /// </summary>
+    [Fact]
+    public void Constant_level_skip_does_not_change_the_c1_selection_for_64_seeds()
+    {
+        const int seedCount = 64;
+        var skippedAtLeastOnce = false;
+
+        for (var seed = 0; seed < seedCount; seed++)
+        {
+            var fixture = CreateFixture(seed);
+            var baseline = SelectHardVector(fixture, seed, skip: false);
+            var skipped = SelectHardVector(fixture, seed, skip: true);
+
+            Assert.True(baseline.IsSuccess, $"seed={seed}; {baseline.Witness?.Code}");
+            Assert.True(skipped.IsSuccess, $"seed={seed}; {skipped.Witness?.Code}");
+            Assert.Equal(
+                baseline.Selection!.Selection.VehiclePlans
+                    .Select(value => value.Candidate.CandidateId),
+                skipped.Selection!.Selection.VehiclePlans
+                    .Select(value => value.Candidate.CandidateId));
+
+            var baselineSolution = baseline.Selection.Execution.SolveResult.Solution!;
+            var skippedSolution = skipped.Selection.Execution.SolveResult.Solution!;
+            Assert.Equal(
+                baselineSolution.SelectedOptionIds,
+                skippedSolution.SelectedOptionIds);
+            Assert.Equal(
+                baselineSolution.ObjectiveValues,
+                skippedSolution.ObjectiveValues);
+
+            var baselineDiagnostics =
+                baseline.Selection.Execution.SolveResult.Diagnostics;
+            var skippedDiagnostics =
+                skipped.Selection.Execution.SolveResult.Diagnostics;
+            Assert.Equal(
+                baselineDiagnostics.ObjectiveBounds.Select(
+                    bound => (bound.LevelIndex, bound.IncumbentValue, bound.BestBound)),
+                skippedDiagnostics.ObjectiveBounds.Select(
+                    bound => (bound.LevelIndex, bound.IncumbentValue, bound.BestBound)));
+            Assert.True(
+                skippedDiagnostics.ConsumedDeterministicTimeMicros
+                    <= baselineDiagnostics.ConsumedDeterministicTimeMicros,
+                $"seed={seed} recorded more solver time after skipping");
+
+            skippedAtLeastOnce |= StringComparer.Ordinal.Equals(
+                skippedDiagnostics.DetailCode,
+                "ORTOOLS_OPTIMAL_CONSTANT_LEVELS_SKIPPED");
+        }
+
+        Assert.True(
+            skippedAtLeastOnce,
+            "no fixture exercised the skip, so the differential proves nothing");
+    }
+
+    private static SolverBackedFleetSelectionResult SelectHardVector(
+        Fixture fixture,
+        int seed,
+        bool skip)
+    {
+        var solverBudget = DeterministicSolverBudget.Create(
+            1_000_000,
+            10_000_000,
+            seed,
+            skipConstantObjectiveLevels: skip).Value!;
+        var executionBudget =
+            DeterministicCandidateSelectionExecutionBudget.Create(
+                1_000_000,
+                1_000_000,
+                solverBudget).Value!;
+        var accounting = CandidateSelectionPreSolveAccounting.Create(
+            executionBudget,
+            0,
+            0,
+            0).Value!;
+        return new SolverBackedFleetSelector(
+            new OrToolsCandidateSelectionSolver()).Select(
+                fixture.Sets,
+                SolverBackedObjectiveProfile.HardVector,
+                executionBudget,
+                accounting,
+                new AllowAllValidator(),
+                hardAssessments: fixture.Assessments);
+    }
+
     private static Fixture CreateFixture(int seed)
     {
         var random = new Random(seed);

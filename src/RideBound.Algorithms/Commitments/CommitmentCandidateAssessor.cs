@@ -16,7 +16,8 @@ public sealed record CommitmentMechanismContext(
     string PublicationScope,
     long SourceEventSequence,
     InitialPromiseTrigger InitialPromiseTrigger =
-        InitialPromiseTrigger.InitialAcceptance);
+        InitialPromiseTrigger.InitialAcceptance,
+    bool CollectAllCommitmentWitnesses = false);
 
 /// <summary>
 /// Rebuilds a named mechanism baseline from the configured material-revision

@@ -7,11 +7,13 @@ public sealed class DeterministicSolverBudget
     private DeterministicSolverBudget(
         long maximumWorkUnits,
         long maximumDeterministicTimeMicros,
-        long randomSeed)
+        long randomSeed,
+        bool skipConstantObjectiveLevels)
     {
         MaximumWorkUnits = maximumWorkUnits;
         MaximumDeterministicTimeMicros = maximumDeterministicTimeMicros;
         RandomSeed = randomSeed;
+        SkipConstantObjectiveLevels = skipConstantObjectiveLevels;
     }
 
     public long MaximumWorkUnits { get; }
@@ -20,12 +22,22 @@ public sealed class DeterministicSolverBudget
 
     public long RandomSeed { get; }
 
+    /// <summary>
+    /// Opt-in. When set, an adapter may skip the solve pass for a lexicographic
+    /// level that <see cref="CandidateSelectionProblem.ConstantObjectiveLevelValues"/>
+    /// proves constant, reporting the exact optimum without building a model.
+    /// Default is off so every published run keeps its recorded solver work, and
+    /// therefore its decision hash, unchanged.
+    /// </summary>
+    public bool SkipConstantObjectiveLevels { get; }
+
     public int WorkerCount => 1;
 
     public static DomainResult<DeterministicSolverBudget> Create(
         long maximumWorkUnits,
         long maximumDeterministicTimeMicros,
-        long randomSeed)
+        long randomSeed,
+        bool skipConstantObjectiveLevels = false)
     {
         if (maximumWorkUnits is < 1 or > DomainLimits.MaxCanonicalInteger
             || maximumDeterministicTimeMicros is < 1
@@ -42,7 +54,8 @@ public sealed class DeterministicSolverBudget
             new DeterministicSolverBudget(
                 maximumWorkUnits,
                 maximumDeterministicTimeMicros,
-                randomSeed));
+                randomSeed,
+                skipConstantObjectiveLevels));
     }
 }
 

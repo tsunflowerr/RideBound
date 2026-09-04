@@ -129,10 +129,13 @@ Ticket tài liệu phải:
 | WP12 Paper/release | Claim traceable và artifact tái lập | Q6 | WP9, WP10 |
 | WP13 Post-H6 diagnostics | Evidence sufficiency và mechanism record không causal | evidence gate | WP9, WP10 |
 | WP14 Exploratory ablation/Pareto | Service–burden frontier trên development cells mới | ablation gate | WP13 |
-| WP15–WP20 | Policy v2 → H7 → external/performance/rollout | roadmap gates | WP14 tuần tự |
+| WP14R Resilient execution | Attempt ledger, supervision, fault/resource/freeze-v2 gates | reliability gate | WP14-v1 fail-closed |
+| WP15–WP20 | Policy v2 → H7 → external/performance/rollout | roadmap gates | verified WP14R frontier/closure |
 
-WP1–WP10 và WP13 đã đóng. WP11/WP12 vẫn deferred. ADR-065 mở WP14 và ADR-066 đã
-ticket hóa `RB-WP14-001..014`; WP15–WP20 giữ roadmap-level cho tới WP14 exit gate.
+WP1–WP10 và WP13 đã đóng. WP11/WP12 vẫn deferred. WP14-v1 dừng fail-closed ở `009`.
+ADR-071/072 mở WP14R successor theo progressive gate; `001..007 Done`, `008 Ready`
+nhưng exact AC/host preflight phải pass trước launch; `009..012` unauthorized. WP15–WP20
+giữ roadmap-level tới verified WP14R frontier/closure gate.
 
 WP11 không nằm trên critical path nghiên cứu và không được làm chậm WP8–WP10.
 
@@ -151,21 +154,46 @@ WP3 `RB-WP3-001..014` đã hoàn thành theo
 Correctness boundary gồm incident separation, independent validator,
 certificate/hash/ACK và checkpoint/restore; không bao gồm C1 solver quality.
 
-Queue head hiện hành là: **RB-WP14-002 READY**. `RB-WP13-001..013` và `RB-WP14-001`
-đã Done; required Debug hiện là 860/860, pinned Python 212/212. Comparator quét đủ 80 transcript và bind 40/40 pair mà không
-đổi frozen H6 receipts. `005` chỉ tính exact recorded-witness clearance; `006` chỉ
-cross-tab pair-level evidence với immediate relation, không suy candidate feasibility
-hay causation. `007` chứng minh count-only generation complete/equal nhưng retained
-portfolio vẫn `notRecorded`; `008` đã version evidence vNext; `009` đã freeze/execute
-E1 đủ 80/80 arm và independently inventory 44.156/44.156 v1.2 decisions, zero failure.
-`010` đã reject đúng typed code cho 31/31 mutant và xác nhận E1↔H6 80/80 same-arm
-behavioral equality. `011` aggregate 40/40 generated-set equality cùng 33 pruned,
-7 eligible-not-selected, 1 selected và zero absent, chỉ descriptive/non-additive.
-`012` đã audit 80 file, deep-verify H6/E1 và đóng zero unresolved P0–P2; `013` đã khóa
-ba P3 limitation và ra verdict `openExploratoryAblationOnly`. `RB-WP14-001` đã khoá
-factor matrix F1–F6 và loại bốn factor bằng phép đo trên evidence đã ghi. Queue head
-`RB-WP14-002` là tối ưu solver trung tính giữa hai arm, điều kiện tài nguyên cho
-matrix; ablation matrix và policy v2 vẫn chưa active.
+Queue head hiện hành là **RB-WP14R-008 CLOSED — FAIL CLOSED**. Ngày 2026-08-29 host
+preflight đã pass lần đầu, attempt 1 mở, nhưng child không verify được freeze v2 vì
+`PROCESSOR_ARCHITECTURE` không nằm trong `inheritedEnvironmentNames`, nên
+`platform.machine()` trả về rỗng và host fingerprint lệch. Cả hai attempt chết giống
+nhau trong 32,5 s; job 1 `exhausted`; zero simulation, zero outcome. Đây là defect tất
+định của protocol, không phải sự cố host. `009..012` không được authorize dưới freeze
+v2; mở khoá cần **freeze v3 trước outcome** do chủ nghiên cứu quyết. Không hồi sinh job
+đã exhausted, không sửa file freeze-bound giữa run.
+WP14-v1 vẫn **RB-WP14-009 CLOSED — FAIL CLOSED**,
+`010..014` không được
+authorize. `RB-WP13-001..013` và
+`RB-WP14-001..005/008` đã Done; `006/007` Deferred. Required .NET hiện là 908/908,
+pinned Python/FleetPy hiện là 337/337. Comparator quét đủ 80
+transcript và bind 40/40 pair mà không đổi frozen H6 receipts. `005` chỉ tính exact
+recorded-witness clearance; `006` chỉ cross-tab pair-level evidence với immediate
+relation, không suy candidate feasibility hay causation. `007` chứng minh count-only
+generation complete/equal nhưng retained portfolio vẫn `notRecorded`; `008` đã version
+evidence vNext; `009` đã freeze/execute E1 đủ 80/80 arm và independently inventory
+44.156/44.156 v1.2 decisions, zero failure. `010` đã reject đúng typed code cho 31/31
+mutant và xác nhận E1↔H6 80/80 same-arm behavioral equality. `011` aggregate 40/40
+generated-set equality cùng 33 pruned, 7 eligible-not-selected, 1 selected và zero
+absent, chỉ descriptive/non-additive. `012` đã audit 80 file, deep-verify H6/E1 và đóng
+zero unresolved P0–P2; `013` đã khóa ba P3 limitation và ra verdict
+`openExploratoryAblationOnly`. `RB-WP14-001` đã khoá factor matrix F1–F6 và loại bốn
+factor bằng phép đo trên evidence đã ghi. `002` đã đóng tối ưu solver trung tính
+giữa hai arm; `003` đóng full witness profile; `004` dựng 16 development cell rời
+H6; `005` hiện thực F1/F2. `008` đã exclusive-freeze exact 160 job cùng analyzer,
+runtime/source seals và resource envelope, receipt SHA `1ce26ff0…37a55`. `009`
+đã dừng đúng contract sau 1 valid B1/1 partial C1; recovery không re-execute,
+partial được giữ và không retry/replacement. Full matrix/frontier không tồn tại;
+policy v2/H7/WP15 vẫn chưa active. ADR-071 mở successor riêng WP14R mà không rescue
+freeze v1: `001` full-PDF/source refinement, `002` immutable two-attempt ledger và
+`003` bounded incremental supervisor đã Done. Attempt không phải unit; exit 0 vẫn chờ
+  bundle verifier. `004` đã đóng actual hard-kill/tree/recovery evidence; `005` đã
+  dimension fixed mechanics corpus và optimize schema-validator cache; `006` đã thêm
+  verifier read-only độc lập, sửa Windows junction/TOCTOU gaps và bắt đúng 15/15 retained
+  mutation class. `007` đã bind exact source/mechanics/PDF evidence vào freeze v2,
+  sửa stable recovery command/output wrapper và thêm AC/power/quiescence gate.
+  Targeted WP14R 95/95; preflight fail đúng `POWER_SOURCE_NOT_AC`, zero attempt.
+  Chỉ `008` Ready nhưng host-blocked; `009..012` scientific execution vẫn unauthorized.
 
 WP6 đã đóng bằng:
 

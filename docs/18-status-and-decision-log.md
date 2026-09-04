@@ -1,7 +1,7 @@
 # Trạng thái và decision log
 
 > Tệp sống — cập nhật ở cuối mọi task RideBound
-> Cập nhật gần nhất: 2026-08-24
+> Cập nhật gần nhất: 2026-08-28
 
 ## 1. Trạng thái tổng thể
 
@@ -9,8 +9,8 @@
 |---|---|
 | Research direction | `LOCKED_FOR_IMPLEMENTATION_PLANNING` |
 | Documentation | `MIGRATED_AND_VERIFIED_V1` |
-| Implementation | `WP1_Q1_COMPLETE; WP2_COMPLETE; WP3_COMPLETE_14_OF_14; WP4_COMPLETE_14_OF_14; WP5_COMPLETE_14_OF_14; WP6_COMPLETE_14_OF_14; WP7_COMPLETE_14_OF_14; WP8_COMPLETE_14_OF_14; WP9_COMPLETE_001_TO_009; WP10_COMPLETE_NEGATIVE_CAPABILITY_001_TO_010; WP13_COMPLETE_001_TO_013; WP14_001_DONE_002_READY` |
-| Current work package | `WP14 Exploratory ablation IN PROGRESS; RB-WP14-002 READY; H6/WP10/WP13 frozen` |
+| Implementation | `WP1_Q1_COMPLETE; WP2_COMPLETE; WP3_COMPLETE_14_OF_14; WP4_COMPLETE_14_OF_14; WP5_COMPLETE_14_OF_14; WP6_COMPLETE_14_OF_14; WP7_COMPLETE_14_OF_14; WP8_COMPLETE_14_OF_14; WP9_COMPLETE_001_TO_009; WP10_COMPLETE_NEGATIVE_CAPABILITY_001_TO_010; WP13_COMPLETE_001_TO_013; WP14_V1_STOPPED_FAIL; WP14R_001_TO_008R_DONE_009_MATRIX_HALTED_40_OF_160_010_SLICE_DONE` |
+| Current work package | `ADR-073 freeze v3 AUTHORIZED, receipt SHA 07baeda2…fa9227; RB-WP14R-008 remains CLOSED — FAIL CLOSED under v2; RB-WP14R-008R paired gate running under v3; 009..012/WP15/H7 UNAUTHORIZED; WP14-v1 and H6/E1 frozen; F2-inert prediction registered pre-outcome` |
 | Repository | `https://github.com/tsunflowerr/RideBound` |
 | Main baseline | B1 `rolling-cost` |
 | Main treatment | C1 `ridebound-hard-vector` |
@@ -386,6 +386,9 @@
 - Công việc hiện hành theo yêu cầu người dùng: review file-by-file WP1–WP10, đối
   chiếu full PDF, thử optimization exploratory không rescue H6, benchmark và báo cáo
   PDF cuối.
+- WP14R đã hoàn tất ledger, supervisor/process tree, hard-crash recovery, mechanics
+  resource dimensioning và independent verifier/mutation matrix. Freeze v2 còn chờ
+  explicit decision `007`; mọi scientific matrix/frontier `008..012` vẫn chưa làm.
 
 ## 4. Baseline verification
 
@@ -1640,6 +1643,89 @@ WP10 full .NET/FleetPy/format/Release/static gates: PASS in final cross-WP revie
 Date: 2026-08-23
 ```
 
+### RB-WP14R-001/002 refinement và immutable attempt ledger
+
+```text
+Full-PDF corpus: Kalibera–Jones 12/12 + Mytkowicz et al. 12/12 pages read/rendered
+Targeted pinned Python ledger: 13/13 passed; 0 failed; 0 skipped
+Full pinned Python/FleetPy: 255/255 passed; 0 failed; 0 skipped
+Required dotnet test RideBound.slnx: 908/908 passed; 0 failed; 0 skipped
+Benchmarking.Tests: 148/148 in 1 m 55 s; hard CPU ceiling unchanged at 120 s
+Format PASS; JSON 1.339/1.339; schemas 83/83; Markdown 280 files/366 links/0 broken
+Historical WP14-v1 freeze reverify PASS: exact 160 jobs/46 files/SHA `1ce26ff0…37a55`
+Scientific execution: none; WP14-v1 receipt/partial/46 bound files unchanged
+Evidence: docs/benchmarking/wp14r-002-immutable-attempt-ledger-2026-08-26.md
+Date: 2026-08-26
+```
+
+### RB-WP14R-003 supervised incremental process evidence
+
+```text
+Targeted supervisor with ResourceWarning treated as error: 15/15 passed
+Targeted ledger + supervisor: 28/28 passed
+Full pinned Python/FleetPy: 270/270 passed; 0 failed; 0 skipped
+Required dotnet test RideBound.slnx: 908/908 passed; 0 failed; 0 skipped
+Benchmarking.Tests: 148/148 in 1 m 46 s; hard CPU ceiling unchanged at 120 s
+Format PASS; JSON 1.341/1.341; schemas 85/85; Markdown 282 files/369 links/0 broken
+Historical WP14-v1 freeze reverify PASS: exact 160 jobs/46 files/SHA `1ce26ff0…37a55`
+Scientific execution: none; exit zero remains awaiting independent bundle verification
+Evidence: docs/benchmarking/wp14r-003-supervised-process-evidence-2026-08-26.md
+Date: 2026-08-26
+```
+
+### RB-WP14R-004 hard-crash và stale-open recovery evidence
+
+```text
+Targeted ledger + supervisor + fault/recovery: 39/39 passed
+Actual Windows hard-kill: 11 supervisor points + receipt-to-terminal recovery point
+Full pinned Python/FleetPy: 281/281 passed; 0 failed; 0 skipped
+Required dotnet test RideBound.slnx: 908/908 passed; 0 failed; 0 skipped
+Benchmarking.Tests: 148/148 in 1 m 59 s; hard CPU ceiling unchanged at 120 s
+Format PASS; JSON 1.342/1.342; schemas 86/86; Markdown 283 files/371 links/0 broken
+Historical WP14-v1 freeze reverify PASS: exact 160 jobs/46 files/SHA `1ce26ff0…37a55`
+Scientific execution: none; uncertain tree exhausts and exit zero still awaits verifier
+Evidence: docs/benchmarking/wp14r-004-hard-crash-recovery-evidence-2026-08-26.md
+Date: 2026-08-26
+```
+
+### RB-WP14R-005 mechanics resource dimension và optimization evidence
+
+```text
+Retained v1 pilot: 42 pass + 6 large-journal timeouts; report SHA a2795a84…6817f
+Retained v2 before-cache matrix: 48/48 pass; report SHA 96e274a2…c2ce5
+Authoritative v3 after-cache matrix: 48/48 pass; report SHA 44dce55e…78bce
+Fixed 8 MiB v3 verifier peak: 65,875,968 B / 268,435,456 B envelope — PASS
+Observed large median launcher/verifier: 71.30/35.39 s → 4.68/1.96 s
+Targeted WP14R ledger/supervisor/fault/recovery/dimension: 50/50 passed
+Full pinned Python/FleetPy: 292/292 passed; 0 failed; 0 skipped
+Required dotnet test RideBound.slnx: 908/908 passed; 0 failed; 0 skipped
+Benchmarking.Tests: 148/148 in 1 m 54 s; hard CPU ceiling unchanged at 120 s
+Format PASS; JSON 1.343/1.343; schemas 87/87; Markdown 284 files/373 links/0 broken
+Historical freeze PASS exact 160 jobs/46 files/SHA 1ce26ff0…37a55
+Scientific execution: none; one Windows host session/matrix, no CI/SLA/population claim
+Evidence: docs/benchmarking/wp14r-005-mechanics-resource-dimension-evidence-2026-08-27.md
+Date: 2026-08-27
+```
+
+### RB-WP14R-006 independent verifier và mutation evidence
+
+```text
+Authoritative fixture receipt: SHA 1e4a6450…372104; current fixture/schema/source provenance
+Authoritative mutation report: SHA 9d8aacf4…72e1e; 15/15 unique classes caught đúng typed code
+Valid fixtures: clean complete-open + partial recovery + explicit legacy đều PASS
+Independent verifier: read-only, không import/call writer/supervisor/recovery implementation
+Source review: sửa Windows junction blindness và hai TOCTOU inventory windows
+Targeted WP14R ledger/supervisor/fault/recovery/dimension/independent: 64/64 passed
+Full pinned Python/FleetPy: 306/306 passed; 0 failed; 0 skipped
+Required dotnet test RideBound.slnx: 908/908 passed; 0 failed; 0 skipped
+Benchmarking.Tests: 148/148 in 1 m 49 s; hard CPU ceiling unchanged at 120 s
+Format + historical freeze-v1 exact reverify: PASS
+JSON 1.346/1.346; schemas 90/90; Markdown 285 files/380 local links/0 broken
+Scientific execution/outcome read: none
+Evidence: docs/benchmarking/wp14r-006-independent-verifier-evidence-2026-08-27.md
+Date: 2026-08-27
+```
+
 ## 5. Next action
 
 WP1–WP10 Complete. WP9 H6 vẫn âm ở cả hai điểm năng lực: service gate FAIL tại 8
@@ -1663,8 +1749,8 @@ span-based marker check, medium public-drain pass 1/1 trong 1 phút 33 giây mà
 record set bind exact 40/40 pair và report `002`. `RB-WP13-004 Done`: comparator quét
 đủ 80 primary transcripts/44.156 decisions tới EOF; C1 có immediate accepted count thấp
 hơn ở 8/40 pair, bằng ở 32/40 và không cao hơn ở pair nào. Đây là descriptive action
-comparison, không phải downstream service effect hay causal mechanism. Queue head duy
-nhất hiện tại là `RB-WP14-001` refinement. `005` đã link 41 B1 selected candidates với exact C1
+comparison, không phải downstream service effect hay causal mechanism. Queue head tại
+mốc đó là `RB-WP14-001` refinement. `005` đã link 41 B1 selected candidates với exact C1
 evidence: 33 commitment-pruned, 7 absent/not-recorded, 1 C1-selected; clearance chỉ
 xóa recorded witness và giữ feasibility `notEvaluated` do validator fail-fast. `006`
 đã cross-tab evidence với immediate relation: 7 budget + 1 lock occurrences ở tám
@@ -1695,12 +1781,46 @@ WP14 chỉ được mở ở mức refinement trên development namespace/cells 
 roadmap-level; không đổi margin/panel/failed-job treatment hoặc rescue confirmatory
 result hậu outcome.
 
+`RB-WP14-001..005/008` Done; `006/007` Deferred; `009` đã đóng **FAIL CLOSED**.
+ADR-069/receipt SHA `1ce26ff0…37a55` pre-outcome freeze exact 16×10 = 160 jobs,
+1.728 arrivals/arm, source/runtime/tree seals, analyzer hai trục và resource
+envelope. Paired dry-run chỉ có B1 valid; C1 partial thiếu manifest được giữ nguyên,
+không retry/replace. Vì vậy `010..014` không được authorize dưới freeze v1. H6/E1
+raw roots vẫn read-only và policy v2/H7/WP15 chưa được authorize.
+
+ADR-071 đã mở successor mechanics-only `WP14R`, không mở lại WP14-v1. In-app Browser
+và full-PDF QA đọc 24/24 trang Kalibera–Jones/Mytkowicz, từ đó tách host/process/job/
+verifier variation, setup bias và fault intervention khỏi scientific outcome. `001`
+refinement và `002` immutable attempt ledger đã Done: tối đa hai attempt/job, attempt
+không phải unit, recovery chỉ theo mechanical validity, canonical/exclusive receipts,
+stable log/output inventory và tamper/state-machine gates. Full pinned Python 255/255,
+required .NET 908/908. `003` sau đó thêm exact command/privacy binding, bounded
+incremental stdout/stderr/heartbeat journal, Windows Job Object/POSIX process group và
+strict partial/terminal verifier; exit zero chỉ `awaitingBundleVerification`. `004` nay
+đã hard-kill outer supervisor ở durable boundaries, thêm `launchIntent`, immutable
+recovery receipt và classification-aware disposition: incomplete/ambiguous/uncertain
+đều exhaust, proven-safe tree mới mở attempt 2. Actual Windows Job Object giết cả child/
+grandchild; POSIX exact-group path có contract test. `005` đã giữ ba mechanics matrix:
+v1 pilot retain sáu large timeout, v2 before-cache 48/48 pass và v3 after-cache 48/48
+pass. Fixed 8 MiB verifier peak `65,875,968` B dưới envelope 256 MiB; không ngoại suy
+two-stream hard cap. Source review cache compiled schema validator và bind log/report/
+schema-tree provenance; observed large launcher/verifier median giảm `71.30/35.39 s`
+xuống `4.68/1.96 s`, chỉ descriptive within-host. `006` thêm verifier read-only
+độc lập với writer/supervisor/recovery implementation, ba valid fixture và 15/15
+retained mutation class. Review sửa Python 3.10 Windows-junction blindness và hai
+TOCTOU inventory windows; current/legacy provenance đều explicit. Full pinned Python
+nay 306/306, required .NET 908/908. ADR-072 sau đó đã khóa exact freeze v2;
+`RB-WP14R-008 Ready` nhưng AC host preflight đang chặn launch, `009..012` unauthorized.
+
 ## 6. Open decisions
 
 | ID | Câu hỏi | Khi nào khóa |
 |---|---|---|
-| O-010 | Mức số của F1–F6 và denominator được freeze ở giá trị nào | `RB-WP14-008` freeze manifest, derive từ development panel |
-| O-011 | Development panel của WP14 lấy nguồn và chọn mẫu ra sao mà không chạm H6 | `RB-WP14-004` |
+| O-012 | Frontier F1/F2 + budget sweep có đủ để mở F3–F6 hoặc WP15 không | `RB-WP14-014`, sau independent verifier/audit `011..013` |
+
+O-013 được khóa bởi ADR-072: mechanics `002..006` đủ để authorize exact protocol
+freeze v2, nhưng scientific launch vẫn fail closed cho tới khi frozen host preflight
+pass; preflight hiện tại fail `POWER_SOURCE_NOT_AC` và không tiêu thụ attempt.
 
 O-001 đã được khóa bởi ADR-018: B1 WP2 không cho incumbent accepted request đổi
 vehicle; WP4 chỉ mở lại bằng ADR superseding và atomic multi-vehicle evidence.
@@ -1715,6 +1835,12 @@ AMoD2 chỉ là hướng tương lai riêng.
 O-009 được khóa bởi ADR-059: H6 đủ cho count-only covariates nhưng không ghi full
 retained candidate identities/routes/objectives hoặc post-clearance state; evidence
 vNext cần cho candidate-level portfolio/replay questions và không backfill H6.
+O-010 được khóa bởi ADR-069: active matrix có 10 arm, 16 cell, 108 arrivals/job và
+1.728 arrivals/arm; F3–F6 vẫn Deferred chứ không có mức hậu outcome. O-011 được
+khóa bởi ADR-068: development panel 2018-11-12/13 rời H6 trên cả bảy trục.
+O-012 không thể được trả lời dưới freeze v1 vì matrix/frontier không tồn tại; WP14R
+không tự chuyển quyền đó, và chỉ một verified successor frontier mới có thể đưa câu
+hỏi trở lại closure decision.
 
 ## 7. Decision log
 
@@ -4284,13 +4410,318 @@ compact receipt `wp14-001-mechanism-probe-v1-summary.json` 5.907 byte SHA
 làm rỗng; 143+212 request bị chặn tức thời; B1 có **0** commitment prune ở cả hai
 panel; 94,40–97,78% lexicographic level là thoái hoá; phân phối tiêu thụ lưỡng cực
 với 76,8% bằng 0 và p95 = 234.222 ms. Full-PDF corpus 77/77 trang, inventory tại
-`E:\RideBoundDataesearch\pdf-20260824-wp14`. Review:
+`E:\RideBoundData\research\pdf-20260824-wp14`. Review:
 `reviews/wp1-wp13-optimization-and-fairness/README.md`.
 
 **Consequences:** `RB-WP14-001 Done`, `RB-WP14-002 Ready`. H6/WP10 outcomes, margin,
 panels và frozen verifier provenance không đổi; probe chỉ đọc và không ghi vào raw
 root. Ba giới hạn claim mới thu hẹp cách mô tả treatment nhưng không đổi kết quả.
 WP15–WP20 vẫn roadmap-level.
+
+### ADR-067 — 2026-08-24 — Accepted
+
+**Context:** `RB-WP14-002` phải giảm chi phí solver để ablation matrix khả thi;
+WP13-002 từng fail đúng ceiling CPU 120 s trên medium public drain với một cấu
+hình. Đo trên evidence đã ghi, 94,40–97,78% lexicographic level là hằng số trên
+toàn tập khả thi, nên pass của chúng chỉ chứng minh optimum của một hằng số. Khi
+hiện thực mới phát hiện một ràng buộc chưa từng được ghi: `executionEvidence` nằm
+**bên trong** hash projection của decision và chứa `consumedDeterministicTimeMicros`,
+nên bớt pass tất yếu đổi `decisionHash`. Ticket ban đầu yêu cầu transcript
+byte-identical, điều không thể đạt mà không bịa số đo.
+
+**Decision:** (1) Thêm `CandidateSelectionProblem.ConstantObjectiveLevelValues` ở
+tầng Application: một level là hằng số khi mọi option của mọi vehicle đóng góp cùng
+giá trị, vì `sum` cho `Σ_v c_v` và `maximum` cho `max_v c_v` với mọi assignment khả
+thi; overflow được báo là không hằng số để giữ nguyên đường xử lý cũ. (2) Adapter
+OR-Tools bỏ pass cho level hằng số, ghi đúng optimum vào `objectiveBounds`, không
+đưa ràng buộc vô hiệu vào model, và luôn để lại ít nhất một level được giải để vẫn
+có incumbent. (3) Sửa contract của ticket: cờ `solverExecution.skipConstantObjectiveLevels`
+là **opt-in, mặc định tắt**, allowed nhưng không required, nên mọi configuration đã
+publish và mọi hash đã ghi không đổi. (4) Khi bật, bảo toàn action, candidate được
+chọn, `stateAfterHash` và optimum mọi level; `consumedDeterministicTimeMicros` và
+`detailCode` đổi một cách trung thực, `decisionHash` theo đó cũng đổi. (5) Không
+claim wall-clock; chỉ claim số pass giảm, đại lượng tất định.
+
+**Evidence:** Differential 64 seed trên production C1 mapping cho selected IDs,
+objective values và mọi bound bằng nhau khi bật/tắt cờ. Unit 5/5 cho phát hiện hằng
+số, adapter 6/6 gồm mutation guard và edge hierarchy toàn hằng số, config 1/1 cho
+cờ vắng/true/false/sai kiểu. Toàn bộ 860 test cũ pass **không sửa một dòng**.
+Required `dotnet test RideBound.slnx` 873/873 và pinned Python 212/212, zero skip;
+`dotnet format --verify-no-changes` và `git diff --check` pass. Report:
+`benchmarking/wp14-002-constant-level-skip-2026-08-24.md`.
+
+**Consequences:** `RB-WP14-002 Done`, `RB-WP14-003 Ready`. H6/WP10/WP13 outcomes,
+margin, panels và mọi frozen receipt không đổi vì mặc định tắt. Việc evidence nằm
+trong hash được ghi lại như ràng buộc kiến trúc: mọi thay đổi tương lai làm đổi số
+đo solver đều phải opt-in theo cùng khuôn mẫu này.
+
+### ADR-068 — 2026-08-24 — Accepted
+
+**Context:** `RB-WP14-003` mở witness set đầy đủ, `RB-WP14-004` dựng development
+panel. Trong lúc thực hiện, hai ràng buộc provenance chưa từng được viết ra đã lộ
+diện. Thứ nhất, bản đầu của `003` suy cờ thu thập witness từ profile
+`retained-portfolio-v1`, đúng profile mà hai configuration E1 đã đóng băng khai
+báo; nới nó tại chỗ sẽ đổi evidence và `decisionHash` của E1, phá freeze chain mà
+không test nào bắt được. Thứ hai, `wp13_full_audit` bind historical H6 verifier qua
+`git show HEAD:` và bind 62 frozen source file theo byte trên đĩa; một commit của
+chủ repository lúc 23:07 làm HEAD dịch, và `RB-WP14-002/003` sửa
+`Wp4RunnerConfiguration.cs` — cả hai đều nằm trong tập bị pin. WP13 đã đóng và WP14
+được phép phát triển cùng cây mã, nên hai binding đó không thể giữ nguyên dạng cũ.
+
+**Decision:** (1) Witness set đầy đủ dùng profile **riêng**
+`retained-portfolio-full-witness-v1`; `retained-portfolio-v1` giữ nguyên ngữ nghĩa
+vĩnh viễn, kèm regression đọc thẳng hai file config E1 để khoá tính chất đó.
+(2) Historical verifier bind theo **commit cụ thể** `2d6791fb…97551` thay vì `HEAD`,
+vì bất biến thật là “còn khôi phục được từ repository này”, không phải “bằng HEAD”.
+(3) Thêm declaration `benchmarks/scenarios/wp13-e1/source-divergence-v1.json`: một
+frozen source file chỉ được khác đĩa khi được khai báo ở đó kèm frozen hash, ticket
+và lý do, **và** bytes gốc vẫn khôi phục được từ commit khôi phục đã pin; thiếu bất
+kỳ điều kiện nào là fail closed. (4) Development panel `wp14-development-panel-v1`
+gồm 16 cell trên 2018-11-12/13 với hai cửa sổ trong ngày; 2018-11-11 bị loại vì
+verified inventory không có `_tt_factors.csv` cho ngày đó. (5) Leakage audit so bảy
+trục với cả hai grid H6 và phải cho 0 giao trên tất cả.
+
+**Evidence:** Development receipt `development-panel-audit-v1.json` 5.109 byte SHA
+`f1c731f6…bfd099ba`; compact `wp14-004-development-panel-v1-summary.json`. 0 giao
+trên cả bảy trục giữa 16 development cell và 40 frozen cell; development
+2018-11-12/13 với frozen 2018-11-14…18. Hai mutation test chứng minh audit bắt được
+leakage khi mượn `demandMemberPath` hoặc `scenarioId` của H6. Sáu test khoá
+declaration divergence, gồm một test khẳng định mọi frozen file **không** được khai
+báo vẫn byte-identical trên đĩa. Required `dotnet test RideBound.slnx` 880/880 và
+pinned Python 225/225, zero skip. Reports:
+`benchmarking/wp14-003-full-witness-set-2026-08-24.md`,
+`benchmarking/wp14-004-development-panel-2026-08-24.md`.
+
+**Consequences:** `RB-WP14-003 Done`, `RB-WP14-004 Done`, `RB-WP14-005 Ready`. E1
+freeze chain vẫn đầy đủ: 61/62 frozen file byte-identical trên đĩa, file thứ 62
+được khai báo và bytes gốc khôi phục được. H6/WP10/WP13 outcomes không đổi. Từ nay
+mọi ticket sửa frozen source phải cập nhật declaration; declaration dài quá tám mục
+là tín hiệu phải re-freeze thay vì tiếp tục nối thêm.
+
+### ADR-069 — 2026-08-26 — Accepted
+
+**Context:** `RB-WP14-008` phải freeze toàn bộ development ablation trước outcome.
+Review bản nháp phát hiện manifest chỉ hash grid/config không đủ: analyzer, Runner,
+runtime hoặc config có thể đổi sau freeze; generic bundle verifier cũng không tự
+chứng minh bundle nằm dưới đúng job; analyzer dùng percentile floor bị off-by-one,
+float evidence và silent duplicate overwrite. 160 test-run IDs vẫn có thể “pass”
+trong khi các lỗi integrity/logic này tồn tại.
+
+**Decision:** (1) Freeze exact 16 cells × 10 arms = 160 unique jobs, 108 arrivals/
+job, 1.728 arrivals/arm, paired development cell, seed 7 non-replicate và
+retain-typed-failure/no-retry/no-replacement. (2) Bind 46 repository files, whole
+adapter/development-fixture/published-Runner trees, Runner DLL, FleetPy clean commit,
+CPython capability probe và whole .NET 10.0.9 runtime tree. (3) Exact bốn H6/E1
+forbidden roots; ancestor/descendant overlap đều fail. (4) Freeze resource-only
+envelope từ E1 Panel A: 40 jobs, median 971.998 ms, projection 15,6 GB/11 giờ p4,
+minimum 25 GiB, reserve 5 GiB, max 20 GiB, job 2.700 s, matrix 57.600 s. (5) Matrix
+runner verify canonical receipt before launch, hash config/driver/scenario, verify
+bundle độc lập rồi bind label/job/scenario/repeat; derived summary exclusive-create.
+(6) Analyzer verify/read EOF từng bundle, reject duplicates, dùng integer-canonical
+completion/median, nearest-rank p95, tách pickup improvement/worsening, báo per-rider
+tail và Pareto dominance trên đúng hai trục, không scalar/ranking. (7) Browser + PDF
+QA xác nhận bản Alonso-Mora et al. MIT CSAIL là full text 6/6 trang; không copy số
+paper làm default.
+
+**Evidence:** Receipt
+`benchmarks/scenarios/wp14-development/freeze-receipt-v1.json`, 101.719 byte,
+SHA-256 `1ce26ff0f7d87c30d050e57107ad3e118af7f4b88fe04e62e48376ab34c37a55`,
+verify canonical `jobs=160`, `repositoryFiles=46`, status pass. Targeted/mutation
+17/17; required `.NET` 908/908; full pinned CPython/FleetPy 242/242; zero skip.
+1.639 non-negative JSON/81 Draft 2020-12 schemas, format/diff/Markdown/link/line
+gates pass. Report:
+`benchmarking/wp14-008-development-ablation-freeze-2026-08-26.md`.
+
+**Consequences:** `RB-WP14-008 Done`, `RB-WP14-009 Ready`; `006/007` vẫn Deferred.
+Mọi outcome WP14 phải đi qua receipt này; source đã bind không được sửa sau run đầu.
+`009` chỉ paired dry-run/resource gate. H6/WP10/WP13 outcomes, margin, panels và raw
+roots không đổi; H7/policy v2/WP15 chưa được authorize.
+
+### ADR-070 — 2026-08-26 — Accepted
+
+**Context:** `RB-WP14-009` chạy đúng paired B1/C1 dry-run đã freeze trước khi được
+phép mở matrix 160 job. B1 hoàn tất và pass independent verifier. Khi C1 đang ghi
+transcript, session bị chấm dứt ngoài đường timeout có kiểm soát; nguồn chấm dứt
+không được process ghi lại. C1 còn partial transcript 83.364.599 byte và thiếu
+`bundle-manifest.json`. Freeze v1 quy định
+`retainTypedFailureNoRetryNoReplacement`, nên không được xóa, chạy lại hoặc thay
+thế partial bằng một observation thuận lợi hơn.
+
+**Decision:** (1) Recovery chỉ verify B1 thành `reusedVerified`, reject C1 partial
+và ghi summary schema-valid `1 completed / 1 failed`; không re-execute simulation.
+(2) Đóng `RB-WP14-009` bằng verdict `resourceGateFailedClosed`, không đánh dấu Done.
+(3) `RB-WP14-010..014` không được authorize dưới freeze v1; `006/007` vẫn Deferred.
+(4) B1-only projection 20.037.964.320 byte/8,39 giờ p4 chỉ là kiểm tra trần bảo thủ,
+không thể pass paired gate và không phải speedup claim. (5) Không đọc hoặc dùng
+outcome completion/burden để sửa factor, denominator hay freeze. Một successor nếu
+có phải được owner cho phép bằng protocol/ADR mới, không được thay thế receipt v1.
+
+**Evidence:** Source-controlled summary
+`benchmarking/evidence/wp14-009-paired-dry-run-resource-gate-v1-summary.json`;
+external recovery summary `E:\RideBoundData\wp14\dryrun-summary-v1.json`, 2.077 byte,
+SHA-256 `acc521bc5556ed2ed0f2523bcc889e7513ff6b3aad911551e2acd165ac9a4cc7`,
+Draft 2020-12 pass. B1: 755.379 ms, 824 decisions, transcript 125.230.809 byte,
+bundle 125.237.277 byte; independent verifier pass với behavioral hash và audited
+solver evidence. C1 partial được giữ nguyên, không retry/replacement. Report:
+`benchmarking/wp14-009-paired-dry-run-resource-gate-2026-08-26.md`.
+
+**Consequences:** WP14 freeze v1 dừng fail-closed tại `009`; full matrix/frontier
+không tồn tại và không được suy diễn. H6/WP10/WP13 outcomes, ADR-069 freeze receipt,
+46 bound repository files và bốn forbidden raw roots không đổi.
+
+### ADR-071 — 2026-08-26 — Accepted
+
+**Context:** Owner yêu cầu tiếp tục review/tối ưu/benchmark theo ordered ticket process
+sau khi WP14-v1 dừng ở resource gate. Source audit cho thấy
+`wp14_run_matrix.py` dùng `subprocess.run(capture_output=True)` và chỉ publish log sau
+child return/controlled timeout; outer launcher termination có thể để partial output
+nhưng không log/summary. File này đã nằm trong 46-file freeze, nên sửa tại chỗ sẽ phá
+freeze. In-app Browser và PDF QA đã đọc toàn bộ Kalibera & Jones 2013 (12 trang) và
+Mytkowicz et al. 2009 (12 trang): variation cần tách theo experimental level; repeated
+same setup không loại systematic setup bias; setup randomization/intervention hỗ trợ
+methodology nhưng không cho phép retry hậu outcome.
+
+**Decision:** (1) Mở work package riêng `WP14R` cho resilient execution mechanics;
+WP14-v1/ADR-070 vẫn terminal FAIL CLOSED và WP15/H7 chưa mở. (2) Recovery contract
+v1 cố định một initial cộng tối đa một recovery attempt; attempt không phải experimental
+unit, giữ mọi bytes, không overwrite/delete, không retry sau independently verified
+pass và không attempt 3. (3) Recovery authorization chỉ đọc mechanical validity, cấm
+đọc completed/burden/route outcome. (4) Ordered gates là ledger → supervisor/
+incremental evidence → fault injection/process tree → no-outcome dimensioning →
+independent verifier → explicit freeze-v2 decision. Scientific tickets `008..012`
+unauthorized trước decision `007`. (5) Không sửa 46 file freeze-bound hoặc raw H6/E1/
+WP14-v1; mọi artifact mới dùng namespace `wp14r`. (6) Không copy repetition count,
+CI recipe hoặc numeric default từ paper; paper chỉ định hình measurement protocol.
+
+**Evidence:** Research note
+`research/wp14r-resilient-benchmark-full-pdf-evidence-2026-08-26.md`; local PDFs SHA
+`b50fb850…dbab` và `67505bfc…2d6`, 24/24 trang extract/render. `RB-WP14R-002` thêm
+hai strict Draft 2020-12 schemas, `wp14r_attempt_ledger.py` và 13 state/tamper tests.
+Review source sửa partial write, inventory race, pre-publication recovery-binding poison,
+renamed-entry escape và process/verifier semantic inconsistencies. Targeted 13/13,
+pinned Python/FleetPy 255/255 zero skip, required .NET 908/908 zero skip. Report:
+`benchmarking/wp14r-002-immutable-attempt-ledger-2026-08-26.md`.
+
+`RB-WP14R-003` tiếp tục quyết định này bằng strict journal/report schemas và
+`wp14r_supervised_process.py`: command/env values chỉ vào hash binding, raw stream giữ
+bounded theo chunk, monotonic timeout/heartbeat, Windows Job Object/POSIX process group,
+verified partial prefix và exit-zero-awaits-verifier boundary. Targeted WP14R 28/28,
+full Python 270/270, .NET 908/908. Report:
+`benchmarking/wp14r-003-supervised-process-evidence-2026-08-26.md`.
+
+`RB-WP14R-004` thêm durable launch intent, supervisor PID, strict recovery receipt,
+hard-kill harness và stale-open recovery. Actual Windows matrix đi qua 11 supervisor
+point cùng receipt→terminal crash window; incomplete/ambiguous/uncertain tree exhaust,
+proven-safe tree mới authorize đúng một recovery, exit-zero vẫn await independent bundle
+verifier. Targeted WP14R 39/39, full Python 281/281, .NET 908/908. Report:
+`benchmarking/wp14r-004-hard-crash-recovery-evidence-2026-08-26.md`.
+
+`RB-WP14R-005` thêm strict mechanics dimension report/schema/tool, fixed eight-cell
+fake-child corpus và process-level telemetry. V1 resource pilot giữ sáu large timeout;
+v2/v3 48/48 pass. Source review từ v2 cache compiled schema validator, bind schema SHA
+trong journal mới và full schema tree trong report v3; legacy branch vẫn verify và wrong
+provenance fail closed. Fixed 8 MiB verifier peak `65,875,968` B pass 256 MiB envelope;
+large launcher/verifier median observed `71.30/35.39 s` → `4.68/1.96 s`. Targeted
+WP14R 50/50, full Python 292/292, .NET 908/908. Report:
+`benchmarking/wp14r-005-mechanics-resource-dimension-evidence-2026-08-27.md`.
+
+`RB-WP14R-006` thêm strict independent report/fixture/mutation schemas cùng verifier
+read-only không import/call ledger writer, supervisor verifier hoặc recovery classifier.
+Ba valid fixture pass và 15/15 unique mutation class bị bắt đúng typed code. Pilot
+actual junction phát hiện Python 3.10 thiếu `os.path.isjunction`; implementation hiện
+kiểm Windows reparse point ở writer/supervisor/verifier. Review còn đóng hai TOCTOU
+window giữa streamed journal/inventory và output-tree enumeration. Authoritative fixture
+receipt SHA `1e4a6450…372104`, mutation report SHA `9d8aacf4…72e1e`; targeted 64/64,
+full Python 306/306, .NET 908/908. Report:
+`benchmarking/wp14r-006-independent-verifier-evidence-2026-08-27.md`.
+
+**Consequences:** `RB-WP14R-001..006 Done`; chỉ `007 Ready`. Resource result vẫn chỉ
+cho fixed corpus trong một Windows host session, không CI/SLA/population/two-stream-cap
+claim. Native POSIX fault run vẫn thiếu; verifier độc lập theo implementation/AST nhưng
+không theo team/organization. Failure ở successor gate vẫn dừng fail-closed; không chọn
+best attempt và không thay receipt/partial WP14-v1. Scientific `008..012` Unauthorized.
+
+### ADR-072 — 2026-08-28 — Accepted
+
+**Context:** Mechanics `RB-WP14R-002..006` đã pass nhưng source audit của decision
+gate `007` tìm thấy hai điều chưa đủ để ký freeze: supervisor fingerprint chưa bind
+power source/scheme/quiescence, và ledger yêu cầu recovery giữ cùng `commandSha256`
+trong khi đường dẫn trực tiếp `attempt-01/output`/`attempt-02/output` sẽ đổi command.
+Revalidation .NET cũng fail CPU gate hai lần trước build-server shutdown rồi pass cùng
+source/ceiling sau shutdown. In-app Browser/PDF QA đọc đủ Stabilizer 10/10 trang;
+paper xác nhận repetition cùng một setup không loại systematic setup/layout bias,
+nhưng runtime-layout randomization, số run và ANOVA recipe của paper không thể copy
+sang RideBound.
+
+**Decision:** (1) Authorize canonical `wp14r-resilient-development-v2` receipt SHA
+`6b340108…a31237`, strict Draft 2020-12, tham chiếu byte-exact scientific freeze v1
+SHA `1ce26ff0…37a55` thay vì định nghĩa lại arm/cell/factor. (2) Bind 24 protocol/
+schema/test source files, current provenance của `002..006`, three authoritative
+mechanics artifacts, pinned runtime và ba full PDFs/34 trang. (3) Dùng fixed wrapper
+command không chứa attempt path; wrapper suy output từ immutable current open-attempt,
+nên recovery command/env/cwd hash giữ nguyên nhưng output không overwrite. (4) Exact
+host gate là Windows fingerprint `efebacc0…c6f81`, AC online, Balanced GUID
+`381b4222-f694-41f0-9685-ff5bb260df2e`, 10×1 s CPU mean ≤20%/single ≤60%, available
+memory ≥8 GiB và free disk ≥25 GiB; không ghi arbitrary process name/command line.
+(5) Paired gate chạy tuần tự đúng B1→C1 frozen IDs, cần 2 valid/0 failed, không đọc
+outcome; full 160-job matrix chỉ mở bằng canonical paired-gate pass và exact job order.
+(6) Owner authorization dựa trên explicit persistent goal tiếp tục WP14R benchmark,
+nhưng mỗi scientific launch vẫn cần current preflight pass.
+
+**Evidence:** Receipt
+`benchmarks/scenarios/wp14r-development/freeze-v2-authorization.json`; report
+`benchmarking/wp14r-007-protocol-freeze-v2-authorization-2026-08-28.md`; research note
+`research/wp14r-freeze-v2-full-pdf-evidence-2026-08-28.md`. New tests 31/31 và toàn
+targeted WP14R 95/95 pass; freeze v2/v1 rebuild exact. Actual no-outcome preflight
+receipt SHA `642b23ef…cd622` ghi CPU mean `11.790%`, max `14.656%`, memory/disk đạt,
+nhưng power `offline`, nên typed `POWER_SOURCE_NOT_AC`; zero attempt và zero B1/C1.
+
+**Consequences:** `RB-WP14R-001..007 Done`; `008 Ready` về protocol nhưng launch bị
+frozen host precondition chặn cho tới khi AC online. Không tự đổi scheme, hạ threshold
+hoặc tiêu thụ attempt để “thử”. `009..012`, WP15 và H7 vẫn Unauthorized. WP14-v1,
+H6/E1 và mọi retained failure/pilot không đổi; authorization/preflight không phải
+effectiveness, speedup, population hay between-host evidence.
+
+### ADR-073 — 2026-08-29 — Accepted
+
+**Context:** `RB-WP14R-008` dừng FAIL CLOSED sau khi child không verify được chính
+receipt mà parent vừa verify. Nguyên nhân là defect tất định của freeze v2:
+`host_fingerprint()` gồm `platform.machine()`, mà trên Windows hàm này đọc
+`PROCESSOR_ARCHITECTURE` — biến không nằm trong `inheritedEnvironmentNames`. Đo khép
+kín: receipt yêu cầu `efebacc0…c6f81`, parent env đầy đủ cho đúng giá trị đó, child
+theo allowlist cho `85e172e3…48f8`, child cộng thêm biến đó cho lại `efebacc0…c6f81`.
+Sửa tại `wp14r_supervised_process.py` là **bất khả thi**: file này bị
+`validate_mechanics_gate_provenance` khoá theo fixture của gate `006`, nên đổi nó sẽ
+phá luôn bằng chứng mechanics. Chủ nghiên cứu uỷ quyền chọn phương án tốt nhất.
+
+**Decision:** (1) Tạo freeze v3 tự chứa `wp14r_freeze_v3.py` + schema
+`benchmarks/schemas/wp14r/v3/`; giữ `wp14r_freeze_v2.py` **byte-identical** để
+authorization v2 và failure của nó còn verify được từ source. (2) v3 đổi đúng ba thứ:
+thêm `PROCESSOR_ARCHITECTURE` vào allowlist (qua đó kiến trúc trở thành một term được
+hash trong command binding thay vì suy ra ngầm); ledger/control root mới
+`development-v3-*`; và đưa hai root v2 vào forbidden set để v3 không bao giờ ghi đè
+attempt đã exhausted. Thiết kế khoa học **không đổi**: cùng base freeze v1 byte-exact,
+cùng 160 job, cùng paired gate, cùng host threshold. (3) `read_freeze` chọn builder
+theo `freezeId` của chính receipt thay vì hardcode v2; an toàn vì builder được chọn
+sau đó dựng lại toàn bộ receipt và so sánh, nên một receipt khai gian chỉ chọn đúng
+verifier sẽ từ chối nó. (4) Thay đổi `wp14r_scientific_protocol.py` được khai báo
+trong `source-divergence-v2.json`, kèm archive bytes đã freeze; bytes gốc được tái
+dựng và **khớp exact** `36b4ad3d…631dd`, 44.221 byte. (5) Job v2 đã exhausted
+**không** được hồi sinh; freeze v2 vẫn terminal FAIL CLOSED.
+
+**Evidence:** Receipt `benchmarks/scenarios/wp14r-development/freeze-v3-authorization.json`
+SHA `07baeda2b79f31b5d79318755afbe917b7a8a47a7509b3f09a1756a484fa9227`, 160 jobs,
+strict Draft 2020-12. Regression còn thiếu ở v2 nay có trong
+`test_wp14r_freeze_v3.py`: `verify_receipt` chạy trong subprocess với **đúng** allowlist
+của child, và host fingerprint dưới allowlist phải bằng fingerprint của parent và bằng
+giá trị trong receipt. Report:
+`benchmarking/wp14r-008-paired-gate-fail-closed-2026-08-29.md`.
+
+**Consequences:** Freeze v3 authorized; `RB-WP14R-008R` là paired gate dưới v3.
+Freeze v2 giữ nguyên bytes và vẫn là bản ghi terminal của một authorization không chạy
+được. `009..012`, WP15 và H7 vẫn Unauthorized cho tới khi paired gate v3 pass. Không
+đổi margin, panel, denominator, factor, arm set hay failure treatment; H6/E1/WP14-v1
+không bị chạm.
 
 ## 8. Work package tracker
 
@@ -4311,11 +4742,242 @@ WP15–WP20 vẫn roadmap-level.
 | WP11 Product UX | Not started | — | — | — |
 | WP12 Paper/release | Not started | — | — | — |
 | WP13 Post-H6 mechanism diagnostics | Complete; `001..013 Done` | 2026-08-23 | 2026-08-24 | ADR-053..065 + `tasks/41`/`tasks/42`; closure manifest 4.463 byte SHA `4e410e23…58a72c9c`; bảy exit gate pass, zero unresolved P0–P2; H6 immutable; Debug 860/860; Python 205/205 |
-| WP14 Exploratory ablation/Pareto | In progress; `001 Done`, `002 Ready` | 2026-08-24 | — | ADR-065/066 + `tasks/43`/`tasks/44`; factor matrix F1–F6, bốn factor bị loại bằng phép đo, ba giới hạn claim mới |
-| WP15–WP20 | Roadmap-level only | — | — | Không ticket hóa trước WP14 exit gate |
+| WP14 Exploratory ablation/Pareto | Freeze v1 stopped fail-closed; `001..005/008 Done`, `006/007 Deferred`, `009 Closed — FAIL`, `010..014 unauthorized` | 2026-08-24 | 2026-08-26 | ADR-065..070 + `tasks/43`/`tasks/44`; exact freeze SHA `1ce26ff0…37a55`; paired dry-run 1 valid/1 partial, no retry/replacement; no matrix/frontier; Debug 908/908, Python 242/242 |
+| WP14R Resilient execution successor | `001..007 Done`; **`008 Closed — FAIL CLOSED`** do defect freeze v2 (`PROCESSOR_ARCHITECTURE` thiếu trong `inheritedEnvironmentNames`) làm child không verify được receipt; job 1 exhausted sau 32,5 s, zero simulation, zero outcome; `009..012 unauthorized`; cần freeze v3 do owner quyết | 2026-08-26 | — | ADR-071/072 + `tasks/45`/`tasks/46`; canonical freeze SHA `6b340108…a31237`; stable recovery wrapper + host/power/quiescence gate; targeted 95/95, Python 337/337, .NET 908/908; authorization preflight typed `POWER_SOURCE_NOT_AC`, zero job |
+| WP15 Lifecycle commitment v2 | Roadmap-level; refinement draft only, **unauthorized to run** | — | — | `tasks/47` + `research/wp15-commitment-design-new-paper-evidence-2026-08-28.md`; 4 paper mới/165 trang; ba trục B/C/D có điều kiện phủ định; ticket chỉ sinh sau verified WP14R frontier và ADR riêng |
+| WP16–WP20 | Roadmap-level only | — | — | Không ticket hóa trước verified WP14R frontier/closure gate |
 
 ## 9. Change history
 
+- 2026-09-02: `RB-WP14R-009` **MATRIX HALTED** và `010` descriptive slice. Freeze v5
+  (receipt `ba4a7835…0c1463`) đóng được paired gate lần đầu trong lịch sử WP14/WP14R:
+  B1 `755,0 s` và C1 `626,3 s`, cả hai `succeeded` và `independentVerificationStatus
+  valid`, gate receipt `status pass` với `matrixAuthorized true`. Ba con số trước đây
+  chỉ ước lượng nay đã đo: bundle C1 `116.083.763` B **dưới** điểm hoà
+  `135.215.555` B; chiếu matrix `18.719.858.304` B = **87,17% trần**; wall **28,29 giờ**
+  tuần tự. C1 **nhanh hơn và nhỏ hơn** B1, đúng như constant-level skip dự đoán
+  (C1 97,40% level thừa so với B1 94,40%). Matrix chạy **40/160 job**, 4 cell trọn vẹn
+  10 arm, 0 fail, 0 lần dùng attempt 2, rồi dừng ở job 41
+  `w14-d20181112-s10-r1-w17-b1-ref-s7` với `RBWP7_FLEETPY_PLAN_INFEASIBLE`: Runner phát
+  ra route đón `req-d11464…` ở giây `2314,244` trong khi hạn đón muộn nhất là `2122`
+  (`pickupWindowMs 600.000`, `1522+600`), trễ `192,24` giây. Cả hai attempt chết giống
+  hệt ⇒ tất định; xảy ra ở arm **B1** (không có ràng buộc commitment nào) và chỉ ở cửa
+  sổ **`w17`** sau 40 job `w08` liên tiếp pass. Đây là **semantic divergence Layer-2**
+  giữa validator vật lý của RideBound và của FleetPy, không phải sự cố host. **H6 không
+  bị ảnh hưởng**: `_fleetpy_plan` được gọi ở đúng một chỗ cho mọi lần đổi route và raise
+  khi bất khả thi, mà H6 hoàn tất 100/100 bundle ⇒ FleetPy chưa từng từ chối kế hoạch
+  nào của H6, tức mọi kế hoạch H6 đã qua **hai** validator độc lập; fail-closed hoạt động
+  đúng thiết kế. Adapter `ridebound_fleetpy/` **không bị chạm**; không receipt đã freeze
+  nào ghim inventory hash nên `.gitignore` không phá kỳ vọng nào; cả 40 bundle cùng
+  `repositoryInventorySha256 c8d4b108…de6c7` nên so sánh arm hợp lệ. `010` phân tích
+  slice bằng `wp14r_slice_frontier.py`, **dùng lại nguyên `read_bundle` của analyzer đã
+  freeze**, report SHA `02fd03a5…d6d588f`. Kết quả: dự đoán đăng ký trước outcome về
+  **F2 vô hiệu CONFIRMED** (`c1-ratchet` ≡ `c1-h6ref` và `c1-freeze300ratchet` ≡
+  `c1-freeze300` giống hệt trên mọi counter, mọi cell); **thứ tự budget CONFIRMED**
+  (`389 ≤ 391 < 398 < 402 ≤ 415`, độ lớn 7,7% so với dự đoán 7,6%); và nhận định trước
+  đây của agent *"cái giá là cấu trúc, không cấu hình nào cứu được"* bị **FALSIFIED** —
+  `c1-nobudget` cho **88,83% lợi ích gánh nặng với chỉ −3,009 pp** so với `c1-h6ref`
+  99,95% với −6,019 pp. Phát hiện mới ngoài dự đoán: **toàn bộ nhóm pickup-side vô hiệu
+  kể cả bỏ hẳn lock** (`c1-nopickuplock` có 0 prune pickup nhưng vẫn completed 389 y hệt
+  `c1-h6ref`), và hai ràng buộc **không cộng được** (bỏ lock gỡ 0/26, bỏ budget gỡ 13/26,
+  bỏ cả hai gỡ 26/26). Ranh giới: 4/16 cell, ~1/5 trọng số H6, một ngày một cửa sổ sáng,
+  descriptive không phải preregistered, **không** so trực tiếp `−6,019 pp` với
+  `−7,1296 pp` của H6. Evidence:
+  `benchmarking/wp14r-009-matrix-halt-plan-infeasible-2026-09-01.md` và
+  `benchmarking/wp14r-010-descriptive-slice-frontier-2026-09-02.md`.
+
+- 2026-08-29 (khuya): Freeze v3 sửa đúng defect thứ nhất nhưng lộ ra defect thứ hai;
+  paired gate vẫn chưa đạt. Dưới v3, child verify được receipt và B1 **chạy trọn mô
+  phỏng**: 754,4 s, bundle `125.237.277` byte, ledger `succeeded`, process tree thoát
+  sạch — so với 32,5 s và 0 byte dưới v2. Nhưng `independent_verify` reject job với
+  typed `JOURNAL_CHAIN`. Kiểm độc lập cả hai journal: hash chain, sequence và
+  `monotonicElapsedMs` **sạch tuyệt đối**; cái fail là điều kiện UTC
+  `observed < previous_observed` tại `attempt-01` record 496 (heartbeat), nơi đồng hồ
+  tường lùi `1,846` giây do một bước chỉnh NTP của Windows Time. Đây là mâu thuẫn nội
+  bộ của protocol: contract `RB-WP14R-003` ghi *"UTC chỉ provenance"* trong khi verifier
+  cưỡng chế UTC monotonicity như bất biến cứng, và nó duyệt **mọi** attempt được giữ
+  lại, nên một attempt đã fail làm hỏng verification của attempt sạch. Attempt-01 tồn
+  tại **do lỗi của agent**: tài liệu trong repo bị sửa giữa lúc B1 chạy, khiến
+  `actual_fleetpy_medium_preflight.py` báo `repository content inventory drifted`. Lỗ
+  hổng đó đã được vá bằng `__pycache__/` và `*.pyc` trong `.gitignore` (freeze v1 và v3
+  vẫn verify exact sau khi vá), nhưng attempt đã tiêu không lấy lại được. B1 hết 2/2
+  attempt; paired gate v3 không thể đạt `2 valid / 0 failed`; C1 chưa từng được chạm.
+  **Không sửa được như v2→v3**: `wp14r_independent_verify.py` nằm trong năm file bị
+  `validate_mechanics_gate_provenance` khoá theo fixture gate `006`, nên đổi nó phá luôn
+  bằng chứng mechanics `002..006`. Ba lựa chọn (dựng lại gate `006` + freeze v4; chấp
+  nhận mất job; hoặc thu hẹp phạm vi verify — vẫn vướng provenance) đều cần ADR mới của
+  chủ nghiên cứu. Không attempt nào bị hồi sinh, không receipt nào bị sửa, mọi artifact
+  v2/v3 giữ nguyên. Evidence:
+  `benchmarking/wp14r-008-paired-gate-fail-closed-2026-08-29.md` §8.
+
+- 2026-08-29 (tối): `RB-WP14R-008` **FAIL CLOSED**. Sau khi giải phóng bộ nhớ, host
+  preflight `observation-0004` **pass** (memory `8.917.082.112` B, CPU mean `4,065%`,
+  AC online, Balanced khớp) và attempt 1 mở lần đầu trong lịch sử WP14R. Child chết sau
+  vài giây; recovery mở đúng attempt 2; attempt 2 chết **giống hệt**; không có attempt 3.
+  Tổng `32,5 s`, `exitClassification processExitFailure`, `retryDisposition
+  attemptsExhausted`, `independentVerificationStatus valid`, mô phỏng **chưa chạy một
+  epoch nào** và `retainedOutputBytes = 0`. Nguyên nhân gốc là **defect của freeze v2**,
+  không phải host: child verify lại receipt trước khi làm gì, nhưng
+  `hostPolicy.requiredHostFingerprintSha256` do `host_fingerprint()` tính có
+  `platform.machine()`, mà trên Windows hàm này đọc `PROCESSOR_ARCHITECTURE` — biến
+  **không** nằm trong `inheritedEnvironmentNames` (chỉ `PATH`,
+  `PYTHONDONTWRITEBYTECODE`, `SystemRoot`, `TEMP`, `TMP`). Đo khép kín: receipt yêu cầu
+  `efebacc0…c6f81`; parent env đầy đủ cho `efebacc0…c6f81`; child theo đúng allowlist
+  cho `85e172e3…48f8`; child cộng thêm `PROCESSOR_ARCHITECTURE` cho lại
+  `efebacc0…c6f81`. Defect **tất định và độc lập host**: mọi lần launch freeze v2 trên
+  Windows đều hỏng ở job đầu tiên. Test không bắt được vì không test nào chạy
+  `verify_receipt` dưới đúng allowlist của child. Hệ quả theo contract: job
+  `w14-d20181112-s10-r1-w08-b1-ref-s7` `exhausted`, paired gate không thể đạt
+  `2 valid / 0 failed`, `009..012` **không được authorize** dưới freeze v2, C1 chưa từng
+  được chạm. Machinery WP14R hành xử đúng thiết kế: ba preflight fail không tiêu attempt,
+  journal giữ đủ stderr thật để chỉ đúng một biến môi trường, recovery đúng một lần rồi
+  exhausted, mọi artifact được giữ nguyên. Sửa **cần freeze v3 trước outcome** và là
+  quyết định của chủ nghiên cứu, vì ba file liên quan đều bị freeze v2 bind; khuyến nghị
+  thêm `PROCESSOR_ARCHITECTURE` vào allowlist kèm regression test chạy `verify_receipt`
+  dưới đúng allowlist của child. Job đã exhausted không được hồi sinh dưới freeze v2.
+  Evidence: `benchmarking/wp14r-008-paired-gate-fail-closed-2026-08-29.md`.
+- 2026-08-29: Pre-launch analysis trong lúc `008` bị chặn; **không** ticket, không ADR,
+  zero scientific job. Bốn kết quả. (1) Analyzer đã freeze chạy sạch trên bundle thật:
+  gọi `wp14_frontier_analyze.read_bundle` trực tiếp trên bundle B1 `125.237.277` B cho
+  `readBundleSucceeded`, 108 arrived/104 completed/824 decisions và `semanticHash
+  d072b931…c8393d` khớp independent verifier. (2) Nhưng `pickupEtaImprovementCount`
+  tính trên promise đã publish và **không** lọc `decisionDelta`, nên nó gộp exogenous
+  drift và **không** trả lời được câu hỏi F2; analyzer nằm trong 46 file freeze-bound
+  nên chỉ được bổ sung công cụ. (3) Dự đoán đăng ký trước outcome: **F2 vô hiệu**. Trên
+  80 bundle E1 có 142.769 publication, 137.627 revision, **916 lần decision dịch chuyển
+  ETA và 0 lần sớm hơn** (pickup 100/0, drop 816/0); dev-panel B1 cho 48/0. Cross-
+  validation: analyzer báo `pickupEtaImprovementCount = 654` và công cụ mới cho thấy
+  đúng 654 lần đó đều `exogenousOnlyEarlier`, 0 do decision. Report SHA
+  `958843ef…3dad8869` và `b3d3dc10…45071a7`. Cơ chế: insertion-only cộng O-001 cấm
+  reassignment nên quyết định chỉ thêm detour; stop-reordering về nguyên tắc có thể cải
+  thiện nên không claim bất khả thi theo cấu tạo. Dự đoán **không** cho phép bỏ arm.
+  (4) Rủi ro trần byte cao hơn rủi ro thời gian: chiếu ADR-070 đạt 93,31% của
+  `maximumOutputBytes` `21.474.836.480` B, điểm hoà mỗi bundle C1 là `135.215.555` B
+  trong khi B1 đã `125.237.277` B và cả hai arm bật `retained-portfolio-full-witness-v1`;
+  vượt trần thì cần freeze v3 trước outcome. Hai công cụ bổ sung không nằm trong freeze
+  nào: `wp14r_promise_direction.py` (7 test) và `wp14r_matrix_driver.py` (9 test, có
+  guard chống vòng lặp khi ledger không tiến). Verify: pinned Python/FleetPy 353/353
+  zero skip trong 67,172 s; required .NET 908/908; freeze v1 pass exact 160/46/
+  `1ce26ff0…37a55` và freeze v2 valid exact 160/`6b340108…a31237` **sau khi** thêm hai
+  file mới; C1 partial vẫn `83.364.599` B không bị chạm; format/diff/Markdown 290 file
+  394 link/JSON 1.350 pass. Blocker của `008` đổi từ `POWER_SOURCE_NOT_AC` sang
+  `MEMORY_BELOW_MINIMUM` (thiếu `56.111.104` B); sleep/hibernate trên AC đều Never.
+  Evidence: `benchmarking/wp14r-prelaunch-analysis-2026-08-29.md`.
+- 2026-08-28 (chiều): Checkpoint verification và WP15 refinement draft; **không**
+  scientific execution. Host preflight thật cho `w14-d20181112-s10-r1-w08-b1-ref-s7`
+  attempt 1 ghi `POWER_SOURCE_NOT_AC` **đã hết**: AC `online`, Balanced GUID khớp, CPU
+  mean `3.618%`/max `9.561%`, free disk `144.954.011.648` B đều pass; chỉ còn
+  `MEMORY_BELOW_MINIMUM` với available `8.533.823.488` B so với ngưỡng `8.589.934.592` B,
+  thiếu `56.111.104` B. Receipt `preflight-attempt-01-observation-0001.json`; zero
+  attempt tiêu thụ, zero job launched, `008` vẫn Ready. Verify lại hiện hành: WP14 freeze
+  v1 pass exact 160 jobs/46 files/SHA `1ce26ff0…37a55`; WP14R freeze v2 valid exact
+  160 jobs/SHA `6b340108…a31237`; retained WP14-v1 B1 bundle tái kiểm độc lập cho đúng
+  behavioral hash `5f2af778…32c5c0` cùng 108 request/824 epoch/2.479 frame/3.883 event/
+  3.174 publication; E1 source-divergence claim xác nhận bytes đã freeze
+  `b550c14c…c06e54` vẫn khôi phục được từ commit `38d517d`. Baseline: `dotnet build`
+  0 warning/0 error, pinned Python/FleetPy 337/337 zero skip trong 68,641 s, required
+  `dotnet test RideBound.slnx` exit 0 zero fail/zero skip với Benchmarking.Tests 148/148
+  trong 1 m 41 s sau `build-server shutdown`. Thêm corpus paper **mới tải từ web**
+  (không dùng lại local): 4 arXiv PDF/165 trang, 165/165 trang extract text không rỗng,
+  inventory SHA `70e437b2…6edfb70` tại
+  `E:\RideBoundData\research\pdf-20260828-wp15-commitment-design`. Research note
+  `research/wp15-commitment-design-new-paper-evidence-2026-08-28.md` và refinement draft
+  `tasks/47-wp15-lifecycle-commitment-refinement.md` khoá trước ba trục ứng viên B/C/D
+  cùng điều kiện phủ định. Laupichler et al. 2026 (Mt-KaRRi) xác nhận độc lập rằng
+  ràng buộc neo vào lời hứa đã accepted là đúng object, và ghi lại đúng failure mode
+  "gate làm rỗng tập khả thi" mà H6 đã đo. WP15 vẫn **UNAUTHORIZED**; không ADR mới,
+  không đổi margin/panel/denominator/factor/failure treatment, không mở H7/WP16/WP17.
+- 2026-08-28: Chấp nhận ADR-072 và hoàn thành `RB-WP14R-007`. Canonical protocol
+  freeze v2 SHA `6b340108…a31237` tham chiếu exact 160-job freeze v1, bind 24 source/
+  schema/test files, three `002..006` gate artifacts và 34 full-PDF pages. Source audit
+  sửa recovery command/output contradiction bằng fixed wrapper và thêm exact AC/power-
+  scheme/10×1 s CPU/memory/disk gate. New 31/31, targeted WP14R 95/95, pinned
+  Python/FleetPy 337/337 zero skip và required .NET 908/908 pass; JSON 1.350/1.350,
+  93 schemas/93, Markdown 287/385, format/diff/freeze-v1 pass. Actual no-outcome
+  preflight CPU/memory/disk/scheme pass nhưng battery `offline`, giữ typed receipt SHA
+  `642b23ef…cd622`, zero attempt/zero simulation. `008 Ready` nhưng host-blocked;
+  `009..012` Unauthorized.
+- 2026-08-28: Documentation-close revalidation giữ source/ceiling: pinned
+  Python/FleetPy 306/306 zero skip trong 200.231 s. Full .NET lần đầu 907/908 và
+  isolated repeat đều fail typed medium-drain CPU gate khi build servers chưa shutdown.
+  Sau `dotnet build-server shutdown`, exact test 1/1 và exact required command
+  `dotnet test RideBound.slnx` pass 908/908; Benchmarking.Tests 148/148 trong 1 m 55 s,
+  ceiling vẫn 120 s. Host diagnostic là Windows Balanced/discharging; `007` phải bind
+  power source/scheme và quiescence precondition nếu authorize freeze v2. Không scientific
+  execution và không reclassify hai failure thành pass.
+- 2026-08-27: Hoàn thành `RB-WP14R-006`; chỉ `007 Ready`. Verifier read-only độc lập
+  tự dựng ledger/journal/recovery state và không đọc scientific outcome. Ba valid fixture
+  pass; retained mutation v4 bắt đúng 15/15 unique class. Actual Windows junction pilot
+  phát hiện Python 3.10 detector gap; source review sửa junction/reparse-point ancestry
+  và hai TOCTOU journal/output-inventory windows. Authoritative fixture receipt SHA
+  `1e4a6450…372104`, mutation report SHA `9d8aacf4…72e1e`. Targeted 64/64, pinned
+  Python/FleetPy 306/306, .NET 908/908, format/freeze-v1 pass; scientific `008..012`
+  vẫn Unauthorized.
+- 2026-08-27: Hoàn thành `RB-WP14R-005`; chỉ `006 Ready`. Giữ v1 resource pilot
+  (42 pass/6 typed large timeout), v2 before-cache và v3 after-cache (48/48 mỗi matrix)
+  ở ba external roots bất biến. Fixed 8 MiB verifier peak `65,875,968` B pass envelope
+  256 MiB. Review tìm repeated schema load/check/compile trên từng record; compiled
+  validator cache + schema provenance giảm observed large launcher/verifier median
+  `71.30/35.39 s` xuống `4.68/1.96 s`, descriptive only. Targeted 50/50, Python
+  292/292, .NET 908/908, format/freeze pass; không scientific execution. `007` Not
+  ready và `008..012` Unauthorized.
+- 2026-08-26: Hoàn thành `RB-WP14R-004`; chỉ `005 Ready`. Thêm durable `launchIntent`,
+  supervisor PID, recovery receipt và hard-kill harness. Actual Windows matrix đi qua
+  11 supervisor boundaries cùng recovery receipt→terminal crash; Job Object kill cả
+  child/grandchild. Review sửa uncertainty-retry bug, Popen-stage honesty, incomplete-
+  start PID gap, receipt preseed/reseal gap, log/tree cross-binding và unsafe control
+  root. Targeted WP14R 39/39, pinned Python 281/281, .NET 908/908, format/freeze-v1
+  reverify pass; không chạy FleetPy/scientific workload. `008..012` vẫn unauthorized.
+- 2026-08-26: Hoàn thành `RB-WP14R-003`; chỉ `004 Ready`. Tool mới bind executable/
+  args/cwd/allowlisted environment nhưng log chỉ hash metadata, rồi `fsync` canonical
+  hash-chain journal trước/trong/sau child. Raw non-UTF8 stdout/stderr được giữ bounded,
+  heartbeat/timeout dùng monotonic clock, Windows Job Object/POSIX group quản process
+  tree; exit 0 vẫn `awaitingBundleVerification`. Review sửa schema composition, 64-bit
+  handle signatures, containment-failure honesty, pipe leaks và resealed semantic
+  mutations. Targeted 15/15 + WP14R 28/28, Python 270/270, .NET 908/908 zero skip;
+  freeze v1 reverify exact. Chưa chạy fault matrix/FleetPy/scientific outcome.
+- 2026-08-26: Chấp nhận ADR-071 và hoàn thành `RB-WP14R-001/002`. Browser/PDF QA
+  đọc/render 24/24 trang Kalibera–Jones/Mytkowicz, áp dụng variation-level/setup-bias
+  lessons vào successor mechanics mà không dùng chúng để retry WP14-v1. Ledger mới
+  có exact 2 attempts, canonical/exclusive start/terminal receipts, unchanged freeze/
+  job/command binding, stable log/output inventory, mechanical-only recovery và strict
+  tamper/state gates. Source review sửa năm lớp gap ngoài test-count. Targeted 13/13,
+  pinned Python/FleetPy 255/255 và .NET 908/908 zero skip. Chỉ `RB-WP14R-003` Ready;
+  scientific `008..012`, WP15 và H7 vẫn unauthorized.
+- 2026-08-26: `RB-WP14-009` đóng **FAIL CLOSED** theo ADR-070. B1 dry-run pass
+  independent verifier; C1 bị chấm dứt ngoài controlled timeout path và chỉ còn
+  partial transcript thiếu manifest. Recovery không re-execute: B1
+  `reusedVerified`, C1 rejected, summary schema-valid 1/1. Freeze v1 cấm retry/
+  replacement, nên `010..014` không được authorize; không outcome nào được dùng
+  để tune hoặc re-freeze.
+- 2026-08-26: `RB-WP14-008 Done`, `RB-WP14-009 Ready`; ADR-069/receipt
+  `freeze-receipt-v1.json` 101.719 byte SHA `1ce26ff0…37a55` khóa exact 16×10 = 160
+  jobs, 1.728 arrivals/arm, 46 source files, adapter/fixture/Runner/.NET runtime tree,
+  FleetPy capability, four forbidden H6/E1 roots và resource envelope. Review sửa
+  bundle/job misbinding, p95 off-by-one, float evidence và duplicate overwrite trước
+  freeze. Browser + PDF QA xác nhận full-text Alonso-Mora 6/6 trang. Required .NET
+  908/908, pinned Python 242/242, targeted 17/17, zero skip; static gates pass.
+- 2026-08-25: `RB-WP14-005 Done`; `006`/`007` **Deferred** theo quyết định của chủ
+  nghiên cứu; `RB-WP14-008` là queue head. F1 dùng `freezeHorizonMs`/`freezeHorizonLocks`
+  đã có sẵn nhưng chưa configuration nào từng dùng; F2 thêm `ratchetLocks` cho phép
+  cải thiện ETA nhưng chặn làm muộn hơn, chỉ áp cho hai trường ETA có thứ tự. Chín
+  factor level và development panel 16 cell đã sẵn sàng; freeze sinh đúng 160 job.
+  Envelope ngoại suy từ E1 thật: ~15,6 GB và ~11 giờ ở parallelism 4. Handoff đầy đủ:
+  `handoffs/wp14-continuation-2026-08-25.md`. Required .NET 908/908 và pinned Python
+  225/225 trên máy rảnh; medium public drain là test mong manh sát ceiling 120 s và
+  fail giả khi máy bận.
+- 2026-08-24: `RB-WP14-003 Done`, `RB-WP14-004 Done`, `RB-WP14-005 Ready`. ADR-068
+  tách profile `retained-portfolio-full-witness-v1` sau khi phát hiện bản đầu sẽ đổi
+  evidence của hai config E1 đã freeze; bind historical verifier theo commit thay vì
+  HEAD; thêm declaration `source-divergence-v1.json` cho frozen source file mà WP14
+  sửa hợp lệ. Development panel 16 cell trên 2018-11-12/13 có 0 giao với H6 trên cả
+  bảy trục. Required .NET 880/880, pinned Python 225/225, zero skip.
+- 2026-08-24: `RB-WP14-002 Done`, `RB-WP14-003 Ready`. ADR-067 thêm phát hiện hằng
+  số ở tầng Application và cho adapter bỏ pass CP-SAT vô ích; 94,40–97,78% level đo
+  được là hằng số. Phát hiện `executionEvidence` nằm trong hash projection buộc đổi
+  contract sang opt-in mặc định tắt, nên mọi hash đã publish không đổi. Differential
+  64 seed chứng minh assignment bất biến; required .NET 873/873, pinned Python
+  212/212, zero skip.
 - 2026-08-24: `RB-WP14-001 Done`, `RB-WP14-002 Ready`. ADR-066 khoá factor matrix
   WP14 sau khi một read-only probe trên 80 bundle E1 tái lập đúng 10/10 con số H6.
   Mất mát dịch vụ của C1 quy về đúng hai nguồn: budget `drop_eta_total_ms` và

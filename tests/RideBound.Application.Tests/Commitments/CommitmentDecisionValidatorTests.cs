@@ -17,7 +17,7 @@ public sealed class CommitmentDecisionValidatorTests
     [Fact]
     public void Rebuilds_delta_from_route_and_rejects_candidate_over_hard_budget()
     {
-        var fixture = CreateFixture(hardLimit: 0);
+        var fixture = CommitmentValidatorFixtures.WithHardLimit(0);
 
         var result = new CommitmentDecisionValidator().Validate(
             fixture.Context);
@@ -39,7 +39,7 @@ public sealed class CommitmentDecisionValidatorTests
     [Fact]
     public void Valid_revision_is_recomputed_and_appended_to_a_new_ledger()
     {
-        var fixture = CreateFixture(hardLimit: 10);
+        var fixture = CommitmentValidatorFixtures.WithHardLimit(10);
 
         var result = new CommitmentDecisionValidator().Validate(
             fixture.Context);
@@ -63,7 +63,7 @@ public sealed class CommitmentDecisionValidatorTests
     [Fact]
     public void Physical_failure_precedes_commitment_budget_checks()
     {
-        var fixture = CreateFixture(hardLimit: 0);
+        var fixture = CommitmentValidatorFixtures.WithHardLimit(0);
         var vehicle = fixture.Context.CandidateState.Run.Vehicles[
             ApplicationTestData.VehicleId];
         var invalidRoute = RoutePlan.Create(
@@ -94,7 +94,7 @@ public sealed class CommitmentDecisionValidatorTests
     [Fact]
     public void Candidate_cannot_mutate_existing_request_definition()
     {
-        var fixture = CreateFixture(hardLimit: 10);
+        var fixture = CommitmentValidatorFixtures.WithHardLimit(10);
         var candidateRun = fixture.Context.CandidateState.Run;
         var current = candidateRun.Requests[ApplicationTestData.RequestId];
         var mutated = RideRequest.Rehydrate(
@@ -138,7 +138,7 @@ public sealed class CommitmentDecisionValidatorTests
     [Fact]
     public void Candidate_cannot_hide_unaccepted_pending_stops_in_the_route()
     {
-        var fixture = CreateFixture(hardLimit: 10);
+        var fixture = CommitmentValidatorFixtures.WithHardLimit(10);
         var pending = RideRequest.CreatePending(
             new RequestId("r-pending"),
             new SimTime(1_000),
@@ -277,7 +277,7 @@ public sealed class CommitmentDecisionValidatorTests
                 reduced,
                 candidate,
                 policies,
-                EmptyDistances.Instance,
+                CommitmentValidatorFixtures.EmptyDistances.Instance,
                 "booking-offer-scope",
                 1,
                 InitialPromiseTrigger:
@@ -305,7 +305,7 @@ public sealed class CommitmentDecisionValidatorTests
                 confirmed,
                 confirmed,
                 policies,
-                EmptyDistances.Instance,
+                CommitmentValidatorFixtures.EmptyDistances.Instance,
                 "booking-confirmation-scope",
                 2,
                 InitialPromiseTrigger:
@@ -357,7 +357,7 @@ public sealed class CommitmentDecisionValidatorTests
                 reduced,
                 reduced,
                 fixture.Policies,
-                EmptyDistances.Instance,
+                CommitmentValidatorFixtures.EmptyDistances.Instance,
                 "booking-and-boarding-scope",
                 4,
                 InitialPromiseTrigger:
@@ -451,7 +451,7 @@ public sealed class CommitmentDecisionValidatorTests
             reduced,
             candidate,
             policies,
-            EmptyDistances.Instance,
+            CommitmentValidatorFixtures.EmptyDistances.Instance,
             "booking-offer-scope",
             1,
             InitialPromiseTrigger:
@@ -472,127 +472,4 @@ public sealed class CommitmentDecisionValidatorTests
         CommitmentDecisionValidator Validator,
         CommitmentValidationContext OfferContext);
 
-    private static Fixture CreateFixture(long? hardLimit)
-    {
-        var request = ApplicationTestData.Request();
-        var route = RoutePlan.Create(
-            new PlanVersion(0),
-            0,
-            [],
-            [
-                new RouteStop(
-                    new StopId("pickup"),
-                    ApplicationTestData.NodeOne,
-                    RouteStopKind.Pickup,
-                    request.Id,
-                    new Duration(0)),
-                new RouteStop(
-                    new StopId("drop"),
-                    ApplicationTestData.NodeTwo,
-                    RouteStopKind.DropOff,
-                    request.Id,
-                    new Duration(0)),
-            ]).Value!;
-        var vehicle = VehicleState.Create(
-            ApplicationTestData.VehicleId,
-            4,
-            0,
-            new NodePosition(ApplicationTestData.NodeZero),
-            [],
-            [],
-            route,
-            1).Value!;
-        var run = RideBoundRun.Create(
-            ApplicationTestData.RunId,
-            ApplicationTestData.ScenarioId,
-            new SimTime(1_000));
-        run = run.AddRequest(request).Value!;
-        run = run.BootstrapVehicle(vehicle).Value!;
-        run = run.AcceptRequest(request.Id, vehicle.Id).Value!;
-        run = run.AdvanceEpoch(1, new SimTime(1_000)).Value!;
-        var travel = ApplicationTestData.Travel();
-        var schedule = new RouteScheduleProjector().Project(
-            run,
-            run.Vehicles[vehicle.Id],
-            route,
-            travel,
-            run.SimulationTime).Schedule!;
-        var projection = new PromiseProjector().Project(
-            run,
-            run.Vehicles[vehicle.Id],
-            route,
-            schedule,
-            request.Id).Value!;
-        var ledger = CommitmentLedger.Empty.OpenInitial(
-            "initial-publication",
-            projection,
-            1,
-            new SimTime(1_000),
-            "INITIAL_ACCEPTANCE",
-            3).Ledger!;
-        var before = new OnlineState(
-            run,
-            travel,
-            4,
-            travel.SnapshotHash,
-            ledger);
-        var reducedRun = run.AdvanceEpoch(2, new SimTime(1_000)).Value!;
-        var reduced = before with
-        {
-            Run = reducedRun,
-            NextEventSequence = 5,
-        };
-        var changedRoute = RoutePlan.Create(
-            new PlanVersion(1),
-            0,
-            [],
-            [
-                new RouteStop(
-                    route.MutableSuffix[0].StopId,
-                    route.MutableSuffix[0].NodeId,
-                    route.MutableSuffix[0].Kind,
-                    route.MutableSuffix[0].RequestId,
-                    new Duration(10)),
-                route.MutableSuffix[1],
-            ]).Value!;
-        var changedRun = reducedRun.UpdateVehicleRoute(
-            vehicle.Id,
-            changedRoute).Value!;
-        var candidate = reduced with { Run = changedRun };
-        var policy = new CommitmentPolicy(
-            request.CommitmentPolicyId,
-            CommitmentBudgetBasis.DecisionInduced,
-            CommitmentDimensionVocabulary.Ordered.Select(
-                dimension => new CommitmentDimensionLimit(
-                    dimension,
-                    hardLimit,
-                    CommitmentPhase.AllActive)),
-            new MaterialRevisionRule(1, null));
-
-        return new Fixture(
-            new CommitmentValidationContext(
-                before,
-                reduced,
-                candidate,
-                new CommitmentPolicyCatalog([policy]),
-                EmptyDistances.Instance,
-                "test-scope",
-                4));
-    }
-
-    private sealed record Fixture(CommitmentValidationContext Context);
-
-    private sealed class EmptyDistances : IStopDistanceLookup
-    {
-        public static EmptyDistances Instance { get; } = new();
-
-        public bool TryGetDistanceMillimeters(
-            NodeId fromNodeId,
-            NodeId toNodeId,
-            out long distanceMillimeters)
-        {
-            distanceMillimeters = 0;
-            return false;
-        }
-    }
 }

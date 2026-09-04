@@ -27,3 +27,9 @@ artifacts/*
 benchmarks/results/
 tmp/
 vendor/
+
+# Python bytecode: a stray .pyc inside the repository changes the
+# git-visible inventory, and the matrix preflight aborts a job when that
+# inventory drifts mid-run.
+__pycache__/
+*.pyc

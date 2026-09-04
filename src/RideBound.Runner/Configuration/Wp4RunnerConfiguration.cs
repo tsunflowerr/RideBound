@@ -18,6 +18,16 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
     public const string RetainedPortfolioEvidenceProfile =
         "retained-portfolio-v1";
 
+    /// <summary>
+    /// RB-WP14-003. Everything `retained-portfolio-v1` records, plus the complete
+    /// commitment witness set. It is a separate profile on purpose: the frozen E1
+    /// configurations declare `retained-portfolio-v1`, and widening that profile
+    /// in place would change their recorded evidence and therefore their decision
+    /// hashes, breaking the E1 freeze chain.
+    /// </summary>
+    public const string RetainedPortfolioFullWitnessEvidenceProfile =
+        "retained-portfolio-full-witness-v1";
+
     private static readonly IReadOnlySet<string> RootFields = Fields(
         "configurationVersion",
         "policyId",
@@ -44,13 +54,27 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
         "scheduleStrategy",
         "maximumExplorationWorkUnits",
         "retentionStrategy");
-    private static readonly IReadOnlySet<string> SolverFields = Fields(
+    private static readonly IReadOnlySet<string> SolverRequiredFields = Fields(
         "adapterVersion",
         "maximumGenerationWorkUnits",
         "maximumValidationWorkUnits",
         "maximumSolverWorkUnits",
         "maximumSolverDeterministicTimeMicros",
         "randomSeed");
+
+    /// <summary>
+    /// `skipConstantObjectiveLevels` is allowed but not required, so every
+    /// configuration written before RB-WP14-002 keeps parsing unchanged and keeps
+    /// the solver work it recorded.
+    /// </summary>
+    private static readonly IReadOnlySet<string> SolverFields = Fields(
+        "adapterVersion",
+        "maximumGenerationWorkUnits",
+        "maximumValidationWorkUnits",
+        "maximumSolverWorkUnits",
+        "maximumSolverDeterministicTimeMicros",
+        "randomSeed",
+        "skipConstantObjectiveLevels");
     private static readonly IReadOnlySet<string> FreezeFields = Fields(
         "horizonMs",
         "locks");
@@ -110,6 +134,17 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
 
     public string? SolverExecutionEvidenceProfile { get; }
 
+    /// <summary>
+    /// RB-WP14-003. The retained-portfolio evidence profile is the only caller
+    /// that needs a complete prune attribution, so the extra validator work is
+    /// tied to it. With the profile off the validator keeps its fail-fast path
+    /// and its cost unchanged.
+    /// </summary>
+    public bool CollectAllCommitmentWitnesses =>
+        StringComparer.Ordinal.Equals(
+            SolverExecutionEvidenceProfile,
+            RetainedPortfolioFullWitnessEvidenceProfile);
+
     public bool TryGetProfile(
         string policyId,
         out CommitmentWarningProfile profile) =>
@@ -135,7 +170,8 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
         var solver = DeterministicSolverBudget.Create(
             sourceSolver.MaximumWorkUnits,
             sourceSolver.MaximumDeterministicTimeMicros,
-            manifestSolverSeed);
+            manifestSolverSeed,
+            sourceSolver.SkipConstantObjectiveLevels);
 
         if (!solver.IsSuccess)
         {
@@ -237,7 +273,10 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
         if (solverExecutionEvidenceProfile is not null
             && !StringComparer.Ordinal.Equals(
                 solverExecutionEvidenceProfile,
-                RetainedPortfolioEvidenceProfile))
+                RetainedPortfolioEvidenceProfile)
+            && !StringComparer.Ordinal.Equals(
+                solverExecutionEvidenceProfile,
+                RetainedPortfolioFullWitnessEvidenceProfile))
         {
             throw new InvalidDataException(
                 "Unknown solverExecutionEvidenceProfile.");
@@ -247,8 +286,8 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
             && (!emitSolverExecutionEvidence || !hasSolver))
         {
             throw new InvalidDataException(
-                "retained-portfolio-v1 requires solver-backed execution "
-                + "and emitSolverExecutionEvidence=true.");
+                "A retained-portfolio evidence profile requires solver-backed "
+                + "execution and emitSolverExecutionEvidence=true.");
         }
 
         RequireVariantFields(
@@ -395,7 +434,11 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
     private static DeterministicCandidateSelectionExecutionBudget
         ReadSolverBudget(JsonElement element)
     {
-        RequireObject(element, SolverFields, SolverFields, "$.solverExecution");
+        RequireObject(
+            element,
+            SolverFields,
+            SolverRequiredFields,
+            "$.solverExecution");
 
         if (Text(element, "adapterVersion")
             != OrToolsCandidateSelectionSolver.AdapterVersion)
@@ -413,7 +456,8 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
                 "maximumSolverDeterministicTimeMicros"),
             NonNegativeInt32(
                 element.GetProperty("randomSeed"),
-                "randomSeed"));
+                "randomSeed"),
+            OptionalBoolean(element, "skipConstantObjectiveLevels"));
 
         if (!solverBudget.IsSuccess)
         {
@@ -619,6 +663,11 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
 
         return value.GetString()!;
     }
+
+    private static bool OptionalBoolean(JsonElement element, string name) =>
+        element.TryGetProperty(name, out var value)
+            ? Boolean(value, name)
+            : false;
 
     private static bool Boolean(JsonElement element, string name) =>
         element.ValueKind switch

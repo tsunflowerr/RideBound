@@ -35,6 +35,23 @@ chặn HTTP 403 (`pnas.org/doi/pdf`, `pubsonline.informs.org` cho GenConVRP gố
 được ghi lại như receipt và **không** tính là full-text evidence; nội dung
 GenConVRP dưới đây chỉ được dùng qua phần khảo sát của Lespay et al.
 
+### 2.1 Kiểm chứng lại nguồn và PDF ngày 2026-08-25
+
+In-app Browser xác nhận kết quả công khai của MIT trỏ thẳng tới bản PDF sáu
+trang tại
+`https://people.csail.mit.edu/jalonsom/docs/17-alonsomora-ridesharing-pnas.pdf`;
+URL PDF mở thành công. PNAS và trang metadata MIT DSpace bật human-verification,
+nên không được vượt qua và không được dùng làm bằng chứng nội dung.
+
+Bản cục bộ tương ứng được kiểm tra độc lập bằng `pypdf`: đúng 6 trang, không mã
+hoá, cả 6/6 trang đều có text layer (4.821–7.126 ký tự/trang). Sáu trang được
+render và xem trực quan đầy đủ: title/authors, mô hình và Algorithm 1, đoạn
+commitment/rematching ở trang 4, các Figure 1–5, kết luận và references đều rõ,
+không có trang trắng, cắt chữ hay lỗi font. SHA-256 vẫn là
+`edbb62156e36479b742a1a7381e5920673a4b6a3130bba39aed74cb8364c12ea`.
+Vì vậy nguồn này là full-text evidence đã kiểm tra, không phải suy diễn từ title
+hay search snippet.
+
 ## 3. Kết luận được áp dụng
 
 ### 3.1 Literature ràng buộc *kết quả*, RideBound ràng buộc *độ chỉnh sửa lời hứa*
@@ -151,3 +168,13 @@ Literature xác nhận hướng đi nhưng không cấp tham số. Do đó `RB-W
 được phép: khóa định nghĩa factor, khóa gate, khóa cách báo frontier, và lập
 ordered queue. Mọi mức số phải được derive từ một development panel mới và freeze
 trước outcome.
+
+Analyzer được freeze ở `RB-WP14-008` áp dụng thêm ba hệ quả kiểm toán được suy ra
+từ ranh giới trên:
+
+- pickup ETA sớm hơn và muộn hơn được đếm/tổng riêng; không gộp thành một trị tuyệt
+  đối rồi gọi cả hai là “burden”, vì ratchet của Alonso-Mora chỉ cấm chiều muộn;
+- Pareto dominance chỉ dùng hai trục đã khai báo: completed cần tăng và attributed
+  decision-induced burden cần giảm; không có scalar hoặc outcome ranking;
+- tail per-rider đứng cạnh fleet total, với p95 nearest-rank được định nghĩa bằng
+  số nguyên để tránh sai số float và lỗi off-by-one.

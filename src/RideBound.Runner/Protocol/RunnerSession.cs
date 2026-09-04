@@ -852,7 +852,9 @@ public sealed class RunnerSession
                 _stopDistances!,
                 publicationScope,
                 sourceEventSequence,
-                InitialPromiseTrigger: _wp4Configuration.InitialPromiseTrigger);
+                InitialPromiseTrigger: _wp4Configuration.InitialPromiseTrigger,
+                CollectAllCommitmentWitnesses:
+                    _wp4Configuration.CollectAllCommitmentWitnesses);
 
             if (_wp4Configuration.MultiplePlanOptions is not null)
             {

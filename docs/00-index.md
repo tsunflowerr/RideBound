@@ -1,7 +1,8 @@
 # RideBound — bản đồ tài liệu
 
-> Trạng thái: WP0–WP10 hoàn thành; WP13 đang ở closure decision hậu full audit
-> Cập nhật: 2026-08-24
+> Trạng thái: WP0–WP10 và WP13 hoàn thành; WP14-v1 dừng fail-closed; WP14R `001..007`
+> Done và `008` **Closed — FAIL CLOSED** do defect freeze v2; WP15 chỉ có refinement draft
+> Cập nhật: 2026-08-29
 > Nguồn sự thật về tiến độ: [18-status-and-decision-log.md](18-status-and-decision-log.md)
 
 ## 1. Mục đích của bộ tài liệu
@@ -124,8 +125,13 @@ Bộ tài liệu này trả lời năm câu hỏi:
 | [40-wp10-ridepy-layer3-ticket-plan.md](tasks/40-wp10-ridepy-layer3-ticket-plan.md) | WP10 `001..010` đã đóng; canonical pass nhưng paired subset fail closed do giới hạn RidePy `nodeOnly` concurrent mid-edge |
 | [41-wp13-post-h6-mechanism-diagnostics-refinement.md](tasks/41-wp13-post-h6-mechanism-diagnostics-refinement.md) | ADR-053/refinement WP13; khóa H6, evidence sufficiency, equal-observed-input alignment và claim boundary |
 | [42-wp13-post-h6-mechanism-diagnostics-ticket-plan.md](tasks/42-wp13-post-h6-mechanism-diagnostics-ticket-plan.md) | Ordered queue WP13 `001..013`; toàn bộ `001..013 Done`, WP13 Complete |
+| [handoffs/wp14-continuation-2026-08-25.md](handoffs/wp14-continuation-2026-08-25.md) | Handoff WP14 và addendum fail-closed: `009` có 1 valid/1 partial; `010..014` không được authorize dưới freeze v1 |
+| [handoffs/wp14r-continuation-2026-08-26.md](handoffs/wp14r-continuation-2026-08-26.md) | Handoff WP14R: `001..007 Done`; exact freeze-v2 và `008 Ready` nhưng AC preflight đang chặn launch |
 | [43-wp14-exploratory-ablation-refinement.md](tasks/43-wp14-exploratory-ablation-refinement.md) | ADR-066/refinement WP14; bốn factor bị loại bằng phép đo, sáu factor F1–F6 và ba ràng buộc cứng chống leakage |
-| [44-wp14-exploratory-ablation-ticket-plan.md](tasks/44-wp14-exploratory-ablation-ticket-plan.md) | Ordered queue WP14 `001..014`; `001 Done`, `RB-WP14-002` degenerate-level pre-solve skip là queue head |
+| [44-wp14-exploratory-ablation-ticket-plan.md](tasks/44-wp14-exploratory-ablation-ticket-plan.md) | WP14 freeze v1: `001..005/008 Done`, `006/007 Deferred`, `009 Closed — FAIL`, `010..014` unauthorized |
+| [45-wp14r-resilient-execution-refinement.md](tasks/45-wp14r-resilient-execution-refinement.md) | ADR-071/refinement WP14R; mechanics-only successor, fixed two-attempt recovery và freeze-v1 boundary |
+| [46-wp14r-resilient-execution-ticket-plan.md](tasks/46-wp14r-resilient-execution-ticket-plan.md) | Ordered queue WP14R `001..012`; `001..007 Done`, `008 Ready` dưới exact freeze-v2/host gate |
+| [47-wp15-lifecycle-commitment-refinement.md](tasks/47-wp15-lifecycle-commitment-refinement.md) | Refinement draft WP15, **unauthorized to run**; ba trục B/C/D kèm điều kiện phủ định và invariant tập-khả-thi-không-rỗng |
 | [wp7-014-fleetpy-layer2-closure-evidence-2026-08-15.md](benchmarking/wp7-014-fleetpy-layer2-closure-evidence-2026-08-15.md) | Historical Runner v6 receipt: actual FleetPy B1/C1 preflight/tiny/medium evidence, verifier và claim boundary |
 | [wp7-015-hot-path-and-semantics-closure-evidence-2026-08-17.md](benchmarking/wp7-015-hot-path-and-semantics-closure-evidence-2026-08-17.md) | ADR-039: ngữ nghĩa được khóa, đo hot path, work-profile gate, cross-binary differential và receipt hiện hành trên Runner v8 |
 | [wp8-001-pilot-operating-point-evidence-2026-08-19.md](benchmarking/wp8-001-pilot-operating-point-evidence-2026-08-19.md) | Pilot WP8: điểm vận hành cũ không phân biệt được, endpoint pickup-ETA bị loại, đánh đổi dịch vụ xuất hiện |
@@ -150,9 +156,26 @@ Bộ tài liệu này trả lời năm câu hỏi:
 | [wp13-011-e1-candidate-descriptive-aggregation-2026-08-24.md](benchmarking/wp13-011-e1-candidate-descriptive-aggregation-2026-08-24.md) | WP13-011: 40-pair candidate signature aggregation; 33 pruned, 7 eligible-not-selected, 1 selected và strict noncausal/non-additive boundary |
 | [wp13-012-full-source-logic-claim-audit-2026-08-24.md](benchmarking/wp13-012-full-source-logic-claim-audit-2026-08-24.md) | WP13-012: 80-file source/logic/claim audit, deep H6/E1 verification, zero unresolved P0–P2 và explicit closure limitations |
 | [wp13-013-closure-decision-2026-08-24.md](benchmarking/wp13-013-closure-decision-2026-08-24.md) | WP13-013: closure manifest, bảy exit gate, ba P3 resolution và verdict `openExploratoryAblationOnly` cho WP14 |
+| [wp14-002-constant-level-skip-2026-08-24.md](benchmarking/wp14-002-constant-level-skip-2026-08-24.md) | WP14-002: bỏ pass CP-SAT cho lexicographic level hằng số; opt-in mặc định tắt, decision invariance 64 seed |
+| [wp14-003-full-witness-set-2026-08-24.md](benchmarking/wp14-003-full-witness-set-2026-08-24.md) | WP14-003: witness set đầy đủ sau profile riêng; lỗi thiết kế suýt phá freeze chain E1 và cách sửa |
+| [wp14-004-development-panel-2026-08-24.md](benchmarking/wp14-004-development-panel-2026-08-24.md) | WP14-004: development panel 16 cell trên dữ liệu thật rời hẳn H6; leakage audit 0 giao trên bảy trục |
+| [wp14-008-development-ablation-freeze-2026-08-26.md](benchmarking/wp14-008-development-ablation-freeze-2026-08-26.md) | WP14-008: exact 16×10/160-job pre-outcome freeze; source/runtime/tree seals, resource envelope, strict matrix/frontier analyzers và mutation gates |
+| [wp14-009-paired-dry-run-resource-gate-2026-08-26.md](benchmarking/wp14-009-paired-dry-run-resource-gate-2026-08-26.md) | WP14-009: paired resource gate FAIL CLOSED; B1 valid, C1 partial retained, no retry/replacement và không authorize matrix |
+| [wp14r-002-immutable-attempt-ledger-2026-08-26.md](benchmarking/wp14r-002-immutable-attempt-ledger-2026-08-26.md) | WP14R-002: strict two-attempt immutable ledger, canonical receipts, tamper/state-machine gates; 255 Python + 908 .NET pass |
+| [wp14r-003-supervised-process-evidence-2026-08-26.md](benchmarking/wp14r-003-supervised-process-evidence-2026-08-26.md) | WP14R-003: bounded incremental process journal, command privacy binding, Windows Job/POSIX group và strict verifier; 270 Python pass |
+| [wp14r-004-hard-crash-recovery-evidence-2026-08-26.md](benchmarking/wp14r-004-hard-crash-recovery-evidence-2026-08-26.md) | WP14R-004: actual hard-kill matrix, launch-intent ambiguity gate, Job Object tree cleanup và immutable stale-open recovery; 281 Python pass |
+| [wp14r-005-mechanics-resource-dimension-evidence-2026-08-27.md](benchmarking/wp14r-005-mechanics-resource-dimension-evidence-2026-08-27.md) | WP14R-005: retained pilot/before/after mechanics matrices, 8 MiB memory envelope, schema-provenance cache optimization; 292 Python pass |
+| [wp14r-006-independent-verifier-evidence-2026-08-27.md](benchmarking/wp14r-006-independent-verifier-evidence-2026-08-27.md) | WP14R-006: verifier read-only độc lập, junction/TOCTOU hardening, 3 valid fixture và 15/15 retained mutation class; 306 Python pass |
+| [wp14r-007-protocol-freeze-v2-authorization-2026-08-28.md](benchmarking/wp14r-007-protocol-freeze-v2-authorization-2026-08-28.md) | WP14R-007: exact protocol freeze-v2, stable recovery wrapper, host/power/quiescence gate; preflight fail đúng trên battery, zero scientific job |
+| [wp14r-008-paired-gate-fail-closed-2026-08-29.md](benchmarking/wp14r-008-paired-gate-fail-closed-2026-08-29.md) | WP14R-008 FAIL CLOSED: child không verify được freeze v2 vì thiếu `PROCESSOR_ARCHITECTURE`; job 1 exhausted, zero simulation; cần freeze v3 |
+| [wp14r-prelaunch-analysis-2026-08-29.md](benchmarking/wp14r-prelaunch-analysis-2026-08-29.md) | Không phải ticket: analyzer shakeout trên bundle thật, dự đoán đăng ký trước F2 vô hiệu (916 decision-moved, 0 sớm hơn), rủi ro trần 20 GiB và hai công cụ bổ sung |
+| [ridebound-system-questionnaire-answers-2026-08-23.md](reviews/ridebound-system-questionnaire-answers-2026-08-23.md) | Trả lời 155/155 câu hỏi hệ thống; cập nhật live 2026-08-28 qua WP14R-007, giữ rõ phần chưa quyết định |
 | [wp13-evidence-retention-and-successor-policy-v1.md](benchmarking/wp13-evidence-retention-and-successor-policy-v1.md) | Contract retention/archive 5,516 GB E1, derived-output transaction và versioned successor-verifier boundary |
 | [post-h6-mechanism-diagnostics-full-pdf-evidence-2026-08-23.md](research/post-h6-mechanism-diagnostics-full-pdf-evidence-2026-08-23.md) | 106/106 trang từ ba full PDF; quyết định áp dụng/từ chối cho WP13–WP20 |
 | [wp14-ablation-pareto-full-pdf-evidence-2026-08-24.md](research/wp14-ablation-pareto-full-pdf-evidence-2026-08-24.md) | 77/77 trang từ năm full PDF; ratchet vs freeze, GenConVRP penalty/ε-constraint và giới hạn baseline |
+| [wp14r-resilient-benchmark-full-pdf-evidence-2026-08-26.md](research/wp14r-resilient-benchmark-full-pdf-evidence-2026-08-26.md) | 24/24 trang từ Kalibera–Jones và Mytkowicz et al.; variation levels, setup bias, fault intervention và recovery claim boundary |
+| [wp14r-freeze-v2-full-pdf-evidence-2026-08-28.md](research/wp14r-freeze-v2-full-pdf-evidence-2026-08-28.md) | Stabilizer 10/10 trang + 24 trang trước; áp dụng setup/power/host binding, từ chối copy run-count/ANOVA/runtime-layout claim |
+| [wp15-commitment-design-new-paper-evidence-2026-08-28.md](research/wp15-commitment-design-new-paper-evidence-2026-08-28.md) | Bốn paper mới tải từ arXiv/165 trang cho WP15; cửa sổ có mức bảo đảm dẫn xuất, xác nhận độc lập promise-anchored constraint, horizon phụ thuộc trạng thái, giảm nguồn phương sai |
 | [wp6-contract-v1.md](benchmarking/wp6-contract-v1.md) | Equivalent contract v1 cho common benchmark harness, public data và reproduction bundle |
 | [wp6-benchmark-reproducibility-evidence-2026-08-09.md](research/wp6-benchmark-reproducibility-evidence-2026-08-09.md) | Primary-source evidence và claim boundary cho WP6 |
 | [reviews/wp1-wp3/README.md](reviews/wp1-wp3/README.md) | Review chi tiết code, invariant, tối ưu thật và khoảng trống WP1–WP3 |

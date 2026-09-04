@@ -1,7 +1,13 @@
 # RideBound — trả lời 155 câu hỏi về hệ thống
 
-Ngày đối chiếu: 2026-08-23  
-Phạm vi trạng thái: WP0–WP10 đã hoàn tất; WP9 cho kết quả xác nhận âm, WP10 cho kết quả Layer 3 âm; WP11–WP12 chưa bắt đầu.
+Ngày đối chiếu ban đầu: 2026-08-23
+
+Cập nhật theo live state: **2026-08-28** (evidence đến 2026-08-28)
+Phạm vi trạng thái: WP0–WP10 và WP13 đã hoàn tất; WP9 cho kết quả xác nhận âm,
+WP10 cho kết quả Layer 3 âm; WP14-v1 đã freeze 160 job nhưng paired resource gate
+`009` **FAIL CLOSED**, nên full matrix `010` không được phép chạy. Successor
+WP14R đã hoàn tất `001..007` và authorize exact freeze v2; `008` Ready nhưng blocked
+cho tới AC preflight pass, `009..012` vẫn Unauthorized. WP11–WP12 chưa bắt đầu.
 
 ## Cách đọc
 
@@ -20,8 +26,14 @@ Khi tài liệu lịch sử mâu thuẫn với trạng thái mới, nguồn ưu 
 | WP9 Panel A, 8 xe, 2.160 arrivals/arm | 1.735 completed; 74.443.002 ms burden | 1.581 completed; 128.020 ms burden | service −154 = −7,13 pp: **FAIL**; burden: **PASS** |
 | WP9 Panel B, 4 xe, 2.160 arrivals/arm | 966 completed; 44.766.809 ms burden | 860 completed; 342.974 ms burden | service −106 = −4,91 pp: **FAIL**; burden: **PASS** |
 | WP10 RidePy Layer 3 | — | — | capability gate: **FAIL**, không chạy effectiveness matrix |
+| WP13 mechanism diagnostics | 40 paired first-divergence records | 41 linked B1 actionful candidates | 33 C1-pruned, 7 C1-eligible-not-selected, 1 C1-selected; descriptive/noncausal |
+| WP14 paired dry-run | B1 pass independent verifier | C1 partial invalid sau interruption | resource gate `1 completed / 1 failed`: **FAIL CLOSED**; `010` unauthorized |
+| WP14R freeze-v2 protocol | — | — | `001..007 Done`; canonical receipt bind source/mechanics/PDFs; preflight fail đúng `POWER_SOURCE_NOT_AC`, zero scientific outcome |
 
-Final repository verification được ghi ở closure: .NET 855/855, FleetPy 95/95, RidePy 23/23; các con số này mô tả source tree đã review trước tài liệu tổng hợp này.
+Baseline sau closure rerun WP14R-007 là .NET **908/908**, pinned CPython/FleetPy
+**337/337**, targeted WP14R **95/95**, zero skip; RidePy closure trước đó là **23/23**.
+Đây là verification correctness/mechanics của source và freeze, không làm resource gate
+WP14-v1 `009` thành pass và không phải effectiveness result mới.
 
 ## A. Mục tiêu và tiêu chí thành công
 
@@ -31,7 +43,15 @@ RideBound nghiên cứu liệu một hệ thống ride-pooling online có thể 
 
 ### 2. Câu hỏi nghiên cứu trung tâm có thay đổi không?
 
-**Chưa đổi về bản chất.** Câu hỏi trung tâm vẫn là đánh đổi giữa kiểm soát cumulative promise revision và service/efficiency. Tuy nhiên H6 đã trả lời âm cho treatment C1 hiện tại trên hai panel: cơ chế làm burden gần bằng không nhưng service giảm 7,13 pp ở 8 xe và 4,91 pp ở 4 xe, đều vượt xa margin −1 pp. Vì vậy bước tiếp theo không được giả định cơ chế hiện tại thành công; phải chọn giữa phân tích nguyên nhân, thiết kế treatment mới, hoặc đóng gói kết quả âm.
+**Chưa đổi về bản chất.** Câu hỏi trung tâm vẫn là đánh đổi giữa kiểm soát
+cumulative promise revision và service/efficiency. H6 đã trả lời âm cho treatment
+C1 hiện tại trên hai panel. WP13 sau đó giải thích bằng evidence candidate-level
+nhưng không biến association thành nhân quả. WP14 được mở chỉ cho exploratory
+service–burden frontier trên development panel mới; freeze đã xong, nhưng paired
+dry-run `009` fail nên matrix chưa và không được phép chạy dưới freeze v1. WP14R
+`001..007` đã gia cố mechanics và khóa freeze v2 mà không đọc scientific outcome.
+`008` chỉ có thể launch dưới AC/host preflight exact; hiện preflight fail trên battery.
+Vì vậy không có policy v2 hay frontier outcome mới để thay H6.
 
 ### 3. RideBound cuối cùng hướng tới loại dự án nào?
 
@@ -46,9 +66,9 @@ Nó **chưa phải sản phẩm production**. WP11 (Product UX) và WP12 (paper/
 
 ### 4. Thành công cuối cùng của dự án là gì?
 
-Research charter ban đầu đòi đồng thời: correctness/certificate, revision giảm, service không kém quá ngưỡng đã đăng ký, runtime khả dụng và evidence xuyên layer. Với C1/H6, tiêu chí effectiveness về service đã **thất bại** dù burden gate pass. Thành công khoa học còn khả thi là một trong hai hướng:
+Research charter ban đầu đòi đồng thời: correctness/certificate, revision giảm, service không kém quá ngưỡng đã đăng ký, runtime khả dụng và evidence xuyên layer. Với C1/H6, tiêu chí effectiveness về service đã **thất bại** dù burden gate pass. WP14 v1 còn thất bại ở paired resource gate trước khi có outcome. Thành công khoa học còn khả thi là một trong hai hướng:
 
-1. tìm treatment mới đạt trade-off tốt hơn bằng một preregistration mới; hoặc
+1. chỉ khi có authorization mới: thiết kế treatment/experiment kế nhiệm đạt trade-off tốt hơn bằng freeze/preregistration mới, không thay thế failure v1; hoặc
 2. công bố trung thực cơ chế, hạ tầng tái lập và kết quả âm có giới hạn rõ.
 
 Publication, production và một mức giảm revision cụ thể ngoài H6 **chưa được khóa** làm điều kiện bắt buộc cuối cùng.
@@ -122,7 +142,12 @@ Các dimension khác là unbounded trong policy này. Một số switch constrai
 
 ### 13. C1 chỉ thêm feasibility constraint hay còn đổi objective?
 
-**Cả hai.** C1 lọc hard-invalid candidate và đổi lexicographic objective thành: tối đa accepted → tối thiểu worst hard-budget utilization → tối thiểu vector revision 10D theo thứ tự khóa → tối thiểu operational cost → stable ID. Vì vậy cụm “lock/ranking” trong ablation không được hiểu là chỉ lock.
+**Cả hai về contract.** C1 lọc hard-invalid candidate và đổi lexicographic objective
+thành: tối đa accepted → tối thiểu worst hard-budget utilization → tối thiểu vector
+revision 10D theo thứ tự khóa → tối thiểu operational cost → stable ID. Nhưng đo sau
+H6 cho thấy `worst-hard-utilization-ppm` hằng số ở 100% decision và phần lớn revision/
+ID levels cũng thoái hóa. Vì vậy không được diễn giải service loss như bằng chứng
+ranking hữu hiệu; cơ chế quan sát được chủ yếu là hard gate.
 
 ### 14. 30-second budget nghĩa chính xác là gì?
 
@@ -179,7 +204,13 @@ Các lock là **hard**. C2 có warning threshold mềm để ranking excess, nh�
 
 ### 23. “Ranking” trong “lock/ranking” là gì?
 
-Đó là thứ tự chọn candidate của C1 sau khi qua hard gate: accepted count, worst utilization, từng thành phần revision 10D, cost và stable IDs. Arm `C1-unbounded` trong robustness vẫn giữ final-confirmation locks và ranking này nhưng bỏ giới hạn ETA hữu hạn, nên chênh B1→C1-unbounded được gọi gộp là “lock/ranking price”.
+Đó là thứ tự chọn candidate của C1 sau khi qua hard gate: accepted count, worst
+utilization, từng thành phần revision 10D, cost và stable IDs. Arm `C1-unbounded`
+trong robustness vẫn giữ final-confirmation locks và hierarchy này nhưng bỏ giới
+hạn ETA hữu hạn, nên báo cáo lịch sử gọi gộp chênh B1→C1-unbounded là
+“lock/ranking price”. Measurement WP13/WP14-001 buộc sửa cách nói: hierarchy tồn
+tại, nhưng worst-utilization hằng số và bảy eligible-not-selected links không tạo
+causal “ranking loss”; tên an toàn hơn là **lock plus residual selection association**.
 
 ### 24. C2 là gì và khác C1 ở đâu?
 
@@ -326,15 +357,29 @@ Warning excess của C2 chỉ đổi ranking; bản thân warning không loại 
 
 ### 47. Có log request-level “B1 nhận, C1 reject vì X” không?
 
-Raw transcripts có action theo request, promise/certificate và candidate-generation evidence. Tuy nhiên analyzer WP9 **chưa dựng phép ghép nhân quả request-level xuyên hai arm** kiểu “B1 phục vụ request R, C1 mất đúng vì constraint X”. Hai arm đã đi qua state trajectory khác nhau, nên reason tại epoch cuối không tự động là nguyên nhân phản thực.
+Raw transcripts có action theo request, promise/certificate và candidate-generation
+evidence. WP13 đã tiến thêm một bước: dựng 40 exact paired first-divergence records
+và link 41 B1 actionful selected candidates. Trong đó C1 prune 33 link (28 budget,
+5 pickup lock), giữ eligible nhưng không chọn 7 và cũng chọn 1. Tuy nhiên đây vẫn
+**không** phải phép ghép nhân quả kiểu “B1 phục vụ request R, C1 mất completion đúng
+vì X”: hai arm đi theo trajectory khác nhau và các association rows overlap.
 
 ### 48. Có thống kê rejection reason theo từng constraint không?
 
-Có rejection reason/witness ở từng run và reason chỉ được nêu cụ thể khi các witness phù hợp, nhưng báo cáo H6 **không có bảng phân loại 154 request** theo budget/lock/ranking/capacity/... Muốn có bảng đó cần một post-outcome analyzer mới, ghi rõ exploratory và định nghĩa attribution trước khi chạy.
+Có. H6 toàn-panel ghi C1 commitment prune: Panel A `780 budget + 160 lock`,
+Panel B `491 budget + 92 lock`; không có witness commitment dimension khác. WP13
+còn cross-tab exact first-divergence links và immediate acceptance. Nhưng không có
+bảng phân hoạch 154 completion Panel A theo nguyên nhân, vì witness là candidate/
+epoch evidence, fail-fast có thể che blocker sau và không phải counterfactual
+completion attribution.
 
 ### 49. Candidate tốt có thể bị prune trước OR-Tools không?
 
-Về nguyên tắc **có** trong bounded mode; OR-Tools chỉ chọn những gì generator đưa vào. Nhưng các run H6 đã audit báo không saturation/omission, solver hoàn tất tối ưu và không fallback, nên không có bằng chứng generator cap là nguyên nhân aggregate của kết quả WP9.
+Về nguyên tắc **có** trong bounded mode; OR-Tools chỉ chọn những gì generator đưa vào.
+Nhưng H6 audit báo không saturation/omission, solver optimal và không fallback.
+WP13 E1 còn ghi full portfolio: generated candidate sets bằng nhau exact 40/40 pair,
+390 semantic signatures/arm, zero B1-only/C1-only và zero candidate-ID drift. Vì vậy
+generator loss không được dữ liệu hiện có ủng hộ như nguyên nhân H6.
 
 ### 50. Có exact-small oracle không?
 
@@ -417,11 +462,22 @@ Mục tiêu production-research hiện tại là **bounded deterministic online 
 
 ### 64. Có dữ liệu request-level cho 154 completion mất ở Panel A không?
 
-Có raw input/output transcript và per-request promise/certificate trong từng bundle. Nhưng con số 154 là chênh **aggregate completions** `1735 − 1581`, không phải một danh sách đã ghép sẵn 154 request nhân quả. Analyzer hiện chưa xuất dataset “B1 served/C1 not served” đã match và attribution.
+Có raw input/output transcript và per-request promise/certificate trong từng bundle.
+WP13 đã tạo 40 paired first-divergence records, 41 B1-selected candidate links và
+full retained portfolios trên E1. Nhưng con số 154 vẫn là chênh **aggregate
+completions** `1735 − 1581`, không phải danh sách 154 request nhân quả; không artifact
+nào được phép gọi các candidate links là 154 “request được/mất vì X”.
 
 ### 65. Có thể phân loại 154 request theo budget/lock/ranking/no candidate/capacity/solver/timeout không?
 
-**Chưa thể từ báo cáo hiện có.** Có thể loại trừ một số giải thích ở cấp run: H6 không có candidate omission/saturation được báo, solver hoàn tất optimal và không fallback/timeout. Nhưng capacity/physical rejection ở state cuối có thể là hậu quả của quyết định treatment sớm hơn; không được gắn nguyên nhân request-level nếu chưa làm counterfactual replay. Budget, lock và ranking cũng cần ablation hoặc witness nhất quán, không chỉ đọc final rejection code.
+**Không thể phân hoạch nhân quả 154 request.** Evidence hiện loại trừ cap/work/search
+omission ở target epochs và solver timeout/fallback; generated sets bằng nhau 40/40.
+Ở 41 B1 actionful links tại first divergence, association quan sát được là 28 budget
+prune, 5 phase-lock prune, 7 C1-eligible-not-selected và 1 C1-selected. Cả 8 pair có
+immediate C1-lower đều kèm witness (7 budget, 1 lock), nhưng 25 pair acceptance bằng
+nhau cũng có witness. Các row overlap và tổng cell-associated delta cho ra −266 trong
+khi aggregate hai panel chỉ −260; đó là bằng chứng trực tiếp rằng không được cộng
+chúng thành decomposition.
 
 ### 66. Phân rã “một nửa lock/ranking, một nửa budget” được tính thế nào?
 
@@ -434,31 +490,74 @@ Trên 5 robustness cells, mỗi arm có denominator 540:
 | C1 tight 30 s | 400 | −40 = −7,41 pp |
 | C2 loose hybrid | 402 | −38 = −7,04 pp |
 
-`B1 → C1-unbounded` giữ lock/ranking nhưng bỏ finite ETA budget, nên −20 được gán cho arm-level “lock/ranking price”. `C1-unbounded → C1-tight` thêm budget 30 s và mất thêm đúng 20. Đây là **decomposition bằng arm counterfactual trên 5 cell**, không phải causal attribution cho từng request hay toàn bộ 20-cell panel.
+`B1 → C1-unbounded` giữ lock và treatment selection hierarchy nhưng bỏ finite ETA
+budget, nên −20 từng được gán cho arm-level “lock/ranking price”.
+`C1-unbounded → C1-tight` thêm budget 30 s và mất thêm đúng 20. Đây là
+**decomposition bằng arm ablation trên 5 cell**, không phải causal attribution cho
+từng request hay toàn bộ 20-cell panel. Sau measurement về hierarchy thoái hóa,
+không nên rút gọn nửa đầu thành “ranking gây −20”.
 
 ### 67. Có request chỉ cần budget 31 giây là nhận được không?
 
-Chưa biết. Repository chưa tính minimum extra budget/slack cho từng request bị mất. Không thể suy từ tổng burden hay final rejection reason.
+Không thấy witness nào như vậy trong tập đã đo. Trên 28 numeric budget links tại
+first divergence, mức **tăng thêm** nhỏ nhất để xóa witness hiện tại là 10.128 ms;
+tức hard limit phải từ 30.000 lên ít nhất 40.128 ms ở link nhỏ nhất. Đây chỉ xóa
+witness đầu tiên, không chứng minh candidate sau đó feasible hoặc request được cứu.
 
 ### 68. Hay đa số cần 2–5 phút?
 
-Chưa biết; không có distribution đó trong artifact phân tích hiện tại.
+Evidence mới cho thấy mức nới thường lớn hơn vài giây: median additive increase là
+93.060 ms; 21/28 link cần thêm trên 60 giây, 9/28 cần trên 120 giây, maximum
+301.765 ms (hơn 5 phút thêm vào limit). Không thể đổi câu này thành “đa số request
+cần 2–5 phút”, vì đơn vị là candidate link/witness và 12 link nằm trong 60–120 giây.
 
 ### 69. Distribution của required revision đối với request bị reject ra sao?
 
-Chưa được đo. Để trả lời đúng cần một exploratory analyzer mới: tại các epoch tương ứng, lưu best otherwise-feasible witness, tính mức nới nhỏ nhất theo từng dimension, replay khi state trajectories đã lệch và định nghĩa rõ request matching. Các bin `≤10 s`, `10–30 s`, `30–60 s`, `>60 s` trong câu hỏi hiện chỉ là ví dụ, không phải kết quả.
+Đã đo **một đại lượng hẹp** trên 28 recorded budget-witness links, không phải
+distribution của “request bị reject được cứu”:
+
+| Tăng thêm vào hard limit 30 s để xóa witness hiện tại | Link |
+|---|---:|
+| 0–10 s | 0 |
+| >10–30 s | 4 |
+| >30–60 s | 3 |
+| >60–120 s | 12 |
+| >120 s | 9 |
+
+Min/median/max là `10.128 / 93.060 / 301.765 ms`. Validator H6 fail-fast, nên sau
+khi xóa witness này có thể lộ blocker tiếp theo; feasibility và downstream
+completion đều `notEvaluated`. Distribution phản thực đầy đủ mà câu hỏi mong muốn
+vẫn chưa được thiết lập.
 
 ### 70. Revision burden của B1 phân bố ra sao?
 
-WP9 report khóa aggregate và pickup/drop split; raw transcript cho phép dựng per-rider history. Báo cáo chưa xuất histogram/quantile để kết luận “nhiều thay đổi nhỏ” hay “ít thay đổi lớn”. Pilot từng thấy dấu hiệu heavy-tail và có material/disruptive counts, nhưng không được dùng để thay distribution confirmatory. Cần phân tích mới nếu đây là câu hỏi quyết định treatment tiếp theo.
+WP14-001 đã đo trực tiếp B1 trên H6. Phân phối `drop_eta_total_ms` là **lưỡng cực/
+heavy-tail**:
+
+- Panel A: 1.332/1.735 rider bằng 0; 403 >0; 369 >30 s; 341 >60 s;
+  230 >120 s; 48 >300 s; p90/p95/max `154.821/234.222/573.491 ms`.
+- Panel B: 706/966 bằng 0; 260 >0; 230 >30 s; 207 >60 s; 140 >120 s;
+  30 >300 s; p90/p95/max `159.580/244.069/630.599 ms`.
+
+Nói ngắn: đa số không chịu decision-induced drop revision; nhóm bị tác động thì
+thường chịu mức lớn, gần như không có khối lượng ở 0–30 giây.
 
 ### 71. 0,17% burden của C1 có nghĩa gần như không thay đổi gì không?
 
-Đúng về **measured decision-induced ETA total variation**: Panel A giảm từ 74.443.002 ms xuống 128.020 ms và 12/20 cell C1 bằng 0. Nhưng diễn giải sản phẩm phải rất cẩn thận: pickup component giảm về 0 phần lớn do lock theo định nghĩa, và C1 thường từ chối thêm công việc thay vì phục vụ rồi tối ưu revision tốt hơn. Burden gate vì thế mang rất ít thông tin khi service gate fail.
+Đúng về **attributed decision-induced ETA total variation**: Panel A giảm từ
+74.443.002 ms xuống 128.020 ms và 12/20 cell C1 bằng 0. Nhưng 100% rider có promise
+mở ở cả hai arm vẫn thấy promise thay đổi ít nhất một lần khi tính customer-visible/
+exogenous movement. Experienced published-to-published burden giảm khoảng 88,85%
+ở Panel A và 91,43% ở Panel B, không phải 99,8%. C1 còn tránh burden bằng cách từ
+chối work; vì vậy “gần như không thay đổi gì” chỉ đúng cho trục attributed
+decision-induced, không đúng như một claim UX tuyệt đối.
 
 ### 72. Có thật sự muốn burden gần zero không, hay 10–30% vẫn chấp nhận?
 
-**Chưa quyết định.** H6 chỉ khóa một treatment và margin, không khóa product utility curve. Dữ liệu hiện tại gợi ý nên đo frontier service–burden nhiều mức và có thể chấp nhận burden cao hơn C1 nếu service phục hồi đáng kể; ngưỡng 10/20/30% phải là quyết định nghiên cứu/sản phẩm mới, không sửa ngược H6.
+**Chưa quyết định.** H6 chỉ khóa một treatment và margin, không khóa product utility
+curve. WP14 đã freeze cách báo frontier thay vì scalar, nhưng paired resource gate
+fail trước matrix nên chưa có frontier outcome mới. Ngưỡng 10/20/30% vẫn cần một
+quyết định nghiên cứu/sản phẩm mới; không được suy từ partial dry-run hay sửa ngược H6.
 
 ### 73. Công thức chính xác của revision burden là gì?
 
@@ -498,7 +597,11 @@ Operational travel cost là objective/metric khác.
 
 ### 78. Có phân biệt ETA sớm hơn và muộn hơn không?
 
-Ledger burden đối xứng theo trị tuyệt đối: sớm 20 giây và muộn 20 giây cùng tiêu 20.000 ms. Promise delta/provenance vẫn có old/new value để audit hướng, nhưng hard cumulative total hiện không ưu tiên delay hơn advance.
+Ledger H6 đối xứng theo trị tuyệt đối: sớm 20 giây và muộn 20 giây cùng tiêu
+20.000 ms. Promise delta/provenance giữ old/new value để audit. Analyzer WP14 đã
+được freeze để báo riêng pickup improvement/worsening cho factor ratchet, nhưng do
+`009` fail nên chưa có outcome matrix; hard cumulative H6 vẫn không ưu tiên delay
+hơn advance.
 
 ### 79. “Disruptive count” chính xác là gì?
 
@@ -633,7 +736,18 @@ Có nếu muốn population inference hoặc claim generality mạnh hơn. Cần
 
 ### 110. Compute budget và runtime WP9 là bao nhiêu?
 
-Budget mỗi job được khóa bằng wall/CPU/RSS/process caps của harness, generation/validation/solver work units và một measured repeat/arm. Một cặp diagnostic Panel B ghi B1 `738.769 ms` và C1 `650.215 ms` (khoảng 12,3 và 10,8 phút cho từng job). Repository không công bố một tổng wall-clock canonical cho toàn WP9; các panel có thể chạy song song nên cộng per-job không bằng elapsed thực. Vì vậy không nên biến ước lượng “khoảng 90 phút còn lại” trong handoff thành số scientific chính thức.
+Budget mỗi job được khóa bằng wall/CPU/RSS/process caps của harness,
+generation/validation/solver work units và một measured repeat/arm. Quét read-only
+100 H6 bundle cho resource wall: min/median/p95/max
+`221.146 / 510.036 / 826.517 / 943.400 ms`; tổng là 52.640.014 process-ms
+(14,62 process-hour), không phải elapsed wall của matrix vì jobs có thể chạy song
+song. Panel A median 624.546 ms, Panel B median 396.417 ms. Config solver giữ
+100 candidate/vehicle, 2 request mới/vehicle, 10.000 generation và validation work,
+100.000 solver work, deterministic time 1.000.000 micro-units.
+
+WP14 freeze dự phóng 160 job khoảng 15,6 GB/11 giờ ở p4. Dry-run `009` chỉ có B1
+valid (755.379 ms, 125.237.277-byte bundle); C1 partial invalid, nên paired resource
+gate fail và không được dùng phép ngoại suy một job để mở matrix.
 
 ## H. FleetPy, BeGo, RidePy và ba layer
 
@@ -687,7 +801,13 @@ Protocol v1 **đã có** directed `edgeId` + `progressPermille`, nên thiếu h�
 
 ### 121. Có phần kiến trúc nào quá phức tạp hoặc nên refactor không?
 
-Không có correctness blocker chưa xử lý trong final WP1–WP10 review. Các vùng phức tạp nhất là bounded candidate generation/retention/cache, full commitment projection-validation-certificate chain, protocol checkpoint/replay và benchmark verifier. Độ phức tạp phần lớn do reproducibility/fail-closed requirements, nhưng candidate hot path là nơi hợp lý nhất để tiếp tục profile và đơn giản hóa nội bộ. Bất kỳ refactor nào cũng phải giữ semantics bằng oracle, mutation/conformance tests và artifact provenance.
+Không có correctness blocker P0–P2 chưa xử lý sau full WP13 audit. Các vùng phức tạp
+nhất là bounded candidate generation/retention/cache, full commitment projection–
+validation–certificate chain, protocol checkpoint/replay và benchmark verifier.
+WP14-002 đã bỏ opt-in các CP-SAT lexicographic pass hằng số sau khi chứng minh
+decision invariance; không claim wall-clock speedup. Candidate hot path vẫn là vùng
+hợp lý để profile/simplify, nhưng mọi refactor phải giữ semantics bằng oracle,
+mutation/conformance tests và provenance.
 
 ### 122. Candidate generation nằm ở đâu?
 
@@ -724,6 +844,12 @@ Chưa có một số end-to-end duy nhất cho mọi load. Evidence hiện có:
 - CP-SAT candidate-selection microbenchmark p50 khoảng 2,389 / 12,160 / 21,406 / 91,004 ms cho 4 / 16 / 32 / 128 Boolean options;
 - benchmark `Generate` sau tối ưu khoảng 16,6 ms (suffix 4), 170 ms (8), 587 ms (12), 1.018 ms (16), lấy min của 3 lần trên máy đo;
 - actual WP9 whole-run jobs kéo dài nhiều phút vì gồm hàng trăm epoch, simulator, transcript và verification.
+
+Trên toàn 100 H6 bundle, tổng process wall 52.640.014 ms cho 57.806 solver
+decisions, tương đương khoảng **910,6 ms/decision** nếu chia thô. Đây không phải
+latency trực tiếp từng decision: nó còn gồm FleetPy, protocol, lifecycle, I/O và
+drain. B1 dry-run WP14 có 824 decision trong 755.379 ms (~916,7 ms/decision cùng
+cách chia thô), nhưng một điểm không cấp SLA.
 
 Các số trên không được cộng thô thành một SLA; cần benchmark end-to-end theo load class nếu chuẩn bị product.
 
@@ -834,7 +960,21 @@ Kiến trúc cho phép thêm policy/objective version mới để tối ưu trad
 
 ### 149. Có giới hạn hardware/compute không?
 
-Không có hard organizational ceiling được ghi. Harness có resource envelope per job và final evidence ghi máy/môi trường chạy, nhưng đó là reproducibility control, không phải tuyên bố ngân sách phần cứng. Các benchmark hiện cho thấy candidate generation là cost đáng lưu ý khi suffix dài.
+Không có hard organizational ceiling được ghi. WP14 v1 khóa operational envelope:
+start ≥25 GiB free, reserve 5 GiB, output ≤20 GiB, job ≤2.700 s, matrix ≤57.600 s,
+parallelism 4. Đây là reproducibility/fail-closed control, không phải ngân sách tổ
+chức. Dry-run còn 145,15 GB nhưng vẫn fail vì C1 partial invalid—dung lượng đủ không
+cứu được integrity gate. WP14R-005 sau đó chỉ dimension execution mechanics trên
+fixed synthetic corpus: 48/48 sample v3 pass và verifier của journal 8 MiB đạt peak
+65.875.968 byte dưới envelope 256 MiB. Kết quả này không phải hard cap cho hai stream
+scientific đồng thời và chưa authorize lại matrix.
+
+Revalidation 2026-08-28 còn cho thấy medium public-drain CPU gate phụ thuộc setup
+state: hai run chưa shutdown build servers fail ceiling 120 giây; sau
+`dotnet build-server shutdown`, exact test và full 908/908 pass với ceiling không đổi.
+WP14R-007 đã khóa power source/scheme và host quiescence trong freeze v2; preflight
+thật fail `POWER_SOURCE_NOT_AC` nhưng không tự nới limit hay launch trên battery. Đây
+không phải product SLA.
 
 ### 150. Có ngân sách cloud không?
 
@@ -862,6 +1002,12 @@ Không được sửa ngược:
 
 - H6 preregistration, fixed panel membership, B1/C1 configs, margin/gates và WP9 raw/result bundles;
 - WP10 freeze/capability decision và final negative outcome;
+- WP13 E1 raw roots, closure receipts và descriptive/noncausal claim boundary;
+- WP14 freeze v1 receipt `1ce26ff0…37a55`, 46 bound repository files, bốn forbidden
+  H6/E1 roots, B1 valid bundle, C1 partial transcript và failure summary của `009`;
+- WP14R retained mechanics receipts/reports của `002..006`, cùng canonical freeze-v2
+  receipt SHA `6b340108…a31237`, authorization preflight receipt và exact source/PDF
+  identities của `007`; chúng không phải scientific outcome;
 - hashes/provenance/Runner-adapter versions gắn với artifact đã công bố;
 - lịch sử ADR/status và claim boundary của kết quả đã quan sát.
 
@@ -869,7 +1015,8 @@ Source tương lai vẫn được thay bằng ADR/WP/version mới. Protocol v1 
 
 ## L. Thứ tự ưu tiên đề xuất
 
-Repository không chứa thứ tự ưu tiên cá nhân của chủ dự án. Dựa trên trạng thái WP10 closure và việc H6 fail, thứ tự làm việc **đề xuất** là:
+Repository không chứa thứ tự ưu tiên cá nhân của chủ dự án. Dựa trên trạng thái WP13
+closure, H6 fail và WP14 resource gate fail, thứ tự làm việc **đề xuất** là:
 
 1. **Reproducibility/evidence** — giữ kết quả âm đáng tin và không mất freeze.
 2. **Chứng minh/trả lời hypothesis khoa học** — chấp nhận cả câu trả lời âm; không đồng nghĩa phải ép positive result.
@@ -905,6 +1052,18 @@ Nếu mục tiêu thực tế của chủ dự án là ra sản phẩm sớm ho�
 - [Requirement traceability](../19-requirement-traceability.md)
 - [WP9 confirmatory result](../benchmarking/wp9-confirmatory-result-2026-08-23.md)
 - [WP10 RidePy Layer 3 result](../benchmarking/wp10-ridepy-layer3-negative-capability-result-2026-08-23.md)
+- [WP13 candidate descriptive aggregation](../benchmarking/wp13-011-e1-candidate-descriptive-aggregation-2026-08-24.md)
+- [WP13 closure decision](../benchmarking/wp13-013-closure-decision-2026-08-24.md)
+- [WP1–WP13 optimization/fairness review](./wp1-wp13-optimization-and-fairness/README.md)
+- [WP14 full-PDF evidence](../research/wp14-ablation-pareto-full-pdf-evidence-2026-08-24.md)
+- [WP14 freeze 008](../benchmarking/wp14-008-development-ablation-freeze-2026-08-26.md)
+- [WP14 paired dry-run failure 009](../benchmarking/wp14-009-paired-dry-run-resource-gate-2026-08-26.md)
+- [WP14R resilient-execution refinement](../tasks/45-wp14r-resilient-execution-refinement.md)
+- [WP14R ordered ticket plan](../tasks/46-wp14r-resilient-execution-ticket-plan.md)
+- [WP14R mechanics resource dimensioning](../benchmarking/wp14r-005-mechanics-resource-dimension-evidence-2026-08-27.md)
+- [WP14R independent verifier và mutation matrix](../benchmarking/wp14r-006-independent-verifier-evidence-2026-08-27.md)
+- [WP14R freeze-v2 authorization](../benchmarking/wp14r-007-protocol-freeze-v2-authorization-2026-08-28.md)
+- [WP14R freeze-v2 full-PDF evidence](../research/wp14r-freeze-v2-full-pdf-evidence-2026-08-28.md)
 - [Final WP1–WP10 review](./wp1-wp10-final/README.md)
 - [WP9 task plan](../tasks/39-wp9-main-experiment-ticket-plan.md)
 - [WP10 task plan](../tasks/40-wp10-ridepy-layer3-ticket-plan.md)

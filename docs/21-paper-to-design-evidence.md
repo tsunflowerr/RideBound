@@ -519,3 +519,23 @@ link exact prune witness khi tồn tại, và ghi downstream result là
 `trajectoryAssociated`. H6 không có full retained candidate route/schedule, nên không
 được reconstruct/rerank. Chi tiết applied/rejected và provenance nằm tại
 [`post-h6-mechanism-diagnostics-full-pdf-evidence-2026-08-23.md`](research/post-h6-mechanism-diagnostics-full-pdf-evidence-2026-08-23.md).
+
+## 27. WP15 refinement — corpus paper mới tải từ web, 2026-08-28
+
+Bốn paper **chưa từng có trong bất kỳ corpus RideBound nào**, tải trực tiếp từ arXiv
+ngày 2026-08-28, hash và extract text từng trang. Corpus ngoài repo:
+`E:\RideBoundData\research\pdf-20260828-wp15-commitment-design`; inventory SHA-256
+`70e437b260fa88b930099eb5f3af0f5823643c545f9d0ad89f3450bce6edfb70`.
+
+| Paper | Trang | SHA-256 | Áp dụng | Không áp dụng |
+|---|---:|---|---|---|
+| Hosseini, Rostami & Araghi 2025, service time window design | 47/47 | `9ffaa231e3e46208d2c3c9282bbe57137b130331c67b2a660100a1d1f1b27825` | lời hứa có thể là **cửa sổ** với mức bảo đảm dẫn xuất từ tỷ số penalty `Pr(τ≤ℓ)=a_w/a_ℓ`, `Pr(τ≤u)=1−a_w/a_u`; chính sách chờ khi đến sớm | không copy penalty/quantile; **không** dùng mô hình integrated routing+window (CPLEX 5 giờ chưa đóng gap ở 21 khách, không dùng được cho online 108 request/cell) |
+| Laupichler, Andre, Kandler, Sanders & Vortisch 2026, Mt-KaRRi | 35/35 | `a8903413156ffe989b6c74f9c9e53d57f80d7257b09be44f410ea4094bd6b911` | xác nhận độc lập anchor "lời hứa đã accepted" (`T_p+t_max_wait`, `α·T_t+β`); xác nhận failure mode ràng buộc cứng làm rỗng tập khả thi và "paralyzing fleets" | không claim 1 ms/request hay so scale; không copy `t_max_wait`/`α`/`β`/`w_detour`/`w_walk`; họ có mode choice + walking, RideBound không |
+| Milosevic et al. 2026, stochastic decision horizons | 58/58 | `d022e657926ca32fbe6262ee8f3f3c9cf76f072db973f0cacd1b56b541aace3a` | ý tưởng horizon **phụ thuộc trạng thái** thay vì budget phẳng, làm nền cho lifecycle graduation | không dùng continuation probability, soft/probabilistic constraint, thuật toán RL hay recipe entropy — RideBound phải certify được và fail-closed |
+| Lotze, Marszal, Schröder & Timme 2023, adaptive stop pooling | 25/25 | `f6b8262e29518a5dd2a2338cf33a56a13fd4c70e9c24e7bfffa4c68e39c94ede` | trục giảm **nguồn** phương sai thay vì ràng buộc revision | đòi đổi tập stop ⇒ đổi ngữ nghĩa hai `*_stop_switch_count` (hiện `hardLimit=0`, 0 witness/44.156 decision); chỉ mở bằng ADR riêng |
+
+Tổng 165/165 trang có text layer, không file nào mã hoá. Abstract chỉ dùng để **chọn**
+paper; mọi mục applied/rejected ở trên dựa trên text đã extract. Độ sâu đọc từng phần
+được ghi minh bạch trong research note. Corpus này **không** authorize WP15 execution,
+không đổi H6/E1/WP14-v1 và không lấy một tham số số học nào. Chi tiết:
+[`wp15-commitment-design-new-paper-evidence-2026-08-28.md`](research/wp15-commitment-design-new-paper-evidence-2026-08-28.md).

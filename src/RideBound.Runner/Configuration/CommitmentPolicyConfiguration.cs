@@ -24,7 +24,8 @@ public sealed class CommitmentPolicyConfiguration :
         "materialRevisionRule",
         "freezeHorizonMs",
         "freezeHorizonLocks",
-        "finalConfirmationLocks");
+        "finalConfirmationLocks",
+        "ratchetLocks");
     private static readonly IReadOnlySet<string> LimitFields = Fields(
         "dimension",
         "hardLimit",
@@ -178,7 +179,8 @@ public sealed class CommitmentPolicyConfiguration :
                 ? new Duration(PositiveInteger(freeze, "freezeHorizonMs"))
                 : null,
             ReadLocks(element, "freezeHorizonLocks"),
-            ReadLocks(element, "finalConfirmationLocks"));
+            ReadLocks(element, "finalConfirmationLocks"),
+            ReadLocks(element, "ratchetLocks"));
     }
 
     private static CommitmentDimensionLimit ReadLimit(JsonElement element)

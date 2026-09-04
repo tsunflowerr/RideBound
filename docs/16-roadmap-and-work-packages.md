@@ -379,27 +379,63 @@ WP10 được phép đóng bằng kết quả âm theo ADR-051; không báo thà
 
 ## WP14 — Exploratory ablation và Pareto frontier
 
-**Trạng thái hiện tại:** **In progress**; `RB-WP14-001 Done`, `RB-WP14-002 Ready`.
-Ordered queue: `docs/tasks/44-wp14-exploratory-ablation-ticket-plan.md`. ADR-066 khoá
-sáu factor F1–F6 và loại bốn factor bằng phép đo. Dưới freeze exploratory mới, đo
-lock scope, penalty band, vị trí operational-cost, hold và mục tiêu phân phối; báo
-service–burden frontier thay vì chọn policy từ một scalar hậu outcome.
+**Trạng thái hiện tại:** **Freeze v1 stopped fail-closed**; `RB-WP14-001..005/008
+Done`, `006/007 Deferred`, `009 Closed — FAIL`, `010..014 unauthorized`. Ordered queue:
+`docs/tasks/44-wp14-exploratory-ablation-ticket-plan.md`. ADR-066 khoá sáu factor
+F1–F6 và loại bốn factor bằng phép đo; quyết định owner sau `005` hoãn F3–F6 cho
+tới frontier đầu tiên. ADR-069 đã freeze exact 16 cell × 10 arm = 160 job; ADR-070
+đóng paired resource gate ở 1 valid B1/1 partial C1, giữ partial và cấm retry/
+replacement. Full matrix/frontier chưa chạy.
 
 **Ràng buộc bắt buộc:** development namespace/cells mới; H6 Panel A/B bị loại khỏi mọi
 tuning/selection; freeze factor matrix, denominator, analyzer và resource envelope
 trước outcome; không authorize H7 hoặc lifecycle policy v2.
 
-**Exit gate:** paired development evidence, independent verification, không dùng để
-rescue H6 và không chọn H7 configuration trên confirmatory cells.
+**Exit gate:** không đạt dưới freeze v1. Bất kỳ successor nào cũng cần authorization
+và protocol/ADR mới; không được thay thế failure receipt hoặc rescue H6.
+
+## WP14R — Resilient execution successor
+
+**Trạng thái hiện tại:** active theo ADR-071/072; `RB-WP14R-001..007 Done`,
+`008 Ready` dưới exact freeze-v2 nhưng host preflight đang fail `POWER_SOURCE_NOT_AC`;
+`009..012 unauthorized`. Refinement và ordered
+queue: `docs/tasks/45-wp14r-resilient-execution-refinement.md` và
+`docs/tasks/46-wp14r-resilient-execution-ticket-plan.md`.
+
+**Mục tiêu:** xây immutable two-attempt ledger, supervised incremental evidence,
+process-tree/host telemetry, fault-injection, resource dimensioning và independent
+verifier trước khi owner cân nhắc freeze v2. Attempt không phải experimental unit;
+recovery chỉ theo mechanical validity và cấm đọc scientific outcome.
+
+**Ràng buộc bắt buộc:** WP14-v1 vẫn terminal FAIL CLOSED; không sửa 46 file freeze
+bound, không retry/replace C1 partial, không chạm raw H6/E1, không tune factor/panel/
+denominator và không mở WP15/H7. Scientific execution `008..012` chỉ được authorize
+sau mechanics gates `002..006` và explicit protocol/freeze-v2 decision `007`.
+
+**Exit gate:** fault matrix và independent ledger verifier đã pass; paired resource gate
+dưới exact pre-outcome freeze v2 pass; development matrix/frontier được verify độc lập;
+full source/logic/claim audit zero unresolved P0–P2. Failure ở bất kỳ gate nào dừng
+fail-closed, không chọn best attempt.
 
 ## WP15 — Lifecycle-aware commitment v2
 
-**Roadmap-level only.** Thiết kế commitment graduation/freeze horizon theo lifecycle
-nếu WP14 chứng minh có Pareto candidate; giữ accepted assignment, hard physical
-constraints, ledger/certificate và same Runner.
+**Roadmap-level only; có refinement draft, chưa authorize execution.** Thiết kế
+commitment graduation/freeze horizon theo lifecycle nếu WP14R chứng minh có Pareto
+candidate; giữ accepted assignment, hard physical constraints, ledger/certificate và
+same Runner. Refinement draft:
+`docs/tasks/47-wp15-lifecycle-commitment-refinement.md`; evidence paper mới:
+`docs/research/wp15-commitment-design-new-paper-evidence-2026-08-28.md`.
+
+**Design space đã khoá trước (mỗi trục có điều kiện phủ định):** B — lời hứa là cửa sổ
+với mức bảo đảm dẫn xuất từ tỷ số penalty thay vì `hardLimit` chọn tay; C — freeze
+horizon phụ thuộc lifecycle state thay vì hằng số; D — giảm nguồn phương sai, đòi ADR
+riêng vì đổi ngữ nghĩa hai stop-switch dimension. Anchor **giữ nguyên** là lời hứa đã
+được khách chấp nhận, không chuyển sang outcome-anchored; mọi policy v2 phải bảo đảm
+tập khả thi không rỗng theo cấu tạo.
 
 **Exit gate:** formal contract, invariant/mutation/oracle tests và fallback; không
-claim future value chỉ từ slack.
+claim future value chỉ từ slack. Ticket `RB-WP15-xxx` chỉ được sinh sau khi WP14R đóng
+`012` với frontier verified và có ADR authorize riêng.
 
 ## WP16 — Development data, sampling và pilot v2
 
@@ -461,7 +497,8 @@ flowchart LR
     W5 --> W11["WP11"]
     W9 --> W13["WP13"]
     W13 --> W14["WP14"]
-    W14 --> W15["WP15"]
+    W14 --> W14R["WP14R"]
+    W14R --> W15["WP15"]
     W15 --> W16["WP16"]
     W16 --> W17["WP17"]
     W17 --> W18["WP18"]
@@ -524,9 +561,11 @@ non-additive và noncausal. `RB-WP13-012` đã audit 80 source/schema/test/repor
 deep-verify 100 H6 bundle và 80 E1 arm, sửa một verifier-composition P2 bằng regression
 và đóng với zero unresolved P0–P2. `RB-WP13-013` đã đóng WP13 bằng bảy exit gate pass,
 resolution cho ba P3 limitation và verdict `openExploratoryAblationOnly`. Không
-backfill/ghi H6, không CI/causal claim. WP14 chỉ được mở ở mức refinement trên
-development namespace mới; WP15–WP20 vẫn ở roadmap-level. WP11/WP12 deferred/stable và
-không được dùng để diễn giải lại outcome.
+backfill/ghi H6, không CI/causal claim. WP14-v1 đã mở trên development namespace rồi
+dừng fail-closed ở resource gate; WP14R đã khóa freeze-v2 với `001..007 Done`,
+`008 Ready` nhưng chưa launch do AC precondition. WP15–WP20 vẫn roadmap-level.
+WP11/WP12 deferred/stable và không được
+dùng để diễn giải lại outcome.
 
 WP0 được thực hiện trực tiếp trong repository RideBound mới theo yêu cầu của
 người dùng. Sau khi WP0 qua exit gate:

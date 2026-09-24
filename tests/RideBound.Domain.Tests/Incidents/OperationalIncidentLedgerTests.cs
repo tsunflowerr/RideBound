@@ -345,6 +345,83 @@ public sealed class OperationalIncidentLedgerTests
             once.AppendBreach(breach).Failure?.Code);
     }
 
+    [Fact]
+    public void A_late_pickup_is_after_the_window_and_recorded_once_per_rider()
+    {
+        var late = new ObservedLatePickup(
+            TestData.RequestOne,
+            TestData.VehicleOne,
+            new SimTime(2_000),
+            new SimTime(2_500),
+            5,
+            2);
+
+        var once = OperationalIncidentLedger.Empty.RecordLatePickup(late);
+
+        Assert.True(once.IsSuccess, once.Failure?.Message);
+        Assert.Equal(500, Assert.Single(once.Ledger!.LatePickups).LatenessMilliseconds);
+        Assert.Empty(OperationalIncidentLedger.Empty.LatePickups);
+        Assert.Equal(
+            IncidentFailureCodes.DuplicateLatePickup,
+            once.Ledger.RecordLatePickup(late).Failure?.Code);
+        // On time is not late, and a record needs a real event and epoch.
+        Assert.Throws<ArgumentException>(
+            () => new ObservedLatePickup(
+                TestData.RequestOne,
+                TestData.VehicleOne,
+                new SimTime(2_000),
+                new SimTime(2_000),
+                5,
+                2));
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new ObservedLatePickup(
+                TestData.RequestOne,
+                TestData.VehicleOne,
+                new SimTime(2_000),
+                new SimTime(2_500),
+                0,
+                2));
+    }
+
+    [Fact]
+    public void Other_ledger_operations_keep_the_recorded_late_pickups()
+    {
+        var late = new ObservedLatePickup(
+            TestData.RequestOne,
+            TestData.VehicleOne,
+            new SimTime(2_000),
+            new SimTime(2_500),
+            5,
+            2);
+        var ledger = OperationalIncidentLedger.Empty.RecordLatePickup(late).Ledger!;
+        var incidentId = new IncidentId("incident-late");
+
+        var opened = ledger.Open(
+            incidentId,
+            "VEHICLE_BREAKDOWN",
+            [TestData.VehicleOne],
+            [TestData.RequestOne],
+            6,
+            new SimTime(1_500)).Ledger!;
+        var operational = opened.AppendBreach(Breach(incidentId));
+        var drift = CommitmentTestData.Vector(CommitmentDimension.DropEtaTotalMs, 40);
+        var forced = operational.Ledger!.AppendBreach(
+            ForcedReference(
+                new ThreeWayPromiseDelta(drift, CommitmentVector.Zero, drift),
+                25,
+                25,
+                [CommitmentFailureCodes.DeadlineExceeded]));
+        var resolved = forced.Ledger!.Resolve(incidentId, 12, new SimTime(2_700)).Ledger!;
+
+        Assert.True(operational.IsSuccess, operational.Failure?.Message);
+        Assert.True(forced.IsSuccess, forced.Failure?.Message);
+        Assert.Same(late, Assert.Single(opened.LatePickups));
+        Assert.Same(late, Assert.Single(operational.Ledger.LatePickups));
+        Assert.Same(late, Assert.Single(forced.Ledger.LatePickups));
+        Assert.Same(late, Assert.Single(resolved.LatePickups));
+        Assert.Equal(2, resolved.Breaches.Count);
+    }
+
     private static CommitmentBreachRecord ForcedReference(
         ThreeWayPromiseDelta deltas,
         long before,

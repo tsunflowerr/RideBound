@@ -459,6 +459,121 @@ public sealed class EventReducerTests
     }
 
     [Fact]
+    public void A_late_boarding_fails_by_default_and_is_recorded_as_a_fact_when_asked()
+    {
+        // Window [1000, 2000] ms; the rider boards at 2500 ms. By default the batch fails as
+        // before. With recording on, the rider is onboard, the window is unchanged, and the
+        // 500 ms gap is one separate record.
+        var (state, batch) = BoardingAt(2_500);
+
+        var rejected = new EventReducer().Reduce(state, batch);
+        var recorded = new EventReducer(recordLatePickups: true).Reduce(state, batch);
+
+        Assert.False(rejected.IsSuccess);
+        Assert.Equal(RequestFailureCodes.PickupTimeOutsideWindow, rejected.Witness!.Code);
+        Assert.True(recorded.IsSuccess, recorded.Witness?.Message);
+        var rider = recorded.ProposedState!.Run.Requests[ApplicationTestData.RequestId];
+        Assert.Equal(RequestLifecycle.Onboard, rider.Lifecycle);
+        Assert.Equal(new SimTime(2_500), rider.ActualPickupTime);
+        Assert.Equal(ApplicationTestData.Request().LatestPickup, rider.LatestPickup);
+        var late = Assert.Single(recorded.ProposedState.Incidents.LatePickups);
+        Assert.Equal(ApplicationTestData.RequestId, late.RequestId);
+        Assert.Equal(ApplicationTestData.VehicleId, late.VehicleId);
+        Assert.Equal(500, late.LatenessMilliseconds);
+        Assert.Equal(5, late.SourceEventSequence);
+        Assert.Equal(2, late.RecordedEpoch);
+        Assert.Empty(state.Incidents.LatePickups);
+    }
+
+    [Fact]
+    public void An_on_time_boarding_records_nothing_even_when_recording_is_on()
+    {
+        var (state, batch) = BoardingAt(2_000);
+
+        var expected = new EventReducer().Reduce(state, batch);
+        var actual = new EventReducer(recordLatePickups: true).Reduce(state, batch);
+
+        Assert.True(expected.IsSuccess, expected.Witness?.Message);
+        Assert.True(actual.IsSuccess, actual.Witness?.Message);
+        Assert.Empty(actual.ProposedState!.Incidents.LatePickups);
+        Assert.Same(state.Incidents, actual.ProposedState.Incidents);
+        Assert.Equal(
+            expected.ProposedState!.Run.Requests[ApplicationTestData.RequestId],
+            actual.ProposedState.Run.Requests[ApplicationTestData.RequestId]);
+    }
+
+    [Fact]
+    public void A_boarding_before_the_earliest_pickup_is_rejected_even_when_recording()
+    {
+        var (state, batch) = BoardingAt(999, bookingAt: 999);
+
+        var result = new EventReducer(recordLatePickups: true).Reduce(state, batch);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(RequestFailureCodes.PickupTimeOutsideWindow, result.Witness!.Code);
+    }
+
+    /// <summary>
+    /// An accepted rider on a two-stop route, then one batch that confirms the booking and
+    /// boards the rider at <paramref name="boardAt"/>.
+    /// </summary>
+    private static (OnlineState State, InternalEventBatch Batch) BoardingAt(
+        long boardAt,
+        long bookingAt = 1_000)
+    {
+        var route = RoutePlan.Create(
+            new PlanVersion(0),
+            0,
+            [],
+            [
+                new RouteStop(
+                    new StopId("pickup"),
+                    ApplicationTestData.NodeOne,
+                    RouteStopKind.Pickup,
+                    ApplicationTestData.RequestId,
+                    new Duration(0)),
+                new RouteStop(
+                    new StopId("drop"),
+                    ApplicationTestData.NodeTwo,
+                    RouteStopKind.DropOff,
+                    ApplicationTestData.RequestId,
+                    new Duration(0)),
+            ]).Value!;
+        var vehicle = VehicleState.Create(
+            ApplicationTestData.VehicleId,
+            4,
+            0,
+            new NodePosition(ApplicationTestData.NodeZero),
+            [],
+            [],
+            route,
+            1).Value!;
+        var run = ApplicationTestData.InitialState().Run
+            .AddRequest(ApplicationTestData.Request()).Value!
+            .BootstrapVehicle(vehicle).Value!
+            .AcceptRequest(
+                ApplicationTestData.RequestId,
+                ApplicationTestData.VehicleId).Value!
+            .AdvanceEpoch(1, new SimTime(Math.Min(bookingAt, boardAt))).Value!;
+        var time = new SimTime(boardAt);
+        var batch = new InternalEventBatch(
+            ApplicationTestData.RunId,
+            ApplicationTestData.ScenarioId,
+            2,
+            time,
+            [
+                new BookingConfirmed(4, time, ApplicationTestData.RequestId),
+                new PassengerBoarded(
+                    5,
+                    time,
+                    ApplicationTestData.VehicleId,
+                    ApplicationTestData.RequestId,
+                    new PlanVersion(0)),
+            ]);
+        return (Committed(run), batch);
+    }
+
+    [Fact]
     public void Accepted_cancellation_removes_only_mutable_stops_atomically()
     {
         var route = RoutePlan.Create(

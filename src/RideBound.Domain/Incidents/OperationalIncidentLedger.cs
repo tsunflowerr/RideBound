@@ -17,6 +17,61 @@ public readonly record struct IncidentId
     public override string ToString() => Value;
 }
 
+/// <summary>
+/// ADR-076 (exploratory). A rider observed boarding after the latest pickup of the accepted
+/// window. The window is not relaxed: the record keeps both times, and the gap is a service
+/// violation of its own, separate from commitment breaches.
+/// </summary>
+public sealed record ObservedLatePickup
+{
+    public ObservedLatePickup(
+        RequestId requestId,
+        VehicleId vehicleId,
+        SimTime latestPickup,
+        SimTime actualPickup,
+        long sourceEventSequence,
+        long recordedEpoch)
+    {
+        if (actualPickup.Milliseconds <= latestPickup.Milliseconds)
+        {
+            throw new ArgumentException(
+                "A late pickup must happen after the latest pickup.",
+                nameof(actualPickup));
+        }
+
+        if (sourceEventSequence is < 1 or > DomainLimits.MaxCanonicalInteger)
+        {
+            throw new ArgumentOutOfRangeException(nameof(sourceEventSequence));
+        }
+
+        if (recordedEpoch is < 1 or > DomainLimits.MaxCanonicalInteger)
+        {
+            throw new ArgumentOutOfRangeException(nameof(recordedEpoch));
+        }
+
+        RequestId = requestId;
+        VehicleId = vehicleId;
+        LatestPickup = latestPickup;
+        ActualPickup = actualPickup;
+        SourceEventSequence = sourceEventSequence;
+        RecordedEpoch = recordedEpoch;
+    }
+
+    public RequestId RequestId { get; }
+
+    public VehicleId VehicleId { get; }
+
+    public SimTime LatestPickup { get; }
+
+    public SimTime ActualPickup { get; }
+
+    public long SourceEventSequence { get; }
+
+    public long RecordedEpoch { get; }
+
+    public long LatenessMilliseconds => ActualPickup.Milliseconds - LatestPickup.Milliseconds;
+}
+
 public sealed record OperationalIncident
 {
     public OperationalIncident(
@@ -495,21 +550,47 @@ public sealed class OperationalIncidentLedger
 {
     private readonly FrozenDictionary<IncidentId, OperationalIncident> _incidents;
     private readonly IReadOnlyList<CommitmentBreachRecord> _breaches;
+    private readonly IReadOnlyList<ObservedLatePickup> _latePickups;
 
     private OperationalIncidentLedger(
         IEnumerable<KeyValuePair<IncidentId, OperationalIncident>> incidents,
-        IEnumerable<CommitmentBreachRecord> breaches)
+        IEnumerable<CommitmentBreachRecord> breaches,
+        IEnumerable<ObservedLatePickup> latePickups)
     {
         _incidents = incidents.ToFrozenDictionary();
         _breaches = Array.AsReadOnly(breaches.ToArray());
+        _latePickups = Array.AsReadOnly(latePickups.ToArray());
     }
 
-    public static OperationalIncidentLedger Empty { get; } = new([], []);
+    public static OperationalIncidentLedger Empty { get; } = new([], [], []);
 
     public IReadOnlyDictionary<IncidentId, OperationalIncident> Incidents =>
         _incidents;
 
     public IReadOnlyList<CommitmentBreachRecord> Breaches => _breaches;
+
+    /// <summary>Late boardings in recording order; at most one per rider.</summary>
+    public IReadOnlyList<ObservedLatePickup> LatePickups => _latePickups;
+
+    public IncidentLedgerResult RecordLatePickup(ObservedLatePickup latePickup)
+    {
+        ArgumentNullException.ThrowIfNull(latePickup);
+
+        if (_latePickups.Any(value => value.RequestId == latePickup.RequestId))
+        {
+            return IncidentLedgerResult.Fail(
+                IncidentFailureCodes.DuplicateLatePickup,
+                "A rider boards once, so at most one late pickup is recorded.",
+                latePickup.RequestId.Value,
+                "requestId");
+        }
+
+        return IncidentLedgerResult.Success(
+            new OperationalIncidentLedger(
+                _incidents,
+                _breaches,
+                _latePickups.Append(latePickup)));
+    }
 
     public IncidentLedgerResult Open(
         IncidentId incidentId,
@@ -542,7 +623,8 @@ public sealed class OperationalIncidentLedger
                     new KeyValuePair<IncidentId, OperationalIncident>(
                         incidentId,
                         incident)),
-                _breaches));
+                _breaches,
+                _latePickups));
     }
 
     public IncidentLedgerResult Resolve(
@@ -576,7 +658,8 @@ public sealed class OperationalIncidentLedger
                         new KeyValuePair<IncidentId, OperationalIncident>(
                             incidentId,
                             incident.Resolve(eventSequence, resolvedAt))),
-                _breaches));
+                _breaches,
+                _latePickups));
     }
 
     public IncidentLedgerResult AppendBreach(CommitmentBreachRecord breach)
@@ -602,7 +685,8 @@ public sealed class OperationalIncidentLedger
             return IncidentLedgerResult.Success(
                 new OperationalIncidentLedger(
                     _incidents,
-                    _breaches.Append(breach)));
+                    _breaches.Append(breach),
+                    _latePickups));
         }
 
         var incidentId = breach.IncidentId!.Value;
@@ -644,7 +728,8 @@ public sealed class OperationalIncidentLedger
         return IncidentLedgerResult.Success(
             new OperationalIncidentLedger(
                 _incidents,
-                _breaches.Append(breach)));
+                _breaches.Append(breach),
+                _latePickups));
     }
 }
 
@@ -658,4 +743,5 @@ public static class IncidentFailureCodes
     public const string IncidentNotOpen = "INCIDENT_NOT_OPEN";
     public const string RiderNotAffected = "INCIDENT_RIDER_NOT_AFFECTED";
     public const string BreachIncidentMismatch = "BREACH_INCIDENT_MISMATCH";
+    public const string DuplicateLatePickup = "DUPLICATE_LATE_PICKUP";
 }

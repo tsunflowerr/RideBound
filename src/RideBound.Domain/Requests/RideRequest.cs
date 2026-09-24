@@ -165,7 +165,8 @@ public sealed record RideRequest
         string commitmentPolicyId,
         RequestLifecycle lifecycle,
         VehicleId? assignedVehicleId,
-        SimTime? actualPickupTime)
+        SimTime? actualPickupTime,
+        bool allowLatePickup = false)
     {
         var pending = CreatePending(
             id,
@@ -195,8 +196,9 @@ public sealed record RideRequest
                     || actualPickupTime is null
                     || actualPickupTime.Value.Milliseconds
                         < earliestPickup.Milliseconds
-                    || actualPickupTime.Value.Milliseconds
-                        > latestPickup.Milliseconds))
+                    || !allowLatePickup
+                        && actualPickupTime.Value.Milliseconds
+                            > latestPickup.Milliseconds))
         {
             return DomainResult<RideRequest>.Fail(
                 RequestFailureCodes.InvalidRequest,
@@ -247,7 +249,16 @@ public sealed record RideRequest
             ? Success(RequestLifecycle.CancelledAfterAcceptance, AssignedVehicleId)
             : InvalidTransition(RequestLifecycle.CancelledAfterAcceptance);
 
-    public DomainResult<RideRequest> Board(VehicleId vehicleId, SimTime pickupTime)
+    /// <param name="allowLatePickup">
+    /// ADR-076 (exploratory, off by default). When true, a boarding after the latest
+    /// pickup is accepted as an observed fact; the accepted window is left unchanged, so
+    /// the caller records the gap as a separate service violation. A boarding before the
+    /// earliest pickup is always rejected.
+    /// </param>
+    public DomainResult<RideRequest> Board(
+        VehicleId vehicleId,
+        SimTime pickupTime,
+        bool allowLatePickup = false)
     {
         if (Lifecycle != RequestLifecycle.WaitingPickup)
         {
@@ -264,7 +275,7 @@ public sealed record RideRequest
         }
 
         if (pickupTime.Milliseconds < EarliestPickup.Milliseconds
-            || pickupTime.Milliseconds > LatestPickup.Milliseconds)
+            || !allowLatePickup && pickupTime.Milliseconds > LatestPickup.Milliseconds)
         {
             return DomainResult<RideRequest>.Fail(
                 RequestFailureCodes.PickupTimeOutsideWindow,

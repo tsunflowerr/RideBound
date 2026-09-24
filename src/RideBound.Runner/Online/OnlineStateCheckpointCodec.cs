@@ -36,9 +36,14 @@ public static class OnlineStateCheckpointCodec
             var scenarioId = new ScenarioIdentifier(Text(element, "scenarioId"));
             var appliedEpoch = Integer(element, "appliedEpoch");
             var simulationTime = new SimTime(Integer(element, "simulationTimeMs"));
+
+            // ADR-076: only a rider with a recorded late pickup may rehydrate a pickup after
+            // its latest pickup; ValidateRelations then matches every record to its rider.
+            var latePickupRequests = LatePickupRequestIds(
+                element.GetProperty("incidentLedger"));
             var requests = element.GetProperty("requests")
                 .EnumerateArray()
-                .Select(ReadRequest)
+                .Select(value => ReadRequest(value, latePickupRequests))
                 .ToArray();
             var vehicles = element.GetProperty("vehicles")
                 .EnumerateArray()
@@ -140,7 +145,16 @@ public static class OnlineStateCheckpointCodec
         }
     }
 
-    private static RideRequest ReadRequest(JsonElement element)
+    private static IReadOnlySet<RequestId> LatePickupRequestIds(JsonElement incidentLedger) =>
+        incidentLedger.TryGetProperty("latePickups", out var latePickups)
+            ? latePickups.EnumerateArray()
+                .Select(value => new RequestId(Text(value, "requestId")))
+                .ToHashSet()
+            : new HashSet<RequestId>();
+
+    private static RideRequest ReadRequest(
+        JsonElement element,
+        IReadOnlySet<RequestId> latePickupRequests)
     {
         var lifecycle = Text(element, "lifecycle") switch
         {
@@ -156,8 +170,9 @@ public static class OnlineStateCheckpointCodec
                 RequestLifecycle.CancelledAfterAcceptance,
             _ => throw new InvalidOperationException("Unknown request lifecycle."),
         };
+        var requestId = new RequestId(Text(element, "requestId"));
         var request = RideRequest.Rehydrate(
-            new RequestId(Text(element, "requestId")),
+            requestId,
             new SimTime(Integer(element, "arrivalTimeMs")),
             new NodeId(Text(element, "originNodeId")),
             new NodeId(Text(element, "destinationNodeId")),
@@ -173,7 +188,8 @@ public static class OnlineStateCheckpointCodec
                 : null,
             element.TryGetProperty("actualPickupTimeMs", out var pickup)
                 ? new SimTime(pickup.GetInt64())
-                : null);
+                : null,
+            latePickupRequests.Contains(requestId));
         return request.IsSuccess
             ? request.Value!
             : throw new InvalidOperationException(request.Failure!.Message);
@@ -457,6 +473,24 @@ public static class OnlineStateCheckpointCodec
                 : throw new InvalidOperationException(closed.Failure!.Message);
         }
 
+        if (element.TryGetProperty("latePickups", out var latePickups))
+        {
+            foreach (var value in latePickups.EnumerateArray())
+            {
+                var recorded = ledger.RecordLatePickup(
+                    new ObservedLatePickup(
+                        new RequestId(Text(value, "requestId")),
+                        new VehicleId(Text(value, "vehicleId")),
+                        new SimTime(Integer(value, "latestPickupMs")),
+                        new SimTime(Integer(value, "actualPickupMs")),
+                        Integer(value, "sourceEventSeq"),
+                        Integer(value, "recordedEpoch")));
+                ledger = recorded.IsSuccess
+                    ? recorded.Ledger!
+                    : throw new InvalidOperationException(recorded.Failure!.Message);
+            }
+        }
+
         return ledger;
     }
 
@@ -494,6 +528,7 @@ public static class OnlineStateCheckpointCodec
                 || commitments.Histories.Count != 0
                 || incidents.Incidents.Count != 0
                 || incidents.Breaches.Count != 0
+                || incidents.LatePickups.Count != 0
                 || planPool.Version != 0)
             {
                 return "A genesis checkpoint must be the exact empty initialized state.";
@@ -509,6 +544,32 @@ public static class OnlineStateCheckpointCodec
         if (planPoolError is not null)
         {
             return planPoolError;
+        }
+
+        // ADR-076: each late-pickup record names a boarded rider with exactly that pickup, and
+        // a rider may only have boarded after its latest pickup when such a record exists.
+        foreach (var late in incidents.LatePickups)
+        {
+            if (!run.Requests.TryGetValue(late.RequestId, out var rider)
+                || rider.Lifecycle is not (RequestLifecycle.Onboard
+                    or RequestLifecycle.Completed)
+                || rider.AssignedVehicleId != late.VehicleId
+                || rider.ActualPickupTime != late.ActualPickup
+                || rider.LatestPickup != late.LatestPickup
+                || late.SourceEventSequence >= nextEventSequence
+                || late.RecordedEpoch > run.AppliedEpoch
+                || late.ActualPickup.Milliseconds > run.SimulationTime.Milliseconds)
+            {
+                return "Checkpoint late pickup does not match its boarded rider.";
+            }
+        }
+
+        if (run.Requests.Values.Any(
+                rider => rider.ActualPickupTime is SimTime pickup
+                    && pickup.Milliseconds > rider.LatestPickup.Milliseconds
+                    && incidents.LatePickups.All(late => late.RequestId != rider.Id)))
+        {
+            return "Checkpoint rider boarded after its latest pickup without a record.";
         }
 
         foreach (var history in commitments.Histories.Values)

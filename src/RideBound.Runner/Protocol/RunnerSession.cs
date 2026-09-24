@@ -354,7 +354,8 @@ public sealed class RunnerSession
             _onlineCoordinator = new EventReductionCoordinator(
                 OnlineState.Create(
                     run,
-                    _identity.Manifest.TravelTimeSnapshotHash.Value));
+                    _identity.Manifest.TravelTimeSnapshotHash.Value),
+                CreateEventReducer());
             _stateHash = OnlineStateCanonicalizer.CalculateHash(
                 _onlineCoordinator.CommittedState);
         }
@@ -740,7 +741,7 @@ public sealed class RunnerSession
                 envelope);
         }
 
-        _onlineCoordinator = new EventReductionCoordinator(state);
+        _onlineCoordinator = new EventReductionCoordinator(state, CreateEventReducer());
         _appliedEpoch = checkpoint.Content.AppliedEpoch;
         _nextEventSequence = checkpoint.Content.NextEventSequence;
         _simulationTimeMilliseconds = checkpoint.Content.SimulationTimeMs;
@@ -1079,6 +1080,10 @@ public sealed class RunnerSession
             certificate,
             new SolverStatusShell(solverStatus, solverExecutionEvidence));
     }
+
+    /// <summary>ADR-076: late boardings are recorded only when the WP4 configuration asks.</summary>
+    private EventReducer CreateEventReducer() =>
+        new(recordLatePickups: _wp4Configuration?.RecordsLateBoarding == true);
 
     /// <summary>
     /// ADR-075: every decision that keeps a gate-rejected route is certified as

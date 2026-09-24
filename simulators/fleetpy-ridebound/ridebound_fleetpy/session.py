@@ -156,6 +156,19 @@ def _git_commit(repository: pathlib.Path) -> str:
     return commit
 
 
+def runner_owns_service_bounds(wp4_value: Mapping[str, Any], path: pathlib.Path) -> bool:
+    """ADR-076: read the WP4 `lateBoarding` key exactly as the Runner does.
+
+    Absent or `reject` keeps every FleetPy service-window check; `record-v1` makes the
+    Runner record late boardings and drops FleetPy's latest arrival, the only bound anchored
+    on the original pickup window. Any other value fails before the Runner starts.
+    """
+    late_boarding = wp4_value.get("lateBoarding", "reject")
+    if late_boarding not in ("reject", "record-v1"):
+        raise _fail("RBWP7_WP4_LATE_BOARDING_INVALID", str(path), repr(late_boarding))
+    return late_boarding == "record-v1"
+
+
 @dataclass(frozen=True)
 class RideBoundSessionSettings:
     dotnet: pathlib.Path
@@ -178,6 +191,10 @@ class RideBoundSessionSettings:
     policy_binding_hash: str
     core_commit: str
     artifact_paths: tuple[pathlib.Path, ...]
+    # ADR-076 (exploratory): true when the WP4 configuration declares
+    # `lateBoarding: record-v1`. The Runner then records late boardings, and the adapter
+    # drops the one FleetPy bound anchored on the original window (the latest arrival).
+    runner_service_bounds: bool = False
 
     @classmethod
     def from_attributes(
@@ -201,6 +218,7 @@ class RideBoundSessionSettings:
             raise _fail("RBWP7_WP4_POLICY_INVALID", str(wp4), repr(policy_id))
         if not isinstance(policy_version, str) or not policy_version:
             raise _fail("RBWP7_WP4_POLICY_INVALID", str(wp4), repr(policy_version))
+        runner_service_bounds = runner_owns_service_bounds(wp4_value, wp4)
         commitment_policy_id = _required_text(
             attributes,
             "ridebound_commitment_policy_id",
@@ -321,6 +339,7 @@ class RideBoundSessionSettings:
             wp4_policy_binding_hash(commitment, wp4),
             _git_commit(repository),
             tuple(path.resolve() for path in artifacts),
+            runner_service_bounds,
         )
 
 

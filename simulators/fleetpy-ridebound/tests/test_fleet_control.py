@@ -98,6 +98,75 @@ class _Routing:
         return distance, distance, distance * 100
 
 
+class RunnerServiceBoundsSettingTests(unittest.TestCase):
+    def test_late_boarding_key_is_read_exactly_as_the_runner_reads_it(self) -> None:
+        from ridebound_fleetpy.session import runner_owns_service_bounds
+
+        path = pathlib.Path("wp4.json")
+
+        self.assertFalse(runner_owns_service_bounds({}, path))
+        self.assertFalse(runner_owns_service_bounds({"lateBoarding": "reject"}, path))
+        self.assertTrue(runner_owns_service_bounds({"lateBoarding": "record-v1"}, path))
+        with self.assertRaises(AdapterFailure) as failure:
+            runner_owns_service_bounds({"lateBoarding": "record-v2"}, path)
+        self.assertEqual("RBWP7_WP4_LATE_BOARDING_INVALID", failure.exception.code)
+
+    @unittest.skipUnless(FLEETPY_ROOT, "RIDEBOUND_FLEETPY_ROOT is required")
+    def test_session_settings_carry_the_key_from_the_wp4_file(self) -> None:
+        # The whole path from operator attributes to the settings field, with real files.
+        import json
+        import tempfile
+
+        from ridebound_fleetpy.session import RideBoundSessionSettings
+
+        repository = ADAPTER_ROOT.parents[1]
+
+        def settings(wp4_extra):
+            with tempfile.TemporaryDirectory() as directory:
+                root = pathlib.Path(directory)
+                runner = root / "runner"
+                runner.mkdir()
+                (runner / "RideBound.Runner.dll").write_bytes(b"stub")
+                commitment = root / "commitment.json"
+                commitment.write_text(
+                    json.dumps({"policies": [{"policyId": "uniform-v1"}]}),
+                    encoding="utf-8",
+                )
+                wp4 = root / "wp4.json"
+                wp4.write_text(
+                    json.dumps(
+                        {
+                            "policyId": "ridebound-hard-vector",
+                            "policyVersion": "test-v1",
+                            **wp4_extra,
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                return RideBoundSessionSettings.from_attributes(
+                    {
+                        "ridebound_dotnet_path": sys.executable,
+                        "ridebound_runner_root": str(runner),
+                        "ridebound_commitment_config": str(commitment),
+                        "ridebound_wp4_config": str(wp4),
+                        "ridebound_fleetpy_root": FLEETPY_ROOT,
+                        "ridebound_repository_root": str(repository),
+                        "ridebound_commitment_policy_id": "uniform-v1",
+                        "ridebound_run_id": "run-1",
+                        "ridebound_scenario_id": "scenario-1",
+                        "ridebound_master_seed": 7,
+                        "ridebound_service_class": "standard",
+                    }
+                )
+
+        self.assertFalse(settings({}).runner_service_bounds)
+        self.assertFalse(settings({"lateBoarding": "reject"}).runner_service_bounds)
+        self.assertTrue(settings({"lateBoarding": "record-v1"}).runner_service_bounds)
+        with self.assertRaises(AdapterFailure) as failure:
+            settings({"lateBoarding": "record-v2"})
+        self.assertEqual("RBWP7_WP4_LATE_BOARDING_INVALID", failure.exception.code)
+
+
 @unittest.skipUnless(FLEETPY_ROOT, "RIDEBOUND_FLEETPY_ROOT is required")
 class FleetControlContractTests(unittest.TestCase):
     def test_dev_registration_loads_concrete_direct_subclass(self) -> None:
@@ -201,6 +270,108 @@ class FleetControlContractTests(unittest.TestCase):
         self.assertFalse(plan.list_plan_stops[1].is_locked())
         self.assertEqual((0.5, None), plan.list_plan_stops[0].get_duration_and_earliest_departure())
         self.assertEqual((0.75, None), plan.list_plan_stops[1].get_duration_and_earliest_departure())
+
+    @staticmethod
+    def _plan_control(latest_pickup=100, record_late_boarding=False):
+        control = RideBoundFleetControl.__new__(RideBoundFleetControl)
+        control._rb_settings = SimpleNamespace(runner_service_bounds=record_late_boarding)
+        request = _PlanRequest(10)
+        request.t_pu_latest = latest_pickup
+        control.rq_dict = {10: request}
+        control.sim_vehicles = [_Vehicle()]
+        control.routing_engine = _Routing()
+        return control
+
+    @staticmethod
+    def _pickup_and_drop():
+        return ProtocolRoute(
+            1,
+            0,
+            (),
+            (
+                ProtocolStop("pickup", 1, "pickup", 10, 0),
+                ProtocolStop("drop", 2, "dropOff", 10, 0),
+            ),
+        )
+
+    def test_recording_late_boarding_drops_only_the_latest_arrival_bound(self) -> None:
+        # ADR-076. The pickup window and the maximum trip stay in both modes; only the
+        # latest arrival, which FleetPy anchors on the original window, is dropped.
+        for record, expected_arrival in ((False, {10: 200}), (True, {})):
+            with self.subTest(record_late_boarding=record):
+                control = self._plan_control(record_late_boarding=record)
+
+                plan = control._fleetpy_plan(0, self._pickup_and_drop(), 0)
+
+                earliest, latest, _, _ = plan.list_plan_stops[0].get_boarding_time_constraint_dicts()
+                _, _, max_trip, latest_arrival = (
+                    plan.list_plan_stops[1].get_boarding_time_constraint_dicts()
+                )
+                self.assertEqual({10: 0}, earliest)
+                self.assertEqual({10: 100}, latest)
+                self.assertEqual({10: 100}, max_trip)
+                self.assertEqual(expected_arrival, latest_arrival)
+
+    def test_a_late_planned_pickup_is_still_vetoed_while_recording(self) -> None:
+        # The Runner validates every changed plan without allowance, so a changed plan with a
+        # late pickup means the Runner and FleetPy disagree on travel times. FleetPy keeps
+        # catching it in both modes (latest pickup 0 s, reached at 1 s; FleetPy rounds a
+        # latest pickup up to whole seconds, so 0.5 s would be on time).
+        for record in (False, True):
+            with self.subTest(record_late_boarding=record):
+                control = self._plan_control(latest_pickup=0, record_late_boarding=record)
+
+                with self.assertRaises(AdapterFailure) as failure:
+                    control._fleetpy_plan(0, self._pickup_and_drop(), 0)
+                self.assertEqual("RBWP7_FLEETPY_PLAN_INFEASIBLE", failure.exception.code)
+
+    def test_a_late_boarded_drop_gets_the_boarding_plus_maximum_trip_bound(self) -> None:
+        # The rider boarded at 240 s, after the latest pickup 100 s; maximum trip 100 s.
+        # FleetPy anchors the latest arrival on the original window (100 + 100 = 200 s), so
+        # by default a drop at 251 s is infeasible although the ride lasts 11 s. Recording
+        # late boarding leaves the bound the Runner uses: boarding + maximum trip = 340 s,
+        # which still rejects a drop at 346 s.
+        def plan_at(simulation_time, record):
+            control = self._plan_control(record_late_boarding=record)
+            vehicle = control.sim_vehicles[0]
+            onboard = _Request(10)
+            onboard.pu_time = 240
+            vehicle.pax = [onboard]
+            vehicle.pos = (1, None, None)
+            pickup = ProtocolStop("pickup", 1, "pickup", 10, 0)
+            dropoff = ProtocolStop("drop", 2, "dropOff", 10, 0)
+            return control._fleetpy_plan(
+                0,
+                ProtocolRoute(1, 1, (pickup,), (dropoff,)),
+                simulation_time,
+            )
+
+        with self.assertRaises(AdapterFailure) as anchored:
+            plan_at(250, record=False)
+        self.assertEqual("RBWP7_FLEETPY_PLAN_INFEASIBLE", anchored.exception.code)
+        plan = plan_at(250, record=True)
+        self.assertTrue(plan.is_feasible())
+        self.assertEqual([240, 251], plan.get_pax_info(10))
+        with self.assertRaises(AdapterFailure) as over:
+            plan_at(345, record=True)
+        self.assertEqual("RBWP7_FLEETPY_PLAN_INFEASIBLE", over.exception.code)
+
+    def test_recording_late_boarding_keeps_the_capacity_check(self) -> None:
+        control = self._plan_control(record_late_boarding=True)
+        control.rq_dict[10].nr_pax = 5
+        route = ProtocolRoute(
+            1,
+            0,
+            (),
+            (
+                ProtocolStop("pickup", 1, "pickup", 10, 0),
+                ProtocolStop("drop", 2, "dropOff", 10, 0),
+            ),
+        )
+
+        with self.assertRaises(AdapterFailure) as failure:
+            control._fleetpy_plan(0, route, 0)
+        self.assertEqual("RBWP7_FLEETPY_PLAN_INFEASIBLE", failure.exception.code)
 
     def test_locked_leg_equivalence_uses_request_identity_not_object_identity(self) -> None:
         old = VehicleRouteLeg(

@@ -275,6 +275,97 @@ public sealed class OnlineStateCheckpointCodecTests
         Assert.False(OnlineStateCheckpointCodec.Decode(movedDocument.RootElement).IsSuccess);
     }
 
+    [Fact]
+    public void A_late_pickup_round_trips_only_with_its_matching_record()
+    {
+        // Window [0, 1000] ms; the rider boards at 1500 ms. The record makes the late pickup
+        // restorable; without it, or with a record that does not match, the checkpoint fails.
+        var (run, _, promises, travel) = SingleRiderState();
+        var requestId = new RequestId("request-1");
+        var vehicleId = new VehicleId("vehicle-1");
+        run = run.ConfirmWaitingPickup(requestId).Value!;
+        run = run.ReachStop(
+            vehicleId,
+            new StopId("pickup-stop"),
+            new PlanVersion(0),
+            new NodePosition(new NodeId("pickup-node")),
+            2).Value!;
+        run = run.Board(
+            vehicleId,
+            requestId,
+            new PlanVersion(0),
+            new SimTime(1_500),
+            allowLatePickup: true).Value!;
+        run = run.AdvanceEpoch(2, new SimTime(1_500)).Value!;
+        var incidents = OperationalIncidentLedger.Empty.RecordLatePickup(
+            new ObservedLatePickup(
+                requestId,
+                vehicleId,
+                new SimTime(1_000),
+                new SimTime(1_500),
+                4,
+                2)).Ledger!;
+        var state = new OnlineState(run, travel, 5, travel.SnapshotHash, promises, incidents);
+        var canonical = OnlineStateCanonicalizer.Canonicalize(state);
+        using var document = JsonDocument.Parse(canonical);
+
+        var decoded = OnlineStateCheckpointCodec.Decode(document.RootElement);
+
+        Assert.True(decoded.IsSuccess, decoded.Error);
+        Assert.Equal(canonical, OnlineStateCanonicalizer.Canonicalize(decoded.State!));
+        Assert.Equal(500, Assert.Single(decoded.State!.Incidents.LatePickups).LatenessMilliseconds);
+
+        var missing = JsonNode.Parse(document.RootElement.GetRawText())!;
+        missing["incidentLedger"]!.AsObject().Remove("latePickups");
+        using var missingDocument = JsonDocument.Parse(missing.ToJsonString());
+        Assert.False(OnlineStateCheckpointCodec.Decode(missingDocument.RootElement).IsSuccess);
+
+        var mismatched = JsonNode.Parse(document.RootElement.GetRawText())!;
+        mismatched["incidentLedger"]!["latePickups"]![0]!["actualPickupMs"] = 1_400;
+        using var mismatchedDocument = JsonDocument.Parse(mismatched.ToJsonString());
+        Assert.Contains(
+            "late pickup does not match",
+            OnlineStateCheckpointCodec.Decode(mismatchedDocument.RootElement).Error);
+
+        // A record must lie inside the checkpoint's event and epoch boundary.
+        foreach (var (field, value) in new[] { ("sourceEventSeq", 5L), ("recordedEpoch", 3L) })
+        {
+            var outside = JsonNode.Parse(document.RootElement.GetRawText())!;
+            outside["incidentLedger"]!["latePickups"]![0]![field] = value;
+            using var outsideDocument = JsonDocument.Parse(outside.ToJsonString());
+            Assert.Contains(
+                "late pickup does not match",
+                OnlineStateCheckpointCodec.Decode(outsideDocument.RootElement).Error);
+        }
+
+        // One record per rider, and an empty list is not the canonical form.
+        var duplicated = JsonNode.Parse(document.RootElement.GetRawText())!;
+        var records = duplicated["incidentLedger"]!["latePickups"]!.AsArray();
+        records.Add(records[0]!.DeepClone());
+        using var duplicatedDocument = JsonDocument.Parse(duplicated.ToJsonString());
+        Assert.False(OnlineStateCheckpointCodec.Decode(duplicatedDocument.RootElement).IsSuccess);
+
+        var (plainRun, _, plainPromises, plainTravel) = SingleRiderState();
+        var plain = JsonNode.Parse(
+            OnlineStateCanonicalizer.Canonicalize(
+                new OnlineState(plainRun, plainTravel, 5, plainTravel.SnapshotHash, plainPromises)))!;
+        plain["incidentLedger"]!["latePickups"] = new JsonArray();
+        using var emptyDocument = JsonDocument.Parse(plain.ToJsonString());
+        Assert.False(OnlineStateCheckpointCodec.Decode(emptyDocument.RootElement).IsSuccess);
+    }
+
+    [Fact]
+    public void A_state_without_late_pickups_writes_no_late_pickup_field()
+    {
+        var (run, _, promises, travel) = SingleRiderState();
+        var state = new OnlineState(run, travel, 5, travel.SnapshotHash, promises);
+
+        using var document = JsonDocument.Parse(OnlineStateCanonicalizer.Canonicalize(state));
+
+        Assert.False(
+            document.RootElement.GetProperty("incidentLedger").TryGetProperty("latePickups", out _));
+    }
+
     private static (RideBoundRun Run, PromiseProjection Projection, CommitmentLedger Promises,
         TravelTimeSnapshot Travel) SingleRiderState()
     {

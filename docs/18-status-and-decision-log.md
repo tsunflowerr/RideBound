@@ -1,7 +1,7 @@
 # Trạng thái và decision log
 
 > Tệp sống — cập nhật ở cuối mọi task RideBound
-> Cập nhật gần nhất: 2026-08-28 (cây chính); nhánh thăm dò `research/deadline-gate`: 2026-09-24 (ADR-074 Proposed); nhánh thăm dò `research/tier3-failure-aware`: 2026-09-24 (ADR-075 Proposed)
+> Cập nhật gần nhất: 2026-08-28 (cây chính); nhánh thăm dò `research/deadline-gate`: 2026-09-24 (ADR-074 Proposed); nhánh thăm dò `research/tier3-failure-aware`: 2026-09-25 (ADR-075, ADR-076 Proposed)
 
 ## 1. Trạng thái tổng thể
 
@@ -4942,6 +4942,121 @@ kết quả.
   golden hash cho đường C1 khi tắt recovery (chỉ so từng trường).
 - Chưa chạy trên FleetPy hay dữ liệu thật; việc đó thuộc T3.5 trở đi.
 
+### ADR-076 — 2026-09-25 — Proposed (thăm dò; nhánh `research/tier3-failure-aware`; chưa commit)
+
+**Context:** Ở Tầng 2, nhánh hành vi `k = 1` chết 11/20 ô vì `window-wall` (rủi ro R3 của
+`E:\Code\Report_INT3508\KE-HOACH-HOP-NHAT-2026-09-23.md`, ngoài kho).
+`RideRequest.Board` từ chối lên xe sau giờ đón muộn nhất (`RideRequest.cs:266-274` tại `8d1ea4d`).
+Runner trả `SCHEMA_VALIDATION_FAILED`, và adapter nâng thành `RBWP7_RUNNER_PROTOCOL_ERROR`. FleetPy thì
+cho khách lên xe mà không kiểm cửa sổ (`ridebound_fleetpy/fleet_control.py:330-338` tại `8d1ea4d`). T3.4 của kế hoạch
+ngoài kho đòi: lên xe muộn là **sự thật**, được ghi nhận kèm một vi phạm dịch vụ riêng, và
+**không** nới cửa sổ gốc. Tiêu chí nghiệm thu: lên xe muộn round-trip qua checkpoint, và
+`_fleetpy_stop` có bound hiệu lực có bằng chứng. Không claim tính mới. ADR này không authorize
+`RB-WP14R-009..012`, WP15 hay H7.
+
+**Decision:**
+1. Domain: `RideRequest.Board(..., allowLatePickup)` và `Rehydrate(..., allowLatePickup)`, mặc định
+   `false`. Khi cho phép, khách lên sau giờ đón muộn nhất chuyển sang `Onboard` với
+   `ActualPickupTime` là giờ thật; `EarliestPickup` và `LatestPickup` giữ nguyên. Lên sớm hơn giờ đón
+   sớm nhất vẫn bị từ chối. Bản ghi `ObservedLatePickup` gồm khách, xe, giờ đón muộn nhất, giờ lên
+   thật, event sequence và epoch, với ràng buộc giờ thật > giờ muộn nhất. Bản ghi nằm trong danh sách
+   thứ ba `LatePickups` của incident ledger, tách khỏi commitment breach. Mỗi khách có tối đa một
+   bản ghi.
+2. Application: `EventReducer(recordLatePickups)`. Khi bật, `PassengerBoarded` muộn thành công và
+   thêm một bản ghi.
+3. Runner: khóa WP4 tùy chọn `lateBoarding` ∈ {`reject`, `record-v1`}; vắng khóa thì `reject`, và
+   bytes/hash của cấu hình cũ không đổi. Khóa áp cho **mọi** chính sách, vì lên xe muộn là quan sát
+   chứ không phải quyết định; các nhánh của một so sánh phải dùng chung giá trị. Canonicalizer chỉ
+   ghi `latePickups` khi danh sách khác rỗng. Codec chỉ cho khách có bản ghi được rehydrate một lần
+   lên muộn. Mỗi bản ghi phải khớp đúng khách của nó (đã lên hoặc đã xong chuyến, cùng xe, cùng giờ
+   thật, cùng giờ muộn nhất, event sequence và epoch trong ranh giới); ngược lại, mọi khách lên muộn
+   phải có bản ghi.
+4. Adapter FleetPy: đọc cùng khóa `lateBoarding` từ cấu hình WP4 (`runner_owns_service_bounds`);
+   giá trị lạ thì fail trước khi Runner khởi động. Khi là `record-v1`, `_fleetpy_stop` chỉ bỏ **một**
+   bound: giờ đến muộn nhất của điểm trả. Giờ đón sớm nhất, giờ đón muộn nhất và thời gian đi tối đa
+   giữ nguyên. Bound hiệu lực của điểm trả khi đó là giờ lên thật cộng thời gian đi tối đa, đúng luật
+   của Runner. Lý do, đều đã đọc trong mã:
+   - FleetPy lấy min của hai bound cho điểm trả (`VehiclePlan.py:351-372`). Một là giờ lên + thời
+     gian đi tối đa, trong đó giờ lên của khách đã lên là giờ thật (`VehiclePlan.py:886-889`,
+     `PlanRequest.py:156-161`); bound này trùng luật Runner (`PhysicalPlanValidator.cs:579-631`). Hai
+     là giờ đến muộn nhất `t_do_latest = t_pu_latest + max_trip_time`, neo vào **cửa sổ gốc**
+     (`PlanRequest.py:101`). Với khách lên đúng giờ, bound thứ hai không bao giờ chặt hơn bound thứ
+     nhất; chỉ khi khách lên muộn nó mới chặt hơn Runner.
+   - Runner validate mọi ứng viên **có thay đổi** mà không nới gì (`ServiceQualityAllowance.Strict`,
+     `InsertionCandidateGenerator.cs:231-246`), và adapter không gửi lại tuyến trùng bản của nó
+     (`fleet_control.py`, nhánh `action.route == current`). Ngoại lệ đã biết: sau một lần hủy trong
+     batch, Runner bỏ các điểm của khách hủy và tăng version tuyến (`RoutePlan.cs:243-266`), còn bản
+     tuyến của adapter không đổi. Khi đó no-op (có phần nới ngoại sinh của ADR-047) được gửi lại và
+     FleetPy kiểm nó. Ngoài ngoại lệ đó, giờ đón muộn nhất và thời gian đi tối đa của FleetPy chỉ bất
+     đồng với Runner khi mô hình Runner/adapter sai. Hai bound này được giữ làm phép kiểm chéo, loại
+     phép kiểm từng bắt lỗi thật (lỗi 13 ms của ADR-047, lỗi 192 s trong `wp14r_freeze_v6.py`).
+
+   Ánh xạ hai bên dùng cùng con số gốc: `maxRideTimeMs` = `max_trip_time` và `latestPickupMs` =
+   `t_pu_latest` (`mapping.py:265-266`, `:276-277`).
+
+**Evidence:** worktree `E:\Code\RideBound-deadline`, trên `8d1ea4d`, diff chưa commit. .NET
+**1005/1005** = 993 + 12 test (Domain 5, Application 3, Runner 4).
+
+Python chạy bằng lệnh baseline ghi trong `docs/handoffs/wp14-continuation-2026-08-25.md`: 443 test,
+437 pass, 6 test freeze fail. Cùng 6 test đó fail với **thông báo giống hệt** trên một bản checkout LF
+sạch của `8d1ea4d`, tức trước T3.4 (worktree tách riêng `E:\Code\RideBound-py-baseline`, 437 test).
+Vậy chúng có từ trước và không do T3.4 gây ra. Trong số đó, 21 file cấu hình `wp9-confirmatory` bằng
+đúng blob của commit cây chính `41a4e11` nhưng khác freeze E1; 3 file `.cs` do các commit nghiên cứu
+đổi. Vì freeze WP9 v6 đã đỏ trên `adapterPackageTreeSealSha256` từ trước, việc T3.4 làm dịch seal đó
+bị che, chưa kiểm được riêng. Sáu test Python mới pass; bốn test đầu dùng `VehiclePlan` thật của
+FleetPy 1.0.2:
+- khi ghi lên xe muộn, chỉ giờ đến muộn nhất bị bỏ; giờ đón sớm nhất, giờ đón muộn nhất và thời
+  gian đi tối đa còn nguyên ở cả hai chế độ;
+- một kế hoạch có giờ đón trễ vẫn bị FleetPy phủ quyết ở cả hai chế độ (phép kiểm chéo còn);
+- khách đã lên lúc 240 s: mặc định FleetPy chặn trả lúc 251 s theo cửa sổ gốc (200 s) dù chỉ đi
+  11 s; khi ghi lên xe muộn thì trả lúc 251 s được, trả lúc 346 s vẫn bị chặn (240 + 100 = 340 s);
+- sức chứa vẫn bị kiểm khi ghi lên xe muộn;
+- khóa cấu hình được đọc đúng như Runner đọc;
+- đường đi đầy đủ từ thuộc tính operator và file thật tới `RideBoundSessionSettings`.
+
+Test đầu-cuối Runner: mặc định trả `SCHEMA_VALIDATION_FAILED` với đúng câu "Actual pickup time must
+remain inside the accepted pickup window." (thông báo `window-wall` của Tầng 2). Với `record-v1`: có
+decision; sau `decisionApplied` có 1 bản ghi 500 ms; khách ở `Onboard`, giờ đón muộn nhất vẫn 2000 ms;
+bản ghi còn nguyên qua checkpoint/restore. Test codec còn kiểm: bản ghi ngoài ranh giới event
+sequence hoặc epoch, bản ghi trùng, và một danh sách rỗng tường minh đều bị từ chối. Có 2 mutation,
+đều đỏ: bỏ bước ghi thì test Application đỏ; bỏ kiểm giờ thật khớp bản ghi thì test codec đỏ.
+
+Review độc lập vòng 1 (2026-09-25): không có blocker. Should-fix chính: bản đầu bỏ cả ba bound của
+FleetPy, nhiều hơn bằng chứng cho phép, làm mất phép kiểm chéo từng bắt lỗi thật. Đã sửa: nay chỉ
+bỏ giờ đến muộn nhất. Cũng đã sửa: chữ ADR nói quá, thiếu test (đường cấu hình, `AppendBreach`, nhánh
+codec, dict ở chế độ mặc định), số dòng trích dẫn, tên tham số trong ngoại lệ, và 12 file `.pyc` được
+theo dõi mà lần chạy test đầu (không `-B`) đã ghi đè; các file đó đã được khôi phục về nội dung
+commit. Review vòng 2 (chỉ phần sửa): không có blocker. Một should-fix: câu "mọi kế hoạch FleetPy
+thấy đều Strict" sai với đường hủy trong batch; đã thu hẹp chữ và ghi đường đó vào Consequences.
+"Giống luật Runner" đúng tới mức làm tròn lên giây của FleetPy, vốn chỉ làm FleetPy dễ hơn.
+
+**Consequences và giới hạn đã biết:**
+- Khi `record-v1` bật, lớp chết `window-wall` không còn kết thúc run. Không trộn kết quả hai giá trị
+  khóa trong một so sánh, và không so trực tiếp với các ô Tầng 2 đã chết vì `window-wall`.
+- Ở `record-v1`, FleetPy vẫn kiểm giờ đón muộn nhất và thời gian đi tối đa cho mọi kế hoạch được
+  gửi tới nó. Một lỗi ánh xạ kiểu 192 s vẫn làm run dừng thay vì bị ghi thành "lên xe muộn". Chỉ lên
+  xe muộn do trôi dạt trên tuyến giữ nguyên (không gửi lại FleetPy) mới thành bản ghi.
+- **Đường chết còn lại (có từ ADR-047, T3.4 không làm tệ hơn, chưa có test):** sau một lần hủy trong
+  batch, no-op có phần nới được gửi lại FleetPy. Nếu lúc đó giờ đón của một khách đang chờ đã trễ,
+  hoặc một khách lên muộn đã quá thời gian đi tối đa, FleetPy từ chối kế hoạch
+  (`RBWP7_FLEETPY_PLAN_INFEASIBLE`) và run dừng.
+- **Không cộng dồn hai loại.** Probe đã ghi một vi phạm cửa sổ đón **dự báo** trên tuyến giữ thành
+  exogenous breach (`PhysicalPlanValidator.cs:465-474`, bridge ADR-049), còn độ trễ **thực** đi vào
+  `LatePickups`. T3.6 phải đếm riêng hai loại, không cộng.
+- Thay đổi adapter làm dịch `adapterPackageTreeSealSha256` của freeze WP9 v6 theo thiết kế. Tái lập
+  WP9/H6 phải dùng adapter của cây chính, không dùng nhánh này. Các test freeze đó vốn đã đỏ trên
+  nhánh (xem Evidence).
+- Ghi `"lateBoarding": "reject"` tường minh cho kết quả giống vắng khóa, nhưng hash nội dung WP4 và
+  hash binding thì khác. Các nhánh của một so sánh phải dùng chung **bytes** cấu hình, không chỉ
+  chung hành vi.
+- Chưa metric nào đọc `LatePickups`; T3.6 phải thêm cột. Lên xe sớm vẫn fail-closed. Vượt thời
+  gian đi tối đa khi trả khách không được ghi ở đâu (`RideRequest.Complete` không kiểm thời gian).
+- Dòng gán `_rb_settings` trong `RideBoundFleetControl.__init__` không có test riêng; test dựng
+  settings thật rồi đặt vào instance tạo bằng `__new__`.
+- Kiểm "mọi khách lên muộn phải có bản ghi" trong `ValidateRelations` là phòng thủ: `Rehydrate` đã từ
+  chối trước ở đường này, nên mutation của riêng kiểm đó không bị test nào bắt.
+- Chưa chạy mô phỏng FleetPy đầy đủ; việc đó thuộc T3.5 và T3.7.
+
 ## 8. Work package tracker
 
 | WP | Trạng thái | Bắt đầu | Kết thúc | Evidence |
@@ -4968,6 +5083,13 @@ kết quả.
 
 ## 9. Change history
 
+- 2026-09-25 (nhánh thăm dò `research/tier3-failure-aware`, chưa commit): ADR-076 **Proposed** —
+  Tầng 3, T3.4 "lên xe muộn là sự thật". Khóa WP4 `lateBoarding: record-v1`, mặc định tắt: khách lên
+  sau giờ đón muộn nhất được nhận và ghi `ObservedLatePickup` riêng, cửa sổ gốc giữ nguyên, bản ghi
+  round-trip qua checkpoint. Adapter FleetPy đọc cùng khóa và chỉ bỏ giờ đến muộn nhất neo vào cửa
+  sổ gốc, nên bound của điểm trả thành giờ lên thật + thời gian đi tối đa. Review độc lập 2 vòng,
+  không blocker; đã sửa. .NET 1005/1005; Python 437/443, với 6 test freeze fail y hệt trên bản sạch
+  trước T3.4. Mọi kết quả mang nhãn thăm dò.
 - 2026-09-24 (nhánh thăm dò `research/tier3-failure-aware`, chưa commit): ADR-075
   **Proposed** — Tầng 3, T3.3 "lõi nhận biết thất bại". Tùy chọn `commitmentRecovery:
   forced-reference-v1`, mặc định tắt: no-op chỉ bị cổng hạn chót/ngân sách loại thì được

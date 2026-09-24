@@ -66,6 +66,12 @@ class _FinishedLeg:
 class RideBoundFleetControl(FleetControlBase):
     """Mechanical FleetPy 1.0.2 adapter backed only by the external Runner."""
 
+    @property
+    def _rb_runner_service_bounds(self) -> bool:
+        """ADR-076: true when the WP4 configuration declares `lateBoarding: record-v1`."""
+        settings = getattr(self, "_rb_settings", None)
+        return bool(getattr(settings, "runner_service_bounds", False))
+
     def __init__(
         self,
         op_id,
@@ -960,11 +966,24 @@ class RideBoundFleetControl(FleetControlBase):
         if stop.kind == "dropOff":
             if prq.d_pos != position:
                 raise _fail("RBWP7_DROPOFF_NODE_MISMATCH", "$.route.stop.nodeId", repr(stop.raw_request))
+            # ADR-076: FleetPy's latest arrival is `t_pu_latest + max_trip_time`, anchored on
+            # the original window; the Runner bounds a boarded rider by the actual boarding
+            # plus the maximum ride, which `max_trip_time_dict` already checks from the real
+            # boarding time. The two agree for every on-time rider; only a late boarding makes
+            # the anchored one stricter. When the Runner records late boardings the anchored
+            # bound is dropped, so the effective bound is boarding + maximum trip. The pickup
+            # window and the maximum trip stay as an independent cross-check: the Runner
+            # validates every changed candidate without allowance, but after an in-batch
+            # cancellation the relieved no-op (ADR-047) is re-sent too, and these checks can
+            # then reject it; that path predates ADR-076.
+            latest_arrival = (
+                {} if self._rb_runner_service_bounds else {stop.raw_request: prq.t_do_latest}
+            )
             return BoardingPlanStop(
                 position,
                 boarding_dict={1: [], -1: [stop.raw_request]},
                 max_trip_time_dict={stop.raw_request: prq.max_trip_time},
-                latest_arrival_time_dict={stop.raw_request: prq.t_do_latest},
+                latest_arrival_time_dict=latest_arrival,
                 change_nr_pax=-prq.nr_pax,
                 duration=duration,
                 locked=locked,

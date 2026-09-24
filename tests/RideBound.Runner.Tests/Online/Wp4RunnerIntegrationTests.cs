@@ -624,6 +624,71 @@ public sealed class Wp4RunnerIntegrationTests
     }
 
     [Fact]
+    public void A_late_boarding_is_rejected_by_default_and_recorded_with_record_v1()
+    {
+        // ADR-076. r-1 may be picked up in [1000, 2000] ms and boards at 2500 ms. By default
+        // the Runner rejects the observation, which is the Tier 2 "window-wall" death. With
+        // `lateBoarding: record-v1` the rider is onboard, the window is unchanged, the 500 ms
+        // gap is one record, and the record survives checkpoint/restore.
+        var commitment = CommitmentConfiguration();
+        var byDefault = CreateSession(
+            HardVectorConfiguration(commitment, recovery: null),
+            commitmentConfiguration: commitment);
+        var rejected = BoardBookedRider(byDefault, at: 2_500);
+        Assert.Equal("error", rejected.MessageType.Value);
+        Assert.Equal(
+            "SCHEMA_VALIDATION_FAILED",
+            rejected.Payload.GetProperty("code").GetString());
+        Assert.Equal(
+            "Actual pickup time must remain inside the accepted pickup window.",
+            rejected.Payload.GetProperty("message").GetString());
+
+        var configuration = HardVectorConfiguration(
+            commitment,
+            recovery: null,
+            lateBoarding: "record-v1");
+        Assert.True(configuration.RecordsLateBoarding);
+        var setup = CreateSession(configuration, commitmentConfiguration: commitment);
+        var response = BoardBookedRider(setup, at: 2_500);
+        var decision = DecisionPayloadCodec.Decode(response.Payload);
+
+        Assert.Equal("decision", response.MessageType.Value);
+        Assert.True(decision.IsSuccess, decision.Error?.Message);
+        _ = setup.Session.Process(
+            DecisionApplied(3, 2_500, decision.Value!.DecisionHash.Value));
+        var committed = setup.Session.CommittedOnlineState!;
+        var late = Assert.Single(committed.Incidents.LatePickups);
+        Assert.Equal(500, late.LatenessMilliseconds);
+        var rider = committed.Run.Requests[new RideBound.Domain.Common.RequestId("r-1")];
+        Assert.Equal(RideBound.Domain.Requests.RequestLifecycle.Onboard, rider.Lifecycle);
+        Assert.Equal(2_500, rider.ActualPickupTime!.Value.Milliseconds);
+        Assert.Equal(2_000, rider.LatestPickup.Milliseconds);
+
+        var checkpoint = setup.Session.Process(CheckpointRequest()).Response!;
+        var restored = CreateSession(configuration, commitmentConfiguration: commitment);
+        Assert.Equal(
+            "restore",
+            restored.Session.Process(RestoreRequest(checkpoint.Payload))
+                .Response?.MessageType.Value);
+        Assert.Equal(
+            late,
+            Assert.Single(restored.Session.CommittedOnlineState!.Incidents.LatePickups));
+    }
+
+    [Fact]
+    public void The_late_boarding_setting_accepts_only_its_two_values()
+    {
+        var commitment = CommitmentConfiguration();
+
+        Assert.False(
+            HardVectorConfiguration(commitment, recovery: null, lateBoarding: "reject")
+                .RecordsLateBoarding);
+        Assert.False(HardVectorConfiguration(commitment, recovery: null).RecordsLateBoarding);
+        Assert.Throws<InvalidDataException>(
+            () => HardVectorConfiguration(commitment, recovery: null, lateBoarding: "record-v2"));
+    }
+
+    [Fact]
     public void Forced_reference_recovery_leaves_an_untriggered_decision_unchanged()
     {
         // Without a gate-rejected no-op the recovery option changes no action and no
@@ -683,6 +748,55 @@ public sealed class Wp4RunnerIntegrationTests
         SessionSetup setup,
         int progressPermille)
     {
+        var (selectedVehicle, selectedRoute) = BookRider(setup);
+
+        var progressBatch = JsonNode.Parse(
+                """
+                {
+                  "schemaVersion":"1.0.0",
+                  "messageType":"eventBatch",
+                  "runId":"wp2-run-001",
+                  "scenarioId":"wp2-two-epoch-small",
+                  "epochId":3,
+                  "simTimeMs":1050,
+                  "payload":{"events":[
+                    {
+                      "eventSeq":6,
+                      "eventType":"vehicleAdvanced",
+                      "payload":{"vehicle":{
+                        "vehicleId":"placeholder",
+                        "capacity":4,
+                        "occupiedSeats":0,
+                        "position":{
+                          "kind":"edgeProgress",
+                          "edgeId":"edge-n0-n1",
+                          "fromNodeId":"n-0",
+                          "toNodeId":"n-1",
+                          "progressPermille":499
+                        },
+                        "onboardRequestIds":[],
+                        "acceptedRequestIds":["r-1"],
+                        "route":{}
+                      }}
+                    }
+                  ]}
+                }
+                """)!;
+        var observedVehicle = progressBatch["payload"]!["events"]![0]![
+            "payload"]!["vehicle"]!;
+        observedVehicle["vehicleId"] = selectedVehicle;
+        observedVehicle["position"]!["progressPermille"] = progressPermille;
+        observedVehicle["route"] = JsonNode.Parse(selectedRoute);
+        return setup.Session.Process(
+            Encoding.UTF8.GetBytes(progressBatch.ToJsonString())).Response!;
+    }
+
+    /// <summary>
+    /// Offers r-1 to the two-vehicle fleet and confirms its booking, applying both decisions
+    /// (epochs 1 and 2, event sequences 1..5). Returns the selected vehicle and its route.
+    /// </summary>
+    private static (string Vehicle, string Route) BookRider(SessionSetup setup)
+    {
         var bootstrap = JsonNode.Parse(
             FixtureLoader.ReadUtf8("wp2/valid-bootstrap-event-batch.json"))!;
         var events = bootstrap["payload"]!["events"]!.AsArray();
@@ -736,46 +850,77 @@ public sealed class Wp4RunnerIntegrationTests
         Assert.True(booking.IsSuccess, booking.Error?.Message);
         _ = setup.Session.Process(
             DecisionApplied(2, 1_000, booking.Value!.DecisionHash.Value));
+        return (selectedVehicle, selectedRoute);
+    }
 
-        var progressBatch = JsonNode.Parse(
-                """
+    /// <summary>
+    /// After <see cref="BookRider"/>, one batch at <paramref name="at"/> that reaches every
+    /// stop up to r-1's pickup and boards r-1 there.
+    /// </summary>
+    private static ProtocolEnvelope BoardBookedRider(SessionSetup setup, long at)
+    {
+        var (vehicleId, routeJson) = BookRider(setup);
+        var route = JsonNode.Parse(routeJson)!;
+        var planVersion = route["planVersion"]!.GetValue<long>();
+        var executed = route["executedStopCount"]!.GetValue<int>();
+        var remaining = route["frozenPrefix"]!.AsArray()
+            .Skip(executed)
+            .Concat(route["mutableSuffix"]!.AsArray())
+            .ToArray();
+        var events = new JsonArray();
+        var sequence = 6L;
+
+        foreach (var stop in remaining)
+        {
+            events.Add(
+                new JsonObject
                 {
-                  "schemaVersion":"1.0.0",
-                  "messageType":"eventBatch",
-                  "runId":"wp2-run-001",
-                  "scenarioId":"wp2-two-epoch-small",
-                  "epochId":3,
-                  "simTimeMs":1050,
-                  "payload":{"events":[
+                    ["eventSeq"] = sequence++,
+                    ["eventType"] = "vehicleReachedStop",
+                    ["payload"] = new JsonObject
                     {
-                      "eventSeq":6,
-                      "eventType":"vehicleAdvanced",
-                      "payload":{"vehicle":{
-                        "vehicleId":"placeholder",
-                        "capacity":4,
-                        "occupiedSeats":0,
-                        "position":{
-                          "kind":"edgeProgress",
-                          "edgeId":"edge-n0-n1",
-                          "fromNodeId":"n-0",
-                          "toNodeId":"n-1",
-                          "progressPermille":499
+                        ["vehicleId"] = vehicleId,
+                        ["stopId"] = stop!["stopId"]!.GetValue<string>(),
+                        ["planVersion"] = planVersion,
+                        ["position"] = new JsonObject
+                        {
+                            ["kind"] = "node",
+                            ["nodeId"] = stop["nodeId"]!.GetValue<string>(),
                         },
-                        "onboardRequestIds":[],
-                        "acceptedRequestIds":["r-1"],
-                        "route":{}
-                      }}
-                    }
-                  ]}
-                }
-                """)!;
-        var observedVehicle = progressBatch["payload"]!["events"]![0]![
-            "payload"]!["vehicle"]!;
-        observedVehicle["vehicleId"] = selectedVehicle;
-        observedVehicle["position"]!["progressPermille"] = progressPermille;
-        observedVehicle["route"] = JsonNode.Parse(selectedRoute);
+                    },
+                });
+
+            if (stop["kind"]!.GetValue<string>() == "pickup"
+                && stop["requestId"]?.GetValue<string>() == "r-1")
+            {
+                break;
+            }
+        }
+
+        events.Add(
+            new JsonObject
+            {
+                ["eventSeq"] = sequence,
+                ["eventType"] = "passengerBoarded",
+                ["payload"] = new JsonObject
+                {
+                    ["vehicleId"] = vehicleId,
+                    ["requestId"] = "r-1",
+                    ["planVersion"] = planVersion,
+                },
+            });
+        var batch = new JsonObject
+        {
+            ["schemaVersion"] = "1.0.0",
+            ["messageType"] = "eventBatch",
+            ["runId"] = "wp2-run-001",
+            ["scenarioId"] = "wp2-two-epoch-small",
+            ["epochId"] = 3,
+            ["simTimeMs"] = at,
+            ["payload"] = new JsonObject { ["events"] = events },
+        };
         return setup.Session.Process(
-            Encoding.UTF8.GetBytes(progressBatch.ToJsonString())).Response!;
+            Encoding.UTF8.GetBytes(batch.ToJsonString())).Response!;
     }
 
     private static byte[] TimerTick(long epoch, long sequence, long simTime) =>
@@ -813,7 +958,8 @@ public sealed class Wp4RunnerIntegrationTests
 
     private static Wp4RunnerConfiguration HardVectorConfiguration(
         CommitmentPolicyConfiguration commitment,
-        string? recovery)
+        string? recovery,
+        string? lateBoarding = null)
     {
         var json = JsonNode.Parse(File.ReadAllText(Path.Combine(
             RepositoryRoot(),
@@ -824,6 +970,11 @@ public sealed class Wp4RunnerIntegrationTests
         if (recovery is not null)
         {
             json["commitmentRecovery"] = recovery;
+        }
+
+        if (lateBoarding is not null)
+        {
+            json["lateBoarding"] = lateBoarding;
         }
 
         return Wp4RunnerConfiguration.Decode(

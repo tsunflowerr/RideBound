@@ -41,7 +41,8 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
         "warningProfiles",
         "emitSolverExecutionEvidence",
         "solverExecutionEvidenceProfile",
-        "commitmentRecovery");
+        "commitmentRecovery",
+        "lateBoarding");
 
     /// <summary>
     /// ADR-075 (exploratory). Optional; omitted means fail-closed, so every
@@ -49,6 +50,14 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
     /// </summary>
     public const string ForcedReferenceRecovery = "forced-reference-v1";
     public const string FailClosedRecovery = "fail-closed";
+
+    /// <summary>
+    /// ADR-076 (exploratory). Optional; omitted means a boarding after the latest pickup
+    /// fails the batch, as before. `record-v1` accepts it as a fact and records it. The
+    /// FleetPy adapter reads the same key and then leaves service windows to the Runner.
+    /// </summary>
+    public const string RecordLateBoarding = "record-v1";
+    public const string RejectLateBoarding = "reject";
     private static readonly IReadOnlySet<string> GenerationRequiredFields = Fields(
         "maximumCandidatesPerVehicle",
         "maximumNewRequestsPerVehicle",
@@ -110,7 +119,8 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
         MultiplePlanPoolOptions? multiplePlanOptions,
         IEnumerable<CommitmentWarningProfile> warningProfiles,
         bool emitSolverExecutionEvidence,
-        string? solverExecutionEvidenceProfile)
+        string? solverExecutionEvidenceProfile,
+        bool recordsLateBoarding)
     {
         ContentHash = contentHash;
         PolicyId = policyId;
@@ -121,6 +131,7 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
         MultiplePlanOptions = multiplePlanOptions;
         EmitSolverExecutionEvidence = emitSolverExecutionEvidence;
         SolverExecutionEvidenceProfile = solverExecutionEvidenceProfile;
+        RecordsLateBoarding = recordsLateBoarding;
         _warningProfiles = new CommitmentWarningProfileCatalog(warningProfiles);
     }
 
@@ -141,6 +152,9 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
     public bool EmitSolverExecutionEvidence { get; }
 
     public string? SolverExecutionEvidenceProfile { get; }
+
+    /// <summary>True only for `lateBoarding: record-v1` (ADR-076).</summary>
+    public bool RecordsLateBoarding { get; }
 
     /// <summary>
     /// RB-WP14-003. The retained-portfolio evidence profile is the only caller
@@ -329,6 +343,17 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
                 + "C1 or C2 policy.");
         }
 
+        // A late boarding is an observation, not a policy decision, so every policy may
+        // record it; the arms of one comparison should share the same setting.
+        var recordsLateBoarding = root.TryGetProperty("lateBoarding", out _)
+            ? Text(root, "lateBoarding") switch
+            {
+                RejectLateBoarding => false,
+                RecordLateBoarding => true,
+                _ => throw new InvalidDataException("Unknown lateBoarding."),
+            }
+            : false;
+
         SolverBackedRidePoolingPolicyOptions? solverOptions = null;
         MultiplePlanPoolOptions? multipleOptions = null;
         var warningProfiles = Array.Empty<CommitmentWarningProfile>();
@@ -415,7 +440,8 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
             multipleOptions,
             warningProfiles,
             emitSolverExecutionEvidence,
-            solverExecutionEvidenceProfile);
+            solverExecutionEvidenceProfile,
+            recordsLateBoarding);
     }
 
     private static CandidateGenerationOptions ReadGeneration(JsonElement element)

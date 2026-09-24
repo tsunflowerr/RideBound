@@ -523,6 +523,29 @@ public static class OnlineStateCanonicalizer
         }
 
         writer.WriteEndArray();
+
+        // ADR-076: written only when non-empty, so a state without a late boarding keeps
+        // its canonical bytes and hash.
+        if (ledger.LatePickups.Count != 0)
+        {
+            writer.WritePropertyName("latePickups");
+            writer.WriteStartArray();
+
+            foreach (var late in ledger.LatePickups)
+            {
+                writer.WriteStartObject();
+                writer.WriteString("requestId", late.RequestId.Value);
+                writer.WriteString("vehicleId", late.VehicleId.Value);
+                writer.WriteNumber("latestPickupMs", late.LatestPickup.Milliseconds);
+                writer.WriteNumber("actualPickupMs", late.ActualPickup.Milliseconds);
+                writer.WriteNumber("sourceEventSeq", late.SourceEventSequence);
+                writer.WriteNumber("recordedEpoch", late.RecordedEpoch);
+                writer.WriteEndObject();
+            }
+
+            writer.WriteEndArray();
+        }
+
         writer.WriteEndObject();
     }
 

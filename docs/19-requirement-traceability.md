@@ -725,3 +725,20 @@ Nhánh `research/tier3-failure-aware`, chưa commit; không authorize `RB-WP14R-
 | Mã lỗi Runner thuộc taxonomy | hai chỗ đổi sang `INTERNAL_ERROR`/`failSession` | mutation Runner nhận envelope `error` thay vì exception; không có test cố định |
 | Suite | `dotnet test RideBound.slnx` | 993/993 |
 | Giới hạn đã biết | chỉ solver-backed C1/C2; xe "đóng băng" sau khi khách vượt trần/trễ hạn; `BreachCount` luôn 0; portfolio evidence không đánh dấu forced; chưa có golden hash/OR-Tools; chưa chạy FleetPy | ghi ở ADR-075 Consequences |
+
+## 29. ADR-076 traceability — lên xe muộn là sự thật (thăm dò, Proposed)
+
+Nhánh `research/tier3-failure-aware`, chưa commit; không authorize `RB-WP14R-009..012`, WP15 hay H7.
+
+| Requirement | Cài đặt/evidence | Gate |
+|---|---|---|
+| Mặc định tắt, run cũ không đổi | `lateBoarding` vắng ⇒ `reject`; `latePickups` chỉ ghi khi khác rỗng; adapter giữ nguyên các dict cửa sổ | `A_state_without_late_pickups_writes_no_late_pickup_field`; `An_on_time_boarding_records_nothing_even_when_recording_is_on`; `The_late_boarding_setting_accepts_only_its_two_values`; `test_recording_late_boarding_drops_only_the_latest_arrival_bound` (chế độ mặc định giữ đủ ba dict); suite .NET cũ vẫn xanh |
+| Lên xe muộn là sự thật, không nới cửa sổ gốc (T3.4) | `Board(allowLatePickup)`; `EarliestPickup`/`LatestPickup` giữ nguyên | `A_late_boarding_is_accepted_only_when_allowed_and_keeps_the_window`; `A_late_boarding_fails_by_default_and_is_recorded_as_a_fact_when_asked` |
+| Vi phạm dịch vụ riêng | `ObservedLatePickup` trong `LatePickups`, tối đa một mỗi khách, giờ thật > giờ muộn nhất | `A_late_pickup_is_after_the_window_and_recorded_once_per_rider`; `Other_ledger_operations_keep_the_recorded_late_pickups` |
+| Lên xe sớm vẫn bị từ chối | chỉ nới phía muộn | `A_boarding_before_the_earliest_pickup_is_rejected_even_when_recording` |
+| Round-trip qua checkpoint (T3.4) | codec chỉ cho khách có bản ghi rehydrate lên muộn; bản ghi phải khớp khách | `A_late_pickup_round_trips_only_with_its_matching_record`; `Rehydrating_a_late_pickup_requires_the_explicit_allowance`; restore trong `A_late_boarding_is_rejected_by_default_and_recorded_with_record_v1`; mutation ⇒ đỏ |
+| Hết `window-wall` khi bật | Runner nhận quan sát | `A_late_boarding_is_rejected_by_default_and_recorded_with_record_v1` (mặc định: đúng thông báo `window-wall`) |
+| Bound hiệu lực của `_fleetpy_stop` có bằng chứng (T3.4) | `record-v1`: chỉ bỏ giờ đến muộn nhất neo vào cửa sổ gốc; bound hiệu lực của điểm trả = giờ lên thật + thời gian đi tối đa (luật Runner); giờ đón muộn nhất và thời gian đi tối đa giữ làm kiểm chéo | Python (FleetPy 1.0.2 thật): `test_recording_late_boarding_drops_only_the_latest_arrival_bound`, `test_a_late_planned_pickup_is_still_vetoed_while_recording`, `test_a_late_boarded_drop_gets_the_boarding_plus_maximum_trip_bound` (251 s được, 346 s bị chặn), `test_recording_late_boarding_keeps_the_capacity_check` |
+| Cấu hình adapter đọc đúng khóa | `runner_owns_service_bounds` từ file WP4 thật | `test_late_boarding_key_is_read_exactly_as_the_runner_reads_it`; `test_session_settings_carry_the_key_from_the_wp4_file` |
+| Suite | `dotnet test RideBound.slnx`; Python baseline command | .NET 1005/1005; Python 437/443, 6 test freeze fail y hệt trên bản sạch `8d1ea4d` |
+| Giới hạn đã biết | seal adapter WP9 dịch theo thiết kế; chưa có metric đọc `LatePickups`; chưa chạy FleetPy đầy đủ | ghi ở ADR-076 Consequences |

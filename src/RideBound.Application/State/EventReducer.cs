@@ -10,6 +10,18 @@ namespace RideBound.Application.State;
 
 public sealed class EventReducer
 {
+    private readonly bool _recordLatePickups;
+
+    /// <param name="recordLatePickups">
+    /// ADR-076 (exploratory, off by default). When true, a passenger observed boarding
+    /// after the latest pickup is accepted and recorded as an <see cref="ObservedLatePickup"/>
+    /// instead of failing the batch; the accepted window is unchanged.
+    /// </param>
+    public EventReducer(bool recordLatePickups = false)
+    {
+        _recordLatePickups = recordLatePickups;
+    }
+
     public EventReductionResult Reduce(
         OnlineState state,
         InternalEventBatch batch)
@@ -37,7 +49,8 @@ public sealed class EventReducer
                 incidents,
                 state.ExpectedInitialTravelTimeSnapshotHash,
                 batch.Epoch,
-                onlineEvent);
+                onlineEvent,
+                _recordLatePickups);
 
             if (applied.Failure is not null)
             {
@@ -182,7 +195,8 @@ public sealed class EventReducer
         OperationalIncidentLedger incidents,
         string expectedInitialTravelTimeSnapshotHash,
         long epoch,
-        OnlineEvent onlineEvent)
+        OnlineEvent onlineEvent,
+        bool recordLatePickups)
     {
         DomainResult<RideBoundRun>? runResult = onlineEvent switch
         {
@@ -222,7 +236,8 @@ public sealed class EventReducer
                     boarded.VehicleId,
                     boarded.RequestId,
                     boarded.PlanVersion,
-                    boarded.SimulationTime),
+                    boarded.SimulationTime,
+                    recordLatePickups),
             PassengerAlighted alighted =>
                 run.Alight(
                     alighted.VehicleId,
@@ -240,6 +255,30 @@ public sealed class EventReducer
         if (runResult is not null && !runResult.IsSuccess)
         {
             return EventApplyResult.Fail(runResult.Failure!);
+        }
+
+        // The boarding already succeeded, so the rider was waiting; its accepted window
+        // before the event is the contract the lateness is measured against.
+        if (recordLatePickups
+            && onlineEvent is PassengerBoarded late
+            && run.Requests.TryGetValue(late.RequestId, out var waiting)
+            && late.SimulationTime.Milliseconds > waiting.LatestPickup.Milliseconds)
+        {
+            var recorded = incidents.RecordLatePickup(
+                new ObservedLatePickup(
+                    late.RequestId,
+                    late.VehicleId,
+                    waiting.LatestPickup,
+                    late.SimulationTime,
+                    late.EventSequence,
+                    epoch));
+
+            if (!recorded.IsSuccess)
+            {
+                return EventApplyResult.Fail(recorded.Failure!);
+            }
+
+            incidents = recorded.Ledger!;
         }
 
         if (onlineEvent is TravelTimesUpdated travel)

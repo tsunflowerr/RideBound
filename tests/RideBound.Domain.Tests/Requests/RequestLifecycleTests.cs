@@ -107,6 +107,54 @@ public sealed class RequestLifecycleTests
     }
 
     [Fact]
+    public void A_late_boarding_is_accepted_only_when_allowed_and_keeps_the_window()
+    {
+        var request = InState(RequestLifecycle.WaitingPickup);
+
+        var late = request.Board(TestData.VehicleOne, new SimTime(2001), allowLatePickup: true);
+        var early = request.Board(TestData.VehicleOne, new SimTime(999), allowLatePickup: true);
+
+        Assert.True(late.IsSuccess, late.Failure?.Message);
+        Assert.Equal(RequestLifecycle.Onboard, late.Value!.Lifecycle);
+        Assert.Equal(new SimTime(2001), late.Value.ActualPickupTime);
+        Assert.Equal(request.EarliestPickup, late.Value.EarliestPickup);
+        Assert.Equal(request.LatestPickup, late.Value.LatestPickup);
+        Assert.False(early.IsSuccess);
+        Assert.Equal(RequestFailureCodes.PickupTimeOutsideWindow, early.Failure?.Code);
+    }
+
+    [Theory]
+    [InlineData(RequestLifecycle.Onboard)]
+    [InlineData(RequestLifecycle.Completed)]
+    public void Rehydrating_a_late_pickup_requires_the_explicit_allowance(
+        RequestLifecycle lifecycle)
+    {
+        var template = TestData.PendingRequest();
+
+        DomainResult<RideRequest> Rehydrate(bool allow) =>
+            RideRequest.Rehydrate(
+                template.Id,
+                template.ArrivalTime,
+                template.OriginNodeId,
+                template.DestinationNodeId,
+                template.EarliestPickup,
+                template.LatestPickup,
+                template.MaxRideTime,
+                template.PartySize,
+                template.ServiceClass,
+                template.CommitmentPolicyId,
+                lifecycle,
+                TestData.VehicleOne,
+                new SimTime(template.LatestPickup.Milliseconds + 1),
+                allow);
+
+        Assert.False(Rehydrate(allow: false).IsSuccess);
+        var allowed = Rehydrate(allow: true);
+        Assert.True(allowed.IsSuccess, allowed.Failure?.Message);
+        Assert.Equal(lifecycle, allowed.Value!.Lifecycle);
+    }
+
+    [Fact]
     public void Accepted_request_can_never_transition_to_rejected()
     {
         foreach (var lifecycle in new[]

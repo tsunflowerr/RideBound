@@ -134,7 +134,9 @@ public sealed class CommitmentPolicy
         Duration? freezeHorizon = null,
         PromiseLock freezeHorizonLocks = PromiseLock.None,
         PromiseLock finalConfirmationLocks = PromiseLock.None,
-        PromiseLock ratchetLocks = PromiseLock.None)
+        PromiseLock ratchetLocks = PromiseLock.None,
+        Duration? dropEtaDeadlineSlack = null,
+        bool dropEtaDeadlineTwoSided = false)
     {
         ArgumentNullException.ThrowIfNull(limits);
         ArgumentNullException.ThrowIfNull(materialRevisionRule);
@@ -193,6 +195,13 @@ public sealed class CommitmentPolicy
                 "Only pickup and drop ETA locks can be relaxed to a ratchet.");
         }
 
+        if (dropEtaDeadlineTwoSided && dropEtaDeadlineSlack is null)
+        {
+            throw new ArgumentException(
+                "A two-sided deadline requires a deadline slack.",
+                nameof(dropEtaDeadlineTwoSided));
+        }
+
         BudgetBasis = budgetBasis;
         _limits = materialized.ToFrozenDictionary(value => value.Dimension);
         MaterialRevisionRule = materialRevisionRule;
@@ -200,6 +209,8 @@ public sealed class CommitmentPolicy
         FreezeHorizonLocks = freezeHorizonLocks;
         FinalConfirmationLocks = finalConfirmationLocks;
         RatchetLocks = ratchetLocks;
+        DropEtaDeadlineSlack = dropEtaDeadlineSlack;
+        DropEtaDeadlineTwoSided = dropEtaDeadlineTwoSided;
     }
 
     public string PolicyId { get; }
@@ -227,4 +238,19 @@ public sealed class CommitmentPolicy
     /// Empty by default, so a lock keeps its exact-equality meaning.
     /// </summary>
     public PromiseLock RatchetLocks { get; }
+
+    /// <summary>
+    /// Deadline on the drop ETA, measured from the rider's FIRST published promise
+    /// (the deadline style of Schulz and Pfeiffer, 2026). Unlike every lock, this
+    /// compares the candidate with the initial promise rather than with the
+    /// exogenous projection, so exogenous drift alone can trip it, including on the
+    /// safety no-op. Research probe; null disables the rule.
+    /// </summary>
+    public Duration? DropEtaDeadlineSlack { get; }
+
+    /// <summary>
+    /// When true the deadline is a window: the drop ETA may not move earlier than
+    /// the initial promise by more than the slack either. Requires a slack.
+    /// </summary>
+    public bool DropEtaDeadlineTwoSided { get; }
 }

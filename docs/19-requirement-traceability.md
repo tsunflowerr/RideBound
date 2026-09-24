@@ -683,3 +683,23 @@ matrix tiêu hàng chục giờ máy.
 | Driver không có thẩm quyền | `wp14r_matrix_driver.py` + 8 test | chỉ quyết định khi nào dừng; thứ tự/retry/gate do protocol cưỡng chế và verify freeze mỗi lần gọi; `--status-only` trên freeze thật cho đúng 160 job |
 | Freeze không bị phá bởi file mới | rebuild-verify sau khi thêm hai tool | freeze v1 pass exact 160/46/`1ce26ff0…37a55`; freeze v2 valid exact 160/`6b340108…a31237` |
 | Host blocker đã đổi | preflight receipt `preflight-attempt-01-observation-0001.json` | AC/scheme/CPU/disk pass; chỉ còn `MEMORY_BELOW_MINIMUM` thiếu `56.111.104` B; sleep/hibernate trên AC đều Never |
+
+## 27. ADR-074 traceability — luật hạn chót tính từ lời hứa đầu (thăm dò, Proposed)
+
+Nhánh `research/deadline-gate`, chưa commit; không authorize `RB-WP14R-009..012`, WP15 hay H7.
+
+| Requirement | Cài đặt/evidence | Gate |
+|---|---|---|
+| Mặc định tắt, không đổi run cũ | slack `null`, two-sided `false`; khóa cấu hình vắng ⇒ bytes/hash không đổi | `Drop_eta_deadline_is_disabled_when_absent`; `Without_a_slack_*`; review vòng 2 xác nhận byte-identical cho chính sách không solver-backed |
+| Neo vào lời hứa **đầu**, không vào lần sửa gần nhất | validator truyền `Entries[0]` khi có hạn chót | 2 test sổ có một lần sửa; mutation neo vào lời hứa hiện tại ⇒ cả hai đỏ |
+| Biên chính xác | cap khi `p − p0 > ℓ`; floor (hai chiều) khi `p0 − p > ℓ`; bằng ℓ được phép | test Domain trên biên ±1 ms, slack 0, `0` vs `2^53−1` |
+| Trôi dạt một mình làm bắn được trên no-op | so với `p0`, không với mốc ngoại sinh | `Drift_alone_trips_the_deadline_on_the_safety_no_op`, `Favourable_drift_trips_only_the_two_sided_deadline_on_the_no_op`, 2 test Application |
+| Không che khóa pha | witness hạn chót nối sau witness khóa | 2 test thứ tự (cùng chiều; khóa giờ đón + hạn chót giờ trả) |
+| B1–B4 không nhận hạn chót | `MechanismCommitmentPolicyProvider` dựng lại policy | `EffectivePolicyFairnessTests` (+6) |
+| Cấu hình sai thì hỏng to | two-sided không slack; slack 0/âm/chuỗi/`null`; cờ không phải boolean | 13 test cấu hình; `Program` thoát mã 64 |
+| Chẩn đoán no-op chỉ ở đường solver-backed | cờ `requireSafetyNoOp` | test qua `SolverBackedRidePoolingPolicy.Decide` (solver không bao giờ được gọi); 2 test caller cũ giữ hành vi cũ; mutation tắt cờ ⇒ đỏ |
+| Suite | `dotnet test RideBound.slnx` | 963/963; lần sau 962/963 với drain `resource.cpu-time-exceeded` (máy chạy pin) |
+| Giới hạn đã biết | mã typed không tới artifact; công cụ WP13/WP14 không hiểu mã mới; đường không-WP4 chưa test; witness không mang độ lớn | ghi ở ADR-074 Consequences |
+| Bộ chạy mới tái lập được kết quả cũ khi hạn chót tắt | 40 đối chứng `k = 0` so với `wp14/drift-v1` bằng `decision_identity.trace` | 36 ô hoàn tất trùng từng quyết định + số khách; đúng 4 ô cổng kết quả vô nghiệm |
+| Định lý 4(a) trên hệ thật | 56 lần chạy cổng hành vi, mọi panel, `k ∈ {0, 1}` | 0 vô nghiệm do cam kết (thăm dò) |
+| Dự đoán theo ô, niêm phong trước | `predictions.csv` SHA `6c5451a0…`, niêm phong 06:03:52Z | 98/102 (panel chính), 31/32 và 40/40 (tập giữ lại sáng/tối); kiểm độc lập khớp |

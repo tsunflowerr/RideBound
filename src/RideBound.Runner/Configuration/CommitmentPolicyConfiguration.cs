@@ -25,7 +25,9 @@ public sealed class CommitmentPolicyConfiguration :
         "freezeHorizonMs",
         "freezeHorizonLocks",
         "finalConfirmationLocks",
-        "ratchetLocks");
+        "ratchetLocks",
+        "dropEtaDeadlineSlackMs",
+        "dropEtaDeadlineTwoSided");
     private static readonly IReadOnlySet<string> LimitFields = Fields(
         "dimension",
         "hardLimit",
@@ -163,6 +165,25 @@ public sealed class CommitmentPolicyConfiguration :
         var displayBucket = OptionalPositiveInteger(
             revision,
             "displayBucketWidthMs");
+        var deadlineSlack = OptionalPositiveInteger(
+            element,
+            "dropEtaDeadlineSlackMs");
+        var deadlineTwoSided = element.TryGetProperty(
+                "dropEtaDeadlineTwoSided",
+                out var twoSided)
+            && twoSided.ValueKind switch
+            {
+                JsonValueKind.True => true,
+                JsonValueKind.False => false,
+                _ => throw new InvalidDataException(
+                    "'dropEtaDeadlineTwoSided' must be a boolean."),
+            };
+
+        if (deadlineTwoSided && deadlineSlack is null)
+        {
+            throw new InvalidDataException(
+                "'dropEtaDeadlineTwoSided' requires 'dropEtaDeadlineSlackMs'.");
+        }
 
         return new CommitmentPolicy(
             Text(element, "policyId"),
@@ -180,7 +201,9 @@ public sealed class CommitmentPolicyConfiguration :
                 : null,
             ReadLocks(element, "freezeHorizonLocks"),
             ReadLocks(element, "finalConfirmationLocks"),
-            ReadLocks(element, "ratchetLocks"));
+            ReadLocks(element, "ratchetLocks"),
+            deadlineSlack is long slack ? new Duration(slack) : null,
+            deadlineTwoSided);
     }
 
     private static CommitmentDimensionLimit ReadLimit(JsonElement element)

@@ -10,13 +10,20 @@ public sealed record CommitmentLockWitness(
 
 public sealed class CommitmentLockEvaluator
 {
+    /// <summary>Rule of a drop ETA later than the initial promise plus the slack.</summary>
+    public const string DeadlineCapRule = "deadline_cap";
+
+    /// <summary>Rule of a drop ETA earlier than the initial promise minus the slack.</summary>
+    public const string DeadlineFloorRule = "deadline_floor";
+
     public IReadOnlyList<CommitmentLockWitness> Evaluate(
         RideRequest request,
         PublishedPromise previous,
         PromiseProjection exogenous,
         PromiseProjection candidate,
         SimTime evaluationTime,
-        CommitmentPolicy policy)
+        CommitmentPolicy policy,
+        PromiseProjection? anchor = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(previous);
@@ -77,11 +84,20 @@ public sealed class CommitmentLockEvaluator
                 policy.RatchetLocks);
         }
 
-        return witnesses
+        var ordered = witnesses
             .Distinct()
             .OrderBy(value => value.Dimension, StringComparer.Ordinal)
             .ThenBy(value => value.Rule, StringComparer.Ordinal)
-            .ToArray();
+            .ToList();
+
+        // The deadline witness goes last, so a lock witness keeps its position
+        // and callers reading the first witness still see the lock.
+        if (policy.DropEtaDeadlineSlack is Duration slack)
+        {
+            AddDeadlineWitness(ordered, request, candidate, anchor, slack, policy);
+        }
+
+        return ordered.ToArray();
     }
 
     private static void AddWitnesses(
@@ -134,6 +150,50 @@ public sealed class CommitmentLockEvaluator
         {
             witnesses.Add(
                 new CommitmentLockWitness(requestId, "drop_eta_ms", rule));
+        }
+    }
+
+    /// <summary>
+    /// Every lock above compares the candidate with the exogenous projection, so
+    /// exogenous drift never trips a lock. The deadline compares it with the
+    /// rider's initial promise instead, so drift alone can trip it, including on
+    /// the safety no-op. It is a gate that lives next to the locks, not a lock.
+    /// </summary>
+    private static void AddDeadlineWitness(
+        ICollection<CommitmentLockWitness> witnesses,
+        RideRequest request,
+        PromiseProjection candidate,
+        PromiseProjection? anchor,
+        Duration slack,
+        CommitmentPolicy policy)
+    {
+        if (anchor is null)
+        {
+            throw new ArgumentException(
+                "A drop ETA deadline requires the initial promise anchor.",
+                nameof(anchor));
+        }
+
+        if (anchor.RequestId != request.Id)
+        {
+            throw new ArgumentException(
+                "Deadline anchor identity must match the request.",
+                nameof(anchor));
+        }
+
+        // Both values are canonical non-negative integers below 2^53, so the
+        // difference and its negation fit in a long.
+        var shift = candidate.DropEta.Milliseconds - anchor.DropEta.Milliseconds;
+
+        if (shift > slack.Milliseconds)
+        {
+            witnesses.Add(
+                new CommitmentLockWitness(request.Id, "drop_eta_ms", DeadlineCapRule));
+        }
+        else if (policy.DropEtaDeadlineTwoSided && -shift > slack.Milliseconds)
+        {
+            witnesses.Add(
+                new CommitmentLockWitness(request.Id, "drop_eta_ms", DeadlineFloorRule));
         }
     }
 

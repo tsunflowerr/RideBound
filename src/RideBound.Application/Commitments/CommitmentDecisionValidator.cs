@@ -344,25 +344,63 @@ public sealed class CommitmentDecisionValidator
                 return ProjectionFailure(exogenousProjection.Failure!, request);
             }
 
+            // Only a deadline reads the initial promise, so without one this path is
+            // unchanged. The ledger can only be opened by an initial promise, so a
+            // different first entry is a broken invariant, not a rejectable candidate.
+            PromiseProjection? anchor = null;
+
+            if (policy.DropEtaDeadlineSlack is not null)
+            {
+                var initialEntry = priorHistory.Entries[0];
+
+                if (initialEntry.Kind != CommitmentLedgerEntryKind.InitialPromise)
+                {
+                    throw new InvalidOperationException(
+                        "The first ledger entry of a rider must be the initial promise.");
+                }
+
+                anchor = initialEntry.PublishedPromise.Projection;
+            }
+
             var lockWitnesses = _lockEvaluator.Evaluate(
                 request,
                 priorHistory.Current.PublishedPromise,
                 exogenousProjection.Value!,
                 candidateProjection.Value!,
                 context.CandidateState.Run.SimulationTime,
-                policy);
+                policy,
+                anchor);
 
             if (lockWitnesses.Count != 0)
             {
                 var lockFailures = lockWitnesses.Select(
-                    value => new CommitmentValidationWitness(
-                        CommitmentValidationStage.Lock,
-                        CommitmentFailureCodes.PhaseLock,
-                        "The candidate changes a phase-locked promise field.",
-                        request.AssignedVehicleId,
-                        value.RequestId,
-                        value.Dimension,
-                        value.Rule));
+                    value => value.Rule switch
+                    {
+                        CommitmentLockEvaluator.DeadlineCapRule => new CommitmentValidationWitness(
+                            CommitmentValidationStage.Lock,
+                            CommitmentFailureCodes.DeadlineExceeded,
+                            "The candidate delays the drop ETA beyond the initial-promise deadline.",
+                            request.AssignedVehicleId,
+                            value.RequestId,
+                            value.Dimension,
+                            value.Rule),
+                        CommitmentLockEvaluator.DeadlineFloorRule => new CommitmentValidationWitness(
+                            CommitmentValidationStage.Lock,
+                            CommitmentFailureCodes.DeadlineExceeded,
+                            "The candidate moves the drop ETA outside the initial-promise window.",
+                            request.AssignedVehicleId,
+                            value.RequestId,
+                            value.Dimension,
+                            value.Rule),
+                        _ => new CommitmentValidationWitness(
+                            CommitmentValidationStage.Lock,
+                            CommitmentFailureCodes.PhaseLock,
+                            "The candidate changes a phase-locked promise field.",
+                            request.AssignedVehicleId,
+                            value.RequestId,
+                            value.Dimension,
+                            value.Rule),
+                    });
 
                 if (collected is null)
                 {

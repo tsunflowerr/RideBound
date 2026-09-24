@@ -1,7 +1,7 @@
 # Trạng thái và decision log
 
 > Tệp sống — cập nhật ở cuối mọi task RideBound
-> Cập nhật gần nhất: 2026-08-28
+> Cập nhật gần nhất: 2026-08-28 (cây chính); nhánh thăm dò `research/deadline-gate`: 2026-09-24 (ADR-074 Proposed)
 
 ## 1. Trạng thái tổng thể
 
@@ -4723,6 +4723,83 @@ Freeze v2 giữ nguyên bytes và vẫn là bản ghi terminal của một autho
 đổi margin, panel, denominator, factor, arm set hay failure treatment; H6/E1/WP14-v1
 không bị chạm.
 
+### ADR-074 — 2026-09-24 — Proposed (thăm dò; nhánh `research/deadline-gate`; chưa commit)
+
+**Context:** Khung bốn họ cổng của luận văn (chương 3, Định lý thứ tự khả thi) dự đoán
+rằng một hạn chót tính từ lời hứa **đầu tiên** --- một chiều (`M+`) hoặc hai chiều (`M`)
+--- có thể tự nó làm rỗng tập phương án dưới trôi dạt, còn cổng hành vi thì không. Kiểm
+điều đó cần một luật hạn chót trong Runner. Đây là Tầng 2 của kế hoạch nghiên cứu ngoài
+kho (`E:\Code\Report_INT3508\KE-HOACH-HOP-NHAT-2026-09-23.md`), chạy ở chế độ **thăm dò
+có đối chứng và tiền đăng ký**. `RB-WP14R-009..012`, WP15 và H7 vẫn Unauthorized; ADR
+này không authorize chúng. Không claim tính mới cho hạn chót: Schulz và Pfeiffer (2026)
+đã có hạn chót cưỡng chế được tính từ lời hứa đầu.
+
+**Decision:**
+1. `CommitmentPolicy` thêm `DropEtaDeadlineSlack` (`Duration?`, mặc định `null`) và
+   `DropEtaDeadlineTwoSided` (mặc định `false`; `true` mà không có slack bị từ chối).
+   Cấu hình: `dropEtaDeadlineSlackMs` (số nguyên dương) và `dropEtaDeadlineTwoSided`
+   (boolean). Vắng hai khóa ⇒ luật tắt và bytes/hash cấu hình không đổi.
+2. `CommitmentLockEvaluator` sinh witness `deadline_cap` khi `p − p0 > ℓ` và, nếu hai
+   chiều, `deadline_floor` khi `p0 − p > ℓ`, với `p0` là lời hứa đầu (`Entries[0]`), **không**
+   phải mốc ngoại sinh; vì vậy riêng trôi dạt cũng làm bắn được, kể cả trên no-op.
+   Witness này được **nối sau** các witness khóa, để lý do đầu tiên của một prune vẫn là
+   khóa khi cả hai cùng bắn. Validator ánh xạ sang `COMMITMENT_DEADLINE_EXCEEDED` ở stage
+   `Lock`. Entry đầu chỉ được đọc khi có hạn chót; nếu nó không phải `InitialPromise` thì
+   ném `InvalidOperationException` (bất biến sổ cái bị phá, không phải một phương án bị loại).
+3. Thay đổi chẩn đoán: `HardVectorCandidateAssessor.AssessAndFilter(..., requireSafetyNoOp)`,
+   **chỉ** `SolverBackedRidePoolingPolicy` bật. Khi bật: (a) một xe mất no-op trong khi còn
+   phương án khác fail ngay với `COMMITMENT_SAFETY_NOOP_REJECTED` kèm lý do loại của chính
+   no-op (trước đây trạng thái này chết muộn hơn ở `CandidateSelectionModel` với lỗi mapping
+   chung, vì mô hình chọn đòi đúng một no-op mỗi xe); (b) thông báo fail-closed trích
+   `No-op rejection:` thay cho `First rejection:` (ứng viên đầu theo thứ tự mã). Mã
+   `COMMITMENT_SAFETY_NOOP_REJECTED` báo sự kiện; lý do được trích mới nói nguyên nhân, có thể
+   thuộc stage bất kỳ. `RideBoundHardVectorPolicy`/`CommitSoftHardHybridPolicy` không bật cờ.
+4. B1–B4 không bao giờ nhận hạn chót: `MechanismCommitmentPolicyProvider` dựng lại policy
+   không có hai tham số mới (pin bởi `EffectivePolicyFairnessTests`).
+
+**Evidence:** worktree `E:\Code\RideBound-deadline` tại `41a4e11` + diff chưa commit
+(bản lưu `ridebound-scratchpad/deadline/review-src.diff`, `review-tests.diff`). Debug
+**963/963** (log `after-review-fix-2.log`); lần chạy sau khi siết một assertion test:
+962/963, chỉ drain medium fail với `resource.cpu-time-exceeded` như baseline
+(`BASELINE-2026-09-24.md`). Review độc lập hai vòng: vòng 1 tìm 2 P1 (hai chính sách public
+đổi hành vi; witness fail-closed đổi) cùng P2/P3; vòng 2 không còn P0/P1, xác nhận bằng probe
+rằng chính sách không solver-backed byte-identical khi không có hạn chót và không quyết định
+thành công nào của đường solver-backed đổi khi không có hạn chót. Mutation: neo vào lời hứa
+hiện tại thay vì lời hứa đầu ⇒ 2 test Application đỏ; tắt cờ ở đường solver-backed ⇒ 1 test
+Algorithms đỏ. +12 test (Domain 3, Application 2, Algorithms 4, Runner 3).
+
+**Consequences và giới hạn đã biết:**
+- Ở đường solver-backed, chỉ **run vốn đã hỏng** đổi thông báo (nội dung trích, candidate id,
+  xe nào được báo trước). So sánh đối chứng dùng nhãn, không dùng text hay candidate id; nhãn
+  của một ô có thể đổi giữa `commitment-all-rejected/*` và `all-rejected/non-commitment` vì bộ
+  chạy cũ trích ứng viên đầu còn bộ chạy mới trích no-op.
+- Mã typed không tới artifact: `AssessmentFailure` thay code bằng `CommitmentAssessmentFailed`
+  và `RunnerSession` chỉ giữ `INTERNAL_ERROR` + message, nên phân loại dựa trên văn bản; bộ
+  phân loại ngoài kho kiểm mọi hằng số chuỗi với mã nguồn.
+- Đếm prune do hạn chót phải quét `commitmentWitnesses`, không dùng `code`.
+  `wp14_frontier_analyze.py` và `wp14_mechanism_probe.py` bỏ qua im lặng mã mới;
+  `wp13_recorded_witness_relaxation.py` và schema của nó từ chối — không dùng chúng trên output
+  có hạn chót.
+- Hạn chót cũng áp trên đường OnlineCommitment không có WP4 (chưa test); mọi run Tầng 2 truyền
+  `--wp4-config`. Witness hạn chót không mang độ lớn (`ℓ`, `p0`, `p`).
+- Các run có trôi dạt không qua verifier dự án (verifier đòi đúng một snapshot) ⇒ mọi kết quả
+  Tầng 2 mang nhãn thăm dò.
+
+**Kết quả Tầng 2 (thăm dò có tiền đăng ký, 2026-09-24).** Runner
+`E:\RideBoundData\research\runner-deadline-v1` (tree SHA-256 `8fa5dd28…61cda8`); output
+`E:\RideBoundData\research\deadline-v1` (301 thư mục); hồ sơ `E:\Code\Report_INT3508\ridebound-scratchpad\deadline\`
+(`PREREGISTRATION.md` + `predictions.csv` niêm phong 06:03:52Z, `AMENDMENTS.md` A1–A6,
+`analysis-2026-09-24-final.txt`). Đối chứng 40/40: 36 ô hoàn tất trùng từng quyết định với
+`wp14/drift-v1`, cổng kết quả vô nghiệm đúng 4 ô đã biết. Bất biến: 0/56 lần chạy cổng hành vi vô
+nghiệm do cam kết; 0 `selection-noop-invariant`. Dự đoán theo ô: panel chính 98/102, tập giữ lại sáng
+31/32, tối 40/40; hai ngưỡng xác nhận đã niêm phong đạt, không điều kiện phủ định nào xảy ra. Sáng
+`k = 1`: hạn chót một chiều 30/60/120 s vô nghiệm 19/13/3 trên 20 ô; `k = 0`: 0/60. Tối (tập giữ lại):
+một chiều 0/8, hai chiều 7/8 (đều ở cận dưới), cổng kết quả 8/8. Cả 90 lần vô nghiệm do cam kết trích
+lý do của chính no-op. Năm lần chạy hỏng vì máy ngủ được chạy lại theo A2 (A2 làm độ chính xác giảm
+từ 99/102 xuống 98/102). Kiểm độc lập bằng tính lại từ artifact thô: mọi con số khớp. Dự đoán phụ
+"hạn chót một chiều phục vụ nhiều khách hơn khi tắc giảm" **không** được quan sát (1/8 ô, +1 khách).
+Không claim tính mới cho hạn chót; không nói cơ chế tốt hơn Schulz & Pfeiffer.
+
 ## 8. Work package tracker
 
 | WP | Trạng thái | Bắt đầu | Kết thúc | Evidence |
@@ -4749,6 +4826,13 @@ không bị chạm.
 
 ## 9. Change history
 
+- 2026-09-24 (nhánh thăm dò `research/deadline-gate`, chưa commit): ADR-074 **Proposed** —
+  luật hạn chót tính từ lời hứa đầu (một chiều/hai chiều, mặc định tắt) và chẩn đoán no-op
+  bị loại chỉ ở đường solver-backed. Debug 963/963; review độc lập hai vòng, vòng 2 không
+  P0/P1. Tầng 2 đã chạy xong (296 job + 5 chạy lại do máy ngủ; đối chứng trùng drift-v1 từng
+  quyết định; dự đoán niêm phong đúng 98/102, 31/32, 40/40) — xem đoạn "Kết quả Tầng 2" của
+  ADR-074. Mọi kết quả mang nhãn thăm dò.
+  `§1` và `§5` của cây chính không đổi.
 - 2026-09-02: `RB-WP14R-009` **MATRIX HALTED** và `010` descriptive slice. Freeze v5
   (receipt `ba4a7835…0c1463`) đóng được paired gate lần đầu trong lịch sử WP14/WP14R:
   B1 `755,0 s` và C1 `626,3 s`, cả hai `succeeded` và `independentVerificationStatus

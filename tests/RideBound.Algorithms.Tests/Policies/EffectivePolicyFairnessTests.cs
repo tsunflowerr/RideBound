@@ -87,6 +87,43 @@ public sealed class EffectivePolicyFairnessTests
             Fingerprint(underTightBudget));
     }
 
+    /// <summary>
+    /// The drop-ETA deadline is a research probe for the deadline family. Like every
+    /// cumulative limit it binds only the commitment arms: a baseline arm scored
+    /// against a deadline would silently stop being a baseline.
+    /// </summary>
+    [Theory]
+    [InlineData(RidePoolingPolicyKind.RollingCost)]
+    [InlineData(RidePoolingPolicyKind.RollingPenalty)]
+    [InlineData(RidePoolingPolicyKind.FixedFreezeHorizon)]
+    [InlineData(RidePoolingPolicyKind.NoReassignmentRepair)]
+    public void A_baseline_arm_never_inherits_a_configured_deadline(
+        RidePoolingPolicyKind kind)
+    {
+        var policy = EffectivePolicyFor(
+            kind,
+            deadlineSlackMs: 30_000,
+            deadlineTwoSided: true);
+
+        Assert.Null(policy.DropEtaDeadlineSlack);
+        Assert.False(policy.DropEtaDeadlineTwoSided);
+    }
+
+    [Theory]
+    [InlineData(RidePoolingPolicyKind.RideBoundHardVector)]
+    [InlineData(RidePoolingPolicyKind.CommitSoftHardHybrid)]
+    public void A_commitment_arm_keeps_a_configured_deadline(RidePoolingPolicyKind kind)
+    {
+        var policy = EffectivePolicyFor(
+            kind,
+            deadlineSlackMs: 30_000,
+            deadlineTwoSided: true);
+
+        Assert.Equal(
+            Fingerprint(ConfiguredPolicy(DropEtaHardLimit, 30_000, true)),
+            Fingerprint(policy));
+    }
+
     [Fact]
     public void B3_and_b4_keep_only_their_declared_mechanism_settings()
     {
@@ -135,6 +172,8 @@ public sealed class EffectivePolicyFairnessTests
                 policy.FreezeHorizon?.Milliseconds.ToString() ?? "none",
                 ((int)policy.FreezeHorizonLocks).ToString(),
                 ((int)policy.FinalConfirmationLocks).ToString(),
+                policy.DropEtaDeadlineSlack?.Milliseconds.ToString() ?? "none",
+                policy.DropEtaDeadlineTwoSided.ToString(),
             }.Concat(
                 CommitmentDimensionVocabulary.Ordered.Select(
                     dimension => string.Join(
@@ -149,7 +188,9 @@ public sealed class EffectivePolicyFairnessTests
 
     private static CommitmentPolicy EffectivePolicyFor(
         RidePoolingPolicyKind kind,
-        long? dropEtaHardLimit = DropEtaHardLimit)
+        long? dropEtaHardLimit = DropEtaHardLimit,
+        long? deadlineSlackMs = null,
+        bool deadlineTwoSided = false)
     {
         var request = AlgorithmTestData.PendingRequest("request-1");
         var unadvanced = AlgorithmTestData.CreateState(
@@ -168,7 +209,10 @@ public sealed class EffectivePolicyFairnessTests
                 AlgorithmTestData.ScenarioId,
                 new SimTime(0)),
             state.ExpectedInitialTravelTimeSnapshotHash);
-        var configured = ConfiguredPolicy(dropEtaHardLimit);
+        var configured = ConfiguredPolicy(
+            dropEtaHardLimit,
+            deadlineSlackMs,
+            deadlineTwoSided);
         var solverBudget = DeterministicSolverBudget.Create(1000, 1000, 1).Value!;
         var executionBudget =
             DeterministicCandidateSelectionExecutionBudget.Create(
@@ -198,7 +242,10 @@ public sealed class EffectivePolicyFairnessTests
         return policy;
     }
 
-    private static CommitmentPolicy ConfiguredPolicy(long? dropEtaHardLimit) =>
+    private static CommitmentPolicy ConfiguredPolicy(
+        long? dropEtaHardLimit,
+        long? deadlineSlackMs = null,
+        bool deadlineTwoSided = false) =>
         new(
             PolicyId,
             CommitmentBudgetBasis.DecisionInduced,
@@ -211,7 +258,9 @@ public sealed class EffectivePolicyFairnessTests
                     dimension == CommitmentDimension.VehicleSwitchCount
                         ? CommitmentPhase.WaitingPickup
                         : CommitmentPhase.AllActive)),
-            new MaterialRevisionRule(1, 30_000));
+            new MaterialRevisionRule(1, 30_000),
+            dropEtaDeadlineSlack: deadlineSlackMs is long slack ? new Duration(slack) : null,
+            dropEtaDeadlineTwoSided: deadlineTwoSided);
 
     /// <summary>
     /// Each arm carries its own mandatory settings — B3 needs a freeze horizon and lock

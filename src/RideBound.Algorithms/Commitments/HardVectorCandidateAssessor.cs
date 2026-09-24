@@ -60,10 +60,17 @@ public sealed class HardVectorCandidateAssessor
         _validator = validator ?? new CommitmentDecisionValidator();
     }
 
+    /// <param name="requireSafetyNoOp">
+    /// Set by a caller whose selection model needs exactly one no-op per vehicle.
+    /// Then a vehicle that loses its no-op fails here with the no-op's own
+    /// rejection, and an emptied vehicle reports the no-op's rejection. Callers
+    /// that do not need the no-op keep the behaviour they had before.
+    /// </param>
     public HardVectorCandidateAssessmentResult AssessAndFilter(
         CommitmentMechanismContext context,
         IReadOnlyList<VehicleCandidateSet> rawCandidateSets,
-        ICommitmentWarningProfileProvider? warningProfiles = null)
+        ICommitmentWarningProfileProvider? warningProfiles = null,
+        bool requireSafetyNoOp = false)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(rawCandidateSets);
@@ -185,11 +192,28 @@ public sealed class HardVectorCandidateAssessor
                         warning.HasApplicableWarning));
             }
 
+            // The safety no-op is the one candidate whose rejection says why a vehicle
+            // lost its fallback. Identify it only when the set is well formed (exactly
+            // one no-op); otherwise the selection model reports the malformed set.
+            var noOps = requireSafetyNoOp
+                ? set.Candidates.Where(value => value.IsNoOp).ToArray()
+                : Array.Empty<InsertionCandidate>();
+            var noOpPrune = noOps.Length == 1
+                ? hardPruned.FirstOrDefault(
+                    value => value.CandidateId == noOps[0].CandidateId)
+                : null;
+
             if (retained.Count == 0)
             {
-                var first = hardPruned
+                // Report the no-op's own rejection when there is one, so the cause of
+                // an empty set is attributable; the ordinal first candidate is usually
+                // not the no-op, because candidate ids are content hashes.
+                var first = noOpPrune ?? hardPruned
                     .OrderBy(value => value.CandidateId, StringComparer.Ordinal)
                     .FirstOrDefault();
+                var citation = noOpPrune is not null
+                    ? "No-op rejection"
+                    : "First rejection";
                 var firstValidation = first is not null
                     && hardValidationWitnesses.TryGetValue(
                         first.CandidateId,
@@ -203,7 +227,7 @@ public sealed class HardVectorCandidateAssessor
                             ? "C1 reached a vehicle without any generated " +
                               "candidate; even the safety no-op was absent."
                             : "C1 rejected every generated candidate for this " +
-                              $"vehicle. First rejection: {first.Message}",
+                              $"vehicle. {citation}: {first.Message}",
                         first?.CandidateId,
                         set.VehicleId,
                         firstValidation?.RequestId,
@@ -211,6 +235,34 @@ public sealed class HardVectorCandidateAssessor
                         first?.Code,
                         firstValidation?.Before,
                         firstValidation?.After,
+                        set.Candidates.Count,
+                        hardPruned.Count));
+            }
+
+            if (noOpPrune is not null)
+            {
+                // A rule removed the safety no-op but kept another candidate. The
+                // caller's selection model needs exactly one no-op per vehicle, so
+                // this state used to die later as a generic model-mapping failure.
+                // Failing here with the no-op's own rejection changes no successful
+                // run of such a caller. The cited rejection may come from any stage.
+                var noOpValidation = hardValidationWitnesses.TryGetValue(
+                    noOpPrune.CandidateId,
+                    out var noOpWitness)
+                    ? noOpWitness
+                    : null;
+                return HardVectorCandidateAssessmentResult.Failure(
+                    new CommitmentAssessmentWitness(
+                        CommitmentFailureCodes.SafetyNoOpRejected,
+                        "C1 rejected the safety no-op while other candidates survived. " +
+                        $"No-op rejection: {noOpPrune.Message}",
+                        noOpPrune.CandidateId,
+                        set.VehicleId,
+                        noOpValidation?.RequestId,
+                        noOpValidation?.Dimension,
+                        noOpPrune.Code,
+                        noOpValidation?.Before,
+                        noOpValidation?.After,
                         set.Candidates.Count,
                         hardPruned.Count));
             }

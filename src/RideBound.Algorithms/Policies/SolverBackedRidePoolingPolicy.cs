@@ -293,7 +293,8 @@ public sealed class SolverBackedRidePoolingPolicy
                         policyOptions.PolicyKind
                             == RidePoolingPolicyKind.CommitSoftHardHybrid
                                 ? warningProfiles
-                                : null);
+                                : null,
+                        requireSafetyNoOp: true);
 
                     if (!assessed.IsSuccess)
                     {

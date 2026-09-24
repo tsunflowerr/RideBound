@@ -2,6 +2,7 @@ using RideBound.Algorithms.Candidates;
 using RideBound.Algorithms.Commitments;
 using RideBound.Algorithms.Policies;
 using RideBound.Application.Commitments;
+using RideBound.Application.Optimization;
 using RideBound.Application.State;
 using RideBound.Application.Travel;
 using RideBound.Domain.Commitments;
@@ -660,6 +661,301 @@ public sealed class ExactSmallCommitmentDifferentialTests
         Assert.Equal(AlgorithmTestData.VehicleOne, assessed.Witness.VehicleId);
         Assert.Null(assessed.Witness.CandidateId);
         Assert.Equal(0, assessed.Witness.GeneratedCandidateCount);
+    }
+
+    [Fact]
+    public void C1_reports_a_rejected_safety_no_op_that_leaves_other_candidates_alive()
+    {
+        // The no-op keeps the route, so its drop ETA is the baseline. The rider's
+        // initial promise is placed exactly one insertion's delay LATER than that,
+        // and a zero-slack two-sided deadline then rejects the no-op (too early)
+        // while the insertion that causes exactly that delay survives. Before the
+        // diagnostic change the solver-backed path died later with a generic
+        // mapping error.
+        var (generated, set, noOp, context) = NoOpRejectedWhileAnInsertionSurvives();
+
+        var assessed = new HardVectorCandidateAssessor().AssessAndFilter(
+            context,
+            generated.VehicleCandidates!,
+            requireSafetyNoOp: true);
+
+        Assert.False(assessed.IsSuccess);
+        var witness = assessed.Witness!;
+        Assert.Equal(CommitmentFailureCodes.SafetyNoOpRejected, witness.Code);
+        Assert.Equal(noOp.CandidateId, witness.CandidateId);
+        Assert.Equal(AlgorithmTestData.VehicleOne, witness.VehicleId);
+        Assert.Equal(CommitmentFailureCodes.DeadlineExceeded, witness.UnderlyingCode);
+        Assert.Equal(CreateState(seed: 3).IncumbentId, witness.RequestId);
+        Assert.Equal("drop_eta_ms", witness.Dimension);
+        Assert.Equal(set.Candidates.Count, witness.GeneratedCandidateCount);
+        Assert.True(witness.GeneratedCandidateCount > witness.RejectedCandidateCount);
+        Assert.StartsWith(
+            "C1 rejected the safety no-op while other candidates survived. No-op rejection: ",
+            witness.Message,
+            StringComparison.Ordinal);
+        Assert.EndsWith(
+            "outside the initial-promise window.",
+            witness.Message,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("firstCode=", witness.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_caller_that_does_not_require_the_no_op_keeps_the_surviving_candidates()
+    {
+        // The legacy policies select without a no-op, so for them the same state is
+        // not a failure: the assessor returns what survived, exactly as before.
+        var (generated, _, noOp, context) = NoOpRejectedWhileAnInsertionSurvives();
+
+        var assessed = new HardVectorCandidateAssessor().AssessAndFilter(
+            context,
+            generated.VehicleCandidates!);
+
+        Assert.True(assessed.IsSuccess, assessed.Witness?.Message);
+        var retained = assessed.Batch!.FeasibleCandidateSets.Single().Candidates;
+        Assert.NotEmpty(retained);
+        Assert.DoesNotContain(retained, value => value.CandidateId == noOp.CandidateId);
+    }
+
+    [Fact]
+    public void The_solver_backed_policy_reports_the_rejected_no_op_instead_of_a_mapping_error()
+    {
+        var (_, _, _, context) = NoOpRejectedWhileAnInsertionSurvives();
+        var solverBudget = DeterministicSolverBudget.Create(1000, 1000, 1).Value!;
+        var executionBudget = DeterministicCandidateSelectionExecutionBudget.Create(
+            100_000,
+            100_000,
+            solverBudget).Value!;
+
+        var result = new SolverBackedRidePoolingPolicy(new UnreachableSolver()).Decide(
+            context,
+            CandidateGenerationOptions.ExactSmall,
+            new SolverBackedRidePoolingPolicyOptions(
+                RidePoolingPolicyKind.RideBoundHardVector,
+                executionBudget));
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(
+            RollingCostFailureCodes.CommitmentAssessmentFailed,
+            result.Witness!.Code);
+        Assert.StartsWith(
+            "C1 rejected the safety no-op while other candidates survived. No-op rejection: ",
+            result.Witness.Message,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("exactly one no-op option", result.Witness.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_budget_rule_can_reject_the_no_op_while_an_insertion_survives()
+    {
+        // Under the customer-visible basis the kept route is charged for moving the
+        // drop ETA away from the published promise. The promise sits one insertion's
+        // delay after the kept route, and the drop budget is one millisecond short of
+        // that delay: the no-op is over budget, the insertion that lands exactly on
+        // the promise is not.
+        var fixture = CreateState(seed: 3);
+        var generated = new InsertionCandidateGenerator().Generate(
+            fixture.State,
+            CandidateGenerationOptions.ExactSmall);
+        Assert.True(generated.IsSuccess, generated.Witness?.Message);
+        var noOp = generated.VehicleCandidates!.Single().Candidates.Single(value => value.IsNoOp);
+        var delay = SmallestPositiveDelay(fixture, generated.VehicleCandidates!.Single());
+        var policy = new CommitmentPolicy(
+            fixture.Policy.PolicyId,
+            CommitmentBudgetBasis.CustomerVisible,
+            CommitmentDimensionVocabulary.Ordered.Select(
+                dimension => new CommitmentDimensionLimit(
+                    dimension,
+                    dimension == CommitmentDimension.DropEtaTotalMs ? delay - 1 : null,
+                    CommitmentPhase.AllActive)),
+            new MaterialRevisionRule(1_000, null));
+        var context = PromiseContext(
+            fixture,
+            fixture.BaselineDrop.Milliseconds + delay,
+            policy);
+
+        var assessed = new HardVectorCandidateAssessor().AssessAndFilter(
+            context,
+            generated.VehicleCandidates!,
+            requireSafetyNoOp: true);
+
+        Assert.False(assessed.IsSuccess);
+        var witness = assessed.Witness!;
+        Assert.Equal(CommitmentFailureCodes.SafetyNoOpRejected, witness.Code);
+        Assert.Equal(noOp.CandidateId, witness.CandidateId);
+        Assert.Equal(CommitmentFailureCodes.BudgetExceeded, witness.UnderlyingCode);
+        Assert.EndsWith(
+            "No-op rejection: The candidate exceeds a hard commitment dimension.",
+            witness.Message,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void C1_fail_closed_cites_the_safety_no_op_when_every_candidate_is_rejected()
+    {
+        // An initial promise one millisecond EARLIER than the kept route and a
+        // zero-slack one-sided deadline: the no-op is already too late, and the
+        // insertion generator can only delay an incumbent further, so every
+        // candidate is rejected. The witness must now cite the no-op itself.
+        var (generated, set, noOp, ordinalFirst, context) = EveryCandidateRejected();
+
+        var assessed = new HardVectorCandidateAssessor().AssessAndFilter(
+            context,
+            generated.VehicleCandidates!,
+            requireSafetyNoOp: true);
+
+        Assert.False(assessed.IsSuccess);
+        var witness = assessed.Witness!;
+        Assert.Equal(CommitmentFailureCodes.VehicleHasNoFeasibleCandidate, witness.Code);
+        Assert.Equal(noOp.CandidateId, witness.CandidateId);
+        Assert.NotEqual(ordinalFirst.CandidateId, witness.CandidateId);
+        Assert.Equal(CommitmentFailureCodes.DeadlineExceeded, witness.UnderlyingCode);
+        Assert.Equal(set.Candidates.Count, witness.RejectedCandidateCount);
+        Assert.Contains(". No-op rejection: ", witness.Message, StringComparison.Ordinal);
+        Assert.EndsWith(
+            "beyond the initial-promise deadline.",
+            witness.Message,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_caller_that_does_not_require_the_no_op_still_cites_the_ordinal_first_rejection()
+    {
+        var (generated, _, _, ordinalFirst, context) = EveryCandidateRejected();
+
+        var assessed = new HardVectorCandidateAssessor().AssessAndFilter(
+            context,
+            generated.VehicleCandidates!);
+
+        Assert.False(assessed.IsSuccess);
+        var witness = assessed.Witness!;
+        Assert.Equal(CommitmentFailureCodes.VehicleHasNoFeasibleCandidate, witness.Code);
+        Assert.Equal(ordinalFirst.CandidateId, witness.CandidateId);
+        Assert.Contains(". First rejection: ", witness.Message, StringComparison.Ordinal);
+    }
+
+    private static (
+        CandidateGenerationResult Generated,
+        VehicleCandidateSet Set,
+        InsertionCandidate NoOp,
+        CommitmentMechanismContext Context) NoOpRejectedWhileAnInsertionSurvives()
+    {
+        var fixture = CreateState(seed: 3);
+        var generated = new InsertionCandidateGenerator().Generate(
+            fixture.State,
+            CandidateGenerationOptions.ExactSmall);
+        Assert.True(generated.IsSuccess, generated.Witness?.Message);
+        var set = generated.VehicleCandidates!.Single();
+        var noOp = set.Candidates.Single(value => value.IsNoOp);
+        var context = DeadlineContext(
+            fixture,
+            initialDropMs: fixture.BaselineDrop.Milliseconds + SmallestPositiveDelay(fixture, set),
+            twoSided: true);
+        return (generated, set, noOp, context);
+    }
+
+    private static (
+        CandidateGenerationResult Generated,
+        VehicleCandidateSet Set,
+        InsertionCandidate NoOp,
+        InsertionCandidate OrdinalFirst,
+        CommitmentMechanismContext Context) EveryCandidateRejected()
+    {
+        var fixture = CreateState(seed: 3);
+        var generated = new InsertionCandidateGenerator().Generate(
+            fixture.State,
+            CandidateGenerationOptions.ExactSmall);
+        Assert.True(generated.IsSuccess, generated.Witness?.Message);
+        var set = generated.VehicleCandidates!.Single();
+        var noOp = set.Candidates.Single(value => value.IsNoOp);
+        var ordinalFirst = set.Candidates
+            .OrderBy(value => value.CandidateId, StringComparer.Ordinal)
+            .First();
+        // The test only discriminates when the no-op is not also the ordinal first.
+        Assert.NotEqual(ordinalFirst.CandidateId, noOp.CandidateId);
+        var context = DeadlineContext(
+            fixture,
+            initialDropMs: fixture.BaselineDrop.Milliseconds - 1,
+            twoSided: false);
+        return (generated, set, noOp, ordinalFirst, context);
+    }
+
+    private static long SmallestPositiveDelay(Fixture fixture, VehicleCandidateSet set) =>
+        set.Candidates
+            .Where(value => !value.IsNoOp)
+            .Select(value => OracleEtas(fixture.State, SemanticKey(value), fixture.IncumbentId)
+                .Drop.Milliseconds - fixture.BaselineDrop.Milliseconds)
+            .Where(value => value > 0)
+            .Min();
+
+    /// <summary>The assessment fails before selection, so the solver is never called.</summary>
+    private sealed class UnreachableSolver : ICandidateSelectionSolver
+    {
+        public CandidateSelectionSolveResult Solve(
+            CandidateSelectionProblem problem,
+            DeterministicSolverBudget budget) =>
+            throw new InvalidOperationException("The solver must not be reached.");
+    }
+
+    private static CommitmentMechanismContext DeadlineContext(
+        Fixture fixture,
+        long initialDropMs,
+        bool twoSided) =>
+        PromiseContext(
+            fixture,
+            initialDropMs,
+            new CommitmentPolicy(
+                fixture.Policy.PolicyId,
+                CommitmentBudgetBasis.DecisionInduced,
+                CommitmentDimensionVocabulary.Ordered.Select(
+                    dimension => new CommitmentDimensionLimit(
+                        dimension,
+                        null,
+                        CommitmentPhase.AllActive)),
+                new MaterialRevisionRule(1_000, null),
+                dropEtaDeadlineSlack: new Duration(0),
+                dropEtaDeadlineTwoSided: twoSided));
+
+    /// <summary>
+    /// The incumbent's only ledger entry is an initial promise at the kept pickup
+    /// ETA and the given drop ETA; the policy is the one the incumbent booked.
+    /// </summary>
+    private static CommitmentMechanismContext PromiseContext(
+        Fixture fixture,
+        long initialDropMs,
+        CommitmentPolicy policy)
+    {
+        var incumbent = fixture.State.Run.Requests[fixture.IncumbentId];
+        var pickupStop = new StopId("incumbent-pickup");
+        var dropStop = new StopId("incumbent-drop");
+        var initial = new PromiseProjection(
+            incumbent.Id,
+            AlgorithmTestData.VehicleOne,
+            pickupStop,
+            incumbent.OriginNodeId,
+            dropStop,
+            incumbent.DestinationNodeId,
+            fixture.BaselinePickup,
+            new SimTime(initialDropMs),
+            [
+                new PromiseServiceToken(pickupStop, incumbent.Id, RouteStopKind.Pickup),
+                new PromiseServiceToken(dropStop, incumbent.Id, RouteStopKind.DropOff),
+            ]);
+        var ledger = CommitmentLedger.Empty.OpenInitial(
+            "oracle-initial-deadline",
+            initial,
+            1,
+            fixture.State.Run.SimulationTime,
+            "INITIAL_ACCEPTANCE",
+            2).Ledger!;
+
+        return new CommitmentMechanismContext(
+            fixture.BeforeEventState with { Commitments = ledger },
+            fixture.State with { Commitments = ledger },
+            new CommitmentPolicyCatalog([policy]),
+            NoDistances.Instance,
+            "c1-deadline",
+            1);
     }
 
     private static IReadOnlySet<string> RetainedKeys(

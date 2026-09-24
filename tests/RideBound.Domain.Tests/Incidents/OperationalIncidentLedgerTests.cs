@@ -223,6 +223,157 @@ public sealed class OperationalIncidentLedgerTests
                 new SimTime(2_000)));
     }
 
+    [Fact]
+    public void Forced_reference_breach_charges_the_visible_delta_and_needs_no_incident()
+    {
+        var drift = CommitmentTestData.Vector(CommitmentDimension.DropEtaTotalMs, 40);
+        var breach = ForcedReference(
+            new ThreeWayPromiseDelta(drift, CommitmentVector.Zero, drift),
+            before: 25,
+            after: 65,
+            [CommitmentFailureCodes.BudgetExceeded]);
+
+        var appended = OperationalIncidentLedger.Empty.AppendBreach(breach);
+
+        Assert.True(appended.IsSuccess, appended.Failure?.Message);
+        var stored = Assert.Single(appended.Ledger!.Breaches);
+        Assert.Equal(CommitmentBreachKind.ForcedReference, stored.Kind);
+        Assert.Null(stored.IncidentId);
+        Assert.Empty(stored.ServiceQualityWitnesses);
+        Assert.Equal(65, stored.AttemptedBudgetAfter.DropEtaTotalMs);
+        Assert.False(stored.NormalOperation);
+    }
+
+    [Fact]
+    public void Forced_reference_breach_accepts_exactly_the_two_basis_charges()
+    {
+        // Under decisionInduced the kept route adds nothing; under customerVisible it adds
+        // the visible drift. Any other charge is not a charge by either basis.
+        var drift = CommitmentTestData.Vector(CommitmentDimension.DropEtaTotalMs, 40);
+        var deltas = new ThreeWayPromiseDelta(drift, CommitmentVector.Zero, drift);
+
+        var decisionBasis = ForcedReference(
+            deltas,
+            before: 25,
+            after: 25,
+            [CommitmentFailureCodes.DeadlineExceeded]);
+        var visibleBasis = ForcedReference(
+            deltas,
+            before: 25,
+            after: 65,
+            [CommitmentFailureCodes.DeadlineExceeded]);
+
+        Assert.Equal(25, decisionBasis.AttemptedBudgetAfter.DropEtaTotalMs);
+        Assert.Equal(65, visibleBasis.AttemptedBudgetAfter.DropEtaTotalMs);
+        Assert.Throws<ArgumentException>(
+            () => ForcedReference(
+                deltas,
+                before: 25,
+                after: 26,
+                [CommitmentFailureCodes.DeadlineExceeded]));
+    }
+
+    [Fact]
+    public void Forced_reference_breach_rejects_a_phase_lock_and_a_differing_kept_projection()
+    {
+        // A lock compares with the exogenous projection, which a kept route equals, so a
+        // phase lock on a kept route would be a defect. The published projection must be
+        // the kept route's, which is the exogenous one.
+        var drift = CommitmentTestData.Vector(CommitmentDimension.DropEtaTotalMs, 40);
+        var deltas = new ThreeWayPromiseDelta(drift, CommitmentVector.Zero, drift);
+
+        Assert.Throws<ArgumentException>(
+            () => ForcedReference(deltas, 25, 25, [CommitmentFailureCodes.PhaseLock]));
+        Assert.Throws<ArgumentException>(
+            () => ForcedReference(
+                deltas,
+                25,
+                25,
+                [CommitmentFailureCodes.DeadlineExceeded],
+                keptRoute: CommitmentTestData.Projection(TestData.VehicleTwo)));
+    }
+
+    [Fact]
+    public void Forced_reference_breach_rejects_a_decision_delta_a_wrong_budget_and_foreign_codes()
+    {
+        var drift = CommitmentTestData.Vector(CommitmentDimension.DropEtaTotalMs, 40);
+        var decision = CommitmentTestData.Vector(CommitmentDimension.DropEtaTotalMs, 5);
+
+        // Keeping the route adds no decision-induced change.
+        Assert.Throws<ArgumentException>(
+            () => ForcedReference(
+                new ThreeWayPromiseDelta(drift, decision, drift),
+                25,
+                30,
+                [CommitmentFailureCodes.BudgetExceeded]));
+        // The budget must follow one of the two bases exactly.
+        Assert.Throws<ArgumentException>(
+            () => ForcedReference(
+                new ThreeWayPromiseDelta(drift, CommitmentVector.Zero, drift),
+                25,
+                50,
+                [CommitmentFailureCodes.BudgetExceeded]));
+        // With no decision change the visible delta is the exogenous one.
+        Assert.Throws<ArgumentException>(
+            () => ForcedReference(
+                new ThreeWayPromiseDelta(drift, CommitmentVector.Zero, decision),
+                25,
+                25,
+                [CommitmentFailureCodes.BudgetExceeded]));
+        // Only commitment-gate codes; a service-quality code belongs to the exogenous kind.
+        Assert.Throws<ArgumentException>(
+            () => ForcedReference(
+                new ThreeWayPromiseDelta(drift, CommitmentVector.Zero, drift),
+                25,
+                25,
+                [PhysicalViolationCodes.PickupWindow]));
+    }
+
+    [Fact]
+    public void Forced_reference_breach_identifier_is_unique_in_the_ledger()
+    {
+        var drift = CommitmentTestData.Vector(CommitmentDimension.DropEtaTotalMs, 40);
+        var breach = ForcedReference(
+            new ThreeWayPromiseDelta(drift, CommitmentVector.Zero, drift),
+            25,
+            25,
+            [CommitmentFailureCodes.DeadlineExceeded]);
+        var once = OperationalIncidentLedger.Empty.AppendBreach(breach).Ledger!;
+
+        Assert.Equal(
+            IncidentFailureCodes.DuplicateBreach,
+            once.AppendBreach(breach).Failure?.Code);
+    }
+
+    private static CommitmentBreachRecord ForcedReference(
+        ThreeWayPromiseDelta deltas,
+        long before,
+        long after,
+        IEnumerable<string> witnessCodes,
+        PromiseProjection? keptRoute = null)
+    {
+        var projection = CommitmentTestData.Projection();
+        var previous = new PublishedPromise(
+            new PromiseVersion(1),
+            1,
+            new SimTime(1_000),
+            projection);
+
+        return CommitmentBreachRecord.CreateForcedReference(
+            "forced-breach-1",
+            TestData.RequestOne,
+            previous,
+            projection,
+            keptRoute ?? projection,
+            deltas,
+            CommitmentTestData.Vector(CommitmentDimension.DropEtaTotalMs, before),
+            CommitmentTestData.Vector(CommitmentDimension.DropEtaTotalMs, after),
+            witnessCodes,
+            11,
+            2,
+            new SimTime(2_000));
+    }
+
     private static CommitmentBreachRecord Breach(
         IncidentId incidentId,
         long attemptedPickupEta = 11,

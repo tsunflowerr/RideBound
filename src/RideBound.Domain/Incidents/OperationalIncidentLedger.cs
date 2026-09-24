@@ -119,6 +119,13 @@ public enum CommitmentBreachKind
 {
     OperationalIncident,
     ExogenousServiceQuality,
+
+    /// <summary>
+    /// A commitment gate rejected every option of a vehicle, including keeping its route, and the
+    /// run kept the route anyway as a forced action. The record states which gate was overrun and
+    /// by how much; the ledger is charged exactly as for any other publication and is never reset.
+    /// </summary>
+    ForcedReference,
 }
 
 public sealed record CommitmentBreachRecord
@@ -260,6 +267,34 @@ public sealed record CommitmentBreachRecord
                     nameof(serviceQualityWitnesses));
             }
         }
+        else if (kind == CommitmentBreachKind.ForcedReference)
+        {
+            // The forced action keeps the route, so the published projection is the kept-route
+            // projection and the decision adds nothing. The charged delta follows the budget
+            // basis: zero under decisionInduced, the visible delta under customerVisible.
+            var decisionAfter = budgetBefore.Add(deltas.DecisionInduced);
+            var visibleAfter = budgetBefore.Add(deltas.Visible);
+
+            if (incidentId is not null
+                || serviceWitnesses.Length != 0
+                || !ProjectionEquals(exogenousProjection, safetyProjection)
+                || deltas.DecisionInduced != CommitmentVector.Zero
+                || deltas.Exogenous != deltas.Visible
+                || (!decisionAfter.IsSuccess || decisionAfter.Value != attemptedBudgetAfter)
+                    && (!visibleAfter.IsSuccess || visibleAfter.Value != attemptedBudgetAfter))
+            {
+                throw new ArgumentException(
+                    "A forced-reference breach keeps the route: identical projections, zero " +
+                    "decision delta, and a budget charged by the policy's basis.");
+            }
+
+            if (witnesses.Any(value => !ForcedReferenceWitnessCodes.Contains(value)))
+            {
+                throw new ArgumentException(
+                    "A forced-reference breach names only commitment-gate codes.",
+                    nameof(witnessCodes));
+            }
+        }
         else
         {
             if (incidentId is null || serviceWitnesses.Length != 0)
@@ -331,6 +366,52 @@ public sealed record CommitmentBreachRecord
     public SimTime RecordedAt { get; }
 
     public bool NormalOperation => false;
+
+    /// <summary>
+    /// The gate codes a forced-reference breach may name. A phase lock is absent on
+    /// purpose: locks compare a candidate with its exogenous projection, which a kept
+    /// route equals, so a lock on a kept route would be a defect and must fail closed.
+    /// </summary>
+    public static IReadOnlySet<string> ForcedReferenceWitnessCodes { get; } =
+        new[]
+        {
+            CommitmentFailureCodes.BudgetExceeded,
+            CommitmentFailureCodes.DeadlineExceeded,
+        }.ToFrozenSet(StringComparer.Ordinal);
+
+    /// <param name="exogenousProjection">The projection of the reduced route.</param>
+    /// <param name="keptRouteProjection">
+    /// The projection that is published for the kept route; it must equal the exogenous one.
+    /// </param>
+    public static CommitmentBreachRecord CreateForcedReference(
+        string breachId,
+        RequestId requestId,
+        PublishedPromise previousPromise,
+        PromiseProjection exogenousProjection,
+        PromiseProjection keptRouteProjection,
+        ThreeWayPromiseDelta deltas,
+        CommitmentVector budgetBefore,
+        CommitmentVector budgetAfter,
+        IEnumerable<string> witnessCodes,
+        long sourceEventSequence,
+        long recordedEpoch,
+        SimTime recordedAt) =>
+        new(
+            breachId,
+            CommitmentBreachKind.ForcedReference,
+            null,
+            requestId,
+            previousPromise,
+            exogenousProjection,
+            keptRouteProjection,
+            deltas,
+            budgetBefore,
+            budgetAfter,
+            witnessCodes,
+            [],
+            sourceEventSequence,
+            recordedEpoch,
+            recordedAt);
 
     public static CommitmentBreachRecord CreateExogenousServiceQuality(
         string breachId,
@@ -515,7 +596,8 @@ public sealed class OperationalIncidentLedger
                 "breachId");
         }
 
-        if (breach.Kind == CommitmentBreachKind.ExogenousServiceQuality)
+        if (breach.Kind is CommitmentBreachKind.ExogenousServiceQuality
+            or CommitmentBreachKind.ForcedReference)
         {
             return IncidentLedgerResult.Success(
                 new OperationalIncidentLedger(

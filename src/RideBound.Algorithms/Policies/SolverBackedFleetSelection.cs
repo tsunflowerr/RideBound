@@ -273,15 +273,34 @@ public sealed class SolverBackedFleetSelector
             var warningTreatmentActive =
                 profile == SolverBackedObjectiveProfile.SoftHardHybrid
                 && hardAssessments!.Values.Any(value => value.HasApplicableWarning);
-            var objectives = new List<ObjectiveMapping>
+            var forcedTreatmentActive = profile
+                    is SolverBackedObjectiveProfile.HardVector
+                    or SolverBackedObjectiveProfile.SoftHardHybrid
+                && allCandidates.Any(
+                    candidate => hardAssessments![candidate.CandidateId].IsForcedReference);
+            var objectives = new List<ObjectiveMapping>();
+
+            if (forcedTreatmentActive)
             {
+                // A forced option keeps a route that a commitment gate rejected, which
+                // breaches an existing promise. It ranks before accepting new riders, so
+                // it is selected only for a vehicle with no alternative that avoids it.
+                objectives.Add(
+                    MinSum(
+                        "forced-reference-count",
+                        candidate => hardAssessments![candidate.CandidateId]
+                            .IsForcedReference
+                                ? 1
+                                : 0));
+            }
+
+            objectives.Add(
                 new(
                     new CandidateSelectionObjectiveLevel(
                         "accepted-request-count",
                         CandidateSelectionObjectiveSense.Maximize,
                         CandidateSelectionObjectiveAggregation.Sum),
-                    candidate => candidate.NewRequestIds.Count),
-            };
+                    candidate => candidate.NewRequestIds.Count));
 
             switch (profile)
             {

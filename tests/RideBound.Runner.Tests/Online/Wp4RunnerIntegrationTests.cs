@@ -499,6 +499,339 @@ public sealed class Wp4RunnerIntegrationTests
     }
 
     [Fact]
+    public void Forced_reference_recovery_keeps_a_late_route_as_a_certified_breach()
+    {
+        // ADR-075. A one-millisecond drop deadline and a vehicle that has barely left
+        // its node: exogenous drift alone pushes the booked rider past the deadline.
+        // Fail-closed C1 has no candidate left and the session fails; with recovery the
+        // route is kept, one typed breach is recorded, and the certificate says so.
+        var commitment = DeadlineCommitmentConfiguration(slackMs: 1);
+        var failClosed = CreateSession(
+            HardVectorConfiguration(commitment, recovery: null),
+            commitmentConfiguration: commitment);
+        var legacy = DriftBookedRider(failClosed, progressPermille: 1);
+        Assert.Equal("error", legacy.MessageType.Value);
+        Assert.Equal("INTERNAL_ERROR", legacy.Payload.GetProperty("code").GetString());
+        var legacyMessage = legacy.Payload.GetProperty("message").GetString()!;
+        Assert.StartsWith(
+            "C1 rejected every generated candidate for this vehicle. No-op rejection: ",
+            legacyMessage,
+            StringComparison.Ordinal);
+        Assert.Contains("deadline", legacyMessage, StringComparison.Ordinal);
+        Assert.Equal(RunnerSessionStatus.Failed, failClosed.Session.Status);
+
+        var setup = CreateSession(
+            HardVectorConfiguration(commitment, recovery: "forced-reference-v1"),
+            commitmentConfiguration: commitment);
+        var response = DriftBookedRider(setup, progressPermille: 1);
+        var decision = DecisionPayloadCodec.Decode(response.Payload);
+
+        Assert.Equal("decision", response.MessageType.Value);
+        Assert.True(decision.IsSuccess, decision.Error?.Message);
+        var body = decision.Value!.Certificate.Body!;
+        Assert.False(body.NormalOperation);
+        var witness = Assert.Single(body.Witnesses);
+        Assert.Equal("forcedReference", witness.Stage);
+        Assert.Equal("COMMITMENT_DEADLINE_EXCEEDED", witness.Code);
+        Assert.Equal("r-1", witness.RequestId);
+        Assert.Single(
+            decision.Value.Actions,
+            action => action.GetProperty("decisionType").GetString()
+                == "promisePublished");
+
+        _ = setup.Session.Process(
+            DecisionApplied(3, 1_050, decision.Value.DecisionHash.Value));
+        var breach = Assert.Single(
+            setup.Session.CommittedOnlineState!.Incidents.Breaches);
+        Assert.Equal(
+            RideBound.Domain.Incidents.CommitmentBreachKind.ForcedReference,
+            breach.Kind);
+        Assert.Equal(["COMMITMENT_DEADLINE_EXCEEDED"], breach.WitnessCodes);
+
+        var checkpoint = setup.Session.Process(CheckpointRequest()).Response!;
+        var restored = CreateSession(
+            HardVectorConfiguration(commitment, recovery: "forced-reference-v1"),
+            commitmentConfiguration: commitment);
+        Assert.Equal(
+            "restore",
+            restored.Session.Process(RestoreRequest(checkpoint.Payload))
+                .Response?.MessageType.Value);
+        Assert.Equal(
+            breach.BreachId,
+            Assert.Single(restored.Session.CommittedOnlineState!.Incidents.Breaches)
+                .BreachId);
+    }
+
+    [Fact]
+    public void Forced_reference_recovery_repeats_the_exemption_but_records_a_breach_per_revision()
+    {
+        // After the first forced decision the rider stays past the deadline. A timer tick at
+        // the same time changes nothing: the certificate is still non-normal, but no second
+        // breach is written. A tick 30 ms later moves the kept route again, which revises the
+        // promise and records a second breach.
+        var commitment = DeadlineCommitmentConfiguration(slackMs: 1);
+        var setup = CreateSession(
+            HardVectorConfiguration(commitment, recovery: "forced-reference-v1"),
+            commitmentConfiguration: commitment);
+        var first = DecisionPayloadCodec.Decode(
+            DriftBookedRider(setup, progressPermille: 1).Payload).Value!;
+        _ = setup.Session.Process(DecisionApplied(3, 1_050, first.DecisionHash.Value));
+        Assert.Single(setup.Session.CommittedOnlineState!.Incidents.Breaches);
+
+        var same = DecisionPayloadCodec.Decode(
+            setup.Session.Process(TimerTick(epoch: 4, sequence: 7, simTime: 1_050))
+                .Response!.Payload);
+        Assert.True(same.IsSuccess, same.Error?.Message);
+        Assert.False(same.Value!.Certificate.Body!.NormalOperation);
+        Assert.Equal(
+            "COMMITMENT_DEADLINE_EXCEEDED",
+            Assert.Single(same.Value.Certificate.Body.Witnesses).Code);
+        Assert.DoesNotContain(
+            same.Value.Actions,
+            action => action.GetProperty("decisionType").GetString() == "promisePublished");
+        _ = setup.Session.Process(DecisionApplied(4, 1_050, same.Value.DecisionHash.Value));
+        Assert.Single(setup.Session.CommittedOnlineState!.Incidents.Breaches);
+
+        var later = DecisionPayloadCodec.Decode(
+            setup.Session.Process(TimerTick(epoch: 5, sequence: 8, simTime: 1_080))
+                .Response!.Payload);
+        Assert.True(later.IsSuccess, later.Error?.Message);
+        Assert.False(later.Value!.Certificate.Body!.NormalOperation);
+        Assert.Single(
+            later.Value.Actions,
+            action => action.GetProperty("decisionType").GetString() == "promisePublished");
+        _ = setup.Session.Process(DecisionApplied(5, 1_080, later.Value.DecisionHash.Value));
+        Assert.Equal(2, setup.Session.CommittedOnlineState!.Incidents.Breaches.Count);
+    }
+
+    [Fact]
+    public void An_explicit_fail_closed_recovery_behaves_like_the_default()
+    {
+        var commitment = DeadlineCommitmentConfiguration(slackMs: 1);
+        var explicitSetup = CreateSession(
+            HardVectorConfiguration(commitment, recovery: "fail-closed"),
+            commitmentConfiguration: commitment);
+
+        var response = DriftBookedRider(explicitSetup, progressPermille: 1);
+
+        Assert.False(explicitSetup.Wp4.SolverPolicyOptions!.ForcedReferenceRecovery);
+        Assert.Equal("error", response.MessageType.Value);
+        Assert.Equal("INTERNAL_ERROR", response.Payload.GetProperty("code").GetString());
+        Assert.StartsWith(
+            "C1 rejected every generated candidate for this vehicle. No-op rejection: ",
+            response.Payload.GetProperty("message").GetString(),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Forced_reference_recovery_leaves_an_untriggered_decision_unchanged()
+    {
+        // Without a gate-rejected no-op the recovery option changes no action and no
+        // certificate content. The configuration hash differs by construction and is
+        // bound into the state hashes, so those are not compared.
+        var commitment = DeadlineCommitmentConfiguration(slackMs: 3_600_000);
+        var failClosed = CreateSession(
+            HardVectorConfiguration(commitment, recovery: null),
+            commitmentConfiguration: commitment);
+        var recovering = CreateSession(
+            HardVectorConfiguration(commitment, recovery: "forced-reference-v1"),
+            commitmentConfiguration: commitment);
+
+        var expected = DecisionPayloadCodec.Decode(
+            DriftBookedRider(failClosed, progressPermille: 1).Payload).Value!;
+        var actual = DecisionPayloadCodec.Decode(
+            DriftBookedRider(recovering, progressPermille: 1).Payload).Value!;
+
+        Assert.True(actual.Certificate.Body!.NormalOperation);
+        Assert.Empty(actual.Certificate.Body.Witnesses);
+        Assert.Equal(
+            expected.Certificate.Body!.PublicationIds,
+            actual.Certificate.Body.PublicationIds);
+        Assert.Equal(expected.ReasonCode, actual.ReasonCode);
+        Assert.Equal(expected.Solver.Status, actual.Solver.Status);
+        Assert.Equal(
+            expected.Actions.Select(value => value.GetRawText()),
+            actual.Actions.Select(value => value.GetRawText()));
+    }
+
+    [Fact]
+    public void Forced_reference_recovery_is_rejected_outside_the_solver_backed_C1_and_C2()
+    {
+        var commitment = CommitmentConfiguration();
+        var json = File.ReadAllText(Path.Combine(
+                RepositoryRoot(),
+                "benchmarks",
+                "configurations",
+                "wp4-rolling-cost-boundary-v1.json"))
+            .Replace(
+                "\"policyVersion\": \"wp4-boundary-v1\"",
+                "\"policyVersion\": \"wp4-boundary-v1\",\n  "
+                + "\"commitmentRecovery\": \"forced-reference-v1\"",
+                StringComparison.Ordinal);
+
+        Assert.Throws<InvalidDataException>(
+            () => Wp4RunnerConfiguration.Decode(Encoding.UTF8.GetBytes(json), commitment));
+        Assert.Throws<InvalidDataException>(
+            () => HardVectorConfiguration(commitment, recovery: "forced-reference-v2"));
+    }
+
+    /// <summary>
+    /// Replays the booking-confirmation scenario of the C1 ranking test up to the
+    /// progress observation and returns the response to that observation.
+    /// </summary>
+    private static ProtocolEnvelope DriftBookedRider(
+        SessionSetup setup,
+        int progressPermille)
+    {
+        var bootstrap = JsonNode.Parse(
+            FixtureLoader.ReadUtf8("wp2/valid-bootstrap-event-batch.json"))!;
+        var events = bootstrap["payload"]!["events"]!.AsArray();
+        var secondVehicle = events[2]!.DeepClone();
+        secondVehicle["eventSeq"] = 4;
+        secondVehicle["payload"]!["vehicle"]!["vehicleId"] = "v-2";
+        secondVehicle["payload"]!["vehicle"]!["route"]!["mutableSuffix"] =
+            new JsonArray();
+        events.Add(secondVehicle);
+        var offer = DecisionPayloadCodec.Decode(
+            setup.Session.Process(
+                Encoding.UTF8.GetBytes(bootstrap.ToJsonString())).Response!.Payload);
+        Assert.True(offer.IsSuccess, offer.Error?.Message);
+        var accepted = offer.Value!.Actions.Single(
+            action => action.GetProperty("decisionType").GetString()
+                == "requestAccepted");
+        var selectedVehicle = accepted.GetProperty("payload")
+            .GetProperty("vehicleId")
+            .GetString()!;
+        var selectedRoute = offer.Value.Actions.Single(
+            action => action.GetProperty("decisionType").GetString()
+                == "vehiclePlanUpdated"
+                && action.GetProperty("payload")
+                    .GetProperty("vehicleId")
+                    .GetString() == selectedVehicle)
+            .GetProperty("payload")
+            .GetProperty("route")
+            .GetRawText();
+        _ = setup.Session.Process(
+            DecisionApplied(1, 1_000, offer.Value.DecisionHash.Value));
+        var booking = DecisionPayloadCodec.Decode(
+            setup.Session.Process(
+                Encoding.UTF8.GetBytes(
+                    """
+                    {
+                      "schemaVersion":"1.0.0",
+                      "messageType":"eventBatch",
+                      "runId":"wp2-run-001",
+                      "scenarioId":"wp2-two-epoch-small",
+                      "epochId":2,
+                      "simTimeMs":1000,
+                      "payload":{"events":[
+                        {
+                          "eventSeq":5,
+                          "eventType":"bookingConfirmed",
+                          "payload":{"requestId":"r-1"}
+                        }
+                      ]}
+                    }
+                    """)).Response!.Payload);
+        Assert.True(booking.IsSuccess, booking.Error?.Message);
+        _ = setup.Session.Process(
+            DecisionApplied(2, 1_000, booking.Value!.DecisionHash.Value));
+
+        var progressBatch = JsonNode.Parse(
+                """
+                {
+                  "schemaVersion":"1.0.0",
+                  "messageType":"eventBatch",
+                  "runId":"wp2-run-001",
+                  "scenarioId":"wp2-two-epoch-small",
+                  "epochId":3,
+                  "simTimeMs":1050,
+                  "payload":{"events":[
+                    {
+                      "eventSeq":6,
+                      "eventType":"vehicleAdvanced",
+                      "payload":{"vehicle":{
+                        "vehicleId":"placeholder",
+                        "capacity":4,
+                        "occupiedSeats":0,
+                        "position":{
+                          "kind":"edgeProgress",
+                          "edgeId":"edge-n0-n1",
+                          "fromNodeId":"n-0",
+                          "toNodeId":"n-1",
+                          "progressPermille":499
+                        },
+                        "onboardRequestIds":[],
+                        "acceptedRequestIds":["r-1"],
+                        "route":{}
+                      }}
+                    }
+                  ]}
+                }
+                """)!;
+        var observedVehicle = progressBatch["payload"]!["events"]![0]![
+            "payload"]!["vehicle"]!;
+        observedVehicle["vehicleId"] = selectedVehicle;
+        observedVehicle["position"]!["progressPermille"] = progressPermille;
+        observedVehicle["route"] = JsonNode.Parse(selectedRoute);
+        return setup.Session.Process(
+            Encoding.UTF8.GetBytes(progressBatch.ToJsonString())).Response!;
+    }
+
+    private static byte[] TimerTick(long epoch, long sequence, long simTime) =>
+        Encoding.UTF8.GetBytes(
+            $$"""
+            {
+              "schemaVersion":"1.0.0",
+              "messageType":"eventBatch",
+              "runId":"wp2-run-001",
+              "scenarioId":"wp2-two-epoch-small",
+              "epochId":{{epoch}},
+              "simTimeMs":{{simTime}},
+              "payload":{"events":[
+                {
+                  "eventSeq":{{sequence}},
+                  "eventType":"timerTick",
+                  "payload":{ }
+                }
+              ]}
+            }
+            """);
+
+    private static CommitmentPolicyConfiguration DeadlineCommitmentConfiguration(
+        long slackMs)
+    {
+        var json = JsonNode.Parse(File.ReadAllText(Path.Combine(
+            RepositoryRoot(),
+            "benchmarks",
+            "configurations",
+            "wp3-boundary-test-v1.json")))!;
+        json["policies"]![0]!["dropEtaDeadlineSlackMs"] = slackMs;
+        return CommitmentPolicyConfiguration.Decode(
+            Encoding.UTF8.GetBytes(json.ToJsonString()));
+    }
+
+    private static Wp4RunnerConfiguration HardVectorConfiguration(
+        CommitmentPolicyConfiguration commitment,
+        string? recovery)
+    {
+        var json = JsonNode.Parse(File.ReadAllText(Path.Combine(
+            RepositoryRoot(),
+            "benchmarks",
+            "configurations",
+            "wp7-fleetpy-ridebound-hard-vector-v1.json")))!;
+
+        if (recovery is not null)
+        {
+            json["commitmentRecovery"] = recovery;
+        }
+
+        return Wp4RunnerConfiguration.Decode(
+            Encoding.UTF8.GetBytes(json.ToJsonString()),
+            commitment);
+    }
+
+    [Fact]
     public void Unknown_solver_uses_full_validator_no_op_and_reports_safe_fallback()
     {
         var setup = CreateSession(

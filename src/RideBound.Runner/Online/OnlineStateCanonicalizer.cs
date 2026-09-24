@@ -453,13 +453,21 @@ public static class OnlineStateCanonicalizer
             writer.WriteStartObject();
             writer.WriteString("breachId", breach.BreachId);
 
-            if (breach.Kind == CommitmentBreachKind.OperationalIncident)
+            // Exhaustive by kind: an operational record writes its incident, every other kind
+            // writes its own name. A new kind must never fall into another kind's encoding.
+            switch (breach.Kind)
             {
-                writer.WriteString("incidentId", breach.IncidentId!.Value.Value);
-            }
-            else
-            {
-                writer.WriteString("kind", "exogenousServiceQuality");
+                case CommitmentBreachKind.OperationalIncident:
+                    writer.WriteString("incidentId", breach.IncidentId!.Value.Value);
+                    break;
+                case CommitmentBreachKind.ExogenousServiceQuality:
+                    writer.WriteString("kind", "exogenousServiceQuality");
+                    break;
+                case CommitmentBreachKind.ForcedReference:
+                    writer.WriteString("kind", "forcedReference");
+                    break;
+                default:
+                    throw new InvalidOperationException("Unknown commitment breach kind.");
             }
 
             writer.WriteString("requestId", breach.RequestId.Value);

@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Security.Cryptography;
 using System.Text;
 using RideBound.Algorithms.Candidates;
@@ -80,7 +81,8 @@ public sealed record SolverBackedRidePoolingPolicyOptions
         Duration? freezeHorizon = null,
         PromiseLock freezeLocks = PromiseLock.None,
         int maximumRepairRequestsConsideredPerVehicle = 0,
-        bool captureCandidatePortfolioEvidence = false)
+        bool captureCandidatePortfolioEvidence = false,
+        bool forcedReferenceRecovery = false)
     {
         ArgumentNullException.ThrowIfNull(executionBudget);
 
@@ -127,6 +129,14 @@ public sealed record SolverBackedRidePoolingPolicyOptions
                 "Repair request capacity is only valid for the B4 policy.");
         }
 
+        if (forcedReferenceRecovery
+            && policyKind is not (RidePoolingPolicyKind.RideBoundHardVector
+                or RidePoolingPolicyKind.CommitSoftHardHybrid))
+        {
+            throw new ArgumentException(
+                "Forced-reference recovery is only valid for the C1 and C2 policies.");
+        }
+
         PolicyKind = policyKind;
         ExecutionBudget = executionBudget;
         FreezeHorizon = freezeHorizon;
@@ -134,6 +144,7 @@ public sealed record SolverBackedRidePoolingPolicyOptions
         MaximumRepairRequestsConsideredPerVehicle =
             maximumRepairRequestsConsideredPerVehicle;
         CaptureCandidatePortfolioEvidence = captureCandidatePortfolioEvidence;
+        ForcedReferenceRecovery = forcedReferenceRecovery;
     }
 
     public RidePoolingPolicyKind PolicyKind { get; }
@@ -147,6 +158,14 @@ public sealed record SolverBackedRidePoolingPolicyOptions
     public int MaximumRepairRequestsConsideredPerVehicle { get; }
 
     public bool CaptureCandidatePortfolioEvidence { get; }
+
+    /// <summary>
+    /// Exploratory (ADR-075, off by default). A C1/C2 vehicle whose safety no-op is
+    /// rejected only by a deadline or budget gate keeps its route as a forced
+    /// option, and the kept route is recorded as a typed breach instead of failing
+    /// the run.
+    /// </summary>
+    public bool ForcedReferenceRecovery { get; }
 }
 
 public sealed record SolverBackedPolicyDecision(
@@ -251,6 +270,7 @@ public sealed class SolverBackedRidePoolingPolicy
         var validationWorkUnits = 0L;
         var effectivePolicies = EffectivePolicies(context, policyOptions);
         var profile = SolverBackedObjectiveProfile.RollingCost;
+        IReadOnlySet<VehicleId>? forcedReferenceVehicles = null;
 
         switch (policyOptions.PolicyKind)
         {
@@ -294,7 +314,8 @@ public sealed class SolverBackedRidePoolingPolicy
                             == RidePoolingPolicyKind.CommitSoftHardHybrid
                                 ? warningProfiles
                                 : null,
-                        requireSafetyNoOp: true);
+                        requireSafetyNoOp: true,
+                        forcedReferenceRecovery: policyOptions.ForcedReferenceRecovery);
 
                     if (!assessed.IsSuccess)
                     {
@@ -303,6 +324,9 @@ public sealed class SolverBackedRidePoolingPolicy
 
                     candidates = assessed.Batch!.FeasibleCandidateSets;
                     hardAssessments = assessed.Batch.Assessments;
+                    forcedReferenceVehicles = assessed.Batch.ForcedReferenceVehicles.Count == 0
+                        ? null
+                        : assessed.Batch.ForcedReferenceVehicles;
                     validationWorkUnits = CountCandidates(
                         generated.VehicleCandidates!);
                     profile = policyOptions.PolicyKind
@@ -332,7 +356,8 @@ public sealed class SolverBackedRidePoolingPolicy
             candidates,
             effectivePolicies,
             _commitmentValidator,
-            _physicalValidator);
+            _physicalValidator,
+            forcedReferenceVehicles);
         var selected = _selector.Select(
             candidates,
             profile,
@@ -389,9 +414,34 @@ public sealed class SolverBackedRidePoolingPolicy
             SelectionExecution = selected.Selection.Execution,
             GenerationDiagnostics = generated.Diagnostics,
             CandidatePortfolioEvidence = portfolioEvidence,
+            ForcedReferenceVehicles = SelectedForcedVehicles(
+                selected.Selection.Selection,
+                hardAssessments,
+                forcedReferenceVehicles),
         };
         return SolverBackedPolicyDecisionResult.Success(
             new SolverBackedPolicyDecision(decision, effectivePolicies));
+    }
+
+    /// <summary>
+    /// The vehicles whose selected plan is a forced no-op; null when none is, so a run
+    /// without a forced selection carries exactly the decision it had before.
+    /// </summary>
+    private static IReadOnlySet<VehicleId>? SelectedForcedVehicles(
+        FleetSelection selection,
+        IReadOnlyDictionary<string, HardVectorCandidateAssessment>? hardAssessments,
+        IReadOnlySet<VehicleId>? forcedReferenceVehicles)
+    {
+        if (forcedReferenceVehicles is null || hardAssessments is null)
+        {
+            return null;
+        }
+
+        var selected = selection.VehiclePlans
+            .Where(value => hardAssessments[value.Candidate.CandidateId].IsForcedReference)
+            .Select(value => value.VehicleId)
+            .ToFrozenSet();
+        return selected.Count == 0 ? null : selected;
     }
 
     private static ICommitmentPolicyProvider EffectivePolicies(
@@ -498,7 +548,8 @@ public sealed class SolverBackedRidePoolingPolicy
         IReadOnlyList<VehicleCandidateSet> candidates,
         ICommitmentPolicyProvider effectivePolicies,
         CommitmentDecisionValidator commitmentValidator,
-        PhysicalPlanValidator physicalValidator) : IFleetSelectionValidator
+        PhysicalPlanValidator physicalValidator,
+        IReadOnlySet<VehicleId>? forcedReferenceVehicles) : IFleetSelectionValidator
     {
         public CandidateSelectionValidationResult Validate(FleetSelection selection)
         {
@@ -536,7 +587,8 @@ public sealed class SolverBackedRidePoolingPolicy
                     context.PublicationScope,
                     context.SourceEventSequence,
                     RevisionReasonCode: "WP4_SOLVER_SELECTION",
-                    InitialPromiseTrigger: context.InitialPromiseTrigger));
+                    InitialPromiseTrigger: context.InitialPromiseTrigger,
+                    ForcedReferenceVehicles: forcedReferenceVehicles));
             return validated.IsValid
                 ? CandidateSelectionValidationResult.Valid()
                 : CandidateSelectionValidationResult.Invalid(

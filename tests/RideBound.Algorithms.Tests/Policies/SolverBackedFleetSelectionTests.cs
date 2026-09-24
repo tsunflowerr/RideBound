@@ -424,6 +424,53 @@ public sealed class SolverBackedFleetSelectionTests
             result.Decision.Decision.SelectionExecution.SolveResult.Status);
     }
 
+    [Fact]
+    public void A_forced_vehicle_does_not_flatten_the_fleet_utilization_ranking()
+    {
+        // Vehicle 1 has only its forced no-op. Vehicle 2 can serve the request in two ways:
+        // 30% utilization at cost 20, or 80% at cost 10. The forced option contributes 0 to
+        // the fleet maximum, so vehicle 2 is still ranked by utilization. Had it contributed
+        // the 100% cap, the maximum would tie at 100% and cost would pick the 80% plan.
+        var request = new RequestId("request-1");
+        var first = AlgorithmTestData.VehicleOne;
+        var second = AlgorithmTestData.VehicleTwo;
+        var forced = Candidate("v1-forced", first, [], 0);
+        var noOp = Candidate("v2-noop", second, [], 0);
+        var low = Candidate("v2-low", second, [request], 20);
+        var high = Candidate("v2-high", second, [request], 10);
+        var sets = new[] { Set(first, forced), Set(second, noOp, low, high) };
+        var assessments = new Dictionary<string, HardVectorCandidateAssessment>
+        {
+            [forced.CandidateId] = Hard(forced, 0, Vector()) with { IsForcedReference = true },
+            [noOp.CandidateId] = Hard(noOp, 0, Vector()),
+            [low.CandidateId] = Hard(low, 300_000, Vector()),
+            [high.CandidateId] = Hard(high, 800_000, Vector()),
+        };
+
+        var result = Select(
+            sets,
+            SolverBackedObjectiveProfile.HardVector,
+            hardAssessments: assessments);
+        var capped = Select(
+            sets,
+            SolverBackedObjectiveProfile.HardVector,
+            hardAssessments: new Dictionary<string, HardVectorCandidateAssessment>(assessments)
+            {
+                [forced.CandidateId] = Hard(forced, HardVectorCandidateAssessor.PartsPerMillion, Vector()),
+            });
+
+        Assert.True(result.IsSuccess, result.Witness?.Message);
+        Assert.Equal(
+            ["v1-forced", "v2-low"],
+            result.Selection!.Selection.VehiclePlans.Select(value => value.Candidate.CandidateId));
+        Assert.Equal("forced-reference-count", result.Selection.Problem.ObjectiveLevels[0].Name);
+        Assert.True(capped.IsSuccess, capped.Witness?.Message);
+        Assert.Equal(
+            ["v1-forced", "v2-high"],
+            capped.Selection!.Selection.VehiclePlans.Select(value => value.Candidate.CandidateId));
+        Assert.Equal("accepted-request-count", capped.Selection.Problem.ObjectiveLevels[0].Name);
+    }
+
     private static SolverBackedFleetSelectionResult Select(
         IReadOnlyList<VehicleCandidateSet> sets,
         SolverBackedObjectiveProfile profile,

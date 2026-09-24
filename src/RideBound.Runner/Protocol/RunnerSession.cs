@@ -10,6 +10,7 @@ using RideBound.Application.State;
 using RideBound.Contracts.Protocol;
 using RideBound.Contracts.Serialization;
 using RideBound.Domain.Common;
+using RideBound.Domain.Incidents;
 using RideBound.Domain.Runs;
 using RideBound.Domain.Validation;
 using RideBound.Runner.Configuration;
@@ -962,16 +963,21 @@ public sealed class RunnerSession
                     sourceEventSequence,
                     InitialPromiseTrigger:
                         _wp4Configuration?.InitialPromiseTrigger
-                            ?? InitialPromiseTrigger.InitialAcceptance));
+                            ?? InitialPromiseTrigger.InitialAcceptance,
+                    ForcedReferenceVehicles:
+                        decision.Decision.ForcedReferenceVehicles));
 
             if (!validation.IsValid)
             {
+                // The policy already validated this decision, so a rejection here is an
+                // internal inconsistency. The commitment code is not a protocol error
+                // code, and encoding it used to throw; it is kept in the message.
                 _onlineCoordinator.DiscardPendingProposal();
                 var witness = validation.Witnesses[0];
                 return OnlineDecisionBuildResult.Fail(
-                    witness.Code,
-                    ProtocolFailureDisposition.RejectMessage,
-                    witness.Message);
+                    "INTERNAL_ERROR",
+                    ProtocolFailureDisposition.FailSession,
+                    $"{witness.Code}: {witness.Message}");
             }
 
             stateToStage = validation.ValidatedState!;
@@ -992,29 +998,30 @@ public sealed class RunnerSession
                 {
                     _onlineCoordinator.DiscardPendingProposal();
                     return OnlineDecisionBuildResult.Fail(
-                        "EXOGENOUS_BREACH_BRIDGE_FAILED",
+                        "INTERNAL_ERROR",
                         ProtocolFailureDisposition.FailSession,
-                        bridged.Error!);
+                        $"EXOGENOUS_BREACH_BRIDGE_FAILED: {bridged.Error}");
                 }
 
                 stateToStage = bridged.State!;
             }
 
             var afterHash = OnlineStateCanonicalizer.CalculateHash(stateToStage);
+            var breachWitnesses = ForcedBreachWitnesses(validation.ForcedExemptions);
             certificate = new CertificateShell(
                 CertificateStatus.Produced,
                 "VALIDATED",
                 new CommitmentCertificateBody(
                     "1.0.0",
                     "commitment-validator-v1",
-                    true,
+                    breachWitnesses.Length == 0,
                     _stateHash,
                     afterHash,
                     publications.Select(value => value.PublicationId).ToArray(),
                     stateToStage.Run.Vehicles.Count,
                     stateToStage.Run.Requests.Values.Count(
                         value => value.IsAcceptedActive),
-                    []));
+                    breachWitnesses));
         }
         else
         {
@@ -1072,6 +1079,24 @@ public sealed class RunnerSession
             certificate,
             new SolverStatusShell(solverStatus, solverExecutionEvidence));
     }
+
+    /// <summary>
+    /// ADR-075: every decision that keeps a gate-rejected route is certified as
+    /// non-normal operation, with one witness per breached gate code of each rider,
+    /// including a decision that repeats an exemption without a new breach record.
+    /// </summary>
+    private static CertificateWitnessContract[] ForcedBreachWitnesses(
+        IReadOnlyList<ForcedReferenceExemption> exemptions) =>
+        exemptions
+            .OrderBy(value => value.RequestId.Value, StringComparer.Ordinal)
+            .SelectMany(
+                exemption => exemption.WitnessCodes.Select(
+                    code => new CertificateWitnessContract(
+                        "forcedReference",
+                        code,
+                        exemption.VehicleId.Value,
+                        exemption.RequestId.Value)))
+            .ToArray();
 
     private RunnerSessionResult PayloadError(
         ProtocolPayloadError error,

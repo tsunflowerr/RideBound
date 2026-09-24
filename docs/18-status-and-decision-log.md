@@ -1,7 +1,7 @@
 # Trạng thái và decision log
 
 > Tệp sống — cập nhật ở cuối mọi task RideBound
-> Cập nhật gần nhất: 2026-08-28 (cây chính); nhánh thăm dò `research/deadline-gate`: 2026-09-24 (ADR-074 Proposed)
+> Cập nhật gần nhất: 2026-08-28 (cây chính); nhánh thăm dò `research/deadline-gate`: 2026-09-24 (ADR-074 Proposed); nhánh thăm dò `research/tier3-failure-aware`: 2026-09-24 (ADR-075 Proposed)
 
 ## 1. Trạng thái tổng thể
 
@@ -4800,6 +4800,148 @@ từ 99/102 xuống 98/102). Kiểm độc lập bằng tính lại từ artifac
 "hạn chót một chiều phục vụ nhiều khách hơn khi tắc giảm" **không** được quan sát (1/8 ô, +1 khách).
 Không claim tính mới cho hạn chót; không nói cơ chế tốt hơn Schulz & Pfeiffer.
 
+### ADR-075 — 2026-09-24 — Proposed (thăm dò; nhánh `research/tier3-failure-aware`; chưa commit)
+
+**Context:** Ở Tầng 2 (ADR-074), cả 90 lần vô nghiệm do cam kết đều xảy ra vì chính no-op bị một
+cổng loại, và khi đó phiên chạy chết với `INTERNAL_ERROR`. T3.3 của kế hoạch ngoài kho
+(`KE-HOACH-HOP-NHAT-2026-09-23.md`) đòi: no-op là *tham chiếu vật lý*, không bắt buộc hợp lệ; vô
+nghiệm do cổng là trạng thái có kiểu. Ngày 2026-09-24 chủ nghiên cứu chọn **"Giữ tuyến + ghi vi
+phạm"**: xe giữ tuyến hiện tại như một hành động bắt buộc; lời hứa theo tuyến giữ vẫn được công bố;
+sổ ngân sách được cộng như mọi lần công bố và **không bao giờ reset**; một vi phạm có kiểu được
+ghi. Các định lý của luận văn chỉ phủ phần không phục hồi. Không claim tính mới (giữ kế hoạch cũ
+khi không còn phương án là thông lệ). ADR này không authorize `RB-WP14R-009..012`, WP15 hay H7.
+
+**Decision:**
+1. Domain: thêm `CommitmentBreachKind.ForcedReference` (cuối enum) và
+   `CommitmentBreachRecord.CreateForcedReference`. Bất biến: không incident, không witness dịch
+   vụ; projection tuyến giữ trùng projection ngoại sinh; decision delta bằng 0 và exogenous
+   bằng visible; `attemptedBudgetAfter` bằng `before + decisionInduced` hoặc
+   `before + visible` (theo basis); mã witness ⊆ {`COMMITMENT_BUDGET_EXCEEDED`,
+   `COMMITMENT_DEADLINE_EXCEEDED`}. `COMMITMENT_PHASE_LOCK` bị loại có chủ đích: khóa so ứng viên
+   với projection ngoại sinh, mà tuyến giữ trùng projection đó, nên một khóa bắn trên tuyến giữ là
+   defect và phải fail-closed. Factory nhận cả projection ngoại sinh lẫn projection được công bố và
+   kiểm chúng bằng nhau. Breach chỉ vào sổ (mẫu ADR-049). Không thêm action giao thức:
+   `commitmentBreachDeclared` chưa từng được phát, và adapter FleetPy từ chối nó.
+2. Checkpoint: canonicalizer ghi `"kind":"forcedReference"` bằng một switch vét cạn; kind lạ
+   thì ném lỗi. Trước đây mọi kind không phải operational bị ghi là exogenous; lỗi này chưa kích
+   hoạt vì chỉ có hai kind. Codec đọc lại kind mới và kiểm giả mạo.
+3. Application: `CommitmentValidationContext.ForcedReferenceVehicles` (mặc định `null`). Chỉ khi
+   xe nằm trong tập **và** tuyến ứng viên semantically bằng tuyến reduced (cùng version,
+   prefix, suffix), lỗi hạn chót và ngân sách của một request trên xe mới thành một **miễn trừ**
+   (`ForcedExemptions`). Lời hứa theo tuyến giữ vẫn được công bố, và ledger vẫn cộng như thường,
+   có thể vượt trần. Tuyến đã đổi thì không được miễn; lỗi ở stage khác vẫn reject. Breach là một
+   **sự kiện**: nó được ghi (`ForcedBreaches`, append vào incident ledger) khi lời hứa được sửa
+   theo tuyến giữ, khi khách đổi pha vòng đời trong batch này, khi khách chưa có breach forced
+   nào, hoặc khi tập mã đổi. Đổi pha luôn ghi, vì một trần chỉ áp ở pha mới có thể bị vượt mà
+   mã vẫn là `COMMITMENT_BUDGET_EXCEEDED`. So tập mã là phòng thủ; với các cổng hiện có, nó
+   không tự bắn được khi lời hứa và pha đều không đổi. Một quyết định sau không đổi gì cho khách
+   thì lặp lại miễn trừ nhưng không ghi thêm bản ghi, vì ghi mỗi quyết định sẽ đếm
+   "khách × quyết định" và phình sổ. Breach id là SHA-256 có domain tag.
+4. Algorithms: `HardVectorCandidateAssessor.AssessAndFilter(..., forcedReferenceRecovery)`
+   (đòi `requireSafetyNoOp`). Nếu validator loại no-op, no-op được validate lại với xe đặt là
+   forced. Chỉ khi lần này hợp lệ và có ≥ 1 miễn trừ, no-op mới được giữ làm phương án forced
+   (`IsForcedReference`, utilization 0) và bỏ khỏi danh sách prune. Ngược lại, fail-closed y như
+   cũ. `SolverBackedFleetSelector` đặt level **đầu tiên** `forced-reference-count` (MinSum, chỉ
+   thêm khi có phương án forced), nên một phương án forced chỉ được chọn khi xe không còn lựa chọn
+   nào tránh được vi phạm. Utilization 0 để một xe forced không làm phẳng level MinMaximum của cả
+   đội. Quyết định chỉ mang những xe có phương án **được chọn** là forced.
+5. Runner: khóa cấu hình WP4 tùy chọn `commitmentRecovery` ∈ {`fail-closed`,
+   `forced-reference-v1`}. Vắng khóa thì fail-closed, và bytes/hash của cấu hình cũ không đổi.
+   Khóa chỉ hợp lệ cho C1/C2 solver-backed. `RunnerSession` truyền tập forced vào lần validate
+   của chính nó. Mỗi quyết định có miễn trừ (kể cả quyết định không ghi breach mới) có
+   certificate `normalOperation = false`, kèm một witness `stage = forcedReference` cho mỗi mã
+   của mỗi khách, vì contract v1 đã đòi certificate non-normal có ≥ 1 witness.
+   `NonNormalCertificateCount` của metric đã đếm được loại này.
+6. Sửa lỗi tiềm ẩn: có hai chỗ `RunnerSession` đưa mã ngoài taxonomy v1 vào
+   `ErrorPayloadCodec.Encode`. Đó là mã commitment ở lần validate lại, và
+   `EXOGENOUS_BREACH_BRIDGE_FAILED`. Hàm này ném `ArgumentException`, khiến host trả
+   `INTERNAL_ERROR` và thoát mã 3. Nay hai chỗ trả `INTERNAL_ERROR`/`failSession`, giữ mã gốc
+   trong message.
+
+**Evidence:** worktree `E:\Code\RideBound-deadline`, nhánh từ `65d867c`, diff chưa commit.
+Debug **993/993** = 963 + 30 test (Domain 5, Application 8, Algorithms 11, Runner 6). Có sáu
+mutation, test đỏ ở cả sáu:
+- bỏ điều kiện "tuyến không đổi" thì test laundering đỏ;
+- tính utilization cho no-op forced thì test ngân sách đỏ (`ArgumentOutOfRangeException`);
+- Runner không truyền tập forced thì test đầu-cuối đỏ. Test nhận envelope `error` thay vì
+  exception, xác nhận sửa lỗi 6;
+- bỏ luật "không ghi lặp" thì test Application và test Runner nhiều quyết định đỏ;
+- certificate dựng từ breach mới thay vì từ miễn trừ thì test Runner nhiều quyết định đỏ;
+- bỏ điều kiện "cùng pha" thì test đổi pha đỏ.
+
+Test đầu-cuối trên Runner dùng kịch bản booking C1, hạn chót 1 ms, xe tụt khoảng 50 ms:
+- fail-closed (vắng khóa hoặc `"fail-closed"` tường minh): `INTERNAL_ERROR` với "C1 rejected
+  every generated candidate…";
+- forced: có decision và `promisePublished`; certificate non-normal có đúng 1 witness
+  `COMMITMENT_DEADLINE_EXCEEDED` cho `r-1`; breach được commit sau `decisionApplied` và sống
+  qua checkpoint/restore;
+- quyết định sau ở cùng thời điểm: certificate vẫn non-normal, không `promisePublished`, không
+  breach mới; 30 ms sau: lời hứa sửa và breach thứ hai;
+- khi không kích hoạt: actions, publication ids, reason code và trạng thái solver trùng
+  fail-closed.
+
+Test Algorithms bổ sung:
+- C2 có recovery giữ no-op forced; warning excess của nó mang toàn bộ phần vượt, và C2 vẫn chọn
+  phương án chèn;
+- hai xe: xe forced không làm phẳng xếp hạng utilization của xe kia; test đối chứng với đóng góp
+  100% cho thấy nếu thế thì chi phí sẽ quyết định;
+- `CollectAllCommitmentWitnesses` không đổi quyết định forced.
+
+Review độc lập hai vòng (2026-09-24). Một lần chạy trước đó bị ngắt vì giới hạn API và không có
+kết quả.
+- Vòng 1: không có blocker, 3 mục should-fix, 8 nit. Đã sửa: ghi breach lặp mỗi quyết định; khóa
+  pha trong tập mã; kiểm projection hình thức; thiếu test (C2, nhiều xe, collect-all,
+  `"fail-closed"`, nhiều quyết định); một test gần như rỗng.
+- Vòng 2 (chỉ xem phần sửa): không có blocker, 1 should-fix, 4 nit. Đã sửa: chữ và comment còn nói
+  khóa pha được miễn; đổi pha với cùng mã bị bỏ sót; thiếu test cho nhánh "chưa có breach"; chữ
+  "đóng băng" quá mạnh.
+- Các mục còn lại đưa vào Consequences dưới đây.
+
+**Consequences và giới hạn đã biết:**
+- Không cần phiên bản mới của bất biến một-no-op: no-op forced vẫn là một phương án hợp lệ, nên
+  `CandidateSelectionModel.cs:275-280` và `DecisionMessages.cs:1114-1121` giữ nguyên. Đây là
+  lệch so với chữ của tiêu chí T3.3, nhưng cùng mục đích: no-op bị cổng loại không làm hỏng mô
+  hình.
+- Evidence portfolio không đánh dấu phương án nào là forced; chỉ level `forced-reference-count`
+  và certificate cho biết. Công cụ WP13/WP14 đọc level theo vị trí sẽ đọc lệch, nên không dùng
+  chúng trên output có recovery.
+- Recovery chỉ có ở đường solver-backed C1/C2. `RideBoundHardVectorPolicy`,
+  `CommitSoftHardHybridPolicy` (không solver) và B1–B4 không có.
+- Recovery thực tế chỉ áp cho cổng hạn chót và ngân sách. Lỗi vật lý (no-op không áp được), lỗi
+  cấu hình và khóa pha vẫn fail-closed. Vi phạm dịch vụ ngoại sinh (bridge ADR-049) vẫn không làm
+  certificate non-normal, như trước.
+- **Xe bị "đóng băng".** Vector ngân sách không âm (`CommitmentVector.cs:33`), và cổng ngân sách
+  loại khi `after > hardLimit` (`CommitmentBudgetEvaluator.cs:86-88`). Hạn chót so với lời hứa
+  đầu. Vì vậy, một khi khách đã vượt trần hay trễ hạn, mọi ứng viên chèn trên xe đó cũng bị loại,
+  vì bộ sinh chỉ chèn nên giờ trả của khách giữ nguyên hoặc trễ thêm. Xe chỉ còn no-op forced
+  cho tới khi:
+  - khách rời mọi pha mà trần bị vượt còn áp dụng (với ngân sách);
+  - khách được trả, hoặc trôi dạt thuận lợi kéo giờ trả về trong hạn (với hạn chót; cổng hạn
+    chót không xét pha, `CommitmentLockEvaluator.cs:95-98`).
+
+  Cận dưới của hạn chót hai chiều là ngoại lệ. Đây là hệ quả của lựa chọn "không bao giờ reset";
+  tác động lên phục vụ chưa đo được. Luật thay thế "không tệ hơn tham chiếu cho khách đã vi phạm"
+  là một quyết định thiết kế riêng của chủ nghiên cứu, chưa cài.
+- Nhánh "không ghi lặp" không qua factory, nên không kiểm lại projection. Rủi ro thấp vì miễn trừ
+  đã đòi tuyến semantically bằng nhau và delta bằng 0.
+- Metric `BreachCount` (`MechanicalMetricCalculator.cs:268-271`) chỉ đếm action
+  `commitmentBreachDeclared`, nên luôn bằng 0 dưới recovery. So sánh vi phạm phải dùng
+  `NonNormalCertificateCount`, witness của certificate hoặc incident ledger; T3.6 phải thêm cột
+  riêng.
+- Utilization báo trong quyết định (`WorstHardUtilizationPartsPerMillion`) bằng 0 cho xe forced
+  đang vượt trần; đây là giá trị xếp hạng nội bộ, không phải độ đo.
+- Record không lưu basis; charge sai basis không phát hiện được từ record hay checkpoint, chỉ
+  từ ledger. Witness certificate không mang độ lớn (limit, before, after).
+- Một quyết định có breach forced nằm ngoài phạm vi tuyên bố "không vượt trần" của các định lý.
+- Sửa lỗi 6 đổi hành vi cả khi tắt recovery: host không còn thoát mã 3; session chuyển `Failed`
+  và tiến trình chạy tới EOF; message đổi. Disposition của lần validate lại đổi từ
+  `rejectMessage` (chưa từng phát ra được) sang `failSession`. Adapter FleetPy fail trên mọi
+  envelope lỗi bất kể disposition (`runner_client.py:400-404`). Không có test cố định cho đường
+  này vì không với tới được nếu không tiêm mâu thuẫn; bằng chứng là mutation thứ ba.
+- Chưa có test dùng solver OR-Tools thật hay `skipConstantObjectiveLevels`, cũng chưa có
+  golden hash cho đường C1 khi tắt recovery (chỉ so từng trường).
+- Chưa chạy trên FleetPy hay dữ liệu thật; việc đó thuộc T3.5 trở đi.
+
 ## 8. Work package tracker
 
 | WP | Trạng thái | Bắt đầu | Kết thúc | Evidence |
@@ -4826,6 +4968,14 @@ Không claim tính mới cho hạn chót; không nói cơ chế tốt hơn Schul
 
 ## 9. Change history
 
+- 2026-09-24 (nhánh thăm dò `research/tier3-failure-aware`, chưa commit): ADR-075
+  **Proposed** — Tầng 3, T3.3 "lõi nhận biết thất bại". Tùy chọn `commitmentRecovery:
+  forced-reference-v1`, mặc định tắt: no-op chỉ bị cổng hạn chót/ngân sách loại thì được
+  giữ làm phương án forced (level đầu `forced-reference-count`). Lời hứa theo tuyến giữ vẫn được
+  công bố, ledger cộng như thường, breach `ForcedReference` được ghi vào sổ khi lời hứa đổi, và
+  mọi quyết định có miễn trừ mang certificate non-normal. Sửa hai chỗ Runner đưa mã ngoài
+  taxonomy vào `ErrorPayloadCodec.Encode`. Review độc lập 2 vòng, không blocker; đã sửa các mục
+  should-fix. Debug 993/993. Mọi kết quả mang nhãn thăm dò.
 - 2026-09-24 (nhánh thăm dò `research/deadline-gate`, chưa commit): ADR-074 **Proposed** —
   luật hạn chót tính từ lời hứa đầu (một chiều/hai chiều, mặc định tắt) và chẩn đoán no-op
   bị loại chỉ ở đường solver-backed. Debug 963/963; review độc lập hai vòng, vòng 2 không

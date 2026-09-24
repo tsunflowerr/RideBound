@@ -834,6 +834,360 @@ public sealed class ExactSmallCommitmentDifferentialTests
         Assert.Contains(". First rejection: ", witness.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Forced_recovery_keeps_a_deadline_rejected_no_op_when_every_candidate_is_rejected()
+    {
+        // The same state that fails closed above. Under forced-reference recovery the
+        // no-op, which the one-sided deadline rejects by exogenous drift alone, is kept
+        // as the vehicle's only option; every insertion stays pruned.
+        var (generated, set, noOp, _, context) = EveryCandidateRejected();
+
+        var assessed = new HardVectorCandidateAssessor().AssessAndFilter(
+            context,
+            generated.VehicleCandidates!,
+            requireSafetyNoOp: true,
+            forcedReferenceRecovery: true);
+
+        Assert.True(assessed.IsSuccess, assessed.Witness?.Message);
+        var batch = assessed.Batch!;
+        var output = batch.FeasibleCandidateSets.Single();
+        Assert.Equal([noOp.CandidateId], output.Candidates.Select(value => value.CandidateId));
+        Assert.Equal([AlgorithmTestData.VehicleOne], batch.ForcedReferenceVehicles);
+        Assert.DoesNotContain(output.PrunedCandidates, value => value.CandidateId == noOp.CandidateId);
+        Assert.Equal(
+            set.Candidates.Count - 1,
+            output.PrunedCandidates.Count(
+                value => value.Code == CommitmentFailureCodes.DeadlineExceeded));
+        var assessment = batch.Assessments.Single().Value;
+        Assert.Equal(noOp.CandidateId, assessment.CandidateId);
+        Assert.True(assessment.IsForcedReference);
+        Assert.Equal(0, assessment.WorstHardUtilizationPartsPerMillion);
+        Assert.Equal(CommitmentVector.Zero, assessment.DecisionInducedRevision);
+    }
+
+    [Fact]
+    public void Forced_recovery_keeps_the_no_op_beside_the_surviving_insertions()
+    {
+        var (generated, _, noOp, context) = NoOpRejectedWhileAnInsertionSurvives();
+        var legacy = new HardVectorCandidateAssessor().AssessAndFilter(
+            context,
+            generated.VehicleCandidates!);
+
+        var assessed = new HardVectorCandidateAssessor().AssessAndFilter(
+            context,
+            generated.VehicleCandidates!,
+            requireSafetyNoOp: true,
+            forcedReferenceRecovery: true);
+
+        Assert.True(assessed.IsSuccess, assessed.Witness?.Message);
+        var batch = assessed.Batch!;
+        var retained = batch.FeasibleCandidateSets.Single().Candidates
+            .Select(value => value.CandidateId)
+            .ToArray();
+        var expected = legacy.Batch!.FeasibleCandidateSets.Single().Candidates
+            .Select(value => value.CandidateId)
+            .Append(noOp.CandidateId)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        Assert.Equal(expected, retained);
+        Assert.Equal([AlgorithmTestData.VehicleOne], batch.ForcedReferenceVehicles);
+        Assert.Equal(
+            [noOp.CandidateId],
+            batch.Assessments.Values
+                .Where(value => value.IsForcedReference)
+                .Select(value => value.CandidateId));
+
+        // The surviving insertions keep exactly the assessment they had without recovery.
+        foreach (var (candidateId, value) in legacy.Batch.Assessments)
+        {
+            Assert.Equal(value, batch.Assessments[candidateId]);
+        }
+    }
+
+    [Fact]
+    public void Forced_recovery_keeps_a_budget_rejected_no_op_without_ranking_its_overrun()
+    {
+        // The kept route is charged past its drop budget under the customer-visible
+        // basis. Ranking it would divide an over-limit usage; the forced no-op instead
+        // carries zero utilization and still reports that a hard limit applies.
+        var fixture = CreateState(seed: 3);
+        var generated = new InsertionCandidateGenerator().Generate(
+            fixture.State,
+            CandidateGenerationOptions.ExactSmall);
+        Assert.True(generated.IsSuccess, generated.Witness?.Message);
+        var noOp = generated.VehicleCandidates!.Single().Candidates.Single(value => value.IsNoOp);
+        var delay = SmallestPositiveDelay(fixture, generated.VehicleCandidates!.Single());
+        var policy = new CommitmentPolicy(
+            fixture.Policy.PolicyId,
+            CommitmentBudgetBasis.CustomerVisible,
+            CommitmentDimensionVocabulary.Ordered.Select(
+                dimension => new CommitmentDimensionLimit(
+                    dimension,
+                    dimension == CommitmentDimension.DropEtaTotalMs ? delay - 1 : null,
+                    CommitmentPhase.AllActive)),
+            new MaterialRevisionRule(1_000, null));
+        var context = PromiseContext(
+            fixture,
+            fixture.BaselineDrop.Milliseconds + delay,
+            policy);
+
+        var assessed = new HardVectorCandidateAssessor().AssessAndFilter(
+            context,
+            generated.VehicleCandidates!,
+            requireSafetyNoOp: true,
+            forcedReferenceRecovery: true);
+
+        Assert.True(assessed.IsSuccess, assessed.Witness?.Message);
+        var assessment = assessed.Batch!.Assessments[noOp.CandidateId];
+        Assert.True(assessment.IsForcedReference);
+        Assert.True(assessment.HasApplicableHardLimit);
+        Assert.Equal(0, assessment.WorstHardUtilizationPartsPerMillion);
+        Assert.Equal(CommitmentVector.Zero, assessment.DecisionInducedRevision);
+        Assert.Contains(
+            assessed.Batch.Assessments.Values,
+            value => !value.IsForcedReference
+                && value.WorstHardUtilizationPartsPerMillion
+                    <= HardVectorCandidateAssessor.PartsPerMillion);
+    }
+
+    [Fact]
+    public void Forced_recovery_does_not_rescue_a_no_op_rejected_outside_the_gates()
+    {
+        // The requests were booked under a policy the catalog does not declare. That
+        // rejection is a configuration failure, not a deadline or budget gate, so
+        // recovery leaves the fail-closed witness unchanged.
+        var fixture = CreateState(seed: 3);
+        var generated = new InsertionCandidateGenerator().Generate(
+            fixture.State,
+            CandidateGenerationOptions.ExactSmall);
+        Assert.True(generated.IsSuccess, generated.Witness?.Message);
+        var undeclared = new CommitmentPolicy(
+            "undeclared-policy-v1",
+            CommitmentBudgetBasis.DecisionInduced,
+            CommitmentDimensionVocabulary.Ordered.Select(
+                dimension => new CommitmentDimensionLimit(
+                    dimension,
+                    null,
+                    CommitmentPhase.AllActive)),
+            new MaterialRevisionRule(1_000, null));
+        var context = new CommitmentMechanismContext(
+            fixture.BeforeEventState,
+            fixture.State,
+            new CommitmentPolicyCatalog([undeclared]),
+            NoDistances.Instance,
+            "c1-hard-empty",
+            1);
+        var legacy = new HardVectorCandidateAssessor().AssessAndFilter(
+            context,
+            generated.VehicleCandidates!,
+            requireSafetyNoOp: true);
+
+        var assessed = new HardVectorCandidateAssessor().AssessAndFilter(
+            context,
+            generated.VehicleCandidates!,
+            requireSafetyNoOp: true,
+            forcedReferenceRecovery: true);
+
+        Assert.False(assessed.IsSuccess);
+        Assert.Equal(legacy.Witness, assessed.Witness);
+        Assert.Equal(
+            CommitmentFailureCodes.VehicleHasNoFeasibleCandidate,
+            assessed.Witness!.Code);
+    }
+
+    [Fact]
+    public void Forced_recovery_changes_nothing_when_no_gate_rejects_the_no_op()
+    {
+        var fixture = CreateState(seed: 3);
+        var generated = new InsertionCandidateGenerator().Generate(
+            fixture.State,
+            CandidateGenerationOptions.ExactSmall);
+        Assert.True(generated.IsSuccess, generated.Witness?.Message);
+        var context = MechanismContext(fixture, "c1-forced-inert");
+        var legacy = new HardVectorCandidateAssessor().AssessAndFilter(
+            context,
+            generated.VehicleCandidates!,
+            requireSafetyNoOp: true);
+
+        var assessed = new HardVectorCandidateAssessor().AssessAndFilter(
+            context,
+            generated.VehicleCandidates!,
+            requireSafetyNoOp: true,
+            forcedReferenceRecovery: true);
+
+        Assert.True(legacy.IsSuccess, legacy.Witness?.Message);
+        Assert.True(assessed.IsSuccess, assessed.Witness?.Message);
+        Assert.Empty(assessed.Batch!.ForcedReferenceVehicles);
+        Assert.Empty(legacy.Batch!.ForcedReferenceVehicles);
+        Assert.Equal(
+            legacy.Batch.FeasibleCandidateSets.Single().Candidates,
+            assessed.Batch.FeasibleCandidateSets.Single().Candidates);
+        Assert.Equal(
+            legacy.Batch.FeasibleCandidateSets.Single().PrunedCandidates
+                .Select(value => (value.CandidateId, value.Code, value.Message)),
+            assessed.Batch.FeasibleCandidateSets.Single().PrunedCandidates
+                .Select(value => (value.CandidateId, value.Code, value.Message)));
+        Assert.Equal(
+            legacy.Batch.Assessments.OrderBy(value => value.Key, StringComparer.Ordinal),
+            assessed.Batch.Assessments.OrderBy(value => value.Key, StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public void The_solver_backed_policy_keeps_the_route_and_its_validation_records_one_breach()
+    {
+        // End to end below the Runner: without recovery the policy fails closed; with
+        // it the only option is the forced no-op, the decision names its vehicle, and
+        // validating the decision the way the Runner does records one typed breach.
+        var (_, _, _, _, context) = EveryCandidateRejected();
+        var solver = new EnumeratingSolver();
+        var legacy = new SolverBackedRidePoolingPolicy(solver).Decide(
+            context,
+            CandidateGenerationOptions.ExactSmall,
+            HardVectorOptions(forcedReferenceRecovery: false));
+        Assert.False(legacy.IsSuccess);
+        Assert.Equal(
+            RollingCostFailureCodes.CommitmentAssessmentFailed,
+            legacy.Witness!.Code);
+
+        var result = new SolverBackedRidePoolingPolicy(solver).Decide(
+            context,
+            CandidateGenerationOptions.ExactSmall,
+            HardVectorOptions(forcedReferenceRecovery: true));
+
+        Assert.True(result.IsSuccess, result.Witness?.Message);
+        var decision = result.Decision!.Decision;
+        Assert.True(decision.VehiclePlans.Single().Candidate.IsNoOp);
+        Assert.Equal([AlgorithmTestData.VehicleOne], decision.ForcedReferenceVehicles!);
+        Assert.Equal("forced-reference-count", solver.LastProblem!.ObjectiveLevels[0].Name);
+
+        var validator = new CommitmentDecisionValidator();
+        var strict = validator.Validate(RunnerLikeContext(context, decision, forced: null));
+        Assert.False(strict.IsValid);
+        Assert.Equal(CommitmentFailureCodes.DeadlineExceeded, strict.Witnesses[0].Code);
+
+        var validated = validator.Validate(
+            RunnerLikeContext(context, decision, decision.ForcedReferenceVehicles));
+        Assert.True(validated.IsValid, validated.Witnesses.FirstOrDefault()?.Message);
+        var breach = Assert.Single(validated.ForcedBreaches);
+        Assert.Equal(CreateState(seed: 3).IncumbentId, breach.RequestId);
+        Assert.Equal([CommitmentFailureCodes.DeadlineExceeded], breach.WitnessCodes);
+        Assert.Contains(breach, validated.ValidatedState!.Incidents.Breaches);
+    }
+
+    [Fact]
+    public void The_solver_backed_policy_prefers_a_surviving_insertion_over_the_forced_no_op()
+    {
+        var (_, _, noOp, context) = NoOpRejectedWhileAnInsertionSurvives();
+        var solver = new EnumeratingSolver();
+
+        var result = new SolverBackedRidePoolingPolicy(solver).Decide(
+            context,
+            CandidateGenerationOptions.ExactSmall,
+            HardVectorOptions(forcedReferenceRecovery: true));
+
+        Assert.True(result.IsSuccess, result.Witness?.Message);
+        var decision = result.Decision!.Decision;
+        Assert.NotEqual(noOp.CandidateId, decision.VehiclePlans.Single().Candidate.CandidateId);
+        Assert.Null(decision.ForcedReferenceVehicles);
+        Assert.Equal("forced-reference-count", solver.LastProblem!.ObjectiveLevels[0].Name);
+        Assert.Contains(
+            solver.LastProblem.Options,
+            value => value.OptionId == noOp.CandidateId);
+    }
+
+    [Fact]
+    public void C2_with_recovery_keeps_the_forced_no_op_as_an_option_and_prefers_the_insertion()
+    {
+        // The budget scenario under C2 with a zero drop warning. The forced no-op is kept and
+        // its warning excess carries the whole overrun (it is not ranked by utilization); the
+        // first level still makes the surviving insertion win.
+        var fixture = CreateState(seed: 3);
+        var generated = new InsertionCandidateGenerator().Generate(
+            fixture.State,
+            CandidateGenerationOptions.ExactSmall);
+        Assert.True(generated.IsSuccess, generated.Witness?.Message);
+        var noOp = generated.VehicleCandidates!.Single().Candidates.Single(value => value.IsNoOp);
+        var delay = SmallestPositiveDelay(fixture, generated.VehicleCandidates!.Single());
+        var policy = new CommitmentPolicy(
+            fixture.Policy.PolicyId,
+            CommitmentBudgetBasis.CustomerVisible,
+            CommitmentDimensionVocabulary.Ordered.Select(
+                dimension => new CommitmentDimensionLimit(
+                    dimension,
+                    dimension == CommitmentDimension.DropEtaTotalMs ? delay - 1 : null,
+                    CommitmentPhase.AllActive)),
+            new MaterialRevisionRule(1_000, null));
+        var context = PromiseContext(
+            fixture,
+            fixture.BaselineDrop.Milliseconds + delay,
+            policy);
+        var warnings = new CommitmentWarningProfileCatalog(
+            [
+                new CommitmentWarningProfile(
+                    fixture.Policy.PolicyId,
+                    CommitmentDimensionVocabulary.Ordered.Select(
+                        dimension => new CommitmentWarningLimit(
+                            dimension,
+                            dimension == CommitmentDimension.DropEtaTotalMs ? 0 : null))),
+            ]);
+
+        var assessed = new HardVectorCandidateAssessor().AssessAndFilter(
+            context,
+            generated.VehicleCandidates!,
+            warnings,
+            requireSafetyNoOp: true,
+            forcedReferenceRecovery: true);
+        var solver = new EnumeratingSolver();
+        var result = new SolverBackedRidePoolingPolicy(solver).Decide(
+            context,
+            CandidateGenerationOptions.ExactSmall,
+            new SolverBackedRidePoolingPolicyOptions(
+                RidePoolingPolicyKind.CommitSoftHardHybrid,
+                DeterministicCandidateSelectionExecutionBudget.Create(
+                    100_000,
+                    100_000,
+                    DeterministicSolverBudget.Create(100_000, 100_000, 1).Value!).Value!,
+                forcedReferenceRecovery: true),
+            warnings);
+
+        Assert.True(assessed.IsSuccess, assessed.Witness?.Message);
+        var forced = assessed.Batch!.Assessments[noOp.CandidateId];
+        Assert.True(forced.IsForcedReference);
+        Assert.Equal(0, forced.WorstHardUtilizationPartsPerMillion);
+        Assert.Equal(delay, forced.WarningExcess!.DropEtaTotalMs);
+        Assert.True(result.IsSuccess, result.Witness?.Message);
+        Assert.False(result.Decision!.Decision.VehiclePlans.Single().Candidate.IsNoOp);
+        Assert.Null(result.Decision.Decision.ForcedReferenceVehicles);
+        Assert.Equal("forced-reference-count", solver.LastProblem!.ObjectiveLevels[0].Name);
+    }
+
+    [Fact]
+    public void Forced_recovery_is_rejected_for_a_policy_other_than_C1_or_C2()
+    {
+        var budget = DeterministicCandidateSelectionExecutionBudget.Create(
+            100_000,
+            100_000,
+            DeterministicSolverBudget.Create(1000, 1000, 1).Value!).Value!;
+
+        Assert.Throws<ArgumentException>(
+            () => new SolverBackedRidePoolingPolicyOptions(
+                RidePoolingPolicyKind.RollingPenalty,
+                budget,
+                forcedReferenceRecovery: true));
+    }
+
+    [Fact]
+    public void Forced_recovery_requires_the_safety_no_op()
+    {
+        var (generated, _, _, context) = NoOpRejectedWhileAnInsertionSurvives();
+
+        Assert.Throws<ArgumentException>(
+            () => new HardVectorCandidateAssessor().AssessAndFilter(
+                context,
+                generated.VehicleCandidates!,
+                forcedReferenceRecovery: true));
+    }
+
     private static (
         CandidateGenerationResult Generated,
         VehicleCandidateSet Set,
@@ -887,6 +1241,112 @@ public sealed class ExactSmallCommitmentDifferentialTests
                 .Drop.Milliseconds - fixture.BaselineDrop.Milliseconds)
             .Where(value => value > 0)
             .Min();
+
+    private static SolverBackedRidePoolingPolicyOptions HardVectorOptions(
+        bool forcedReferenceRecovery) =>
+        new(
+            RidePoolingPolicyKind.RideBoundHardVector,
+            DeterministicCandidateSelectionExecutionBudget.Create(
+                100_000,
+                100_000,
+                DeterministicSolverBudget.Create(100_000, 100_000, 1).Value!).Value!,
+            forcedReferenceRecovery: forcedReferenceRecovery);
+
+    /// <summary>The validation the Runner applies to a policy decision.</summary>
+    private static CommitmentValidationContext RunnerLikeContext(
+        CommitmentMechanismContext context,
+        RollingCostDecision decision,
+        IReadOnlySet<VehicleId>? forced) =>
+        new(
+            context.BeforeEventState,
+            context.ReducedState,
+            decision.ProposedState,
+            context.Policies,
+            context.StopDistances,
+            context.PublicationScope,
+            context.SourceEventSequence,
+            InitialPromiseTrigger: context.InitialPromiseTrigger,
+            ForcedReferenceVehicles: forced);
+
+    /// <summary>
+    /// Exact lexicographic enumeration of every one-option-per-vehicle assignment; it
+    /// records the last problem so a test can inspect the objective hierarchy.
+    /// </summary>
+    private sealed class EnumeratingSolver : ICandidateSelectionSolver
+    {
+        public CandidateSelectionProblem? LastProblem { get; private set; }
+
+        public CandidateSelectionSolveResult Solve(
+            CandidateSelectionProblem problem,
+            DeterministicSolverBudget budget)
+        {
+            LastProblem = problem;
+            CandidateSelectionSolution? best = null;
+            long work = 0;
+            Enumerate(0, []);
+
+            if (best is null)
+            {
+                return CandidateSelectionSolveResult.Infeasible(
+                    Diagnostics(problem, budget, work, []),
+                    "TEST_INFEASIBLE",
+                    "No assignment exists.");
+            }
+
+            var bounds = problem.ObjectiveLevels
+                .Select(
+                    (level, index) => ObjectiveSolveBound.Create(
+                        index,
+                        level,
+                        best.ObjectiveValues[index],
+                        best.ObjectiveValues[index]).Value!)
+                .ToArray();
+            return CandidateSelectionSolveResult.Optimal(
+                best,
+                Diagnostics(problem, budget, work, bounds));
+
+            void Enumerate(int vehicleIndex, IReadOnlyList<string> selected)
+            {
+                if (vehicleIndex == problem.VehicleIds.Count)
+                {
+                    work++;
+                    var solution = CandidateSelectionSolution.Create(problem, selected);
+
+                    if (solution.IsSuccess
+                        && (best is null
+                            || LexicographicObjectiveComparer.Compare(
+                                solution.Value!.ObjectiveValues,
+                                best.ObjectiveValues,
+                                problem.ObjectiveLevels) < 0))
+                    {
+                        best = solution.Value;
+                    }
+
+                    return;
+                }
+
+                foreach (var option in problem.Options.Where(
+                             value => value.VehicleId
+                                 == problem.VehicleIds[vehicleIndex]))
+                {
+                    Enumerate(vehicleIndex + 1, selected.Append(option.OptionId).ToArray());
+                }
+            }
+        }
+
+        private static CandidateSelectionSolverDiagnostics Diagnostics(
+            CandidateSelectionProblem problem,
+            DeterministicSolverBudget budget,
+            long work,
+            IReadOnlyList<ObjectiveSolveBound> bounds) =>
+            CandidateSelectionSolverDiagnostics.Create(
+                problem,
+                budget,
+                Math.Min(work, budget.MaximumWorkUnits),
+                1,
+                0,
+                bounds).Value!;
+    }
 
     /// <summary>The assessment fails before selection, so the solver is never called.</summary>
     private sealed class UnreachableSolver : ICandidateSelectionSolver

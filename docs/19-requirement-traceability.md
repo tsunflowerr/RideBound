@@ -703,3 +703,25 @@ Nhánh `research/deadline-gate`, chưa commit; không authorize `RB-WP14R-009..0
 | Bộ chạy mới tái lập được kết quả cũ khi hạn chót tắt | 40 đối chứng `k = 0` so với `wp14/drift-v1` bằng `decision_identity.trace` | 36 ô hoàn tất trùng từng quyết định + số khách; đúng 4 ô cổng kết quả vô nghiệm |
 | Định lý 4(a) trên hệ thật | 56 lần chạy cổng hành vi, mọi panel, `k ∈ {0, 1}` | 0 vô nghiệm do cam kết (thăm dò) |
 | Dự đoán theo ô, niêm phong trước | `predictions.csv` SHA `6c5451a0…`, niêm phong 06:03:52Z | 98/102 (panel chính), 31/32 và 40/40 (tập giữ lại sáng/tối); kiểm độc lập khớp |
+
+## 28. ADR-075 traceability — lõi nhận biết thất bại, giữ tuyến và ghi vi phạm (thăm dò, Proposed)
+
+Nhánh `research/tier3-failure-aware`, chưa commit; không authorize `RB-WP14R-009..012`, WP15 hay H7.
+
+| Requirement | Cài đặt/evidence | Gate |
+|---|---|---|
+| Mặc định tắt, run cũ không đổi | `commitmentRecovery` vắng ⇒ fail-closed; `ForcedReferenceVehicles` null; level mới chỉ thêm khi có phương án forced | `Forced_recovery_changes_nothing_when_no_gate_rejects_the_no_op`; `Without_forced_vehicles_the_validated_state_and_breaches_are_unchanged`; `Forced_reference_recovery_leaves_an_untriggered_decision_unchanged`; suite cũ 963 test vẫn xanh |
+| No-op bị cổng loại không làm hỏng mô hình (T3.3) | no-op validate lại với xe forced, giữ làm phương án forced | `Forced_recovery_keeps_a_deadline_rejected_no_op_when_every_candidate_is_rejected`; test đầu-cuối Runner (fail-closed ⇒ `INTERNAL_ERROR`; recovery ⇒ decision) |
+| Vô nghiệm do cổng là trạng thái có kiểu | breach `ForcedReference`, mã ⊆ {budget, deadline}; khóa pha bị từ chối vì không thể bắn trên tuyến giữ; certificate non-normal + witness `forcedReference` | 5 test Domain (có `Forced_reference_breach_rejects_a_phase_lock_and_a_differing_kept_projection`), test Application, test Runner kiểm witness và breach sau `decisionApplied` |
+| Breach là sự kiện, miễn trừ lặp mỗi quyết định | ghi breach khi lời hứa được sửa, khi khách đổi pha trong batch, khi chưa có breach, hoặc khi tập mã đổi; certificate dựng từ miễn trừ | `A_later_decision_repeats_the_exemption_but_records_a_breach_only_on_a_revision`; `An_unchanged_decision_records_the_first_forced_breach_of_a_rider`; `A_phase_change_records_a_new_breach_even_with_the_same_gate_code`; `Forced_reference_recovery_repeats_the_exemption_but_records_a_breach_per_revision`; 3 mutation ⇒ đỏ |
+| Không rửa tuyến đã đổi | miễn chỉ khi tuyến ứng viên semantically bằng tuyến reduced | `A_forced_reference_vehicle_whose_route_changed_is_still_rejected`; mutation bỏ điều kiện ⇒ đỏ |
+| Không biến lỗi khác thành vi phạm | lỗi ngoài hai cổng (hạn chót, ngân sách) vẫn fail-closed, kể cả khóa pha | `Forced_recovery_does_not_rescue_a_no_op_rejected_outside_the_gates`; Domain từ chối mã lạ |
+| Ledger không reset, lời hứa vẫn công bố | revision theo tuyến giữ + budget cộng theo basis | `A_forced_reference_breach_under_the_visible_basis_charges_the_overrun`; `promisePublished` trong test Runner |
+| Tránh vi phạm khi còn lựa chọn | level đầu `forced-reference-count` | `The_solver_backed_policy_prefers_a_surviving_insertion_over_the_forced_no_op` (solver liệt kê chính xác); `C2_with_recovery_keeps_the_forced_no_op_as_an_option_and_prefers_the_insertion` |
+| Overrun không làm hỏng xếp hạng | utilization forced = 0, không chia giá trị vượt trần; không làm phẳng mức max của đội | `Forced_recovery_keeps_a_budget_rejected_no_op_without_ranking_its_overrun`; `A_forced_vehicle_does_not_flatten_the_fleet_utilization_ranking` (có đối chứng 100%); mutation ⇒ đỏ |
+| Thu đủ witness không đổi quyết định forced | `CollectAllCommitmentWitnesses` | `Collecting_every_witness_does_not_change_a_forced_reference_decision` |
+| Checkpoint trung thành | kind `forcedReference`, switch vét cạn | `Forced_reference_breach_round_trips_with_its_own_kind_and_is_tamper_checked`; restore trong test Runner |
+| Cấu hình sai thì hỏng to | giá trị lạ, chính sách không phải C1/C2 solver-backed; `"fail-closed"` tường minh = mặc định | `Forced_reference_recovery_is_rejected_outside_the_solver_backed_C1_and_C2`; `Forced_recovery_is_rejected_for_a_policy_other_than_C1_or_C2`; `An_explicit_fail_closed_recovery_behaves_like_the_default` |
+| Mã lỗi Runner thuộc taxonomy | hai chỗ đổi sang `INTERNAL_ERROR`/`failSession` | mutation Runner nhận envelope `error` thay vì exception; không có test cố định |
+| Suite | `dotnet test RideBound.slnx` | 993/993 |
+| Giới hạn đã biết | chỉ solver-backed C1/C2; xe "đóng băng" sau khi khách vượt trần/trễ hạn; `BreachCount` luôn 0; portfolio evidence không đánh dấu forced; chưa có golden hash/OR-Tools; chưa chạy FleetPy | ghi ở ADR-075 Consequences |

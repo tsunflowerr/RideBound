@@ -8,17 +8,31 @@ using RideBound.Domain.Requests;
 
 namespace RideBound.Algorithms.Commitments;
 
+/// <param name="IsForcedReference">
+/// True only for a safety no-op kept by forced-reference recovery although a
+/// commitment gate rejected it. Its utilization is reported as zero: the overrun is
+/// counted on the forced-reference objective level and recorded as a typed breach.
+/// </param>
 public sealed record HardVectorCandidateAssessment(
     string CandidateId,
     long WorstHardUtilizationPartsPerMillion,
     CommitmentVector DecisionInducedRevision,
     bool HasApplicableHardLimit,
     CommitmentVector? WarningExcess = null,
-    bool HasApplicableWarning = false);
+    bool HasApplicableWarning = false,
+    bool IsForcedReference = false);
 
 public sealed record HardVectorCandidateAssessmentBatch(
     IReadOnlyList<VehicleCandidateSet> FeasibleCandidateSets,
-    IReadOnlyDictionary<string, HardVectorCandidateAssessment> Assessments);
+    IReadOnlyDictionary<string, HardVectorCandidateAssessment> Assessments)
+{
+    /// <summary>
+    /// Vehicles whose safety no-op was kept as a forced reference. Always empty
+    /// unless forced-reference recovery was requested.
+    /// </summary>
+    public IReadOnlySet<VehicleId> ForcedReferenceVehicles { get; init; } =
+        FrozenSet<VehicleId>.Empty;
+}
 
 public sealed record HardVectorCandidateAssessmentResult
 {
@@ -66,16 +80,34 @@ public sealed class HardVectorCandidateAssessor
     /// rejection, and an emptied vehicle reports the no-op's rejection. Callers
     /// that do not need the no-op keep the behaviour they had before.
     /// </param>
+    /// <param name="forcedReferenceRecovery">
+    /// Exploratory recovery (off by default; requires <paramref name="requireSafetyNoOp"/>).
+    /// A safety no-op rejected by the commitment validator is validated again with its
+    /// vehicle named as forced-reference. If that validation accepts it, which happens
+    /// only when every rejection was a deadline or budget gate, the no-op is kept
+    /// as a forced option instead of failing the vehicle. Any other rejection keeps
+    /// the fail-closed behaviour.
+    /// </param>
     public HardVectorCandidateAssessmentResult AssessAndFilter(
         CommitmentMechanismContext context,
         IReadOnlyList<VehicleCandidateSet> rawCandidateSets,
         ICommitmentWarningProfileProvider? warningProfiles = null,
-        bool requireSafetyNoOp = false)
+        bool requireSafetyNoOp = false,
+        bool forcedReferenceRecovery = false)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(rawCandidateSets);
+
+        if (forcedReferenceRecovery && !requireSafetyNoOp)
+        {
+            throw new ArgumentException(
+                "Forced-reference recovery keeps the safety no-op, so it requires it.",
+                nameof(forcedReferenceRecovery));
+        }
+
         var outputSets = new List<VehicleCandidateSet>(rawCandidateSets.Count);
         var assessments = new List<HardVectorCandidateAssessment>();
+        var forcedVehicles = new List<VehicleId>();
 
         foreach (var set in rawCandidateSets.OrderBy(
                      value => value.VehicleId.Value,
@@ -203,6 +235,38 @@ public sealed class HardVectorCandidateAssessor
                     value => value.CandidateId == noOps[0].CandidateId)
                 : null;
 
+            // Only a validator rejection can be forced; a no-op that could not even be
+            // applied to the reduced state is a physical failure and stays fatal.
+            if (forcedReferenceRecovery
+                && noOpPrune is not null
+                && hardValidationWitnesses.ContainsKey(noOpPrune.CandidateId))
+            {
+                var forced = AssessForcedNoOp(
+                    context,
+                    noOps[0],
+                    set.VehicleId,
+                    warningProfiles);
+
+                if (forced.Witness is not null)
+                {
+                    return Failure(forced.Witness, noOps[0], set.VehicleId);
+                }
+
+                if (forced.Assessment is not null)
+                {
+                    retained.Add(noOps[0]);
+                    retained.Sort(
+                        (left, right) => StringComparer.Ordinal.Compare(
+                            left.CandidateId,
+                            right.CandidateId));
+                    pruned.Remove(noOpPrune);
+                    hardPruned.Remove(noOpPrune);
+                    assessments.Add(forced.Assessment);
+                    forcedVehicles.Add(set.VehicleId);
+                    noOpPrune = null;
+                }
+            }
+
             if (retained.Count == 0)
             {
                 // Report the no-op's own rejection when there is one, so the cause of
@@ -283,7 +347,93 @@ public sealed class HardVectorCandidateAssessor
                 outputSets.AsReadOnly(),
                 assessments.ToFrozenDictionary(
                     value => value.CandidateId,
-                    StringComparer.Ordinal)));
+                    StringComparer.Ordinal))
+            {
+                ForcedReferenceVehicles = forcedVehicles.ToFrozenSet(),
+            });
+    }
+
+    /// <summary>
+    /// Validates the rejected no-op again with its vehicle named as forced-reference.
+    /// Returns no assessment when the validator still rejects it (the rejection was not
+    /// a deadline or budget gate), and a witness only for a ranking failure.
+    /// </summary>
+    private ForcedNoOpResult AssessForcedNoOp(
+        CommitmentMechanismContext context,
+        InsertionCandidate noOp,
+        VehicleId vehicleId,
+        ICommitmentWarningProfileProvider? warningProfiles)
+    {
+        var updated = CandidateStateApplicator.Apply(
+            context.ReducedState.Run,
+            noOp);
+
+        if (!updated.IsSuccess)
+        {
+            return ForcedNoOpResult.NotForcible;
+        }
+
+        var validation = _validator.Validate(
+            new CommitmentValidationContext(
+                context.BeforeEventState,
+                context.ReducedState,
+                context.ReducedState with { Run = updated.Value! },
+                context.Policies,
+                context.StopDistances,
+                context.PublicationScope,
+                context.SourceEventSequence,
+                RevisionReasonCode: "C1_HARD_VECTOR",
+                ScopedVehicleId: vehicleId,
+                InitialPromiseTrigger: context.InitialPromiseTrigger,
+                CollectAllCommitmentWitnesses:
+                    context.CollectAllCommitmentWitnesses,
+                ForcedReferenceVehicles: new[] { vehicleId }.ToFrozenSet()));
+
+        if (!validation.IsValid || validation.ForcedExemptions.Count == 0)
+        {
+            return ForcedNoOpResult.NotForcible;
+        }
+
+        var revision = AggregateDecisionRevision(validation.Publications);
+
+        if (!revision.IsSuccess)
+        {
+            return ForcedNoOpResult.Failure(revision.Witness!);
+        }
+
+        var utilization = CalculateWorstUtilization(
+            validation.ValidatedState!,
+            context.Policies,
+            vehicleId,
+            context.InitialPromiseTrigger,
+            forcedReference: true);
+
+        if (!utilization.IsSuccess)
+        {
+            return ForcedNoOpResult.Failure(utilization.Witness!);
+        }
+
+        var warning = CalculateWarningExcess(
+            validation.ValidatedState!,
+            context.Policies,
+            warningProfiles,
+            vehicleId,
+            context.InitialPromiseTrigger);
+
+        if (!warning.IsSuccess)
+        {
+            return ForcedNoOpResult.Failure(warning.Witness!);
+        }
+
+        return ForcedNoOpResult.Forced(
+            new HardVectorCandidateAssessment(
+                noOp.CandidateId,
+                utilization.PartsPerMillion,
+                revision.Value!,
+                utilization.HasApplicableHardLimit,
+                warning.Value,
+                warning.HasApplicableWarning,
+                IsForcedReference: true));
     }
 
     private static VectorResult AggregateDecisionRevision(
@@ -315,7 +465,8 @@ public sealed class HardVectorCandidateAssessor
         OnlineState state,
         ICommitmentPolicyProvider policies,
         VehicleId scopedVehicleId,
-        InitialPromiseTrigger initialPromiseTrigger)
+        InitialPromiseTrigger initialPromiseTrigger,
+        bool forcedReference = false)
     {
         long worst = 0;
         var hasLimit = false;
@@ -363,6 +514,14 @@ public sealed class HardVectorCandidateAssessor
                 }
 
                 hasLimit = true;
+
+                if (forcedReference)
+                {
+                    // A forced vehicle may be charged past its limit. Its utilization is
+                    // not ranked, so one forced vehicle cannot flatten the fleet maximum.
+                    continue;
+                }
+
                 var value = history.Current.BudgetAfter.Get(dimension);
 
                 if (hardLimit == 0)
@@ -550,6 +709,19 @@ public sealed class HardVectorCandidateAssessor
                 CandidateId = candidate.CandidateId,
                 VehicleId = vehicleId,
             });
+
+    private sealed record ForcedNoOpResult(
+        HardVectorCandidateAssessment? Assessment,
+        CommitmentAssessmentWitness? Witness)
+    {
+        public static ForcedNoOpResult NotForcible { get; } = new(null, null);
+
+        public static ForcedNoOpResult Forced(
+            HardVectorCandidateAssessment assessment) => new(assessment, null);
+
+        public static ForcedNoOpResult Failure(
+            CommitmentAssessmentWitness witness) => new(null, witness);
+    }
 
     private sealed record VectorResult(
         CommitmentVector? Value,

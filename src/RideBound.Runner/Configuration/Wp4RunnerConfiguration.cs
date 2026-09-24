@@ -40,7 +40,15 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
         "multiplePlan",
         "warningProfiles",
         "emitSolverExecutionEvidence",
-        "solverExecutionEvidenceProfile");
+        "solverExecutionEvidenceProfile",
+        "commitmentRecovery");
+
+    /// <summary>
+    /// ADR-075 (exploratory). Optional; omitted means fail-closed, so every
+    /// configuration written before it keeps its content hash and its behaviour.
+    /// </summary>
+    public const string ForcedReferenceRecovery = "forced-reference-v1";
+    public const string FailClosedRecovery = "fail-closed";
     private static readonly IReadOnlySet<string> GenerationRequiredFields = Fields(
         "maximumCandidatesPerVehicle",
         "maximumNewRequestsPerVehicle",
@@ -195,7 +203,8 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
             source.FreezeHorizon,
             source.FreezeLocks,
             source.MaximumRepairRequestsConsideredPerVehicle,
-            source.CaptureCandidatePortfolioEvidence);
+            source.CaptureCandidatePortfolioEvidence,
+            source.ForcedReferenceRecovery);
     }
 
     public static Wp4RunnerConfiguration Decode(
@@ -298,6 +307,28 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
             hasMultiple,
             hasWarnings);
 
+        var forcedReferenceRecovery = root.TryGetProperty(
+            "commitmentRecovery",
+            out _)
+                ? Text(root, "commitmentRecovery") switch
+                {
+                    FailClosedRecovery => false,
+                    ForcedReferenceRecovery => true,
+                    _ => throw new InvalidDataException(
+                        "Unknown commitmentRecovery."),
+                }
+                : false;
+
+        if (forcedReferenceRecovery
+            && (!hasSolver
+                || policyKind is not (RidePoolingPolicyKind.RideBoundHardVector
+                    or RidePoolingPolicyKind.CommitSoftHardHybrid)))
+        {
+            throw new InvalidDataException(
+                "commitmentRecovery 'forced-reference-v1' requires the solver-backed "
+                + "C1 or C2 policy.");
+        }
+
         SolverBackedRidePoolingPolicyOptions? solverOptions = null;
         MultiplePlanPoolOptions? multipleOptions = null;
         var warningProfiles = Array.Empty<CommitmentWarningProfile>();
@@ -344,7 +375,8 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
                 freezeHorizon,
                 freezeLocks,
                 repairCap,
-                solverExecutionEvidenceProfile is not null);
+                solverExecutionEvidenceProfile is not null,
+                forcedReferenceRecovery);
         }
 
         if (hasMultiple)

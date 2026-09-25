@@ -1,7 +1,7 @@
 # Trạng thái và decision log
 
 > Tệp sống — cập nhật ở cuối mọi task RideBound
-> Cập nhật gần nhất: 2026-08-28 (cây chính); nhánh thăm dò `research/deadline-gate`: 2026-09-24 (ADR-074 Proposed); nhánh thăm dò `research/tier3-failure-aware`: 2026-09-25 (ADR-075, ADR-076 Proposed; thí điểm T3.7 xong, cổng dừng phục hồi bị kích hoạt); nhánh thăm dò `research/tier3-no-worse`: 2026-09-26 (ADR-077 Proposed)
+> Cập nhật gần nhất: 2026-08-28 (cây chính); nhánh thăm dò `research/deadline-gate`: 2026-09-24 (ADR-074 Proposed); nhánh thăm dò `research/tier3-failure-aware`: 2026-09-25 (ADR-075, ADR-076 Proposed; thí điểm T3.7 xong, cổng dừng phục hồi bị kích hoạt); nhánh thăm dò `research/tier3-no-worse`: 2026-09-26 (ADR-077 Proposed; 28 job đầu-cuối A1 pass)
 
 ## 1. Trạng thái tổng thể
 
@@ -5107,12 +5107,24 @@ phương án bị ép khi:
   - chữ trong tài liệu;
   - bỏ qua theo từng (khách, chiều) thay vì theo khách.
 - Ba đột biến (xếp hạng như tuyến giữ, xếp hạng chiều vượt trần, đảo chiều cận dưới) đều bị test mới bắt.
+- **Chạy đầu-cuối (A1, 2026-09-26, thăm dò).**
+  - Runner `C:\RideBoundData\research\runner-tier3-v2` được publish từ `45f8026` với cây sạch: tree `ac251ef3…cff3f`,
+    429 file. WP4 v2 chỉ khác v1 ở `commitmentRecovery`.
+  - Đã chạy 28 job FleetPy medium: 22 nhánh `M⁺-x` có forced trong quét, và 6 đối chứng (4 `C-30`, 2 `M⁺-900`).
+  - 28/28 `status: pass`, audit v/e/p đúng.
+  - 49 quyết định đã được xác nhận mang witness `forcedNoWorse`. Final checkpoint có 50 breach `ForcedNoWorse` và
+    5155 breach `ForcedReference`.
+  - 6/6 đối chứng có chuỗi hành động đội xe giống hệt bản chạy bằng Runner v1.
+  - Khách phục vụ trên 22 job điều trị: no-worse 1874, `forced-reference-v1` 1864, `C` 1873. No-worse bằng `C` ở
+    21/22 job và cùng chuỗi hành động với `C` ở 19/22.
+  - Nguồn: `tang3/sweep/SWEEP-REPORT.md` §7, `tang3/sweep/logs/noworse-analyze-2026-09-26.txt`,
+    `tang3/sweep/logs/noworse-aggregate-2026-09-26.txt`.
 
 **Consequences và giới hạn.**
 - Là tùy chọn thăm dò. Mặc định và `forced-reference-v1` không đổi.
-- Đường Runner khi một tuyến đổi được chọn **chưa có test tích hợp cố định**: fixture hai xe luôn có xe trống nhận
-  khách mới. Đường này **sẽ được** kiểm đầu-cuối bằng các lần chạy FleetPy của A1 (chưa chạy lúc viết ADR); kết quả
-  ghi ở `SWEEP-AMENDMENTS.md`. Việc khôi phục một checkpoint có `ForcedNoWorse` trong Runner mới được kiểm ở mức codec.
+- Đường Runner khi một tuyến đổi được chọn **chưa có test tích hợp cố định trong kho**: fixture hai xe luôn có xe
+  trống nhận khách mới. Đường này **đã được** chạy đầu-cuối bằng 22 job FleetPy của A1, ở mục Evidence, nhưng các job
+  đó nằm ngoài `dotnet test`. Việc khôi phục một checkpoint có `ForcedNoWorse` trong Runner mới được kiểm ở mức codec.
 - Bản ghi `ForcedNoWorse` **không** nhất thiết có một bản cho mỗi quyết định no-worse:
   - Khi mọi delta bằng 0, ví dụ chèn khách mới sau điểm trả của một khách trễ đang ngồi trên xe, quy tắc "vi phạm là
     một sự kiện" không ghi bản mới.
@@ -5156,6 +5168,9 @@ phương án bị ép khi:
   - Thêm loại vi phạm `ForcedNoWorse`, cùng giai đoạn chứng nhận `forcedNoWorse`.
   - .NET 1025/1025. Review độc lập 2 vòng không có blocker; các mục nên sửa đã sửa hoặc ghi ở giới hạn.
   - Mục đích là công bằng cho luật hạn chót trong quét `C`/`M⁺`. Mọi kết quả mang nhãn thăm dò.
+  - **Chạy đầu-cuối A1:** 28/28 job pass, và 6/6 đối chứng giống hệt Runner v1. `M⁺` có no-worse phục vụ 1874 khách,
+    so với 1864 khi dùng `forced-reference-v1` và 1873 của `C`, trên 22 job điều trị. Chênh lệch số khách của quét
+    (a) vì vậy đến từ luật phục hồi, còn khác biệt về giữ lời hứa thì vẫn nguyên. Chi tiết ở ADR-077 Evidence.
 - 2026-09-25 (nhánh thăm dò `research/tier3-failure-aware`; không đổi code trong kho): Tầng 3, T3.5–T3.7. Mọi kết quả
   mang nhãn thăm dò. Không authorize `RB-WP14R-009..012`, WP15 hay H7.
   - **Công cụ ngoài kho** ở `E:\Code\Report_INT3508\ridebound-scratchpad\tang3\`:

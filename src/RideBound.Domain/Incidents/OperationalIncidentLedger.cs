@@ -181,6 +181,15 @@ public enum CommitmentBreachKind
     /// by how much; the ledger is charged exactly as for any other publication and is never reset.
     /// </summary>
     ForcedReference,
+
+    /// <summary>
+    /// Exploratory "no worse than reference" recovery: on a vehicle whose kept route a gate
+    /// rejected, the run chose a changed route of the same vehicle that overruns the same gates by
+    /// no more than the kept route would. The published projection is the changed route's, so it
+    /// differs from the kept (exogenous) one; the ledger is charged as for any publication. The
+    /// "no more than" comparison needs the rider's anchor and policy, so the validator enforces it.
+    /// </summary>
+    ForcedNoWorse,
 }
 
 public sealed record CommitmentBreachRecord
@@ -350,6 +359,32 @@ public sealed record CommitmentBreachRecord
                     nameof(witnessCodes));
             }
         }
+        else if (kind == CommitmentBreachKind.ForcedNoWorse)
+        {
+            // A changed route of the same vehicle: an unchanged one is a ForcedReference record.
+            // The budget is charged by the policy's basis, as for any other publication.
+            var decisionAfter = budgetBefore.Add(deltas.DecisionInduced);
+            var visibleAfter = budgetBefore.Add(deltas.Visible);
+
+            if (incidentId is not null
+                || serviceWitnesses.Length != 0
+                || ProjectionEquals(exogenousProjection, safetyProjection)
+                || exogenousProjection.VehicleId != safetyProjection.VehicleId
+                || (!decisionAfter.IsSuccess || decisionAfter.Value != attemptedBudgetAfter)
+                    && (!visibleAfter.IsSuccess || visibleAfter.Value != attemptedBudgetAfter))
+            {
+                throw new ArgumentException(
+                    "A no-worse forced breach changes the route of the same vehicle and charges the " +
+                    "budget by the policy's basis.");
+            }
+
+            if (witnesses.Any(value => !ForcedReferenceWitnessCodes.Contains(value)))
+            {
+                throw new ArgumentException(
+                    "A no-worse forced breach names only commitment-gate codes.",
+                    nameof(witnessCodes));
+            }
+        }
         else
         {
             if (incidentId is null || serviceWitnesses.Length != 0)
@@ -468,6 +503,40 @@ public sealed record CommitmentBreachRecord
             recordedEpoch,
             recordedAt);
 
+    /// <param name="exogenousProjection">The projection of the reduced (kept) route.</param>
+    /// <param name="publishedProjection">
+    /// The projection published for the changed route; it must differ from the exogenous one.
+    /// </param>
+    public static CommitmentBreachRecord CreateForcedNoWorse(
+        string breachId,
+        RequestId requestId,
+        PublishedPromise previousPromise,
+        PromiseProjection exogenousProjection,
+        PromiseProjection publishedProjection,
+        ThreeWayPromiseDelta deltas,
+        CommitmentVector budgetBefore,
+        CommitmentVector budgetAfter,
+        IEnumerable<string> witnessCodes,
+        long sourceEventSequence,
+        long recordedEpoch,
+        SimTime recordedAt) =>
+        new(
+            breachId,
+            CommitmentBreachKind.ForcedNoWorse,
+            null,
+            requestId,
+            previousPromise,
+            exogenousProjection,
+            publishedProjection,
+            deltas,
+            budgetBefore,
+            budgetAfter,
+            witnessCodes,
+            [],
+            sourceEventSequence,
+            recordedEpoch,
+            recordedAt);
+
     public static CommitmentBreachRecord CreateExogenousServiceQuality(
         string breachId,
         RequestId requestId,
@@ -503,6 +572,16 @@ public sealed record CommitmentBreachRecord
             sourceEventSequence,
             recordedEpoch,
             recordedAt);
+    }
+
+    /// <summary>Field-by-field equality of two projections, as the breach invariants use it.</summary>
+    public static bool ProjectionsEqual(
+        PromiseProjection left,
+        PromiseProjection right)
+    {
+        ArgumentNullException.ThrowIfNull(left);
+        ArgumentNullException.ThrowIfNull(right);
+        return ProjectionEquals(left, right);
     }
 
     private static bool ProjectionEquals(
@@ -680,7 +759,8 @@ public sealed class OperationalIncidentLedger
         }
 
         if (breach.Kind is CommitmentBreachKind.ExogenousServiceQuality
-            or CommitmentBreachKind.ForcedReference)
+            or CommitmentBreachKind.ForcedReference
+            or CommitmentBreachKind.ForcedNoWorse)
         {
             return IncidentLedgerResult.Success(
                 new OperationalIncidentLedger(

@@ -1,7 +1,7 @@
 # Trạng thái và decision log
 
 > Tệp sống — cập nhật ở cuối mọi task RideBound
-> Cập nhật gần nhất: 2026-08-28 (cây chính); nhánh thăm dò `research/deadline-gate`: 2026-09-24 (ADR-074 Proposed); nhánh thăm dò `research/tier3-failure-aware`: 2026-09-25 (ADR-075, ADR-076 Proposed; thí điểm T3.7 xong, cổng dừng phục hồi bị kích hoạt)
+> Cập nhật gần nhất: 2026-08-28 (cây chính); nhánh thăm dò `research/deadline-gate`: 2026-09-24 (ADR-074 Proposed); nhánh thăm dò `research/tier3-failure-aware`: 2026-09-25 (ADR-075, ADR-076 Proposed; thí điểm T3.7 xong, cổng dừng phục hồi bị kích hoạt); nhánh thăm dò `research/tier3-no-worse`: 2026-09-26 (ADR-077 Proposed)
 
 ## 1. Trạng thái tổng thể
 
@@ -5057,6 +5057,73 @@ thấy đều Strict" sai với đường hủy trong batch; đã thu hẹp ch�
   chối trước ở đường này, nên mutation của riêng kiểm đó không bị test nào bắt.
 - Chưa chạy mô phỏng FleetPy đầy đủ; việc đó thuộc T3.5 và T3.7.
 
+### ADR-077 — 2026-09-26 — Proposed (thăm dò; nhánh `research/tier3-no-worse`)
+
+**Context.**
+- Ở ADR-075, một xe có no-op bị cổng loại chỉ còn giữ được tuyến. Mọi tuyến đã đổi đều bị loại, nên xe
+  "đóng băng" và không nhận được khách mới cho tới khi khách trễ xuống xe.
+- Trong quét `C` với `M⁺` (`tang3/sweep`, 156 job, thăm dò), `M⁺` bị ép ở 28% quyết định với x = 30 s. Trung bình
+  9,4% đội xe bị đóng băng; ở W2 là 14–18,5%. Ở W2, `M⁺` cũng phục vụ ít hơn `C` 2 khách. Nguồn:
+  `tang3/sweep/logs/sweep-aggregate-2026-09-26.txt` và `tang3/sweep/sweep-jobs-2026-09-26.tsv` (cột
+  `M5_nonNormalShare`, `M5_meanForcedFleetShare`).
+- Vì vậy phép so có thể đang phạt luật hạn chót bằng chính luật phục hồi của mình. Tiêu chí kích hoạt được ghi ở
+  `tang3/sweep/SWEEP-AMENDMENTS.md` A1.
+
+**Decision.** Thêm khóa WP4 `commitmentRecovery: "no-worse-than-reference-v1"`, mặc định tắt, mở rộng
+`forced-reference-v1`. Trên một xe bị ép, mọi phương án validator đã loại được kiểm lại, và phương án được giữ làm
+phương án bị ép khi:
+1. Mỗi lỗi cổng của một khách trên xe đó chỉ được miễn nếu tuyến giữ (dự báo ngoại sinh) **cũng mắc cùng lỗi đó**,
+   và phương án **không tệ hơn** ở lỗi đó:
+   - hạn chót trên: giờ trả ≤ giờ trả của tuyến giữ;
+   - hạn chót dưới: giờ trả ≥ giờ trả của tuyến giữ;
+   - chiều ngân sách: tổng sau ≤ tổng sau của tuyến giữ.
+2. Khóa pha và khóa xe không bao giờ được miễn. Khách mà tuyến giữ không vi phạm phải qua cổng như thường.
+3. Miễn trừ trên tuyến đã đổi được ghi thành loại vi phạm mới `ForcedNoWorse`:
+   - checkpoint `"forcedNoWorse"`, chứng nhận có giai đoạn `forcedNoWorse`;
+   - bất biến domain: tuyến đã đổi, cùng xe, ngân sách tính theo cơ sở của chính sách.
+4. Ở chế độ này, xếp hạng mức dùng chỉ bỏ qua những chiều mà một khách được miễn đang vượt trần. Mọi chiều còn trong
+   trần, của mọi khách trên xe, được xếp hạng như trên bất kỳ xe nào.
+5. Ở `forced-reference-v1`, hành vi và thông điệp giữ nguyên từng byte.
+
+**Alternatives considered.**
+- Chỉ nhận tuyến đổi giữ nguyên dự báo của khách bị ép. Loại vì vô hiệu: `ServiceOrder` chứa mọi điểm dừng còn lại
+  (`PromiseProjector.cs:36`), nên mọi phép chèn đều làm dự báo đổi.
+- Đổi mốc hạn chót của khách trễ thành giờ của tuyến giữ. Loại vì như thế lời hứa bị phá mà không có bản ghi.
+
+**Evidence.**
+- `dotnet test RideBound.slnx`: 1025/1025, tức 1005 cũ cộng 20 test mới. Test mới gồm:
+  - Domain: 4 test, gồm bất biến và bằng nhau theo trường;
+  - Application: 8 test: giữ khi không tệ hơn, loại khi tệ hơn, không miễn khách mà tuyến giữ không vi phạm, cơ
+    sở nhìn thấy, tuyến không đổi vẫn là `ForcedReference`, chỉ cho xe được nêu tên, cận dưới hai chiều, chế độ thu
+    mọi witness;
+  - Algorithms: 5 test: giữ phép chèn không làm khách trễ tệ hơn, chính sách phục vụ khách mới, bắt buộc có
+    `forced-reference`, xếp hạng như xe thường dưới trần 0, không xếp hạng chiều vượt trần của khách được miễn;
+  - Runner: 3 test: codec round-trip kèm chống sửa, đọc cấu hình, từ chối ngoài C1/C2.
+- Review độc lập vòng 1: không blocker. Đã sửa: thiên vị xếp hạng mức dùng, chữ lỗi thời, thông điệp và chiều lỗi
+  riêng cho no-worse.
+- Review độc lập vòng 2: không blocker. Đã sửa:
+  - test cho xếp hạng mức dùng;
+  - test chiều của cận dưới;
+  - chữ trong tài liệu;
+  - bỏ qua theo từng (khách, chiều) thay vì theo khách.
+- Ba đột biến (xếp hạng như tuyến giữ, xếp hạng chiều vượt trần, đảo chiều cận dưới) đều bị test mới bắt.
+
+**Consequences và giới hạn.**
+- Là tùy chọn thăm dò. Mặc định và `forced-reference-v1` không đổi.
+- Đường Runner khi một tuyến đổi được chọn **chưa có test tích hợp cố định**: fixture hai xe luôn có xe trống nhận
+  khách mới. Đường này **sẽ được** kiểm đầu-cuối bằng các lần chạy FleetPy của A1 (chưa chạy lúc viết ADR); kết quả
+  ghi ở `SWEEP-AMENDMENTS.md`. Việc khôi phục một checkpoint có `ForcedNoWorse` trong Runner mới được kiểm ở mức codec.
+- Bản ghi `ForcedNoWorse` **không** nhất thiết có một bản cho mỗi quyết định no-worse:
+  - Khi mọi delta bằng 0, ví dụ chèn khách mới sau điểm trả của một khách trễ đang ngồi trên xe, quy tắc "vi phạm là
+    một sự kiện" không ghi bản mới.
+  - Khi dự báo của khách không đổi, bản ghi là loại `ForcedReference`.
+  - Muốn đếm "xe bị ép vẫn phục vụ" thì đếm giai đoạn `forcedNoWorse` trong chứng nhận, không đếm loại bản ghi.
+- Chưa có test cho: hai khách trễ trên một xe; khóa pha cộng hạn chót; ngân sách nhiều chiều; C2 dưới no-worse; nhánh
+  `reference is null`.
+- "Tệ hơn" vẫn có thể xảy ra ở những chiều mà cổng không đo, ví dụ giờ đón của khách không bị giới hạn.
+- Tầng `forced-reference-count` vẫn đứng trước số khách nhận. Một phương án no-worse được đếm 1, như no-op bị ép.
+- Công việc validate thêm chưa được cộng vào `validationWorkUnits`.
+
 ## 8. Work package tracker
 
 | WP | Trạng thái | Bắt đầu | Kết thúc | Evidence |
@@ -5083,6 +5150,12 @@ thấy đều Strict" sai với đường hủy trong batch; đã thu hẹp ch�
 
 ## 9. Change history
 
+- 2026-09-26 (nhánh thăm dò `research/tier3-no-worse`): ADR-077 **Proposed**.
+  - Khóa WP4 `commitmentRecovery: "no-worse-than-reference-v1"`, mặc định tắt: xe bị ép vẫn được chọn một tuyến đã đổi
+    nếu tuyến đó không làm tệ hơn bất kỳ lỗi cổng nào mà tuyến giữ đã mắc.
+  - Thêm loại vi phạm `ForcedNoWorse`, cùng giai đoạn chứng nhận `forcedNoWorse`.
+  - .NET 1025/1025. Review độc lập 2 vòng không có blocker; các mục nên sửa đã sửa hoặc ghi ở giới hạn.
+  - Mục đích là công bằng cho luật hạn chót trong quét `C`/`M⁺`. Mọi kết quả mang nhãn thăm dò.
 - 2026-09-25 (nhánh thăm dò `research/tier3-failure-aware`; không đổi code trong kho): Tầng 3, T3.5–T3.7. Mọi kết quả
   mang nhãn thăm dò. Không authorize `RB-WP14R-009..012`, WP15 hay H7.
   - **Công cụ ngoài kho** ở `E:\Code\Report_INT3508\ridebound-scratchpad\tang3\`:

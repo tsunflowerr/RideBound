@@ -9,9 +9,11 @@ using RideBound.Domain.Requests;
 namespace RideBound.Algorithms.Commitments;
 
 /// <param name="IsForcedReference">
-/// True only for a safety no-op kept by forced-reference recovery although a
-/// commitment gate rejected it. Its utilization is reported as zero: the overrun is
-/// counted on the forced-reference objective level and recorded as a typed breach.
+/// True for a candidate kept by forced-reference recovery although a commitment gate rejected
+/// it: the safety no-op (ADR-075) or, under no-worse recovery, a changed route of the same
+/// vehicle. Under kept-route recovery its utilization is reported as zero; under no-worse
+/// recovery only the exempted riders are left unranked. The overrun is counted on the
+/// forced-reference objective level and recorded as a typed breach.
 /// </param>
 public sealed record HardVectorCandidateAssessment(
     string CandidateId,
@@ -88,12 +90,20 @@ public sealed class HardVectorCandidateAssessor
     /// as a forced option instead of failing the vehicle. Any other rejection keeps
     /// the fail-closed behaviour.
     /// </param>
+    /// <param name="forcedNoWorse">
+    /// Exploratory no-worse-than-reference recovery (off by default; requires
+    /// <paramref name="forcedReferenceRecovery"/>). On a vehicle whose no-op was kept as forced,
+    /// every other candidate the validator rejected is validated again under the no-worse rule;
+    /// one that passes is kept as a forced option too, so the vehicle can still serve a new rider
+    /// when that does not make any overrun of the kept route worse.
+    /// </param>
     public HardVectorCandidateAssessmentResult AssessAndFilter(
         CommitmentMechanismContext context,
         IReadOnlyList<VehicleCandidateSet> rawCandidateSets,
         ICommitmentWarningProfileProvider? warningProfiles = null,
         bool requireSafetyNoOp = false,
-        bool forcedReferenceRecovery = false)
+        bool forcedReferenceRecovery = false,
+        bool forcedNoWorse = false)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(rawCandidateSets);
@@ -103,6 +113,13 @@ public sealed class HardVectorCandidateAssessor
             throw new ArgumentException(
                 "Forced-reference recovery keeps the safety no-op, so it requires it.",
                 nameof(forcedReferenceRecovery));
+        }
+
+        if (forcedNoWorse && !forcedReferenceRecovery)
+        {
+            throw new ArgumentException(
+                "No-worse recovery extends forced-reference recovery, so it requires it.",
+                nameof(forcedNoWorse));
         }
 
         var outputSets = new List<VehicleCandidateSet>(rawCandidateSets.Count);
@@ -241,11 +258,13 @@ public sealed class HardVectorCandidateAssessor
                 && noOpPrune is not null
                 && hardValidationWitnesses.ContainsKey(noOpPrune.CandidateId))
             {
-                var forced = AssessForcedNoOp(
+                var forced = AssessForcedCandidate(
                     context,
                     noOps[0],
                     set.VehicleId,
-                    warningProfiles);
+                    warningProfiles,
+                    noWorse: false,
+                    rankNonExempt: forcedNoWorse);
 
                 if (forced.Witness is not null)
                 {
@@ -255,15 +274,54 @@ public sealed class HardVectorCandidateAssessor
                 if (forced.Assessment is not null)
                 {
                     retained.Add(noOps[0]);
-                    retained.Sort(
-                        (left, right) => StringComparer.Ordinal.Compare(
-                            left.CandidateId,
-                            right.CandidateId));
                     pruned.Remove(noOpPrune);
                     hardPruned.Remove(noOpPrune);
                     assessments.Add(forced.Assessment);
                     forcedVehicles.Add(set.VehicleId);
                     noOpPrune = null;
+
+                    if (forcedNoWorse)
+                    {
+                        // Only validator rejections can be relaxed; a candidate that could not be
+                        // applied, or failed physically, stays pruned. Ordinal order keeps it
+                        // deterministic.
+                        foreach (var prune in hardPruned
+                                     .Where(value => hardValidationWitnesses.ContainsKey(value.CandidateId))
+                                     .OrderBy(value => value.CandidateId, StringComparer.Ordinal)
+                                     .ToArray())
+                        {
+                            var candidate = set.Candidates.Single(
+                                value => value.CandidateId == prune.CandidateId);
+                            var relaxed = AssessForcedCandidate(
+                                context,
+                                candidate,
+                                set.VehicleId,
+                                warningProfiles,
+                                noWorse: true,
+                                rankNonExempt: true);
+
+                            if (relaxed.Witness is not null)
+                            {
+                                return Failure(relaxed.Witness, candidate, set.VehicleId);
+                            }
+
+                            if (relaxed.Assessment is null)
+                            {
+                                continue;
+                            }
+
+                            retained.Add(candidate);
+                            pruned.Remove(prune);
+                            hardPruned.Remove(prune);
+                            hardValidationWitnesses.Remove(prune.CandidateId);
+                            assessments.Add(relaxed.Assessment);
+                        }
+                    }
+
+                    retained.Sort(
+                        (left, right) => StringComparer.Ordinal.Compare(
+                            left.CandidateId,
+                            right.CandidateId));
                 }
             }
 
@@ -354,19 +412,26 @@ public sealed class HardVectorCandidateAssessor
     }
 
     /// <summary>
-    /// Validates the rejected no-op again with its vehicle named as forced-reference.
-    /// Returns no assessment when the validator still rejects it (the rejection was not
-    /// a deadline or budget gate), and a witness only for a ranking failure.
+    /// Validates a rejected candidate again with its vehicle named as forced-reference: the
+    /// no-op (kept route, <paramref name="noWorse"/> false) or, under no-worse recovery, a
+    /// changed route of the same vehicle. Returns no assessment when the validator still rejects
+    /// it, and a witness only for a ranking failure.
     /// </summary>
-    private ForcedNoOpResult AssessForcedNoOp(
+    /// <param name="rankNonExempt">
+    /// True under no-worse recovery: riders the validator did not exempt keep their normal
+    /// utilization ranking. False under kept-route recovery, which ranks the vehicle at zero.
+    /// </param>
+    private ForcedNoOpResult AssessForcedCandidate(
         CommitmentMechanismContext context,
-        InsertionCandidate noOp,
+        InsertionCandidate candidate,
         VehicleId vehicleId,
-        ICommitmentWarningProfileProvider? warningProfiles)
+        ICommitmentWarningProfileProvider? warningProfiles,
+        bool noWorse,
+        bool rankNonExempt)
     {
         var updated = CandidateStateApplicator.Apply(
             context.ReducedState.Run,
-            noOp);
+            candidate);
 
         if (!updated.IsSuccess)
         {
@@ -387,7 +452,8 @@ public sealed class HardVectorCandidateAssessor
                 InitialPromiseTrigger: context.InitialPromiseTrigger,
                 CollectAllCommitmentWitnesses:
                     context.CollectAllCommitmentWitnesses,
-                ForcedReferenceVehicles: new[] { vehicleId }.ToFrozenSet()));
+                ForcedReferenceVehicles: new[] { vehicleId }.ToFrozenSet(),
+                ForcedNoWorse: noWorse));
 
         if (!validation.IsValid || validation.ForcedExemptions.Count == 0)
         {
@@ -401,12 +467,19 @@ public sealed class HardVectorCandidateAssessor
             return ForcedNoOpResult.Failure(revision.Witness!);
         }
 
+        // Kept-route recovery leaves the whole forced vehicle unranked (ADR-075). Under no-worse
+        // recovery only an exempted rider's dimensions that are over their limit are unranked;
+        // everything else on the vehicle is ranked as on any vehicle, so a forced vehicle does not
+        // look emptier than it is on the utilization level.
         var utilization = CalculateWorstUtilization(
             validation.ValidatedState!,
             context.Policies,
             vehicleId,
             context.InitialPromiseTrigger,
-            forcedReference: true);
+            forcedReference: !rankNonExempt,
+            unrankedRiders: rankNonExempt
+                ? validation.ForcedExemptions.Select(value => value.RequestId).ToFrozenSet()
+                : null);
 
         if (!utilization.IsSuccess)
         {
@@ -427,7 +500,7 @@ public sealed class HardVectorCandidateAssessor
 
         return ForcedNoOpResult.Forced(
             new HardVectorCandidateAssessment(
-                noOp.CandidateId,
+                candidate.CandidateId,
                 utilization.PartsPerMillion,
                 revision.Value!,
                 utilization.HasApplicableHardLimit,
@@ -466,7 +539,8 @@ public sealed class HardVectorCandidateAssessor
         ICommitmentPolicyProvider policies,
         VehicleId scopedVehicleId,
         InitialPromiseTrigger initialPromiseTrigger,
-        bool forcedReference = false)
+        bool forcedReference = false,
+        IReadOnlySet<RequestId>? unrankedRiders = null)
     {
         long worst = 0;
         var hasLimit = false;
@@ -483,6 +557,10 @@ public sealed class HardVectorCandidateAssessor
             {
                 continue;
             }
+
+            // An exempted rider of a no-worse candidate may be over a limit; only the dimensions it
+            // is over are left unranked, and its applicable hard limits still count as present.
+            var unranked = unrankedRiders is not null && unrankedRiders.Contains(request.Id);
 
             if (!policies.TryGetPolicy(request.CommitmentPolicyId, out var policy)
                 || !StringComparer.Ordinal.Equals(
@@ -517,12 +595,19 @@ public sealed class HardVectorCandidateAssessor
 
                 if (forcedReference)
                 {
-                    // A forced vehicle may be charged past its limit. Its utilization is
-                    // not ranked, so one forced vehicle cannot flatten the fleet maximum.
+                    // A kept-route forced vehicle may be charged past its limit. Its utilization
+                    // is not ranked, so one forced vehicle cannot flatten the fleet maximum.
                     continue;
                 }
 
                 var value = history.Current.BudgetAfter.Get(dimension);
+
+                if (unranked && value > hardLimit)
+                {
+                    // An exempted rider over this limit cannot be ranked on it; its dimensions
+                    // within their limits are ranked as on any vehicle.
+                    continue;
+                }
 
                 if (hardLimit == 0)
                 {

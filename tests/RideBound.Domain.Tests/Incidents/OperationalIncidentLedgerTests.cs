@@ -346,6 +346,73 @@ public sealed class OperationalIncidentLedgerTests
     }
 
     [Fact]
+    public void No_worse_breach_records_a_changed_route_of_the_same_vehicle_without_an_incident()
+    {
+        // Kept route drops at 20 000 ms; the changed route drops earlier, at 19 990 ms: 10 ms of
+        // decision-induced change on top of the 40 ms drift, charged under the visible basis.
+        var drift = CommitmentTestData.Vector(CommitmentDimension.DropEtaTotalMs, 40);
+        var decision = CommitmentTestData.Vector(CommitmentDimension.DropEtaTotalMs, 10);
+        var visible = CommitmentTestData.Vector(CommitmentDimension.DropEtaTotalMs, 30);
+        var breach = NoWorse(
+            new ThreeWayPromiseDelta(drift, decision, visible),
+            before: 25,
+            after: 55,
+            [CommitmentFailureCodes.DeadlineExceeded],
+            CommitmentTestData.Projection(dropEta: 19_990));
+
+        var appended = OperationalIncidentLedger.Empty.AppendBreach(breach);
+
+        Assert.True(appended.IsSuccess, appended.Failure?.Message);
+        var stored = Assert.Single(appended.Ledger!.Breaches);
+        Assert.Equal(CommitmentBreachKind.ForcedNoWorse, stored.Kind);
+        Assert.Null(stored.IncidentId);
+        Assert.False(stored.NormalOperation);
+        Assert.Equal(19_990, stored.SafetyProjection.DropEta.Milliseconds);
+    }
+
+    [Fact]
+    public void No_worse_breach_rejects_an_unchanged_route_and_another_vehicle()
+    {
+        var drift = CommitmentTestData.Vector(CommitmentDimension.DropEtaTotalMs, 40);
+        var deltas = new ThreeWayPromiseDelta(drift, CommitmentVector.Zero, drift);
+
+        // An unchanged route is a kept-route (ForcedReference) record, not a no-worse one.
+        Assert.Throws<ArgumentException>(
+            () => NoWorse(deltas, 25, 25, [CommitmentFailureCodes.DeadlineExceeded],
+                CommitmentTestData.Projection()));
+        // The changed route belongs to the same vehicle: a reassignment is never no-worse.
+        Assert.Throws<ArgumentException>(
+            () => NoWorse(deltas, 25, 25, [CommitmentFailureCodes.DeadlineExceeded],
+                CommitmentTestData.Projection(TestData.VehicleTwo, dropEta: 19_990)));
+    }
+
+    [Fact]
+    public void No_worse_breach_rejects_foreign_codes_and_a_charge_outside_both_bases()
+    {
+        var drift = CommitmentTestData.Vector(CommitmentDimension.DropEtaTotalMs, 40);
+        var deltas = new ThreeWayPromiseDelta(drift, CommitmentVector.Zero, drift);
+        var changed = CommitmentTestData.Projection(dropEta: 19_990);
+
+        Assert.Throws<ArgumentException>(
+            () => NoWorse(deltas, 25, 25, [CommitmentFailureCodes.PhaseLock], changed));
+        Assert.Throws<ArgumentException>(
+            () => NoWorse(deltas, 25, 26, [CommitmentFailureCodes.DeadlineExceeded], changed));
+    }
+
+    [Fact]
+    public void Projection_equality_is_field_by_field()
+    {
+        Assert.True(
+            CommitmentBreachRecord.ProjectionsEqual(
+                CommitmentTestData.Projection(),
+                CommitmentTestData.Projection()));
+        Assert.False(
+            CommitmentBreachRecord.ProjectionsEqual(
+                CommitmentTestData.Projection(),
+                CommitmentTestData.Projection(dropEta: 19_990)));
+    }
+
+    [Fact]
     public void A_late_pickup_is_after_the_window_and_recorded_once_per_rider()
     {
         var late = new ObservedLatePickup(
@@ -442,6 +509,35 @@ public sealed class OperationalIncidentLedgerTests
             previous,
             projection,
             keptRoute ?? projection,
+            deltas,
+            CommitmentTestData.Vector(CommitmentDimension.DropEtaTotalMs, before),
+            CommitmentTestData.Vector(CommitmentDimension.DropEtaTotalMs, after),
+            witnessCodes,
+            11,
+            2,
+            new SimTime(2_000));
+    }
+
+    private static CommitmentBreachRecord NoWorse(
+        ThreeWayPromiseDelta deltas,
+        long before,
+        long after,
+        IEnumerable<string> witnessCodes,
+        PromiseProjection published)
+    {
+        var kept = CommitmentTestData.Projection();
+        var previous = new PublishedPromise(
+            new PromiseVersion(1),
+            1,
+            new SimTime(1_000),
+            kept);
+
+        return CommitmentBreachRecord.CreateForcedNoWorse(
+            "no-worse-breach-1",
+            TestData.RequestOne,
+            previous,
+            kept,
+            published,
             deltas,
             CommitmentTestData.Vector(CommitmentDimension.DropEtaTotalMs, before),
             CommitmentTestData.Vector(CommitmentDimension.DropEtaTotalMs, after),

@@ -276,6 +276,68 @@ public sealed class OnlineStateCheckpointCodecTests
     }
 
     [Fact]
+    public void No_worse_breach_round_trips_with_its_own_kind_and_is_tamper_checked()
+    {
+        var (run, projection, promises, travel) = SingleRiderState();
+        var requestId = projection.RequestId;
+        // The changed route publishes a drop 5 ms later than the kept one.
+        var changed = new PromiseProjection(
+            projection.RequestId,
+            projection.VehicleId,
+            projection.PickupStopId,
+            projection.PickupNodeId,
+            projection.DropStopId,
+            projection.DropNodeId,
+            projection.PickupEta,
+            new SimTime(projection.DropEta.Milliseconds + 5),
+            projection.ServiceOrder);
+        var drift = new CommitmentVector(0, 40, 0, 0, 0, 0, 0, 0, 0, 0);
+        var decision = new CommitmentVector(0, 5, 0, 0, 0, 0, 0, 0, 0, 0);
+        var visible = new CommitmentVector(0, 45, 0, 0, 0, 0, 0, 0, 0, 0);
+        var incidents = OperationalIncidentLedger.Empty.AppendBreach(
+            CommitmentBreachRecord.CreateForcedNoWorse(
+                "no-worse-breach-1",
+                requestId,
+                promises.Histories[requestId].Current.PublishedPromise,
+                projection,
+                changed,
+                new ThreeWayPromiseDelta(drift, decision, visible),
+                CommitmentVector.Zero,
+                visible,
+                [CommitmentFailureCodes.DeadlineExceeded],
+                3,
+                1,
+                new SimTime(2))).Ledger!;
+        var state = new OnlineState(run, travel, 5, travel.SnapshotHash, promises, incidents);
+        var canonical = OnlineStateCanonicalizer.Canonicalize(state);
+        using var document = JsonDocument.Parse(canonical);
+
+        var decoded = OnlineStateCheckpointCodec.Decode(document.RootElement);
+
+        Assert.True(decoded.IsSuccess, decoded.Error);
+        var breach = Assert.Single(decoded.State!.Incidents.Breaches);
+        Assert.Equal(CommitmentBreachKind.ForcedNoWorse, breach.Kind);
+        Assert.Equal(canonical, OnlineStateCanonicalizer.Canonicalize(decoded.State));
+        Assert.Equal(
+            "forcedNoWorse",
+            document.RootElement.GetProperty("incidentLedger").GetProperty("breaches")[0]
+                .GetProperty("kind").GetString());
+
+        // Relabelled as a kept-route breach, the two different projections are rejected.
+        var relabelled = JsonNode.Parse(document.RootElement.GetRawText())!;
+        relabelled["incidentLedger"]!["breaches"]![0]!["kind"] = "forcedReference";
+        using var relabelledDocument = JsonDocument.Parse(relabelled.ToJsonString());
+        Assert.False(OnlineStateCheckpointCodec.Decode(relabelledDocument.RootElement).IsSuccess);
+
+        // A no-worse record whose route is in fact unchanged is rejected.
+        var unchanged = JsonNode.Parse(document.RootElement.GetRawText())!;
+        unchanged["incidentLedger"]!["breaches"]![0]!["safetyProjection"] =
+            JsonNode.Parse(unchanged["incidentLedger"]!["breaches"]![0]!["exogenousProjection"]!.ToJsonString());
+        using var unchangedDocument = JsonDocument.Parse(unchanged.ToJsonString());
+        Assert.False(OnlineStateCheckpointCodec.Decode(unchangedDocument.RootElement).IsSuccess);
+    }
+
+    [Fact]
     public void A_late_pickup_round_trips_only_with_its_matching_record()
     {
         // Window [0, 1000] ms; the rider boards at 1500 ms. The record makes the late pickup

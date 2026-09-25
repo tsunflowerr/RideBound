@@ -757,3 +757,19 @@ code trong kho. Không authorize `RB-WP14R-009..012`, WP15 hay H7.
 | H1: `C` không kích hoạt phục hồi | chỉ số non-normal và breach `forcedReference` | 0 trên 12/12 episode `C-30`, kiểm độc lập |
 | Cổng tiếp tục P6 | báo cáo `tang3/T3.7-BAO-CAO-THI-DIEM.md` §4 | audit **đạt**; cơ chế **đạt**; phục hồi **KHÔNG ĐẠT** (`V-30`/`M-30` 5/12, `M⁺-30` 2/12 episode có > 50% quyết định non-normal) |
 | Giới hạn đã biết | mỗi ô một episode; xe "đóng băng"; lựa chọn cách chèn sau cổng mỏng (0,7–3,3% theo xe dưới `C-30`); ô Panel A `d20181114-s10-r1` đã bị nhìn trong smoke T3.5/T3.6 | báo cáo §5–§6 |
+
+## 31. ADR-077 traceability — phục hồi "không tệ hơn tham chiếu" (thăm dò, Proposed)
+
+Nhánh `research/tier3-no-worse`; mặc định tắt; không authorize `RB-WP14R-009..012`, WP15 hay H7.
+
+| Requirement | Cài đặt/evidence | Gate |
+|---|---|---|
+| Mặc định và `forced-reference-v1` không đổi | `IsForcedNoWorse` trả sớm khi cờ tắt; lời gọi no-op dùng `noWorse:false`; thông điệp lỗi giữ nguyên | suite cũ 1005 test vẫn xanh; review độc lập mục 1 |
+| Xe bị ép vẫn được chọn một tuyến đã đổi không tệ hơn | `HardVectorCandidateAssessor` kiểm lại phương án bị validator loại, với `ForcedNoWorse` | `No_worse_recovery_also_keeps_the_insertions_that_do_not_delay_the_late_rider`; `The_solver_backed_policy_serves_the_new_rider_under_no_worse_recovery` |
+| Chỉ miễn khi tuyến giữ cũng mắc cùng lỗi và phương án không tệ hơn | `NoWorseReference.AllowsLock/AllowsBudget` | `..._rejects_a_changed_route_that_delays_the_late_rider_further`; `..._never_exempts_a_rider_whose_kept_route_meets_the_deadline`; `..._under_the_visible_basis_allows_no_more_than_the_kept_overrun`; `..._under_a_two_sided_deadline_compares_on_the_floor_side` |
+| Khóa pha và khóa xe không bao giờ được miễn | `_ => false` trong `AllowsLock` | review độc lập mục 2; chưa có test cố định |
+| Vi phạm có kiểu riêng, round-trip checkpoint | `CommitmentBreachKind.ForcedNoWorse`; codec và canonicalizer `forcedNoWorse` | 4 test Domain; `No_worse_breach_round_trips_with_its_own_kind_and_is_tamper_checked` |
+| Xe bị ép được xếp hạng mức dùng như xe thường, trừ chiều vượt trần của khách được miễn | `CalculateWorstUtilization(unrankedRiders)` bỏ qua cặp (khách được miễn, chiều có giá trị > trần) | `No_worse_recovery_ranks_a_forced_vehicle_like_any_vehicle_under_a_zero_limit`; `No_worse_recovery_does_not_rank_an_exempted_dimension_over_its_limit`; 3 đột biến bị bắt |
+| Cấu hình sai thì hỏng to | chỉ C1/C2 solver-backed; `no-worse` đòi `forced-reference` | `No_worse_recovery_is_rejected_outside_the_solver_backed_C1_and_C2`; `No_worse_recovery_requires_forced_reference_recovery` |
+| Suite | `dotnet test RideBound.slnx` | 1025/1025 |
+| Giới hạn đã biết | đường Runner khi chọn tuyến đổi **sẽ** được kiểm đầu-cuối bằng chạy FleetPy (A1); thiếu test hai khách trễ, khóa pha, nhiều chiều ngân sách, C2; bản ghi `ForcedNoWorse` không phải một bản cho mỗi quyết định | ADR-077 Consequences |

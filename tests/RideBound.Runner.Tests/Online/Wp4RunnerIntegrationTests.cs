@@ -720,6 +720,62 @@ public sealed class Wp4RunnerIntegrationTests
     }
 
     [Fact]
+    public void No_worse_recovery_extends_forced_reference_and_keeps_a_lone_kept_route()
+    {
+        // With one booked rider and no other candidate, no-worse recovery has nothing to relax:
+        // the decision is the kept route, exactly as under forced-reference-v1, and it restores.
+        var commitment = DeadlineCommitmentConfiguration(slackMs: 1);
+        var configuration = HardVectorConfiguration(
+            commitment,
+            recovery: "no-worse-than-reference-v1");
+        Assert.True(configuration.SolverPolicyOptions!.ForcedReferenceRecovery);
+        Assert.True(configuration.SolverPolicyOptions.ForcedNoWorseRecovery);
+        Assert.False(
+            HardVectorConfiguration(commitment, recovery: "forced-reference-v1")
+                .SolverPolicyOptions!.ForcedNoWorseRecovery);
+
+        var setup = CreateSession(configuration, commitmentConfiguration: commitment);
+        var decision = DecisionPayloadCodec.Decode(
+            DriftBookedRider(setup, progressPermille: 1).Payload);
+
+        Assert.True(decision.IsSuccess, decision.Error?.Message);
+        var body = decision.Value!.Certificate.Body!;
+        Assert.False(body.NormalOperation);
+        Assert.Equal("forcedReference", Assert.Single(body.Witnesses).Stage);
+        _ = setup.Session.Process(
+            DecisionApplied(3, 1_050, decision.Value.DecisionHash.Value));
+        Assert.Equal(
+            RideBound.Domain.Incidents.CommitmentBreachKind.ForcedReference,
+            Assert.Single(setup.Session.CommittedOnlineState!.Incidents.Breaches).Kind);
+
+        var checkpoint = setup.Session.Process(CheckpointRequest()).Response!;
+        var restored = CreateSession(configuration, commitmentConfiguration: commitment);
+        Assert.Equal(
+            "restore",
+            restored.Session.Process(RestoreRequest(checkpoint.Payload))
+                .Response?.MessageType.Value);
+    }
+
+    [Fact]
+    public void No_worse_recovery_is_rejected_outside_the_solver_backed_C1_and_C2()
+    {
+        var commitment = CommitmentConfiguration();
+        var json = File.ReadAllText(Path.Combine(
+                RepositoryRoot(),
+                "benchmarks",
+                "configurations",
+                "wp4-rolling-cost-boundary-v1.json"))
+            .Replace(
+                "\"policyVersion\": \"wp4-boundary-v1\"",
+                "\"policyVersion\": \"wp4-boundary-v1\",\n  "
+                + "\"commitmentRecovery\": \"no-worse-than-reference-v1\"",
+                StringComparison.Ordinal);
+
+        Assert.Throws<InvalidDataException>(
+            () => Wp4RunnerConfiguration.Decode(Encoding.UTF8.GetBytes(json), commitment));
+    }
+
+    [Fact]
     public void Forced_reference_recovery_is_rejected_outside_the_solver_backed_C1_and_C2()
     {
         var commitment = CommitmentConfiguration();

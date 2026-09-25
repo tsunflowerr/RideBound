@@ -52,6 +52,12 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
     public const string FailClosedRecovery = "fail-closed";
 
     /// <summary>
+    /// Exploratory extension of `forced-reference-v1`: a forced vehicle may also choose a changed
+    /// route that makes none of the kept route's gate overruns worse (no worse than reference).
+    /// </summary>
+    public const string NoWorseRecovery = "no-worse-than-reference-v1";
+
+    /// <summary>
     /// ADR-076 (exploratory). Optional; omitted means a boarding after the latest pickup
     /// fails the batch, as before. `record-v1` accepts it as a fact and records it. The
     /// FleetPy adapter reads the same key and then leaves service windows to the Runner.
@@ -218,7 +224,8 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
             source.FreezeLocks,
             source.MaximumRepairRequestsConsideredPerVehicle,
             source.CaptureCandidatePortfolioEvidence,
-            source.ForcedReferenceRecovery);
+            source.ForcedReferenceRecovery,
+            source.ForcedNoWorseRecovery);
     }
 
     public static Wp4RunnerConfiguration Decode(
@@ -321,17 +328,18 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
             hasMultiple,
             hasWarnings);
 
-        var forcedReferenceRecovery = root.TryGetProperty(
+        var (forcedReferenceRecovery, forcedNoWorseRecovery) = root.TryGetProperty(
             "commitmentRecovery",
             out _)
                 ? Text(root, "commitmentRecovery") switch
                 {
-                    FailClosedRecovery => false,
-                    ForcedReferenceRecovery => true,
+                    FailClosedRecovery => (false, false),
+                    ForcedReferenceRecovery => (true, false),
+                    NoWorseRecovery => (true, true),
                     _ => throw new InvalidDataException(
                         "Unknown commitmentRecovery."),
                 }
-                : false;
+                : (false, false);
 
         if (forcedReferenceRecovery
             && (!hasSolver
@@ -339,8 +347,8 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
                     or RidePoolingPolicyKind.CommitSoftHardHybrid)))
         {
             throw new InvalidDataException(
-                "commitmentRecovery 'forced-reference-v1' requires the solver-backed "
-                + "C1 or C2 policy.");
+                $"commitmentRecovery '{Text(root, "commitmentRecovery")}' requires the "
+                + "solver-backed C1 or C2 policy.");
         }
 
         // A late boarding is an observation, not a policy decision, so every policy may
@@ -401,7 +409,8 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
                 freezeLocks,
                 repairCap,
                 solverExecutionEvidenceProfile is not null,
-                forcedReferenceRecovery);
+                forcedReferenceRecovery,
+                forcedNoWorseRecovery);
         }
 
         if (hasMultiple)

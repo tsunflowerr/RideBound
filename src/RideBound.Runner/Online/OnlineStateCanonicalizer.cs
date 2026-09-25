@@ -466,6 +466,9 @@ public static class OnlineStateCanonicalizer
                 case CommitmentBreachKind.ForcedReference:
                     writer.WriteString("kind", "forcedReference");
                     break;
+                case CommitmentBreachKind.ForcedNoWorse:
+                    writer.WriteString("kind", "forcedNoWorse");
+                    break;
                 default:
                     throw new InvalidOperationException("Unknown commitment breach kind.");
             }

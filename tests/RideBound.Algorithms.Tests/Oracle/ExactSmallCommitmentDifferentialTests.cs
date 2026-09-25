@@ -7,6 +7,7 @@ using RideBound.Application.State;
 using RideBound.Application.Travel;
 using RideBound.Domain.Commitments;
 using RideBound.Domain.Common;
+using RideBound.Domain.Incidents;
 using RideBound.Domain.Routes;
 using RideBound.Domain.Validation;
 
@@ -1162,6 +1163,203 @@ public sealed class ExactSmallCommitmentDifferentialTests
     }
 
     [Fact]
+    public void No_worse_recovery_also_keeps_the_insertions_that_do_not_delay_the_late_rider()
+    {
+        // The state where every candidate is rejected because drift alone put the incumbent past
+        // its deadline. Under (a) only the no-op survives. Under no-worse recovery an insertion
+        // that leaves the incumbent's drop no later than the kept route survives too, as a forced
+        // option; insertions that delay the incumbent stay pruned by the deadline.
+        var (generated, set, noOp, _, context) = EveryCandidateRejected();
+        var kept = new HardVectorCandidateAssessor().AssessAndFilter(
+            context,
+            generated.VehicleCandidates!,
+            requireSafetyNoOp: true,
+            forcedReferenceRecovery: true);
+
+        var relaxed = new HardVectorCandidateAssessor().AssessAndFilter(
+            context,
+            generated.VehicleCandidates!,
+            requireSafetyNoOp: true,
+            forcedReferenceRecovery: true,
+            forcedNoWorse: true);
+
+        Assert.True(relaxed.IsSuccess, relaxed.Witness?.Message);
+        var output = relaxed.Batch!.FeasibleCandidateSets.Single();
+        Assert.Equal(
+            [noOp.CandidateId],
+            kept.Batch!.FeasibleCandidateSets.Single().Candidates.Select(value => value.CandidateId));
+        Assert.Contains(output.Candidates, value => !value.IsNoOp);
+        Assert.Contains(output.Candidates, value => value.CandidateId == noOp.CandidateId);
+        Assert.All(
+            output.Candidates,
+            value => Assert.True(relaxed.Batch.Assessments[value.CandidateId].IsForcedReference));
+        Assert.Equal([AlgorithmTestData.VehicleOne], relaxed.Batch.ForcedReferenceVehicles);
+        Assert.Equal(set.Candidates.Count, output.Candidates.Count + output.PrunedCandidates.Count(
+            value => value.Code == CommitmentFailureCodes.DeadlineExceeded));
+        Assert.Contains(
+            output.PrunedCandidates,
+            value => value.Code == CommitmentFailureCodes.DeadlineExceeded);
+    }
+
+    [Fact]
+    public void The_solver_backed_policy_serves_the_new_rider_under_no_worse_recovery()
+    {
+        // Under (a) the vehicle is frozen on its kept route; under no-worse recovery it accepts the
+        // new rider on a route that does not delay the late incumbent, and validating the decision
+        // the way the Runner does records one no-worse breach for the incumbent.
+        var (_, _, _, _, context) = EveryCandidateRejected();
+        var solver = new EnumeratingSolver();
+        var frozen = new SolverBackedRidePoolingPolicy(solver).Decide(
+            context,
+            CandidateGenerationOptions.ExactSmall,
+            HardVectorOptions(forcedReferenceRecovery: true));
+        Assert.True(frozen.IsSuccess, frozen.Witness?.Message);
+        Assert.True(frozen.Decision!.Decision.VehiclePlans.Single().Candidate.IsNoOp);
+
+        var result = new SolverBackedRidePoolingPolicy(solver).Decide(
+            context,
+            CandidateGenerationOptions.ExactSmall,
+            HardVectorOptions(forcedReferenceRecovery: true, forcedNoWorseRecovery: true));
+
+        Assert.True(result.IsSuccess, result.Witness?.Message);
+        var decision = result.Decision!.Decision;
+        Assert.False(decision.VehiclePlans.Single().Candidate.IsNoOp);
+        Assert.Equal([AlgorithmTestData.VehicleOne], decision.ForcedReferenceVehicles!);
+        Assert.Equal("forced-reference-count", solver.LastProblem!.ObjectiveLevels[0].Name);
+
+        var validator = new CommitmentDecisionValidator();
+        Assert.False(
+            validator.Validate(RunnerLikeContext(context, decision, decision.ForcedReferenceVehicles))
+                .IsValid);
+        var validated = validator.Validate(
+            RunnerLikeContext(context, decision, decision.ForcedReferenceVehicles, noWorse: true));
+        Assert.True(validated.IsValid, validated.Witnesses.FirstOrDefault()?.Message);
+        var breach = Assert.Single(validated.ForcedBreaches);
+        Assert.Equal(CommitmentBreachKind.ForcedNoWorse, breach.Kind);
+        Assert.Equal(CreateState(seed: 3).IncumbentId, breach.RequestId);
+        Assert.Equal([CommitmentFailureCodes.DeadlineExceeded], breach.WitnessCodes);
+        Assert.True(
+            breach.SafetyProjection.DropEta.Milliseconds
+                <= breach.ExogenousProjection.DropEta.Milliseconds);
+    }
+
+    [Fact]
+    public void No_worse_recovery_ranks_a_forced_vehicle_like_any_vehicle_under_a_zero_limit()
+    {
+        // Every candidate is rejected by a deadline 1 ms before the kept drop, and a zero
+        // vehicle-switch limit saturates the utilization of any vehicle with an active rider.
+        // Kept-route recovery ranks the forced no-op at 0 (ADR-075). No-worse recovery ranks the
+        // no-op and every relaxed insertion at 1,000,000 ppm: the exempted incumbent is within
+        // that limit, so it is ranked as on any vehicle.
+        var fixture = CreateState(seed: 3);
+        var generated = new InsertionCandidateGenerator().Generate(
+            fixture.State,
+            CandidateGenerationOptions.ExactSmall);
+        Assert.True(generated.IsSuccess, generated.Witness?.Message);
+        var noOp = generated.VehicleCandidates!.Single().Candidates.Single(value => value.IsNoOp);
+        var policy = new CommitmentPolicy(
+            fixture.Policy.PolicyId,
+            CommitmentBudgetBasis.DecisionInduced,
+            CommitmentDimensionVocabulary.Ordered.Select(
+                dimension => new CommitmentDimensionLimit(
+                    dimension,
+                    dimension == CommitmentDimension.VehicleSwitchCount ? 0 : null,
+                    CommitmentPhase.AllActive)),
+            new MaterialRevisionRule(1_000, null),
+            dropEtaDeadlineSlack: new Duration(0));
+        var context = PromiseContext(fixture, fixture.BaselineDrop.Milliseconds - 1, policy);
+
+        var kept = new HardVectorCandidateAssessor().AssessAndFilter(
+            context,
+            generated.VehicleCandidates!,
+            requireSafetyNoOp: true,
+            forcedReferenceRecovery: true);
+        var relaxed = new HardVectorCandidateAssessor().AssessAndFilter(
+            context,
+            generated.VehicleCandidates!,
+            requireSafetyNoOp: true,
+            forcedReferenceRecovery: true,
+            forcedNoWorse: true);
+
+        Assert.True(kept.IsSuccess, kept.Witness?.Message);
+        Assert.Equal(0, kept.Batch!.Assessments[noOp.CandidateId].WorstHardUtilizationPartsPerMillion);
+        Assert.True(relaxed.IsSuccess, relaxed.Witness?.Message);
+        var retained = relaxed.Batch!.FeasibleCandidateSets.Single().Candidates;
+        Assert.Contains(retained, value => !value.IsNoOp);
+        Assert.All(
+            retained,
+            value =>
+            {
+                var assessment = relaxed.Batch.Assessments[value.CandidateId];
+                Assert.True(assessment.IsForcedReference);
+                Assert.True(assessment.HasApplicableHardLimit);
+                Assert.Equal(
+                    HardVectorCandidateAssessor.PartsPerMillion,
+                    assessment.WorstHardUtilizationPartsPerMillion);
+            });
+    }
+
+    [Fact]
+    public void No_worse_recovery_does_not_rank_an_exempted_dimension_over_its_limit()
+    {
+        // The kept route is charged past its drop budget under the customer-visible basis. The
+        // exempted incumbent is over that limit, so the dimension is not ranked (ranking it would
+        // divide an over-limit usage and throw); no other dimension has a limit.
+        var fixture = CreateState(seed: 3);
+        var generated = new InsertionCandidateGenerator().Generate(
+            fixture.State,
+            CandidateGenerationOptions.ExactSmall);
+        Assert.True(generated.IsSuccess, generated.Witness?.Message);
+        var noOp = generated.VehicleCandidates!.Single().Candidates.Single(value => value.IsNoOp);
+        var delay = SmallestPositiveDelay(fixture, generated.VehicleCandidates!.Single());
+        var policy = new CommitmentPolicy(
+            fixture.Policy.PolicyId,
+            CommitmentBudgetBasis.CustomerVisible,
+            CommitmentDimensionVocabulary.Ordered.Select(
+                dimension => new CommitmentDimensionLimit(
+                    dimension,
+                    dimension == CommitmentDimension.DropEtaTotalMs ? delay - 1 : null,
+                    CommitmentPhase.AllActive)),
+            new MaterialRevisionRule(1_000, null));
+        var context = PromiseContext(fixture, fixture.BaselineDrop.Milliseconds + delay, policy);
+
+        var assessed = new HardVectorCandidateAssessor().AssessAndFilter(
+            context,
+            generated.VehicleCandidates!,
+            requireSafetyNoOp: true,
+            forcedReferenceRecovery: true,
+            forcedNoWorse: true);
+
+        Assert.True(assessed.IsSuccess, assessed.Witness?.Message);
+        var assessment = assessed.Batch!.Assessments[noOp.CandidateId];
+        Assert.True(assessment.IsForcedReference);
+        Assert.True(assessment.HasApplicableHardLimit);
+        Assert.Equal(0, assessment.WorstHardUtilizationPartsPerMillion);
+    }
+
+    [Fact]
+    public void No_worse_recovery_requires_forced_reference_recovery()
+    {
+        var (generated, _, _, context) = NoOpRejectedWhileAnInsertionSurvives();
+        var budget = DeterministicCandidateSelectionExecutionBudget.Create(
+            100_000,
+            100_000,
+            DeterministicSolverBudget.Create(1000, 1000, 1).Value!).Value!;
+
+        Assert.Throws<ArgumentException>(
+            () => new HardVectorCandidateAssessor().AssessAndFilter(
+                context,
+                generated.VehicleCandidates!,
+                requireSafetyNoOp: true,
+                forcedNoWorse: true));
+        Assert.Throws<ArgumentException>(
+            () => new SolverBackedRidePoolingPolicyOptions(
+                RidePoolingPolicyKind.RideBoundHardVector,
+                budget,
+                forcedNoWorseRecovery: true));
+    }
+
+    [Fact]
     public void Forced_recovery_is_rejected_for_a_policy_other_than_C1_or_C2()
     {
         var budget = DeterministicCandidateSelectionExecutionBudget.Create(
@@ -1243,20 +1441,23 @@ public sealed class ExactSmallCommitmentDifferentialTests
             .Min();
 
     private static SolverBackedRidePoolingPolicyOptions HardVectorOptions(
-        bool forcedReferenceRecovery) =>
+        bool forcedReferenceRecovery,
+        bool forcedNoWorseRecovery = false) =>
         new(
             RidePoolingPolicyKind.RideBoundHardVector,
             DeterministicCandidateSelectionExecutionBudget.Create(
                 100_000,
                 100_000,
                 DeterministicSolverBudget.Create(100_000, 100_000, 1).Value!).Value!,
-            forcedReferenceRecovery: forcedReferenceRecovery);
+            forcedReferenceRecovery: forcedReferenceRecovery,
+            forcedNoWorseRecovery: forcedNoWorseRecovery);
 
     /// <summary>The validation the Runner applies to a policy decision.</summary>
     private static CommitmentValidationContext RunnerLikeContext(
         CommitmentMechanismContext context,
         RollingCostDecision decision,
-        IReadOnlySet<VehicleId>? forced) =>
+        IReadOnlySet<VehicleId>? forced,
+        bool noWorse = false) =>
         new(
             context.BeforeEventState,
             context.ReducedState,
@@ -1266,7 +1467,8 @@ public sealed class ExactSmallCommitmentDifferentialTests
             context.PublicationScope,
             context.SourceEventSequence,
             InitialPromiseTrigger: context.InitialPromiseTrigger,
-            ForcedReferenceVehicles: forced);
+            ForcedReferenceVehicles: forced,
+            ForcedNoWorse: noWorse);
 
     /// <summary>
     /// Exact lexicographic enumeration of every one-option-per-vehicle assignment; it

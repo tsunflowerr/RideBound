@@ -82,9 +82,16 @@ public sealed record SolverBackedRidePoolingPolicyOptions
         PromiseLock freezeLocks = PromiseLock.None,
         int maximumRepairRequestsConsideredPerVehicle = 0,
         bool captureCandidatePortfolioEvidence = false,
-        bool forcedReferenceRecovery = false)
+        bool forcedReferenceRecovery = false,
+        bool forcedNoWorseRecovery = false)
     {
         ArgumentNullException.ThrowIfNull(executionBudget);
+
+        if (forcedNoWorseRecovery && !forcedReferenceRecovery)
+        {
+            throw new ArgumentException(
+                "No-worse recovery extends forced-reference recovery, so it requires it.");
+        }
 
         if (!Enum.IsDefined(policyKind)
             || policyKind == RidePoolingPolicyKind.LeastCommitmentConsensus)
@@ -145,6 +152,7 @@ public sealed record SolverBackedRidePoolingPolicyOptions
             maximumRepairRequestsConsideredPerVehicle;
         CaptureCandidatePortfolioEvidence = captureCandidatePortfolioEvidence;
         ForcedReferenceRecovery = forcedReferenceRecovery;
+        ForcedNoWorseRecovery = forcedNoWorseRecovery;
     }
 
     public RidePoolingPolicyKind PolicyKind { get; }
@@ -166,6 +174,13 @@ public sealed record SolverBackedRidePoolingPolicyOptions
     /// the run.
     /// </summary>
     public bool ForcedReferenceRecovery { get; }
+
+    /// <summary>
+    /// Exploratory no-worse-than-reference extension of <see cref="ForcedReferenceRecovery"/>
+    /// (off by default): a forced vehicle may also choose a changed route that makes none of the
+    /// kept route's gate overruns worse, so it can still serve a new rider.
+    /// </summary>
+    public bool ForcedNoWorseRecovery { get; }
 }
 
 public sealed record SolverBackedPolicyDecision(
@@ -315,7 +330,8 @@ public sealed class SolverBackedRidePoolingPolicy
                                 ? warningProfiles
                                 : null,
                         requireSafetyNoOp: true,
-                        forcedReferenceRecovery: policyOptions.ForcedReferenceRecovery);
+                        forcedReferenceRecovery: policyOptions.ForcedReferenceRecovery,
+                        forcedNoWorse: policyOptions.ForcedNoWorseRecovery);
 
                     if (!assessed.IsSuccess)
                     {
@@ -357,7 +373,8 @@ public sealed class SolverBackedRidePoolingPolicy
             effectivePolicies,
             _commitmentValidator,
             _physicalValidator,
-            forcedReferenceVehicles);
+            forcedReferenceVehicles,
+            policyOptions.ForcedNoWorseRecovery);
         var selected = _selector.Select(
             candidates,
             profile,
@@ -424,8 +441,9 @@ public sealed class SolverBackedRidePoolingPolicy
     }
 
     /// <summary>
-    /// The vehicles whose selected plan is a forced no-op; null when none is, so a run
-    /// without a forced selection carries exactly the decision it had before.
+    /// The vehicles whose selected plan is a forced option (the kept no-op or, under no-worse
+    /// recovery, a changed route); null when none is, so a run without a forced selection
+    /// carries exactly the decision it had before.
     /// </summary>
     private static IReadOnlySet<VehicleId>? SelectedForcedVehicles(
         FleetSelection selection,
@@ -549,7 +567,8 @@ public sealed class SolverBackedRidePoolingPolicy
         ICommitmentPolicyProvider effectivePolicies,
         CommitmentDecisionValidator commitmentValidator,
         PhysicalPlanValidator physicalValidator,
-        IReadOnlySet<VehicleId>? forcedReferenceVehicles) : IFleetSelectionValidator
+        IReadOnlySet<VehicleId>? forcedReferenceVehicles,
+        bool forcedNoWorse) : IFleetSelectionValidator
     {
         public CandidateSelectionValidationResult Validate(FleetSelection selection)
         {
@@ -588,7 +607,8 @@ public sealed class SolverBackedRidePoolingPolicy
                     context.SourceEventSequence,
                     RevisionReasonCode: "WP4_SOLVER_SELECTION",
                     InitialPromiseTrigger: context.InitialPromiseTrigger,
-                    ForcedReferenceVehicles: forcedReferenceVehicles));
+                    ForcedReferenceVehicles: forcedReferenceVehicles,
+                    ForcedNoWorse: forcedNoWorse));
             return validated.IsValid
                 ? CandidateSelectionValidationResult.Valid()
                 : CandidateSelectionValidationResult.Invalid(

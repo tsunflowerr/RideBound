@@ -347,6 +347,254 @@ public sealed class CommitmentDeadlineValidatorTests
         Assert.Same(context.CandidateState.Incidents, result.ValidatedState!.Incidents);
     }
 
+    [Fact]
+    public void No_worse_recovery_keeps_a_changed_route_that_keeps_the_late_riders_drop()
+    {
+        // The route a kept-route exemption refuses above (a waypoint after the drop) keeps the late
+        // rider's drop at 1700 ms, so under no-worse recovery it is exempted, not rejected.
+        var context = WithCandidateRoute(
+                NoOpUnderDrift(promiseAt: Early, reducedAt: Late, Policy(slack: 400)),
+                AppendAfterDrop)
+            with
+            {
+                ForcedReferenceVehicles = new HashSet<VehicleId> { ApplicationTestData.VehicleId },
+                ForcedNoWorse = true,
+            };
+
+        var result = new CommitmentDecisionValidator().Validate(context);
+
+        Assert.True(result.IsValid, string.Join("; ", result.Witnesses.Select(w => w.Message)));
+        var breach = Assert.Single(result.ForcedBreaches);
+        Assert.Equal(CommitmentBreachKind.ForcedNoWorse, breach.Kind);
+        Assert.Equal([CommitmentFailureCodes.DeadlineExceeded], breach.WitnessCodes);
+        Assert.False(
+            CommitmentBreachRecord.ProjectionsEqual(breach.ExogenousProjection, breach.SafetyProjection));
+        Assert.True(Assert.Single(result.ForcedExemptions).NoWorse);
+        Assert.Equal(
+            new SimTime(1_700),
+            Assert.Single(result.Publications).Entry.PublishedPromise.Projection.DropEta);
+    }
+
+    [Fact]
+    public void No_worse_recovery_rejects_a_changed_route_that_delays_the_late_rider_further()
+    {
+        // A 300 ms stop before the drop moves the late rider from 1700 to 2000 ms: worse than the
+        // kept route, so it stays rejected by the deadline, with no breach.
+        var context = WithCandidateRoute(
+                NoOpUnderDrift(promiseAt: Early, reducedAt: Late, Policy(slack: 400)),
+                DelayBeforeDrop)
+            with
+            {
+                ForcedReferenceVehicles = new HashSet<VehicleId> { ApplicationTestData.VehicleId },
+                ForcedNoWorse = true,
+            };
+
+        var result = new CommitmentDecisionValidator().Validate(context);
+
+        Assert.False(result.IsValid);
+        Assert.Empty(result.ForcedBreaches);
+        Assert.Equal(CommitmentFailureCodes.DeadlineExceeded, Assert.Single(result.Witnesses).Code);
+    }
+
+    [Fact]
+    public void No_worse_recovery_never_exempts_a_rider_whose_kept_route_meets_the_deadline()
+    {
+        // No drift: the kept route drops at 1200 ms, inside 1200 + 100 ms. The changed route drops at
+        // 1500 ms. The kept route overruns nothing, so there is nothing the changed route may match.
+        var context = WithCandidateRoute(
+                NoOpUnderDrift(promiseAt: Early, reducedAt: Early, Policy(slack: 100)),
+                DelayBeforeDrop)
+            with
+            {
+                ForcedReferenceVehicles = new HashSet<VehicleId> { ApplicationTestData.VehicleId },
+                ForcedNoWorse = true,
+            };
+
+        var result = new CommitmentDecisionValidator().Validate(context);
+
+        Assert.False(result.IsValid);
+        Assert.Empty(result.ForcedBreaches);
+        Assert.Equal(CommitmentFailureCodes.DeadlineExceeded, Assert.Single(result.Witnesses).Code);
+    }
+
+    [Fact]
+    public void No_worse_recovery_under_the_visible_basis_allows_no_more_than_the_kept_overrun()
+    {
+        // Visible basis, 400 ms cap, 500 ms drift: the kept route charges 500 ms. A changed route that
+        // keeps the drop charges the same 500 ms and is exempted; one that adds 300 ms charges 800 ms
+        // and stays rejected.
+        var visible = new CommitmentPolicy(
+            ApplicationTestData.Request().CommitmentPolicyId,
+            CommitmentBudgetBasis.CustomerVisible,
+            CommitmentDimensionVocabulary.Ordered.Select(
+                dimension => new CommitmentDimensionLimit(
+                    dimension,
+                    dimension == CommitmentDimension.DropEtaTotalMs ? 400 : null,
+                    CommitmentPhase.AllActive)),
+            new MaterialRevisionRule(1, null));
+        var forced = new HashSet<VehicleId> { ApplicationTestData.VehicleId };
+        var baseline = NoOpUnderDrift(promiseAt: Early, reducedAt: Late, visible);
+        var same = WithCandidateRoute(baseline, AppendAfterDrop)
+            with { ForcedReferenceVehicles = forced, ForcedNoWorse = true };
+        var worse = WithCandidateRoute(baseline, DelayBeforeDrop)
+            with { ForcedReferenceVehicles = forced, ForcedNoWorse = true };
+
+        var kept = new CommitmentDecisionValidator().Validate(same);
+        var rejected = new CommitmentDecisionValidator().Validate(worse);
+
+        Assert.True(kept.IsValid, string.Join("; ", kept.Witnesses.Select(w => w.Message)));
+        var breach = Assert.Single(kept.ForcedBreaches);
+        Assert.Equal(CommitmentBreachKind.ForcedNoWorse, breach.Kind);
+        Assert.Equal([CommitmentFailureCodes.BudgetExceeded], breach.WitnessCodes);
+        Assert.Equal(500, breach.AttemptedBudgetAfter.DropEtaTotalMs);
+        Assert.False(rejected.IsValid);
+        Assert.Equal(CommitmentFailureCodes.BudgetExceeded, Assert.Single(rejected.Witnesses).Code);
+    }
+
+    [Fact]
+    public void No_worse_recovery_records_an_unchanged_route_as_a_kept_route_breach()
+    {
+        var context = NoOpUnderDrift(promiseAt: Early, reducedAt: Late, Policy(slack: 400))
+            with
+            {
+                ForcedReferenceVehicles = new HashSet<VehicleId> { ApplicationTestData.VehicleId },
+                ForcedNoWorse = true,
+            };
+
+        var result = new CommitmentDecisionValidator().Validate(context);
+
+        Assert.True(result.IsValid, string.Join("; ", result.Witnesses.Select(w => w.Message)));
+        Assert.Equal(CommitmentBreachKind.ForcedReference, Assert.Single(result.ForcedBreaches).Kind);
+        Assert.False(Assert.Single(result.ForcedExemptions).NoWorse);
+    }
+
+    [Fact]
+    public void No_worse_recovery_under_a_two_sided_deadline_compares_on_the_floor_side()
+    {
+        // Favourable drift: first promise 1700 ms, kept route 1200 ms, window 1700 +/- 400 ms, so the
+        // kept route is too early. A changed route that keeps 1200 ms is no worse on the floor side
+        // and is exempted; one that delays the drop to 1500 ms is back inside the window and needs
+        // no exemption at all.
+        var forced = new HashSet<VehicleId> { ApplicationTestData.VehicleId };
+        var baseline = NoOpUnderDrift(promiseAt: Late, reducedAt: Early, Policy(slack: 400, twoSided: true));
+        var same = WithCandidateRoute(baseline, AppendAfterDrop)
+            with { ForcedReferenceVehicles = forced, ForcedNoWorse = true };
+        var inside = WithCandidateRoute(baseline, DelayBeforeDrop)
+            with { ForcedReferenceVehicles = forced, ForcedNoWorse = true };
+        // 1250 ms: still below the 1300 ms floor, but later (less far out) than the kept 1200 ms.
+        var better = WithCandidateRoute(baseline, route => DelayBeforeDropBy(route, 50))
+            with { ForcedReferenceVehicles = forced, ForcedNoWorse = true };
+
+        var exempted = new CommitmentDecisionValidator().Validate(same);
+        var normal = new CommitmentDecisionValidator().Validate(inside);
+        var closer = new CommitmentDecisionValidator().Validate(better);
+
+        Assert.True(exempted.IsValid, string.Join("; ", exempted.Witnesses.Select(w => w.Message)));
+        var breach = Assert.Single(exempted.ForcedBreaches);
+        Assert.Equal(CommitmentBreachKind.ForcedNoWorse, breach.Kind);
+        Assert.Equal([CommitmentFailureCodes.DeadlineExceeded], breach.WitnessCodes);
+        Assert.True(closer.IsValid, string.Join("; ", closer.Witnesses.Select(w => w.Message)));
+        Assert.Equal(
+            new SimTime(1_250),
+            Assert.Single(closer.Publications).Entry.PublishedPromise.Projection.DropEta);
+        Assert.Equal(CommitmentBreachKind.ForcedNoWorse, Assert.Single(closer.ForcedBreaches).Kind);
+        Assert.True(normal.IsValid, string.Join("; ", normal.Witnesses.Select(w => w.Message)));
+        Assert.Empty(normal.ForcedBreaches);
+        Assert.Empty(normal.ForcedExemptions);
+    }
+
+    [Fact]
+    public void Collecting_every_witness_does_not_change_a_no_worse_decision()
+    {
+        var forced = new HashSet<VehicleId> { ApplicationTestData.VehicleId };
+        var failFast = WithCandidateRoute(
+                NoOpUnderDrift(promiseAt: Early, reducedAt: Late, Policy(slack: 400)),
+                AppendAfterDrop)
+            with { ForcedReferenceVehicles = forced, ForcedNoWorse = true };
+        var collectAll = failFast with { CollectAllCommitmentWitnesses = true };
+        var worseFailFast = WithCandidateRoute(
+                NoOpUnderDrift(promiseAt: Early, reducedAt: Late, Policy(slack: 400)),
+                DelayBeforeDrop)
+            with { ForcedReferenceVehicles = forced, ForcedNoWorse = true };
+
+        var expected = new CommitmentDecisionValidator().Validate(failFast);
+        var actual = new CommitmentDecisionValidator().Validate(collectAll);
+        var worse = new CommitmentDecisionValidator().Validate(
+            worseFailFast with { CollectAllCommitmentWitnesses = true });
+
+        Assert.True(actual.IsValid, string.Join("; ", actual.Witnesses.Select(w => w.Message)));
+        Assert.Equal(
+            expected.ForcedBreaches.Select(value => (value.BreachId, value.Kind)),
+            actual.ForcedBreaches.Select(value => (value.BreachId, value.Kind)));
+        Assert.Equal(
+            expected.Publications.Select(value => value.PublicationId),
+            actual.Publications.Select(value => value.PublicationId));
+        Assert.False(worse.IsValid);
+        Assert.Equal(CommitmentFailureCodes.DeadlineExceeded, Assert.Single(worse.Witnesses).Code);
+    }
+
+    [Fact]
+    public void No_worse_recovery_applies_only_to_a_named_forced_vehicle()
+    {
+        var context = WithCandidateRoute(
+                NoOpUnderDrift(promiseAt: Early, reducedAt: Late, Policy(slack: 400)),
+                AppendAfterDrop)
+            with { ForcedNoWorse = true };
+
+        var result = new CommitmentDecisionValidator().Validate(context);
+
+        Assert.False(result.IsValid);
+        Assert.Empty(result.ForcedBreaches);
+        Assert.Equal(CommitmentFailureCodes.DeadlineExceeded, Assert.Single(result.Witnesses).Code);
+    }
+
+    private static CommitmentValidationContext WithCandidateRoute(
+        CommitmentValidationContext context,
+        Func<RoutePlan, RoutePlan> change)
+    {
+        var vehicle = context.CandidateState.Run.Vehicles[ApplicationTestData.VehicleId];
+        var run = context.CandidateState.Run
+            .UpdateVehicleRoute(ApplicationTestData.VehicleId, change(vehicle.Route)).Value!;
+        return context with { CandidateState = context.CandidateState with { Run = run } };
+    }
+
+    /// <summary>A waypoint after the drop: the rider's drop ETA is unchanged.</summary>
+    private static RoutePlan AppendAfterDrop(RoutePlan route) =>
+        RoutePlan.Create(
+            new PlanVersion(route.Version.Value + 1),
+            route.ExecutedStopCount,
+            route.FrozenPrefix,
+            route.MutableSuffix.Append(
+                new RouteStop(
+                    new StopId("after-drop"),
+                    ApplicationTestData.NodeZero,
+                    RouteStopKind.Waypoint,
+                    null,
+                    new Duration(0)))).Value!;
+
+    /// <summary>A 300 ms waypoint at the pickup node just before the drop: the drop is 300 ms later.</summary>
+    private static RoutePlan DelayBeforeDrop(RoutePlan route) => DelayBeforeDropBy(route, 300);
+
+    /// <summary>A waypoint of <paramref name="milliseconds"/> at the pickup node just before the drop.</summary>
+    private static RoutePlan DelayBeforeDropBy(RoutePlan route, long milliseconds)
+    {
+        var stops = route.MutableSuffix.ToList();
+        var drop = stops.FindIndex(value => value.Kind == RouteStopKind.DropOff);
+        stops.Insert(
+            drop,
+            new RouteStop(
+                new StopId("before-drop"),
+                ApplicationTestData.NodeOne,
+                RouteStopKind.Waypoint,
+                null,
+                new Duration(milliseconds)));
+        return RoutePlan.Create(
+            new PlanVersion(route.Version.Value + 1),
+            route.ExecutedStopCount,
+            route.FrozenPrefix,
+            stops).Value!;
+    }
+
     private static CommitmentPolicy Policy(long? slack, bool twoSided = false) =>
         new(
             ApplicationTestData.Request().CommitmentPolicyId,

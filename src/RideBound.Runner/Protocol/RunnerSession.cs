@@ -966,7 +966,9 @@ public sealed class RunnerSession
                         _wp4Configuration?.InitialPromiseTrigger
                             ?? InitialPromiseTrigger.InitialAcceptance,
                     ForcedReferenceVehicles:
-                        decision.Decision.ForcedReferenceVehicles));
+                        decision.Decision.ForcedReferenceVehicles,
+                    ForcedNoWorse:
+                        _wp4Configuration?.SolverPolicyOptions?.ForcedNoWorseRecovery == true));
 
             if (!validation.IsValid)
             {
@@ -1089,6 +1091,8 @@ public sealed class RunnerSession
     /// ADR-075: every decision that keeps a gate-rejected route is certified as
     /// non-normal operation, with one witness per breached gate code of each rider,
     /// including a decision that repeats an exemption without a new breach record.
+    /// Under no-worse recovery a rider exempted on a changed route is certified with the stage
+    /// `forcedNoWorse`, so a kept (frozen) vehicle stays distinguishable from one still serving.
     /// </summary>
     private static CertificateWitnessContract[] ForcedBreachWitnesses(
         IReadOnlyList<ForcedReferenceExemption> exemptions) =>
@@ -1097,7 +1101,7 @@ public sealed class RunnerSession
             .SelectMany(
                 exemption => exemption.WitnessCodes.Select(
                     code => new CertificateWitnessContract(
-                        "forcedReference",
+                        exemption.NoWorse ? "forcedNoWorse" : "forcedReference",
                         code,
                         exemption.VehicleId.Value,
                         exemption.RequestId.Value)))

@@ -1,7 +1,7 @@
 # Trạng thái và decision log
 
 > Tệp sống — cập nhật ở cuối mọi task RideBound
-> Cập nhật gần nhất: 2026-08-28 (cây chính); nhánh thăm dò `research/deadline-gate`: 2026-09-24 (ADR-074 Proposed); nhánh thăm dò `research/tier3-failure-aware`: 2026-09-25 (ADR-075, ADR-076 Proposed)
+> Cập nhật gần nhất: 2026-08-28 (cây chính); nhánh thăm dò `research/deadline-gate`: 2026-09-24 (ADR-074 Proposed); nhánh thăm dò `research/tier3-failure-aware`: 2026-09-25 (ADR-075, ADR-076 Proposed; thí điểm T3.7 xong, cổng dừng phục hồi bị kích hoạt)
 
 ## 1. Trạng thái tổng thể
 
@@ -5083,6 +5083,29 @@ thấy đều Strict" sai với đường hủy trong batch; đã thu hẹp ch�
 
 ## 9. Change history
 
+- 2026-09-25 (nhánh thăm dò `research/tier3-failure-aware`; không đổi code trong kho): Tầng 3, T3.5–T3.7. Mọi kết quả
+  mang nhãn thăm dò. Không authorize `RB-WP14R-009..012`, WP15 hay H7.
+  - **Công cụ ngoài kho** ở `E:\Code\Report_INT3508\ridebound-scratchpad\tang3\`:
+    - thế giới v1 bọc preflight medium, dùng hook `NetworkBasic._set_edge_tt`;
+    - audit v/e/p có dấu, dựng lại từ commitment ledger trong final checkpoint, nên không cần đổi protocol;
+    - chỉ số lựa chọn.
+  - **Runner:** publish `E:\RideBoundData\research\runner-tier3-v1` từ `69512d3`.
+  - **Thí điểm:** 60 job = 5 nhánh (`U`, `C-30`, `V-30`, `M⁺-30`, `M-30`) × 2 ô phát triển
+    `d20181112-s10-r1-w08/w17` × 6 thế giới.
+    - 60/60 `status: pass`; audit đúng 60/60.
+    - H1 đứng 12/12: `C-30` không có quyết định phục hồi nào, lệch do điều phối lớn nhất mỗi khách 19,1 s.
+    - `C-30` phục vụ ≥ `V-30` ở 12/12 episode, chênh 0–10 khách trên 108.
+  - **Cổng dừng của kế hoạch bị kích hoạt:** `V-30` và `M-30` phục hồi ở đa số quyết định trong 5/12 episode mỗi nhánh.
+    Đây là xe "đóng băng" của ADR-075, tối đa 30% đội xe tính trung bình. Luật phục hồi phải được chủ nghiên cứu chốt
+    trước phép so xác nhận.
+  - **Phát hiện về thế giới:** khung, và cả hệ số trôi của Tầng 2, chỉ được áp tại trigger đầu tiên sau mốc.
+    - Thí điểm: trễ tới 265 s; lệch giữa các nhánh tới 131 s.
+    - Tầng 2: trễ tới 210 s; lệch giữa các họ tới 70 s.
+    - Wrapper v1.1 chèn đầu khung vào đồng hồ sự kiện; smoke đầu-cuối PASS.
+    - Riêng thời điểm đổi khung đã đổi khoảng cách `C-30 − V-30` ở một ô từ +4 thành +2 khách.
+  - **Một ô Panel A đã bị nhìn thấy:** `d20181114-s10-r1`, trong smoke T3.5/T3.6. Phải khai báo khi chia tập ở T3.8.
+  - **Kiểm độc lập:** 7/8 khẳng định khớp; một con số độ trễ đã sửa. 10/10 số của Tầng 2 khớp.
+  - Báo cáo: `tang3/T3.7-BAO-CAO-THI-DIEM.md`. Truy vết ở docs/19 §30.
 - 2026-09-25 (nhánh thăm dò `research/tier3-failure-aware`, chưa commit): ADR-076 **Proposed** —
   Tầng 3, T3.4 "lên xe muộn là sự thật". Khóa WP4 `lateBoarding: record-v1`, mặc định tắt: khách lên
   sau giờ đón muộn nhất được nhận và ghi `ObservedLatePickup` riêng, cửa sổ gốc giữ nguyên, bản ghi

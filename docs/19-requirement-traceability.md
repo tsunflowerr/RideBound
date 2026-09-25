@@ -742,3 +742,18 @@ Nhánh `research/tier3-failure-aware`, chưa commit; không authorize `RB-WP14R-
 | Cấu hình adapter đọc đúng khóa | `runner_owns_service_bounds` từ file WP4 thật | `test_late_boarding_key_is_read_exactly_as_the_runner_reads_it`; `test_session_settings_carry_the_key_from_the_wp4_file` |
 | Suite | `dotnet test RideBound.slnx`; Python baseline command | .NET 1005/1005; Python 437/443, 6 test freeze fail y hệt trên bản sạch `8d1ea4d` |
 | Giới hạn đã biết | seal adapter WP9 dịch theo thiết kế; chưa có metric đọc `LatePickups`; chưa chạy FleetPy đầy đủ | ghi ở ADR-076 Consequences |
+
+## 30. Tầng 3 T3.5–T3.7 traceability — thế giới, audit v/e/p, thí điểm (thăm dò)
+
+Nhánh `research/tier3-failure-aware`; công cụ ngoài kho ở `E:\Code\Report_INT3508\ridebound-scratchpad\tang3\`, không đổi
+code trong kho. Không authorize `RB-WP14R-009..012`, WP15 hay H7.
+
+| Requirement | Cài đặt/evidence | Gate |
+|---|---|---|
+| Thế giới v1 neo ở fixture, nhiễu theo cặp OD, hai chiều, có hồi phục (T3.5) | `world/world_v1.py`, `world/preflight_world.py` (per-edge qua `NetworkBasic._set_edge_tt`) | `test_world_v1.py`, `test_preflight_world.py` 0 lỗi; đột biến 6/6 và 7/7 |
+| Runner không thấy tương lai | Runner chỉ nhận ảnh chụp điều kiện hiện tại | `run_world_smoke.py`: 1051 frame đầu trùng từng byte, frame khác đầu tiên ở 3.624.394 ms |
+| Thế giới giống nhau giữa các nhánh | hệ số giống hệt trên 60/60 log (`pilot/pilot_worlds.py`); thời điểm áp lệch tới 131 s ⇒ `world/preflight_world_v1_1.py` | v1.1: 14 kiểm, đột biến 5/5; smoke đầu-cuối PASS (đổi khung đúng `bin × 900 s`, `C-30`/`V-30` trùng thời điểm, kiểm rò rỉ PASS) |
+| Dòng audit có dấu v/e/p (T3.6) | `evidence/audit_vep.py`, dựng lại từ commitment ledger của final checkpoint; đối chiếu delta sổ và hành động đã ACK | 60/60 job; tổng dòng khớp tổng oracle; người kiểm độc lập khớp mọi trường trên smoke và 60 job thí điểm |
+| H1: `C` không kích hoạt phục hồi | chỉ số non-normal và breach `forcedReference` | 0 trên 12/12 episode `C-30`, kiểm độc lập |
+| Cổng tiếp tục P6 | báo cáo `tang3/T3.7-BAO-CAO-THI-DIEM.md` §4 | audit **đạt**; cơ chế **đạt**; phục hồi **KHÔNG ĐẠT** (`V-30`/`M-30` 5/12, `M⁺-30` 2/12 episode có > 50% quyết định non-normal) |
+| Giới hạn đã biết | mỗi ô một episode; xe "đóng băng"; lựa chọn cách chèn sau cổng mỏng (0,7–3,3% theo xe dưới `C-30`); ô Panel A `d20181114-s10-r1` đã bị nhìn trong smoke T3.5/T3.6 | báo cáo §5–§6 |

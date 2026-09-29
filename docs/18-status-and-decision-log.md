@@ -1,7 +1,7 @@
 # Trạng thái và decision log
 
 > Tệp sống — cập nhật ở cuối mọi task RideBound
-> Cập nhật gần nhất: 2026-08-28 (cây chính); nhánh thăm dò `research/deadline-gate`: 2026-09-24 (ADR-074 Proposed); nhánh thăm dò `research/tier3-failure-aware`: 2026-09-25 (ADR-075, ADR-076 Proposed; thí điểm T3.7 xong, cổng dừng phục hồi bị kích hoạt); nhánh thăm dò `research/tier3-no-worse`: 2026-09-26 (ADR-077 Proposed; 28 job đầu-cuối A1 pass), 2026-09-29 (Tầng 3 việc A: 48 job `V`/`M` với hai luật phục hồi, thăm dò)
+> Cập nhật gần nhất: 2026-08-28 (cây chính); nhánh thăm dò `research/deadline-gate`: 2026-09-24 (ADR-074 Proposed); nhánh thăm dò `research/tier3-failure-aware`: 2026-09-25 (ADR-075, ADR-076 Proposed; thí điểm T3.7 xong, cổng dừng phục hồi bị kích hoạt); nhánh thăm dò `research/tier3-no-worse`: 2026-09-26 (ADR-077 Proposed; 28 job đầu-cuối A1 pass), 2026-09-29 (Tầng 3 việc A: 48 job `V`/`M` với hai luật phục hồi, thăm dò), 2026-09-30 (Tầng 3 việc B: 88 job khung 7:00–9:00 chỉ tắc đường thật, thăm dò)
 
 ## 1. Trạng thái tổng thể
 
@@ -5172,6 +5172,22 @@ phương án bị ép khi:
 | WP16–WP20 | Roadmap-level only | — | — | Không ticket hóa trước verified WP14R frontier/closure gate |
 
 ## 9. Change history
+
+- 2026-09-30 (nhánh thăm dò `research/tier3-no-worse`; không đổi code trong kho): Tầng 3 việc B, khung 7:00–9:00 chỉ với tắc
+  đường đo thật. Mọi kết quả mang nhãn thăm dò; không authorize `RB-WP14R-009..012`, WP15 hay H7.
+  - 8 ô phát triển mới `d2018111{2,3}-s10-r{1..4}-w07` (grid `tier3-development-w07-v1`, nhãn chọn khách mới), sinh bằng
+    `tools/RideBound.Wp6Normalize` từ bộ đệm (normalizer source `34517a83…4d90`). Fixture chép ra ngoài kho
+    (`C:\RideBoundData\research\fixtures-w07-v1`); bản trong worktree này **chưa được theo dõi và không commit**. Kiểm rò rỉ
+    `wp14_development_panel_audit.py`: 0 trùng với 40 ô đóng băng của `wp9-confirmatory` grid v2/v3. Mỗi ô trùng 7–15/108
+    khách với ô w08 cùng (ngày, mẫu).
+  - Wrapper thế giới v1.2 ngoài kho: mở mốc 07:00 và từ chối thế giới có ngày/khung khác ô; test 24 kiểm, đột biến 9/9; chạy
+    thử đầu-cuối PASS (kiểm rò rỉ, đổi mốc đúng giờ, từ chối sai ngày).
+  - 88 job (11 nhánh × 8 ô, luật phục hồi (b), Runner v2), kế hoạch và 7 dự đoán niêm phong trước khi chạy; 88/88 pass; 6/7
+    dự đoán đúng (Q4 sai ở một ô, một khách).
+  - Kết quả: `C-x` và `M⁺-x` phục vụ cùng số khách ở mọi mức và cùng từng quyết định ở 30, 60, 300 s; `V-30`, `M-30` cũng
+    như `C-30`. Nhưng lời hứa của `M⁺` bị phá với 24,0% khách ở 30 s, 7,3% ở 60 s (cả 8/8 ô), 0,9% ở 120 s; ở khung
+    8:00–10:00 cùng ngày là 2,2% và 0%. `C` giữ lời hứa của nó theo cấu tạo; chấm theo luật `M⁺` nó cho cùng tỉ lệ.
+  - Nguồn: `tang3/w07/W07-PLAN.md`, `W07-AMENDMENTS.md`, `W07-REPORT.md`, `tang3/w07/analysis/`.
 
 - 2026-09-29 (nhánh thăm dò `research/tier3-no-worse`; không đổi code trong kho): Tầng 3 việc A. Mọi kết quả mang nhãn
   thăm dò; không authorize `RB-WP14R-009..012`, WP15 hay H7.

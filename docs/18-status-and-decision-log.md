@@ -1,7 +1,7 @@
 # Trạng thái và decision log
 
 > Tệp sống — cập nhật ở cuối mọi task RideBound
-> Cập nhật gần nhất: 2026-08-28 (cây chính); nhánh thăm dò `research/deadline-gate`: 2026-09-24 (ADR-074 Proposed); nhánh thăm dò `research/tier3-failure-aware`: 2026-09-25 (ADR-075, ADR-076 Proposed; thí điểm T3.7 xong, cổng dừng phục hồi bị kích hoạt); nhánh thăm dò `research/tier3-no-worse`: 2026-09-26 (ADR-077 Proposed; 28 job đầu-cuối A1 pass)
+> Cập nhật gần nhất: 2026-08-28 (cây chính); nhánh thăm dò `research/deadline-gate`: 2026-09-24 (ADR-074 Proposed); nhánh thăm dò `research/tier3-failure-aware`: 2026-09-25 (ADR-075, ADR-076 Proposed; thí điểm T3.7 xong, cổng dừng phục hồi bị kích hoạt); nhánh thăm dò `research/tier3-no-worse`: 2026-09-26 (ADR-077 Proposed; 28 job đầu-cuối A1 pass), 2026-09-29 (Tầng 3 việc A: 48 job `V`/`M` với hai luật phục hồi, thăm dò)
 
 ## 1. Trạng thái tổng thể
 
@@ -4723,7 +4723,7 @@ Freeze v2 giữ nguyên bytes và vẫn là bản ghi terminal của một autho
 đổi margin, panel, denominator, factor, arm set hay failure treatment; H6/E1/WP14-v1
 không bị chạm.
 
-### ADR-074 — 2026-09-24 — Proposed (thăm dò; nhánh `research/deadline-gate`; chưa commit)
+### ADR-074 — 2026-09-24 — Proposed (thăm dò; nhánh `research/deadline-gate`; commit `65d867c`)
 
 **Context:** Khung bốn họ cổng của luận văn (chương 3, Định lý thứ tự khả thi) dự đoán
 rằng một hạn chót tính từ lời hứa **đầu tiên** --- một chiều (`M+`) hoặc hai chiều (`M`)
@@ -4757,7 +4757,7 @@ này không authorize chúng. Không claim tính mới cho hạn chót: Schulz v
 4. B1–B4 không bao giờ nhận hạn chót: `MechanismCommitmentPolicyProvider` dựng lại policy
    không có hai tham số mới (pin bởi `EffectivePolicyFairnessTests`).
 
-**Evidence:** worktree `E:\Code\RideBound-deadline` tại `41a4e11` + diff chưa commit
+**Evidence:** worktree `E:\Code\RideBound-deadline` tại `41a4e11` + diff, sau đó commit `65d867c`
 (bản lưu `ridebound-scratchpad/deadline/review-src.diff`, `review-tests.diff`). Debug
 **963/963** (log `after-review-fix-2.log`); lần chạy sau khi siết một assertion test:
 962/963, chỉ drain medium fail với `resource.cpu-time-exceeded` như baseline
@@ -4800,7 +4800,7 @@ từ 99/102 xuống 98/102). Kiểm độc lập bằng tính lại từ artifac
 "hạn chót một chiều phục vụ nhiều khách hơn khi tắc giảm" **không** được quan sát (1/8 ô, +1 khách).
 Không claim tính mới cho hạn chót; không nói cơ chế tốt hơn Schulz & Pfeiffer.
 
-### ADR-075 — 2026-09-24 — Proposed (thăm dò; nhánh `research/tier3-failure-aware`; chưa commit)
+### ADR-075 — 2026-09-24 — Proposed (thăm dò; nhánh `research/tier3-failure-aware`; commit `8d1ea4d`)
 
 **Context:** Ở Tầng 2 (ADR-074), cả 90 lần vô nghiệm do cam kết đều xảy ra vì chính no-op bị một
 cổng loại, và khi đó phiên chạy chết với `INTERNAL_ERROR`. T3.3 của kế hoạch ngoài kho
@@ -4858,7 +4858,7 @@ khi không còn phương án là thông lệ). ADR này không authorize `RB-WP1
    `INTERNAL_ERROR` và thoát mã 3. Nay hai chỗ trả `INTERNAL_ERROR`/`failSession`, giữ mã gốc
    trong message.
 
-**Evidence:** worktree `E:\Code\RideBound-deadline`, nhánh từ `65d867c`, diff chưa commit.
+**Evidence:** worktree `E:\Code\RideBound-deadline`, nhánh từ `65d867c`, diff sau đó commit `8d1ea4d`.
 Debug **993/993** = 963 + 30 test (Domain 5, Application 8, Algorithms 11, Runner 6). Có sáu
 mutation, test đỏ ở cả sáu:
 - bỏ điều kiện "tuyến không đổi" thì test laundering đỏ;
@@ -4942,7 +4942,7 @@ kết quả.
   golden hash cho đường C1 khi tắt recovery (chỉ so từng trường).
 - Chưa chạy trên FleetPy hay dữ liệu thật; việc đó thuộc T3.5 trở đi.
 
-### ADR-076 — 2026-09-25 — Proposed (thăm dò; nhánh `research/tier3-failure-aware`; chưa commit)
+### ADR-076 — 2026-09-25 — Proposed (thăm dò; nhánh `research/tier3-failure-aware`; commit `69512d3`)
 
 **Context:** Ở Tầng 2, nhánh hành vi `k = 1` chết 11/20 ô vì `window-wall` (rủi ro R3 của
 `E:\Code\Report_INT3508\KE-HOACH-HOP-NHAT-2026-09-23.md`, ngoài kho).
@@ -4994,7 +4994,7 @@ ngoài kho đòi: lên xe muộn là **sự thật**, được ghi nhận kèm m
    Ánh xạ hai bên dùng cùng con số gốc: `maxRideTimeMs` = `max_trip_time` và `latestPickupMs` =
    `t_pu_latest` (`mapping.py:265-266`, `:276-277`).
 
-**Evidence:** worktree `E:\Code\RideBound-deadline`, trên `8d1ea4d`, diff chưa commit. .NET
+**Evidence:** worktree `E:\Code\RideBound-deadline`, trên `8d1ea4d`, diff sau đó commit `69512d3`. .NET
 **1005/1005** = 993 + 12 test (Domain 5, Application 3, Runner 4).
 
 Python chạy bằng lệnh baseline ghi trong `docs/handoffs/wp14-continuation-2026-08-25.md`: 443 test,
@@ -5119,6 +5119,17 @@ phương án bị ép khi:
     21/22 job và cùng chuỗi hành động với `C` ở 19/22.
   - Nguồn: `tang3/sweep/SWEEP-REPORT.md` §7, `tang3/sweep/logs/noworse-analyze-2026-09-26.txt`,
     `tang3/sweep/logs/noworse-aggregate-2026-09-26.txt`.
+- **Chạy đầu-cuối cho `V` và `M` (Tầng 3 việc A, 2026-09-29, thăm dò, kế hoạch niêm phong trước khi chạy).**
+  - 48 job: `V-30` và `M-30` × luật (a) Runner v1 / luật (b) Runner v2 × 6 thế giới × 2 ô phát triển, world v1.1, cùng
+    inventory kho `0da63eaf…4cbe`. 48/48 `status: pass`, audit v/e/p đúng; 8/8 dự đoán niêm phong đúng.
+  - Đường miễn trừ **theo chiều ngân sách** (cơ sở nhìn thấy) nay đã chạy đầu-cuối: 118 quyết định của `V-30(b)` có witness
+    `forcedNoWorse` mã `COMMITMENT_BUDGET_EXCEEDED`. `M-30(b)` có 12 quyết định `forcedNoWorse` ở thế giới tắc giảm dần.
+  - Đối chứng: ở thế giới không nhiễu, cả 4 biến thể trùng từng quyết định với `C-30`.
+  - Kết quả: với (b), `V-30` phục vụ đúng bằng `C-30` ở 8/8 ô có tắc (697 = 697) và cùng từng quyết định ở 11/12 ô; với (a)
+    là 666. Khoảng cách số khách giữa `C` và `V` ở thí điểm vì vậy đến từ luật phục hồi.
+  - Kiểm độc lập bằng mã riêng: 7/7 khẳng định khớp.
+  - Nguồn: `tang3/vm/VM-PLAN.md` (niêm phong `VM-PLAN.sha256`), `tang3/vm/VM-REPORT.md`, `tang3/vm/analysis/`,
+    `tang3/vm/independent/RESULT.md`.
 
 **Consequences và giới hạn.**
 - Là tùy chọn thăm dò. Mặc định và `forced-reference-v1` không đổi.
@@ -5162,6 +5173,18 @@ phương án bị ép khi:
 
 ## 9. Change history
 
+- 2026-09-29 (nhánh thăm dò `research/tier3-no-worse`; không đổi code trong kho): Tầng 3 việc A. Mọi kết quả mang nhãn
+  thăm dò; không authorize `RB-WP14R-009..012`, WP15 hay H7.
+  - 48 job `V-30`/`M-30` × luật phục hồi (a)/(b), kế hoạch và 8 dự đoán niêm phong trước khi chạy; 48/48 pass; 8/8 dự đoán
+    đúng; kiểm độc lập 7/7.
+  - Với (b), `V-30` phục vụ đúng như `C-30` ở cả 8 ô có tắc và ra cùng từng quyết định ở 11/12 ô. Tín hiệu H2 dạng "`C`
+    phục vụ nhiều hơn `V`" của thí điểm vì vậy không còn khi xử lý kẹt công bằng. Kết quả âm này được ghi đúng như vậy.
+    Khác biệt còn lại nằm ở lời hứa: `V-30(b)` phá lời hứa của chính nó với 7–12% khách trên ngày đo thật và ở chế độ phục
+    hồi ở khoảng một nửa số quyết định.
+  - Đường miễn trừ theo ngân sách của ADR-077 lần đầu chạy đầu-cuối (118 quyết định). Xem ADR-077 Evidence và docs/19 §31.
+  - Sửa nhãn cũ "chưa commit" của ADR-074/075/076 thành commit id `65d867c`, `8d1ea4d`, `69512d3`.
+  - Các quyết định của chủ nghiên cứu trước T3.8 (δ_b, δ_r, α, quy tắc H2/H3, nguồn episode…) vẫn chưa chốt.
+
 - 2026-09-26 (nhánh thăm dò `research/tier3-no-worse`): ADR-077 **Proposed**.
   - Khóa WP4 `commitmentRecovery: "no-worse-than-reference-v1"`, mặc định tắt: xe bị ép vẫn được chọn một tuyến đã đổi
     nếu tuyến đó không làm tệ hơn bất kỳ lỗi cổng nào mà tuyến giữ đã mắc.
@@ -5194,14 +5217,14 @@ phương án bị ép khi:
   - **Một ô Panel A đã bị nhìn thấy:** `d20181114-s10-r1`, trong smoke T3.5/T3.6. Phải khai báo khi chia tập ở T3.8.
   - **Kiểm độc lập:** 7/8 khẳng định khớp; một con số độ trễ đã sửa. 10/10 số của Tầng 2 khớp.
   - Báo cáo: `tang3/T3.7-BAO-CAO-THI-DIEM.md`. Truy vết ở docs/19 §30.
-- 2026-09-25 (nhánh thăm dò `research/tier3-failure-aware`, chưa commit): ADR-076 **Proposed** —
+- 2026-09-25 (nhánh thăm dò `research/tier3-failure-aware`, commit `69512d3`): ADR-076 **Proposed** —
   Tầng 3, T3.4 "lên xe muộn là sự thật". Khóa WP4 `lateBoarding: record-v1`, mặc định tắt: khách lên
   sau giờ đón muộn nhất được nhận và ghi `ObservedLatePickup` riêng, cửa sổ gốc giữ nguyên, bản ghi
   round-trip qua checkpoint. Adapter FleetPy đọc cùng khóa và chỉ bỏ giờ đến muộn nhất neo vào cửa
   sổ gốc, nên bound của điểm trả thành giờ lên thật + thời gian đi tối đa. Review độc lập 2 vòng,
   không blocker; đã sửa. .NET 1005/1005; Python 437/443, với 6 test freeze fail y hệt trên bản sạch
   trước T3.4. Mọi kết quả mang nhãn thăm dò.
-- 2026-09-24 (nhánh thăm dò `research/tier3-failure-aware`, chưa commit): ADR-075
+- 2026-09-24 (nhánh thăm dò `research/tier3-failure-aware`, commit `8d1ea4d`): ADR-075
   **Proposed** — Tầng 3, T3.3 "lõi nhận biết thất bại". Tùy chọn `commitmentRecovery:
   forced-reference-v1`, mặc định tắt: no-op chỉ bị cổng hạn chót/ngân sách loại thì được
   giữ làm phương án forced (level đầu `forced-reference-count`). Lời hứa theo tuyến giữ vẫn được
@@ -5209,7 +5232,7 @@ phương án bị ép khi:
   mọi quyết định có miễn trừ mang certificate non-normal. Sửa hai chỗ Runner đưa mã ngoài
   taxonomy vào `ErrorPayloadCodec.Encode`. Review độc lập 2 vòng, không blocker; đã sửa các mục
   should-fix. Debug 993/993. Mọi kết quả mang nhãn thăm dò.
-- 2026-09-24 (nhánh thăm dò `research/deadline-gate`, chưa commit): ADR-074 **Proposed** —
+- 2026-09-24 (nhánh thăm dò `research/deadline-gate`, commit `65d867c`): ADR-074 **Proposed** —
   luật hạn chót tính từ lời hứa đầu (một chiều/hai chiều, mặc định tắt) và chẩn đoán no-op
   bị loại chỉ ở đường solver-backed. Debug 963/963; review độc lập hai vòng, vòng 2 không
   P0/P1. Tầng 2 đã chạy xong (296 job + 5 chạy lại do máy ngủ; đối chứng trùng drift-v1 từng

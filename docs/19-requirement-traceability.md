@@ -686,7 +686,7 @@ matrix tiêu hàng chục giờ máy.
 
 ## 27. ADR-074 traceability — luật hạn chót tính từ lời hứa đầu (thăm dò, Proposed)
 
-Nhánh `research/deadline-gate`, chưa commit; không authorize `RB-WP14R-009..012`, WP15 hay H7.
+Nhánh `research/deadline-gate`, commit `65d867c`; không authorize `RB-WP14R-009..012`, WP15 hay H7.
 
 | Requirement | Cài đặt/evidence | Gate |
 |---|---|---|
@@ -706,7 +706,7 @@ Nhánh `research/deadline-gate`, chưa commit; không authorize `RB-WP14R-009..0
 
 ## 28. ADR-075 traceability — lõi nhận biết thất bại, giữ tuyến và ghi vi phạm (thăm dò, Proposed)
 
-Nhánh `research/tier3-failure-aware`, chưa commit; không authorize `RB-WP14R-009..012`, WP15 hay H7.
+Nhánh `research/tier3-failure-aware`, commit `8d1ea4d`; không authorize `RB-WP14R-009..012`, WP15 hay H7.
 
 | Requirement | Cài đặt/evidence | Gate |
 |---|---|---|
@@ -728,7 +728,7 @@ Nhánh `research/tier3-failure-aware`, chưa commit; không authorize `RB-WP14R-
 
 ## 29. ADR-076 traceability — lên xe muộn là sự thật (thăm dò, Proposed)
 
-Nhánh `research/tier3-failure-aware`, chưa commit; không authorize `RB-WP14R-009..012`, WP15 hay H7.
+Nhánh `research/tier3-failure-aware`, commit `69512d3`; không authorize `RB-WP14R-009..012`, WP15 hay H7.
 
 | Requirement | Cài đặt/evidence | Gate |
 |---|---|---|
@@ -773,4 +773,5 @@ Nhánh `research/tier3-no-worse`; mặc định tắt; không authorize `RB-WP14
 | Cấu hình sai thì hỏng to | chỉ C1/C2 solver-backed; `no-worse` đòi `forced-reference` | `No_worse_recovery_is_rejected_outside_the_solver_backed_C1_and_C2`; `No_worse_recovery_requires_forced_reference_recovery` |
 | Suite | `dotnet test RideBound.slnx` | 1025/1025 |
 | Đường Runner khi chọn tuyến đổi, đầu-cuối | Runner v2 (`45f8026`, tree `ac251ef3…cff3f`) trên 28 job FleetPy medium A1: 49 quyết định có witness `forcedNoWorse`, 50 breach `ForcedNoWorse` | 28/28 `status: pass`, audit v/e/p đúng; đối chứng 6/6 giống hệt Runner v1 (`tang3/sweep/logs/noworse-analyze-2026-09-26.txt`); ngoài `dotnet test` |
+| Đường miễn trừ theo ngân sách (cơ sở nhìn thấy) và cận dưới hai chiều, đầu-cuối | Runner v2 trên 48 job FleetPy medium của Tầng 3 việc A (`V-30`, `M-30` × luật (a)/(b) × 6 thế giới × 2 ô): `V-30(b)` 118 quyết định có witness `forcedNoWorse` mã `COMMITMENT_BUDGET_EXCEEDED`; `M-30(b)` 12 quyết định `forcedNoWorse` ở thế giới tắc giảm dần | 48/48 `status: pass`, audit v/e/p đúng; đối chứng: ở W0, (b) trùng từng quyết định với (a) và với `C-30`; kiểm độc lập 7/7 (`tang3/vm/VM-REPORT.md`, `tang3/vm/independent/RESULT.md`); ngoài `dotnet test`. Mã witness hạn chót không tách cận trên/cận dưới, nên "cận dưới" ở W3 là suy luận |
 | Giới hạn đã biết | chưa có test tích hợp cố định trong kho cho đường chọn tuyến đổi; thiếu test hai khách trễ, khóa pha, nhiều chiều ngân sách, C2; bản ghi `ForcedNoWorse` không phải một bản cho mỗi quyết định | ADR-077 Consequences |

@@ -37,3 +37,18 @@ a880d73320e4dab24e150e81eb73a8dbefc135a8bb6b398fbb2da21e29a6814e *run_t38_rerun.
 9cc8df75c4c76543f026f82e320cfc7e2cd7d760de00f3e074db55e2040d3b15 *calibrate-2026-10-01.log
 2c440fee6952a5f5c4c8ce1d6712d10489a34a721cc5bd220b334ba9f062789c *rerun-C-30-d20181118-s10-r1-w17-2026-10-01.out
 ```
+
+## A3. Một job kiểm tra bị lỗi hết thời gian chờ; chạy lại một lần (2026-10-02, ghi lúc 06:2x giờ máy, trước khi chạy lại)
+
+- **Pha kiểm tra đã chạy hết 170/170 job** (bắt đầu 2026-10-01 23:11, tiến trình 11440, kết thúc khoảng 06:19 ngày 2/10): 169 `status-pass`, 1 lỗi.
+- **Job lỗi:** `C-30-d20181114-s10-r3-w17` (ô 14/11 mẫu 3, khung 17:00–19:00), chạy 2.513 s. `failure-00.json`:
+  `RBWP7_RUNNER_RESPONSE_TIMEOUT at $runner: checkpoint` (bộ điều phối chờ bộ chạy trả lời quá 60 s). Log thế giới đúng
+  (v1.2, kiểm ngày, 9 mốc đúng `bin × 900 s`). Thư mục output chỉ có `transcript-00.ndjson` (66,5 MB) và `failure-00.json`.
+- **Bối cảnh lúc lỗi (ghi lại, chưa kiểm là nguyên nhân):** CPU máy 100%, RAM trống khoảng 1,5 GB, Chrome, một tiến trình Java và ChatGPT đang chạy
+  cùng 6 job. Không có sự kiện ngủ (Kernel-Power 42) trong thời gian đó. Sau 01:00 máy nhẹ hơn và không còn lỗi nào.
+- **Phân loại:** lỗi hạ tầng (hết thời gian chờ), thuộc loại kế hoạch §2 quy định: chạy lại **một lần** vào
+  `C-30-d20181114-s10-r3-w17-rerun1`, giữ nguyên thư mục lỗi. Chưa có bằng chứng lỗi do chính sách hay kịch bản: 3 nhánh
+  khác (`U`, `Mplus-30`, `Mplus-60`, `V-30`) cùng ô cùng khung đều đạt.
+- **Cách làm:** `run_t38_rerun.py C-30-d20181114-s10-r3-w17` (như A1). Nếu job chạy lại cũng lỗi thì áp quy tắc §2 của kế hoạch
+  (ô đó có điểm số vô hạn dưới `C-30`; H2 báo trên các ô còn lại và nói rõ). Kết quả của lần chạy lại được ghi ngay dưới đây.
+- **Kết quả chạy lại:** `C-30-d20181114-s10-r3-w17-rerun1` `status-pass` sau 636 s (máy nhẹ). Cả 34 ô kiểm tra có đủ 5 nhánh `status-pass`.

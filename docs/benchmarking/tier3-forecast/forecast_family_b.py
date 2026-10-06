@@ -15,6 +15,7 @@ Chain C: B-C1 passes iff LB97.5[served(C-30F) - served(C-30)] >= -2 riders per c
 Deployment rule: integrate into the Runner only if B-C1 passes AND visible60(C-30F) <= Vis(C-30 display) + 1 pp AND
 late60(C-30F, own first promise) <= Y(C-30 display) + 1 pp (points over the same cells; display values from the
 Family A cells file); otherwise recommend the display layer.
+Amendment A1: cells whose forecast run failed are excluded per arm and reported; deployment needs 0 C-30F failures.
 Usage: python -B forecast_family_b.py <family-a-cells.tsv> <out-prefix> [dryrun]
 """
 from __future__ import annotations
@@ -115,8 +116,9 @@ def main(family_a_cells: str, prefix: str, dryrun: bool) -> int:
     if dryrun:   # development: C-30F = the v1.3 K=2 smoke run on 12/11 r1 w07; naive = task B; no Mplus-30F exists
         pairs = {"C-30": [("d20181112-s10-r1-w07", (run_w07.OUT_ROOT, "C-30-d20181112-s10-r1-w07"), (DEV_ROOT, "smoke-k2"))]}
     else:
-        pairs = {arm: [(c, (run_t38.OUT_ROOT, t38_calibrate.effective(f"{arm}-{c}")), (FC_ROOT, f"{arm}F-{c}")) for c in CELLS]
-                 for arm in ("C-30", "Mplus-30")}
+        pairs = {arm: [(c, (run_t38.OUT_ROOT, t38_calibrate.effective(f"{arm}-{c}")), (FC_ROOT, f"{arm}F-{c}")) for c in CELLS
+                       if (FC_ROOT / f"{arm}F-{c}" / "summary.json").exists()] for arm in ("C-30", "Mplus-30")}
+        failed = {arm: [c for c in CELLS if not (FC_ROOT / f"{arm}F-{c}" / "summary.json").exists()] for arm in ("C-30", "Mplus-30")}
     out = [f"# forecast_family_b.py {'DRYRUN (development)' if dryrun else 'TEST'}"]
     say = out.append
     metrics = {}
@@ -145,29 +147,39 @@ def main(family_a_cells: str, prefix: str, dryrun: bool) -> int:
                 f"vis60 {m['vis_n']:.3f}->{m['vis_f']:.3f} common-late60 {m['common_late60_n']:.3f}->{m['common_late60_f']:.3f} "
                 f"later/earlier s {m['later_n']:.0f}/{m['earlier_n']:.0f}->{m['later_f']:.0f}/{m['earlier_f']:.0f} same actions {same_actions}")
     if not dryrun:
-        cells = list(CELLS)
-        mp = {c: metrics[("Mplus-30", c)] for c in cells}
-        cp = {c: metrics[("C-30", c)] for c in cells}
+        say(f"FAILED forecast runs (RBWP7_FLEETPY_PLAN_INFEASIBLE; amendment A1): C-30F {failed['C-30']}; Mplus-30F {failed['Mplus-30']}")
+        mcells = [c for c in CELLS if c not in failed["Mplus-30"]]
+        ccells = [c for c in CELLS if c not in failed["C-30"]]
+        cells = ccells
+        mp = {c: metrics[("Mplus-30", c)] for c in mcells}
+        cp = {c: metrics[("C-30", c)] for c in ccells}
+        say(f"completed cells only: Mplus-30F {len(mcells)}/16, C-30F {len(ccells)}/16")
         for label, key in (("forced share", "forced"), ("own-break", "own")):
-            verdict, rel, (point, lo, hi, dec, ndw) = classify({c: mp[c][f"{key}_n"] for c in cells}, {c: mp[c][f"{key}_f"] for c in cells}, cells)
+            verdict, rel, (point, lo, hi, dec, ndw) = classify({c: mp[c][f"{key}_n"] for c in mcells}, {c: mp[c][f"{key}_f"] for c in mcells}, mcells)
             say(f"Chain M {label}: {verdict}; relative reduction {100 * rel:.1f}%; diff {100 * point:+.2f} pp "
                 f"[{100 * lo:+.2f}, {100 * hi:+.2f}] (97.5%); decreases in {dec}/{ndw} day-windows")
         point, lo, hi = boot({c: cp[c]["served_f"] - cp[c]["served_n"] for c in cells})
         bc1 = lo >= -2
-        say(f"Chain C B-C1: served C-30F - C-30 {point:+.3f} [{lo:+.3f}, {hi:+.3f}] per cell -> {'PASS' if bc1 else 'FAIL'}")
+        say(f"Chain C B-C1 (completed cells): served C-30F - C-30 {point:+.3f} [{lo:+.3f}, {hi:+.3f}] per cell -> {'PASS' if bc1 else 'FAIL'}")
+        naive_served = {c: row(run_t38.OUT_ROOT, t38_calibrate.effective(f"C-30-{c}"), "C-30", c)["M1_completed"] for c in failed["C-30"]}
+        worst = {**{c: cp[c]["served_f"] - cp[c]["served_n"] for c in ccells}, **{c: -naive_served[c] for c in failed["C-30"]}}
+        wpoint, wlo, whi = boot(worst)
+        say(f"  worst case (failed cells count as 0 served): {wpoint:+.3f} [{wlo:+.3f}, {whi:+.3f}] -> {'PASS' if wlo >= -2 else 'FAIL'}")
         vis_f = statistics.mean(cp[c]["vis_f"] for c in cells)
         late_f = statistics.mean(cp[c]["late60_f"] for c in cells)
         vis_d = statistics.mean(disp[c][1] for c in cells)
         y_d = statistics.mean(disp[c][0] for c in cells)
-        deploy = bc1 and vis_f <= vis_d + 0.01 and late_f <= y_d + 0.01
+        deploy = bc1 and vis_f <= vis_d + 0.01 and late_f <= y_d + 0.01 and not failed["C-30"]
         say(f"Deployment rule: visible60 C-30F {vis_f:.4f} vs display {vis_d:.4f}; late60 C-30F {late_f:.4f} vs display {y_d:.4f} "
             f"-> {'integrate into the Runner' if deploy else 'recommend the display layer'}")
         say(f"C-30F non-normal decisions: {sum(1 for c in cells if cp[c]['nonnormal_f'])} cells")
-        point, lo, hi = boot({c: cp[c]["served_f"] - mp[c]["served_f"] for c in cells}, 249, 9750)
+        both = [c for c in ccells if c in mcells]
+        point, lo, hi = boot({c: cp[c]["served_f"] - mp[c]["served_f"] for c in both}, 249, 9750)
         say(f"H2a under forecast: served C-30F - Mplus-30F {point:+.3f} [{lo:+.3f}, {hi:+.3f}] (95%); "
             f"same actions C-30F/Mplus-30F not computed here")
+        say(f"  same actions C-30F/C-30 (naive): {sum(1 for c in ccells if cp[c]['same_actions'])}/{len(ccells)}; Mplus-30F/Mplus-30: {sum(1 for c in mcells if mp[c]['same_actions'])}/{len(mcells)}")
         for w in ("w07", "w08"):
-            ws = [c for c in cells if c.endswith(w)]
+            ws = [c for c in ccells if c.endswith(w) and c in mcells]
             say(f"  {w}: Mplus forced {statistics.mean(mp[c]['forced_n'] for c in ws):.3f}->{statistics.mean(mp[c]['forced_f'] for c in ws):.3f}; "
                 f"own-break {statistics.mean(mp[c]['own_n'] for c in ws):.3f}->{statistics.mean(mp[c]['own_f'] for c in ws):.3f}; "
                 f"C-30 late60 {statistics.mean(cp[c]['late60_n'] for c in ws):.4f}->{statistics.mean(cp[c]['late60_f'] for c in ws):.4f}; "

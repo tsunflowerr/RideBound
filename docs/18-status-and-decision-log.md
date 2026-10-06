@@ -1,7 +1,7 @@
 # Trạng thái và decision log
 
 > Tệp sống — cập nhật ở cuối mọi task RideBound
-> Cập nhật gần nhất: 2026-08-28 (cây chính); nhánh thăm dò `research/deadline-gate`: 2026-09-24 (ADR-074 Proposed); nhánh thăm dò `research/tier3-failure-aware`: 2026-09-25 (ADR-075, ADR-076 Proposed; thí điểm T3.7 xong, cổng dừng phục hồi bị kích hoạt); nhánh thăm dò `research/tier3-no-worse`: 2026-09-26 (ADR-077 Proposed; 28 job đầu-cuối A1 pass), 2026-09-29 (Tầng 3 việc A: 48 job `V`/`M` với hai luật phục hồi, thăm dò), 2026-09-30 (Tầng 3 việc B: 88 job khung 7:00–9:00 chỉ tắc đường thật, thăm dò)
+> Cập nhật gần nhất: 2026-08-28 (cây chính); nhánh thăm dò `research/deadline-gate`: 2026-09-24 (ADR-074 Proposed); nhánh thăm dò `research/tier3-failure-aware`: 2026-09-25 (ADR-075, ADR-076 Proposed; thí điểm T3.7 xong, cổng dừng phục hồi bị kích hoạt); nhánh thăm dò `research/tier3-no-worse`: 2026-09-26 (ADR-077 Proposed; 28 job đầu-cuối A1 pass), 2026-09-29 (Tầng 3 việc A: 48 job `V`/`M` với hai luật phục hồi, thăm dò), 2026-09-30 (Tầng 3 việc B: 88 job khung 7:00–9:00 chỉ tắc đường thật, thăm dò), 2026-10-01 (w07x: mức hứa 90–240 s, 104 job, thăm dò), 2026-10-02 (T3.8/T3.9 trên panel A: 185 job, thăm dò có niêm phong), 2026-10-06 (hứa giờ có tính trước tắc đường: lớp lời hứa phát lại 170 job, 43 job đầu-cuối, thăm dò có niêm phong)
 
 ## 1. Trạng thái tổng thể
 
@@ -1727,6 +1727,12 @@ Date: 2026-08-27
 ```
 
 ## 5. Next action
+
+**Nhánh thăm dò `research/tier3-no-worse`, cập nhật 2026-10-06:** Tầng 3 (w07x, T3.8/T3.9, hứa giờ có tính trước tắc
+đường) đã chạy xong và kiểm độc lập; xem mục 2026-10-06 ở §9. Việc kế tiếp là viết, không phải chạy thêm: đưa các kết quả này
+vào khóa luận khi chủ nghiên cứu đồng ý, với đúng nhãn thăm dò, nhãn "đã xem trước" của Họ A và lưu ý "mức trần" của thế giới
+một hệ số. Không mở rộng sang dự báo trong lõi (`ITravelTimeLookup` không có giờ khởi hành) khi chưa có ADR và kế hoạch riêng.
+Cây chính không đổi.
 
 WP1–WP10 Complete. WP9 H6 vẫn âm ở cả hai điểm năng lực: service gate FAIL tại 8
 xe (`−7.1296 pp`) và 4 xe (`−4.9074 pp`). WP10 canonical pass nhưng representative
@@ -5172,6 +5178,52 @@ phương án bị ép khi:
 | WP16–WP20 | Roadmap-level only | — | — | Không ticket hóa trước verified WP14R frontier/closure gate |
 
 ## 9. Change history
+
+- 2026-10-06 (nhánh thăm dò `research/tier3-no-worse`; không đổi code trong kho): hứa giờ có tính trước tắc đường. Mọi
+  kết quả mang nhãn thăm dò; không authorize `RB-WP14R-009..012`, WP15 hay H7. Không tuyên bố mới: dự báo giờ đi theo giờ
+  trong ngày, đệm lời hứa và hạn chót đều đã có.
+  - Thiết kế do vòng tranh luận ba lập trường cộng trọng tài chốt. Kế hoạch niêm phong `a5524912…7337` và push `33d8071`
+    trước mọi job; phụ lục A1 push `df7f893` trước khi tính Họ B. Nguồn: `docs/benchmarking/tier3-forecast/`.
+  - Họ A (chính, không chạy mới; nhãn bắt buộc "đo lường có đăng ký trước trên các ngày-khung đã được xem trước"): hiển thị
+    lời hứa D = max(p, kéo dãn phần còn lại theo đà tăng dự báo từ các ngày trước đó, bỏ 15/11), phát lại trên 170 job T3.8.
+    Trên 21 ô ngày thường, C-30: trễ > 60 s so với lời hứa đầu 6,01% → 0,17% (khung 7h 14,44% → 0,27%; ΔY −5,84 điểm %,
+    khoảng bootstrap cụm 95% [−8,78; −3,23]); dao động hiển thị 7,48% → 1,06%; lời hứa dài thêm 13,7 s (khung 7h 27,8 s).
+    Đệm cố định cùng giá chỉ xuống 1,94%. A1 và A2 đạt; A3 đạt theo bootstrap nhưng mang nhãn "mong manh với suy luận ít
+    cụm" (cluster-t [−3,62; +0,07] điểm %). Độ nhạy bỏ 12/11 (ngày nghỉ bù Veterans Day, là nguồn của mọi dự báo chính):
+    **A1 trượt** về cấu trúc (chỉ còn 2 buổi sáng), suy luận rất mong manh. 34/1.471 khách có lời hứa đón đầu tiên hiển thị
+    vượt hạn đón.
+  - Thế giới mô phỏng dùng một hệ số tắc đường chung toàn thành phố (đo từ dữ liệu thật), nên kết quả gần như tất định theo
+    sai số dự báo: đây là **mức trần** cho dự báo theo giờ trong ngày, không phải hiệu quả ngoài đời.
+  - Sổ chia trễ ba phần (do điều phối / đường lường trước được / không lường trước được): buổi sáng ngày thường 1,3% /
+    86,1% / 12,6%; tuyết 15/11 chiều 0,2% / 7,3% / 92,5%. Tương ứng với cách 49 CFR 37.131(f)(3)(ii) và Phụ lục D tách hai loại.
+  - Họ B (đưa dự báo vào bộ điều phối qua wrapper v1.3, 32 job sau khi cổng tương đương E1/E2 đạt): 3/32 lần chạy dừng
+    `RBWP7_FLEETPY_PLAN_INFEASIBLE` (một ô chẩn đoán được: dự báo lạc quan hơn giờ đi thật ở bin có tỉ số < 1; ô còn lại chưa
+    chẩn đoán); B-C1 chỉ đạt trên 14 ô C-30F chạy xong (−0,14 khách/ô), trượt khi tính ô dừng là 0 khách; dao động 17,9% so
+    với 1,4% của lớp lời hứa; quy tắc triển khai chọn lớp lời hứa. Với `M⁺-30` (15 ô chạy xong), thất hứa của chính luật giảm
+    69,4% (ARTEFACT: phần lớn do lời hứa ban đầu lạc quan), tỉ lệ bị ép giảm 24,1% (PERSISTS, sát ngưỡng 25%; khung 7h
+    76,9% → 59,4%); `M⁺-30F` vẫn bị ép ở 47,6% quyết định trong khi `C-30F` 0 quyết định non-normal.
+  - 17/19 dự đoán niêm phong đúng, 2 trong số đó có điều kiện (sai PB1 và PS1). Kiểm độc lập bằng mã riêng: Họ A 25/26 mục
+    khớp (mục còn lại là phạm vi một phép đếm), Họ B và tuyết khớp toàn bộ; agent rà số liệu tìm 5 lỗi chặn trong báo cáo,
+    đều đã sửa (phụ lục A2).
+
+- 2026-10-02 (nhánh thăm dò `research/tier3-no-worse`; không đổi code trong kho): T3.8/T3.9 trên panel A, chỉ tắc đường
+  thật. Kế hoạch niêm phong và push `323a8d9` trước mọi job; γ push `19517b0` trước pha kiểm tra; kết quả `24aa747`.
+  - 49 episode (ngày 14–18/11 × 4 mẫu × khung 07/08/17, trừ 11 ô bộ chuẩn hóa không dựng được), chia theo nhóm (ngày,
+    mẫu) thành 15 hiệu chỉnh và 34 kiểm tra; 15 + 170 job, 2 lần chạy lại vì lỗi hạ tầng (phụ lục A1, A3).
+  - H3: γ = 222,259 s (β + γ = 252,3 s ≤ 300 s; mức tham khảo 120 s không đạt); 2/34 ô vượt, cả hai ở khung 7h (khung 7h
+    chỉ phủ 7/9). Cận trên Clopper–Pearson 17,4%. Đạt theo quy tắc niêm phong.
+  - H2: `C-30` = `M⁺-30` = 2.338 khách, `V-30` 2.336; chênh trung bình mỗi ô và khoảng 95% của nó nằm trong ±0,25 khách (ô
+    lệch nhiều nhất 2 khách); 0 quyết định non-normal ở 49 job `C-30`; `C-30` kém `U` 96 khách (2,6% nhu cầu). Đạt theo quy
+    tắc niêm phong. 7/8 dự đoán đúng. Kiểm độc lập 13/13 khớp.
+  - Phân tích sau sự kiện (2026-10-05): mọi thước đo phía khách của `C-30`, `M⁺-30`, `V-30` như nhau (`C-30` và `M⁺-30` có
+    2.332 khách chung); so với `U`, trên 34 ô mọi trần giảm khoảng một nửa số khách thấy giờ trả đổi > 1 phút (10,96% →
+    5,78%), nhưng ở khung 7h chỉ giảm khoảng một phần mười. Nguồn: `tang3/t38/T38-REPORT.md`,
+    `tang3/t38/rider-experience-2026-10-05-report.txt`.
+
+- 2026-10-01 (nhánh thăm dò `research/tier3-no-worse`; không đổi code trong kho): w07x, mức hứa 90–240 s trên 8 ô khung
+  7:00–9:00. Kế hoạch niêm phong và push `aa98fa5` trước mọi job; 104/104 pass. `C` và `M⁺` chỉ khác ở 90 s (1/8 ô) và
+  120 s (2/8 ô), mỗi lần +1 khách; như nhau ở 150–240 s. Cơ chế: tắc đường 61–79 s cộng một lần dời 61–68 s do điều phối
+  vượt hạn chót. 6/8 dự đoán đúng; kiểm độc lập 7/7. Nguồn: `tang3/w07x/W07X-REPORT.md`.
 
 - 2026-09-30 (nhánh thăm dò `research/tier3-no-worse`; không đổi code trong kho): Tầng 3 việc B, khung 7:00–9:00 chỉ với tắc
   đường đo thật. Mọi kết quả mang nhãn thăm dò; không authorize `RB-WP14R-009..012`, WP15 hay H7.

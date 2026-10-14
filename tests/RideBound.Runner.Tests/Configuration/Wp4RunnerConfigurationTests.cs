@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Text;
+using System.Text.Json.Nodes;
 using RideBound.Algorithms.Candidates;
 using RideBound.Algorithms.Policies;
 using RideBound.Application.Commitments;
@@ -538,6 +539,226 @@ public sealed class Wp4RunnerConfigurationTests
         Assert.Null(configuration.SolverPolicyOptions);
         Assert.Equal(4, configuration.MultiplePlanOptions!.MaximumPlanCount);
         Assert.True(configuration.MultiplePlanOptions.RequireCompleteEnumeration);
+    }
+
+    [Fact]
+    public void Selection_objective_order_is_optional_stability_first_and_cost_first_only_for_C1()
+    {
+        var commitment = CommitmentConfiguration();
+        var absent = Wp4RunnerConfiguration.Decode(
+            Encoding.UTF8.GetBytes(HardVectorJson(null)),
+            commitment);
+        var stability = Wp4RunnerConfiguration.Decode(
+            Encoding.UTF8.GetBytes(HardVectorJson("stability-first")),
+            commitment);
+        var cost = Wp4RunnerConfiguration.Decode(
+            Encoding.UTF8.GetBytes(HardVectorJson("cost-first")),
+            commitment);
+
+        Assert.Equal(
+            SolverBackedSelectionObjectiveOrder.StabilityFirst,
+            absent.SolverPolicyOptions!.SelectionObjectiveOrder);
+        Assert.Equal(
+            SolverBackedSelectionObjectiveOrder.StabilityFirst,
+            absent.CreateSolverPolicyOptionsForRun(19).SelectionObjectiveOrder);
+        Assert.Equal(
+            SolverBackedSelectionObjectiveOrder.StabilityFirst,
+            stability.SolverPolicyOptions!.SelectionObjectiveOrder);
+        Assert.Equal(
+            SolverBackedSelectionObjectiveOrder.CostFirst,
+            cost.SolverPolicyOptions!.SelectionObjectiveOrder);
+        Assert.Equal(
+            SolverBackedSelectionObjectiveOrder.CostFirst,
+            cost.CreateSolverPolicyOptionsForRun(19).SelectionObjectiveOrder);
+        // Only the order differs; the policy, gates and budgets are the same.
+        Assert.Equal(absent.PolicyId, cost.PolicyId);
+        Assert.Equal(absent.SolverPolicyOptions.PolicyKind, cost.SolverPolicyOptions.PolicyKind);
+        Assert.Equal(
+            absent.SolverPolicyOptions.ExecutionBudget.MaximumGenerationWorkUnits,
+            cost.SolverPolicyOptions.ExecutionBudget.MaximumGenerationWorkUnits);
+        Assert.Equal(
+            absent.SolverPolicyOptions.ExecutionBudget.MaximumValidationWorkUnits,
+            cost.SolverPolicyOptions.ExecutionBudget.MaximumValidationWorkUnits);
+        Assert.Equal(
+            absent.SolverPolicyOptions.ExecutionBudget.SolverBudget.MaximumWorkUnits,
+            cost.SolverPolicyOptions.ExecutionBudget.SolverBudget.MaximumWorkUnits);
+        Assert.Equal(
+            absent.SolverPolicyOptions.ForcedReferenceRecovery,
+            cost.SolverPolicyOptions.ForcedReferenceRecovery);
+        Assert.Equal(absent.CandidateGeneration, cost.CandidateGeneration);
+        // Declaring the key is a different configuration, even with the default value, so a
+        // run that must reproduce an archived binding omits it.
+        Assert.NotEqual(absent.ContentHash, stability.ContentHash);
+        Assert.NotEqual(stability.ContentHash, cost.ContentHash);
+
+        foreach (var invalid in new[] { "\"cost-first-v2\"", "\"\"", "true", "1" })
+        {
+            var json = HardVectorJson(null).Replace(
+                "\"policyVersion\": \"wp7-fleetpy-v1\"",
+                "\"policyVersion\": \"wp7-fleetpy-v1\",\n  \"selectionObjectiveOrder\": " + invalid,
+                StringComparison.Ordinal);
+            Assert.Contains(
+                "selectionObjectiveOrder",
+                Assert.Throws<InvalidDataException>(
+                    () => Wp4RunnerConfiguration.Decode(
+                        Encoding.UTF8.GetBytes(json),
+                        commitment)).Message);
+        }
+
+        var rollingCost = PublishedJson().Replace(
+            "\"policyVersion\": \"wp4-boundary-v1\"",
+            "\"policyVersion\": \"wp4-boundary-v1\",\n  \"selectionObjectiveOrder\": \"cost-first\"",
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "requires the solver-backed C1 policy",
+            Assert.Throws<InvalidDataException>(
+                () => Wp4RunnerConfiguration.Decode(
+                    Encoding.UTF8.GetBytes(rollingCost),
+                    commitment)).Message);
+
+        var repository = RepositoryRoot();
+        var c2Commitment = CommitmentPolicyConfiguration.Decode(
+            File.ReadAllBytes(Path.Combine(
+                repository,
+                "benchmarks",
+                "configurations",
+                "wp8-drop-eta-budget-loose-v1.json")));
+        var c2 = File.ReadAllText(Path.Combine(
+                repository,
+                "benchmarks",
+                "configurations",
+                "wp9-fleetpy-soft-hard-hybrid-audited-v1.json"))
+            .Replace(
+                "\"configurationVersion\": \"1.0.0\"",
+                "\"configurationVersion\": \"1.0.0\",\n  \"selectionObjectiveOrder\": \"cost-first\"",
+                StringComparison.Ordinal);
+        Assert.Contains("selectionObjectiveOrder", c2, StringComparison.Ordinal);
+        Assert.Contains(
+            "requires the solver-backed C1 policy",
+            Assert.Throws<InvalidDataException>(
+                () => Wp4RunnerConfiguration.Decode(
+                    Encoding.UTF8.GetBytes(c2),
+                    c2Commitment)).Message);
+    }
+
+    /// <summary>
+    /// Text of the Tier-3 WP4 configuration `ridebound-scratchpad/tang3/configs/wp4-tier3-v2.json`
+    /// (file SHA-256 66e9b59249d9491d520f3ed592e8c878a0d3b100e39432d5f4b73321617b4518), the one
+    /// every archived T3.8 run used. The binding hashes its canonical form, so the whitespace of
+    /// this copy does not matter. It has no `selectionObjectiveOrder` key.
+    /// </summary>
+    private const string Tier3Wp4V2Json =
+        """
+        {
+          "configurationVersion": "1.0.0",
+          "policyId": "ridebound-hard-vector",
+          "policyVersion": "tier3-exploratory-v1",
+          "initialPromiseTrigger": "booking-confirmation",
+          "emitSolverExecutionEvidence": true,
+          "commitmentRecovery": "no-worse-than-reference-v1",
+          "lateBoarding": "record-v1",
+          "candidateGeneration": {
+            "maximumCandidatesPerVehicle": 100,
+            "maximumNewRequestsPerVehicle": 2,
+            "exactSmallMode": false,
+            "scheduleStrategy": "earliest-feasible",
+            "maximumExplorationWorkUnits": 10000,
+            "retentionStrategy": "service-set-stability-portfolio-v1"
+          },
+          "solverExecution": {
+            "adapterVersion": "google-ortools-9.15.6755",
+            "maximumGenerationWorkUnits": 10000,
+            "maximumValidationWorkUnits": 10000,
+            "maximumSolverWorkUnits": 100000,
+            "maximumSolverDeterministicTimeMicros": 1000000,
+            "randomSeed": 7
+          }
+        }
+        """;
+
+    [Fact]
+    public void A_configuration_without_the_order_key_keeps_the_archived_tier3_bindings()
+    {
+        // ADR-078 equivalence gate. The policyConfigurationHash that every archived T3.8 run
+        // sent in initializeRun (C-30: 51/51 runs, U: 34/34 runs under
+        // C:/RideBoundData/research/tier3-t38-v1) is recomputed from the same inputs. C-30 is
+        // byte-identical to wp14-c1-h6-reference-v1.json; U removes its drop hard limit; C-120
+        // sets it to 120 s (that binding was derived, not archived).
+        var reference = File.ReadAllText(Path.Combine(
+            RepositoryRoot(),
+            "benchmarks",
+            "configurations",
+            "wp14-c1-h6-reference-v1.json"));
+        var wp4 = Wp4RunnerConfiguration.Decode(
+            Encoding.UTF8.GetBytes(Tier3Wp4V2Json),
+            CommitmentPolicyConfiguration.Decode(Encoding.UTF8.GetBytes(reference)));
+
+        Assert.Equal(
+            "fb2813c4036d309490e12df77e37de1683b92b92a9ebdd71e16cad35d50ecd42",
+            wp4.ContentHash.Value);
+        Assert.Equal(
+            SolverBackedSelectionObjectiveOrder.StabilityFirst,
+            wp4.SolverPolicyOptions!.SelectionObjectiveOrder);
+
+        foreach (var (dropLimitMs, commitmentHash, binding) in new (long?, string, string)[]
+                 {
+                     (30_000, "f07395f5f2c967e0d89cceb4a55b23c4f896971db071d8c7876f05e20ef09884",
+                         "a2f11a3ada0773f9b30b85c56c935058e2e931f13c907f46b2ddfff8c1285f1c"),
+                     (null, "7fc79a433abe1796830ecceeac280da0e0af3871daf268dda8d6fc93b270370d",
+                         "251b331eb56fe870e734d651bf6937e95304919ed92967b2f3b0d0b9da1ac346"),
+                     (120_000, "8dc9350b1d6b656b30d37ad23bac0dc4e4188f222427be47d6b007e060f2a5a2",
+                         "a9ac58b33558c6ec2d604ee7fe3e7fdb02deaecfd866ea73282b911326ed9010"),
+                 })
+        {
+            var json = JsonNode.Parse(reference)!;
+            var drop = json["policies"]![0]!["limits"]!.AsArray()
+                .Single(value => (string?)value!["dimension"] == "drop_eta_total_ms")!
+                .AsObject();
+            Assert.Equal(30_000, (long)drop["hardLimit"]!);
+
+            if (dropLimitMs is null)
+            {
+                drop.Remove("hardLimit");
+            }
+            else
+            {
+                drop["hardLimit"] = dropLimitMs.Value;
+            }
+
+            var commitment = CommitmentPolicyConfiguration.Decode(
+                Encoding.UTF8.GetBytes(json.ToJsonString()));
+
+            Assert.Equal(commitmentHash, commitment.ContentHash.Value);
+            Assert.Equal(binding, wp4.BindToCommitmentConfiguration(commitment.ContentHash).Value);
+        }
+
+        var costFirst = Wp4RunnerConfiguration.Decode(
+            Encoding.UTF8.GetBytes(Tier3Wp4V2Json.Replace(
+                "\"lateBoarding\": \"record-v1\"",
+                "\"lateBoarding\": \"record-v1\",\n  \"selectionObjectiveOrder\": \"cost-first\"",
+                StringComparison.Ordinal)),
+            CommitmentPolicyConfiguration.Decode(Encoding.UTF8.GetBytes(reference)));
+
+        Assert.Equal(
+            SolverBackedSelectionObjectiveOrder.CostFirst,
+            costFirst.SolverPolicyOptions!.SelectionObjectiveOrder);
+        Assert.NotEqual(wp4.ContentHash, costFirst.ContentHash);
+    }
+
+    private static string HardVectorJson(string? selectionObjectiveOrder)
+    {
+        var json = File.ReadAllText(Path.Combine(
+            RepositoryRoot(),
+            "benchmarks",
+            "configurations",
+            "wp7-fleetpy-ridebound-hard-vector-v1.json"));
+        return selectionObjectiveOrder is null
+            ? json
+            : json.Replace(
+                "\"policyVersion\": \"wp7-fleetpy-v1\"",
+                "\"policyVersion\": \"wp7-fleetpy-v1\",\n  \"selectionObjectiveOrder\": \""
+                    + selectionObjectiveOrder + "\"",
+                StringComparison.Ordinal);
     }
 
     private static CommitmentPolicyConfiguration CommitmentConfiguration() =>

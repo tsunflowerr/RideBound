@@ -42,7 +42,8 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
         "emitSolverExecutionEvidence",
         "solverExecutionEvidenceProfile",
         "commitmentRecovery",
-        "lateBoarding");
+        "lateBoarding",
+        "selectionObjectiveOrder");
 
     /// <summary>
     /// ADR-075 (exploratory). Optional; omitted means fail-closed, so every
@@ -64,6 +65,13 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
     /// </summary>
     public const string RecordLateBoarding = "record-v1";
     public const string RejectLateBoarding = "reject";
+
+    /// <summary>
+    /// ADR-078 (exploratory). Optional; omitted means stability-first, so every configuration
+    /// written before it keeps its content hash and its behaviour. `cost-first` is C1 only.
+    /// </summary>
+    public const string StabilityFirstSelectionOrder = "stability-first";
+    public const string CostFirstSelectionOrder = "cost-first";
     private static readonly IReadOnlySet<string> GenerationRequiredFields = Fields(
         "maximumCandidatesPerVehicle",
         "maximumNewRequestsPerVehicle",
@@ -225,7 +233,8 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
             source.MaximumRepairRequestsConsideredPerVehicle,
             source.CaptureCandidatePortfolioEvidence,
             source.ForcedReferenceRecovery,
-            source.ForcedNoWorseRecovery);
+            source.ForcedNoWorseRecovery,
+            source.SelectionObjectiveOrder);
     }
 
     public static Wp4RunnerConfiguration Decode(
@@ -362,6 +371,22 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
             }
             : false;
 
+        var selectionObjectiveOrder = root.TryGetProperty("selectionObjectiveOrder", out _)
+            ? Text(root, "selectionObjectiveOrder") switch
+            {
+                StabilityFirstSelectionOrder => SolverBackedSelectionObjectiveOrder.StabilityFirst,
+                CostFirstSelectionOrder => SolverBackedSelectionObjectiveOrder.CostFirst,
+                _ => throw new InvalidDataException("Unknown selectionObjectiveOrder."),
+            }
+            : SolverBackedSelectionObjectiveOrder.StabilityFirst;
+
+        if (selectionObjectiveOrder == SolverBackedSelectionObjectiveOrder.CostFirst
+            && (!hasSolver || policyKind != RidePoolingPolicyKind.RideBoundHardVector))
+        {
+            throw new InvalidDataException(
+                "selectionObjectiveOrder 'cost-first' requires the solver-backed C1 policy.");
+        }
+
         SolverBackedRidePoolingPolicyOptions? solverOptions = null;
         MultiplePlanPoolOptions? multipleOptions = null;
         var warningProfiles = Array.Empty<CommitmentWarningProfile>();
@@ -410,7 +435,8 @@ public sealed class Wp4RunnerConfiguration : ICommitmentWarningProfileProvider
                 repairCap,
                 solverExecutionEvidenceProfile is not null,
                 forcedReferenceRecovery,
-                forcedNoWorseRecovery);
+                forcedNoWorseRecovery,
+                selectionObjectiveOrder);
         }
 
         if (hasMultiple)

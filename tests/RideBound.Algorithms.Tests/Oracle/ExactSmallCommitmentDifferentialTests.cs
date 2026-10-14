@@ -370,6 +370,79 @@ public sealed class ExactSmallCommitmentDifferentialTests
     }
 
     [Fact]
+    public void Cost_first_C1_ranks_the_same_gated_candidates_by_cost_and_picks_a_cheaper_plan()
+    {
+        // ADR-078, end to end below the Runner: the same generation, hard assessment, gates and
+        // validation run under both orders, so the solver sees the same options and pruned
+        // witnesses; only the ranking differs. At least one published seed must make cost-first
+        // pick a strictly cheaper plan that stability-first does not pick.
+        var strictlyCheaper = 0;
+
+        for (var seed = 0; seed < 64; seed++)
+        {
+            var fixture = CreateState(seed);
+            var context = MechanismContext(fixture, $"c1-order-{seed}");
+            var stabilitySolver = new EnumeratingSolver();
+            var costSolver = new EnumeratingSolver();
+            var stability = new SolverBackedRidePoolingPolicy(stabilitySolver).Decide(
+                context,
+                CandidateGenerationOptions.ExactSmall,
+                HardVectorOptions(forcedReferenceRecovery: true));
+            var cost = new SolverBackedRidePoolingPolicy(costSolver).Decide(
+                context,
+                CandidateGenerationOptions.ExactSmall,
+                HardVectorOptions(
+                    forcedReferenceRecovery: true,
+                    selectionObjectiveOrder: SolverBackedSelectionObjectiveOrder.CostFirst));
+
+            Assert.True(stability.IsSuccess, $"seed={seed}; {stability.Witness?.Message}");
+            Assert.True(cost.IsSuccess, $"seed={seed}; {cost.Witness?.Message}");
+            var stable = stability.Decision!.Decision;
+            var cheap = cost.Decision!.Decision;
+            Assert.Equal(
+                stabilitySolver.LastProblem!.Options.Select(value => value.OptionId),
+                costSolver.LastProblem!.Options.Select(value => value.OptionId));
+            Assert.Equal(
+                stable.PrunedCandidates.Select(value => (value.CandidateId, value.Code)),
+                cheap.PrunedCandidates.Select(value => (value.CandidateId, value.Code)));
+            Assert.Equal(stable.ForcedReferenceVehicles, cheap.ForcedReferenceVehicles);
+            Assert.DoesNotContain(
+                costSolver.LastProblem.ObjectiveLevels,
+                value => value.Name == "worst-hard-utilization-ppm"
+                    || value.Name.StartsWith("revision:", StringComparison.Ordinal));
+            Assert.Contains(
+                stabilitySolver.LastProblem.ObjectiveLevels,
+                value => value.Name == "worst-hard-utilization-ppm");
+            Assert.Equal(stable.AcceptedRequestCount, cheap.AcceptedRequestCount);
+            Assert.True(cheap.OperationalCost <= stable.OperationalCost, $"seed={seed}");
+            Assert.True(
+                CompareC1(ToFleetSelection(stable), ToFleetSelection(cheap)) <= 0,
+                $"seed={seed}; stability-first must stay C1-optimal.");
+
+            // The cost-first plan passes the validation the Runner applies.
+            var validated = new CommitmentDecisionValidator().Validate(
+                RunnerLikeContext(context, cheap, cheap.ForcedReferenceVehicles));
+            Assert.True(
+                validated.IsValid,
+                $"seed={seed}; {validated.Witnesses.FirstOrDefault()?.Message}");
+
+            if (cheap.OperationalCost < stable.OperationalCost)
+            {
+                // Same accepted count and a lower cost: stability-first passed over the cheaper
+                // plan only because it is strictly better on utilization or revision.
+                strictlyCheaper++;
+                Assert.True(
+                    CompareC1(ToFleetSelection(stable), ToFleetSelection(cheap)) < 0,
+                    $"seed={seed}");
+            }
+        }
+
+        Assert.True(
+            strictlyCheaper > 0,
+            "At least one published exact-small seed must make cost-first strictly cheaper.");
+    }
+
+    [Fact]
     public void C1_normalization_uses_exact_ceiling_without_long_overflow()
     {
         Assert.Equal(
@@ -1300,6 +1373,71 @@ public sealed class ExactSmallCommitmentDifferentialTests
     }
 
     [Fact]
+    public void Cost_first_under_no_worse_recovery_keeps_the_forced_treatment_and_the_no_worse_gate()
+    {
+        // ADR-078 with recovery rule (b), as in the Tier-3 configuration. This is the state of the
+        // zero-limit ranking test above: every candidate breaks a deadline 1 ms before the kept drop,
+        // and a zero vehicle-switch limit keeps hard treatment active. Cost-first drops only the
+        // utilization and revision levels. The vehicle is still forced, the same options reach the
+        // solver, and the chosen route still passes the no-worse gate as the Runner validates it.
+        var fixture = CreateState(seed: 3);
+        var policy = new CommitmentPolicy(
+            fixture.Policy.PolicyId,
+            CommitmentBudgetBasis.DecisionInduced,
+            CommitmentDimensionVocabulary.Ordered.Select(
+                dimension => new CommitmentDimensionLimit(
+                    dimension,
+                    dimension == CommitmentDimension.VehicleSwitchCount ? 0 : null,
+                    CommitmentPhase.AllActive)),
+            new MaterialRevisionRule(1_000, null),
+            dropEtaDeadlineSlack: new Duration(0));
+        var context = PromiseContext(fixture, fixture.BaselineDrop.Milliseconds - 1, policy);
+        var stabilitySolver = new EnumeratingSolver();
+        var costSolver = new EnumeratingSolver();
+
+        var stability = new SolverBackedRidePoolingPolicy(stabilitySolver).Decide(
+            context,
+            CandidateGenerationOptions.ExactSmall,
+            HardVectorOptions(forcedReferenceRecovery: true, forcedNoWorseRecovery: true));
+        var cost = new SolverBackedRidePoolingPolicy(costSolver).Decide(
+            context,
+            CandidateGenerationOptions.ExactSmall,
+            HardVectorOptions(
+                forcedReferenceRecovery: true,
+                forcedNoWorseRecovery: true,
+                selectionObjectiveOrder: SolverBackedSelectionObjectiveOrder.CostFirst));
+
+        Assert.True(stability.IsSuccess, stability.Witness?.Message);
+        Assert.True(cost.IsSuccess, cost.Witness?.Message);
+        var stable = stability.Decision!.Decision;
+        var cheap = cost.Decision!.Decision;
+        Assert.Equal(
+            stabilitySolver.LastProblem!.Options.Select(value => value.OptionId),
+            costSolver.LastProblem!.Options.Select(value => value.OptionId));
+        Assert.Equal("forced-reference-count", costSolver.LastProblem.ObjectiveLevels[0].Name);
+        Assert.Contains(
+            stabilitySolver.LastProblem.ObjectiveLevels,
+            value => value.Name == "worst-hard-utilization-ppm");
+        Assert.DoesNotContain(
+            costSolver.LastProblem.ObjectiveLevels,
+            value => value.Name == "worst-hard-utilization-ppm"
+                || value.Name.StartsWith("revision:", StringComparison.Ordinal));
+        Assert.Equal([AlgorithmTestData.VehicleOne], cheap.ForcedReferenceVehicles!);
+        Assert.False(cheap.VehiclePlans.Single().Candidate.IsNoOp);
+        Assert.Equal(stable.AcceptedRequestCount, cheap.AcceptedRequestCount);
+        Assert.True(cheap.OperationalCost <= stable.OperationalCost);
+
+        var validated = new CommitmentDecisionValidator().Validate(
+            RunnerLikeContext(context, cheap, cheap.ForcedReferenceVehicles, noWorse: true));
+        Assert.True(validated.IsValid, validated.Witnesses.FirstOrDefault()?.Message);
+        Assert.All(
+            validated.ForcedBreaches,
+            breach => Assert.True(
+                breach.SafetyProjection.DropEta.Milliseconds
+                    <= breach.ExogenousProjection.DropEta.Milliseconds));
+    }
+
+    [Fact]
     public void No_worse_recovery_does_not_rank_an_exempted_dimension_over_its_limit()
     {
         // The kept route is charged past its drop budget under the customer-visible basis. The
@@ -1442,7 +1580,9 @@ public sealed class ExactSmallCommitmentDifferentialTests
 
     private static SolverBackedRidePoolingPolicyOptions HardVectorOptions(
         bool forcedReferenceRecovery,
-        bool forcedNoWorseRecovery = false) =>
+        bool forcedNoWorseRecovery = false,
+        SolverBackedSelectionObjectiveOrder selectionObjectiveOrder =
+            SolverBackedSelectionObjectiveOrder.StabilityFirst) =>
         new(
             RidePoolingPolicyKind.RideBoundHardVector,
             DeterministicCandidateSelectionExecutionBudget.Create(
@@ -1450,7 +1590,8 @@ public sealed class ExactSmallCommitmentDifferentialTests
                 100_000,
                 DeterministicSolverBudget.Create(100_000, 100_000, 1).Value!).Value!,
             forcedReferenceRecovery: forcedReferenceRecovery,
-            forcedNoWorseRecovery: forcedNoWorseRecovery);
+            forcedNoWorseRecovery: forcedNoWorseRecovery,
+            selectionObjectiveOrder: selectionObjectiveOrder);
 
     /// <summary>The validation the Runner applies to a policy decision.</summary>
     private static CommitmentValidationContext RunnerLikeContext(

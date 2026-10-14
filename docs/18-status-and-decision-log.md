@@ -1,7 +1,7 @@
 # Trạng thái và decision log
 
 > Tệp sống — cập nhật ở cuối mọi task RideBound
-> Cập nhật gần nhất: 2026-08-28 (cây chính); nhánh thăm dò `research/deadline-gate`: 2026-09-24 (ADR-074 Proposed); nhánh thăm dò `research/tier3-failure-aware`: 2026-09-25 (ADR-075, ADR-076 Proposed; thí điểm T3.7 xong, cổng dừng phục hồi bị kích hoạt); nhánh thăm dò `research/tier3-no-worse`: 2026-09-26 (ADR-077 Proposed; 28 job đầu-cuối A1 pass), 2026-09-29 (Tầng 3 việc A: 48 job `V`/`M` với hai luật phục hồi, thăm dò), 2026-09-30 (Tầng 3 việc B: 88 job khung 7:00–9:00 chỉ tắc đường thật, thăm dò), 2026-10-01 (w07x: mức hứa 90–240 s, 104 job, thăm dò), 2026-10-02 (T3.8/T3.9 trên panel A: 185 job, thăm dò có niêm phong), 2026-10-06 (hứa giờ có tính trước tắc đường: lớp lời hứa phát lại 170 job, 43 job đầu-cuối, thăm dò có niêm phong)
+> Cập nhật gần nhất: 2026-08-28 (cây chính); nhánh thăm dò `research/deadline-gate`: 2026-09-24 (ADR-074 Proposed); nhánh thăm dò `research/tier3-failure-aware`: 2026-09-25 (ADR-075, ADR-076 Proposed; thí điểm T3.7 xong, cổng dừng phục hồi bị kích hoạt); nhánh thăm dò `research/tier3-no-worse`: 2026-09-26 (ADR-077 Proposed; 28 job đầu-cuối A1 pass), 2026-09-29 (Tầng 3 việc A: 48 job `V`/`M` với hai luật phục hồi, thăm dò), 2026-09-30 (Tầng 3 việc B: 88 job khung 7:00–9:00 chỉ tắc đường thật, thăm dò), 2026-10-01 (w07x: mức hứa 90–240 s, 104 job, thăm dò), 2026-10-02 (T3.8/T3.9 trên panel A: 185 job, thăm dò có niêm phong), 2026-10-06 (hứa giờ có tính trước tắc đường: lớp lời hứa phát lại 170 job, 43 job đầu-cuối, thăm dò có niêm phong); nhánh thăm dò `research/tier3-cost-first`: 2026-10-11 (ADR-078 Proposed; tùy chọn thứ tự xếp hạng `cost-first`, mặc định tắt; chưa commit, chưa chạy mô phỏng)
 
 ## 1. Trạng thái tổng thể
 
@@ -5153,6 +5153,81 @@ phương án bị ép khi:
 - Tầng `forced-reference-count` vẫn đứng trước số khách nhận. Một phương án no-worse được đếm 1, như no-op bị ép.
 - Công việc validate thêm chưa được cộng vào `validationWorkUnits`.
 
+### ADR-078 — 2026-10-11 — Proposed (thăm dò; nhánh `research/tier3-cost-first` từ `761915c`; chưa commit)
+
+**Context.**
+- Giai đoạn 1b của nghiên cứu (chủ nghiên cứu đã duyệt) cần một biến thể C1 xếp hạng theo chi phí vận hành ngay sau
+  số khách nhận, trong khi mọi cổng cứng, khóa và luật phục hồi giữ nguyên.
+- Ở C1, khi có giới hạn cứng áp dụng, bộ chọn đội xe xếp sau `accepted-request-count` tầng `worst-hard-utilization-ppm`,
+  rồi 10 tầng `revision:*`, rồi mới tới `operational-cost` (`SolverBackedFleetSelection.cs:319-331` ở `761915c`).
+- Chuyển sang B1 `rolling-cost` không đáp ứng: đường đó không chạy bộ đánh giá cứng và không có tầng
+  `forced-reference-count` (`SolverBackedRidePoolingPolicy.cs:322-353`, `SolverBackedFleetSelection.cs:276-295` ở
+  `761915c`).
+
+**Decision.** Thêm khóa WP4 `selectionObjectiveOrder`, mặc định `stability-first`:
+1. Vắng khóa nghĩa là `stability-first`, tức hành vi hiện tại. Cấu hình không có khóa giữ nguyên bytes chuẩn hóa, nên
+   content hash và `policyConfigurationHash` không đổi.
+2. `cost-first` chỉ hợp lệ với C1 solver-backed. Các tầng còn lại: `forced-reference-count` (giữ nguyên điều kiện bật
+   cũ), `accepted-request-count`, `operational-cost`, `candidate-id-rank:<xe>`. Hai nhóm bị bỏ:
+   `worst-hard-utilization-ppm` và 10 tầng `revision:*`. Khi không có giới hạn cứng áp dụng, hai thứ tự cho cùng danh
+   sách tầng.
+3. Không đổi: policy kind và profile vẫn là `HardVector`; bộ đánh giá cứng, cổng, khóa, luật phục hồi (a)/(b), lên xe
+   muộn, sinh và giữ ứng viên, ngân sách solver, validator toàn đội. `Map()` vẫn báo mức dùng lớn nhất và revision của
+   lựa chọn.
+4. Giá trị lạ, rỗng, không phải chuỗi, hoặc `cost-first` ngoài C1 solver-backed đều là lỗi cấu hình.
+5. Không thêm trường bằng chứng mới. Khi `emitSolverExecutionEvidence: true`, mỗi quyết định đã ghi tên từng tầng ở
+   `solver.executionEvidence.selection.{primary,final}SolverDiagnostics.objectiveBounds[].objectiveName`. Dưới
+   `cost-first`, danh sách đó không có tầng mức dùng và revision. Ở cấp lần chạy, `policyConfigurationHash` trong
+   `initializeRun` gắn với bytes cấu hình có khóa. Một trường mới sẽ phải sửa codec quyết định, vì tập trường của
+   evidence là cố định (`DecisionMessages.cs:167-175`, kiểm ở `:844-851`).
+
+**Alternatives considered.**
+- Dùng B1 `rolling-cost`: loại, vì mất bộ đánh giá cứng và tầng forced-reference.
+- Thêm profile mới, ví dụ `HardVectorCostFirst`: loại, vì profile được ghi vào evidence danh mục ứng viên
+  (`SolverExecutionEvidenceMapper.cs:291-296`) và codec chỉ nhận một tập giá trị cố định (`DecisionMessages.cs:992-996`).
+  Một tham số thứ tự riêng chỉ chạm ba tệp production.
+
+**Evidence.**
+- `dotnet test RideBound.slnx` trước khi sửa: 1024/1025, một lỗi là `StrictBagItBundleTests` (đòi `GitDirty == true`
+  trên cây sạch). Sau khi sửa: 1034/1034, tức 1025 cũ cộng 9 test mới.
+- Test mới:
+  - Algorithms, bộ chọn (5 test): danh sách 16 tầng stability-first đúng tên, đúng thứ tự, và trùng khi không truyền
+    tham số; `cost-first` chỉ bỏ tầng mức dùng và tầng revision, mọi tầng còn lại giống hệt; tầng forced giữ điều kiện
+    cũ; khi không có giới hạn cứng hai thứ tự như nhau; từ chối `cost-first` ngoài profile `HardVector`; options chỉ
+    nhận C1.
+  - Algorithms, đầu-cuối dưới Runner (2 test):
+    - 64 seed exact-small: cùng tập phương án và cùng witness bị loại ở hai thứ tự; phương án `cost-first` qua validator
+      như Runner; 8/64 seed cho phương án rẻ hơn hẳn, và ở mỗi seed đó stability-first hơn hẳn về mức dùng hoặc revision.
+    - `cost-first` cộng luật phục hồi (b), như cấu hình Tầng 3: xe vẫn bị ép; cùng tập phương án; tầng đầu vẫn là
+      `forced-reference-count`; khách mới vẫn được nhận; phương án qua cổng no-worse như Runner. Ở trạng thái này hai thứ
+      tự chọn cùng một phương án (chi phí 360, 3 phương án), nên test kiểm bất biến, không kiểm khác biệt xếp hạng.
+  - Runner (2 test): đọc khóa (vắng, `stability-first`, `cost-first`, 4 giá trị sai, ngoài C1); tính lại
+    `policyConfigurationHash` lưu trữ của T3.8 từ chính đầu vào: `C-30` `a2f11a3a…5f1c` (51/51 lần chạy), `U`
+    `251b331e…c346` (34/34 lần chạy). Kèm `C-120` `a9ac58b3…9010`: giá trị này do Codex dẫn xuất, không có lần chạy
+    lưu trữ để đối chiếu.
+- 7 đột biến (bỏ qua `cost-first`, bỏ cả tầng forced, bỏ cả tầng chi phí, không truyền thứ tự vào bộ chọn, mất thứ tự
+  khi dựng options theo seed, đọc `cost-first` thành `stability-first`, nhận `cost-first` cho mọi chính sách
+  solver-backed) đều bị test bắt.
+- Review độc lập (agent mới, chỉ đọc): không blocker. Mục nên sửa duy nhất là thiếu test `cost-first` cộng no-worse; đã
+  thêm test. Hai nit đã sửa: so đóng góp của từng phương án trên các tầng giữ lại, và thay một khẳng định luôn đúng.
+- Chưa chạy FleetPy với `cost-first`. Cổng tương đương Gate-0 chưa chạy.
+
+**Consequences và giới hạn.**
+- Là tùy chọn thăm dò. Mặc định không đổi. Không tuyên bố lợi ích nào.
+- Khai báo tường minh `"stability-first"` đổi content hash, dù hành vi như mặc định. Muốn tái lập binding lưu trữ thì
+  phải bỏ hẳn khóa.
+- Ở một quyết định đơn lẻ, danh sách tầng của `cost-first` trùng với trường hợp không có giới hạn cứng. Muốn biết lần
+  chạy dùng thứ tự nào thì đọc cấu hình theo `policyConfigurationHash`.
+- `objectiveBounds` có thể thiếu tầng khi solver hết ngân sách.
+- Dưới `cost-first`, phần xếp hạng mức dùng của ADR-077 (bỏ qua chiều vượt trần của khách được miễn) không còn tác dụng,
+  vì không còn tầng mức dùng. Một xe bị ép vì thế có thể chọn tuyến no-worse rẻ nhất, kể cả tuyến đẩy khách không được
+  miễn tới gần trần hơn. Phần miễn trừ, cổng "không tệ hơn" và các trần trong validator không đổi.
+- Thứ tự chỉ áp lên danh mục ứng viên đã được giữ lại. Với `service-set-stability-portfolio-v1`, phép so là "xếp hạng
+  theo chi phí trên cùng danh mục đã giữ", không phải trên mọi ứng viên sinh ra.
+- Evidence danh mục ứng viên vẫn ghi `objectiveProfile: "hardVector"` cho cả hai thứ tự. Thứ tự chỉ đọc được từ danh
+  sách tầng hoặc từ hash cấu hình.
+- Chưa có Runner publish chứa thay đổi này.
+
 ## 8. Work package tracker
 
 | WP | Trạng thái | Bắt đầu | Kết thúc | Evidence |
@@ -5178,6 +5253,16 @@ phương án bị ép khi:
 | WP16–WP20 | Roadmap-level only | — | — | Không ticket hóa trước verified WP14R frontier/closure gate |
 
 ## 9. Change history
+
+- 2026-10-11 (nhánh thăm dò `research/tier3-cost-first` từ `761915c`; chưa commit): ADR-078 **Proposed**. Mọi kết quả
+  mang nhãn thăm dò; không authorize `RB-WP14R-009..012`, WP15 hay H7; không tuyên bố mới.
+  - Khóa WP4 `selectionObjectiveOrder` (`stability-first` mặc định, `cost-first` chỉ cho C1 solver-backed). `cost-first`
+    bỏ tầng `worst-hard-utilization-ppm` và 10 tầng `revision:*`, giữ tầng forced-reference, số khách nhận, chi phí và
+    tầng phá hòa theo id. Cổng, khóa, luật phục hồi và sinh ứng viên không đổi.
+  - Cấu hình không có khóa giữ nguyên hash. Test tính lại `policyConfigurationHash` lưu trữ của T3.8 `C-30` và `U`.
+  - .NET trước 1024/1025 (lỗi `StrictBagItBundleTests` đã biết trên cây sạch), sau 1034/1034. 7/7 đột biến bị bắt.
+    Review độc lập: không blocker; mục nên sửa (test `cost-first` cộng no-worse) đã thêm.
+  - Chưa chạy FleetPy, chưa publish Runner. `§1` và `§5` của cây chính không đổi.
 
 - 2026-10-06 (nhánh thăm dò `research/tier3-no-worse`; không đổi code trong kho): hứa giờ có tính trước tắc đường. Mọi
   kết quả mang nhãn thăm dò; không authorize `RB-WP14R-009..012`, WP15 hay H7. Không tuyên bố mới: dự báo giờ đi theo giờ

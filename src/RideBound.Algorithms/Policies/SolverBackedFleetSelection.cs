@@ -15,6 +15,17 @@ public enum SolverBackedObjectiveProfile
     SoftHardHybrid,
 }
 
+/// <summary>
+/// ADR-078 (exploratory, off by default). Order of the C1 ranking levels after the
+/// accepted-request count. Cost-first skips the worst-hard-utilization and revision levels;
+/// gates, locks and recovery act before ranking and are unchanged.
+/// </summary>
+public enum SolverBackedSelectionObjectiveOrder
+{
+    StabilityFirst,
+    CostFirst,
+}
+
 public interface IFleetSelectionValidator
 {
     CandidateSelectionValidationResult Validate(FleetSelection selection);
@@ -78,7 +89,9 @@ public sealed class SolverBackedFleetSelector
         IReadOnlyDictionary<string, CandidateCommitmentAssessment>?
             revisionAssessments = null,
         IReadOnlyDictionary<string, HardVectorCandidateAssessment>?
-            hardAssessments = null)
+            hardAssessments = null,
+        SolverBackedSelectionObjectiveOrder objectiveOrder =
+            SolverBackedSelectionObjectiveOrder.StabilityFirst)
     {
         ArgumentNullException.ThrowIfNull(candidateSets);
         ArgumentNullException.ThrowIfNull(executionBudget);
@@ -90,11 +103,25 @@ public sealed class SolverBackedFleetSelector
             throw new ArgumentOutOfRangeException(nameof(objectiveProfile));
         }
 
+        if (!Enum.IsDefined(objectiveOrder))
+        {
+            throw new ArgumentOutOfRangeException(nameof(objectiveOrder));
+        }
+
+        if (objectiveOrder == SolverBackedSelectionObjectiveOrder.CostFirst
+            && objectiveProfile != SolverBackedObjectiveProfile.HardVector)
+        {
+            throw new ArgumentException(
+                "The cost-first objective order is only defined for the C1 hard-vector profile.",
+                nameof(objectiveOrder));
+        }
+
         var mapping = SelectionModelMapping.Create(
             candidateSets,
             objectiveProfile,
             revisionAssessments,
-            hardAssessments);
+            hardAssessments,
+            objectiveOrder);
 
         if (mapping.Witness is not null)
         {
@@ -203,7 +230,8 @@ public sealed class SolverBackedFleetSelector
             IReadOnlyDictionary<string, CandidateCommitmentAssessment>?
                 revisionAssessments,
             IReadOnlyDictionary<string, HardVectorCandidateAssessment>?
-                hardAssessments)
+                hardAssessments,
+            SolverBackedSelectionObjectiveOrder objectiveOrder)
         {
             var orderedSets = candidateSets
                 .OrderBy(value => value.VehicleId.Value, StringComparer.Ordinal)
@@ -316,8 +344,12 @@ public sealed class SolverBackedFleetSelector
                             .DecisionInducedRevision,
                         "revision");
                     break;
+                // Cost-first (ADR-078) matches no case here, so operational cost follows the
+                // accepted-request count directly; the forced level above is unchanged.
                 case SolverBackedObjectiveProfile.HardVector
-                    when hardTreatmentActive:
+                    when hardTreatmentActive
+                        && objectiveOrder
+                            == SolverBackedSelectionObjectiveOrder.StabilityFirst:
                     objectives.Add(
                         MinMaximum(
                             "worst-hard-utilization-ppm",

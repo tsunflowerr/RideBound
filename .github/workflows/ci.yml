@@ -65,7 +65,7 @@ jobs:
           -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
       - name: Upload test evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-results
           path: TestResults
@@ -120,7 +120,7 @@ jobs:
           --output artifacts/runner
           -p:ContinuousIntegrationBuild=true
       - name: Upload runner
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ridebound-runner-${{ github.sha }}
           path: artifacts/runner

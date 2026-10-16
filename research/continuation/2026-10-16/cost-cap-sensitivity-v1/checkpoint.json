@@ -1,5 +1,5 @@
 {
- "observedAt": "2026-10-16T15:06:26.407675+07:00",
+ "observedAt": "2026-10-16T16:07:49.664785+07:00",
  "counts": {
   "smoke": {
    "total": 2,
@@ -11,21 +11,21 @@
   },
   "main": {
    "total": 68,
-   "pass": 14,
-   "started": 20,
-   "finished": 14,
+   "pass": 37,
+   "started": 43,
+   "finished": 37,
    "activeOrUnfinished": 6,
-   "pending": 48
+   "pending": 25
   }
  },
  "manifestSha256": "cedecbb1a97d31ec8ab295fd16c99fb607f14d622779247d8df6d9b219b42d6f",
  "driverPid": 11224,
  "launcherPid": 14260,
- "evidence": "heartbeat-20261016-150626-mechanical.json",
- "evidenceSha256": "87bc7472c09d9099a8dee091ab50f4ac16494b4fc3166a8fb2e2641c13595cb2",
+ "evidence": "heartbeat-20261016-160749-mechanical.json",
+ "evidenceSha256": "8489fb2dfb814de3b3971f380089cbf80906b7685ea228e37c91a41cf2824788",
  "freeGiB": {
-  "C": 39.656,
-  "E": 40.766
+  "C": 37.875,
+  "E": 40.765
  },
  "power": {
   "known": true,
@@ -36,7 +36,7 @@
  "stopReceipts": [],
  "hourlyAutomation": "ACTIVE",
  "oneoffAutomation": "PAUSED",
- "publishedCommitBeforeCheckpoint": "0129c27c930224621edf1b92c4f6c3f34690eae1",
+ "publishedCommitBeforeCheckpoint": "3db8e0686a8f078bd1e5bd5e19632f5669d16d55",
  "analysisStarted": false,
  "analysisComplete": false
 }

@@ -1,25 +1,25 @@
 # C60/C120 — trạng thái tiếp tục
 
-Checkpoint **2026-10-16T15:06:26.407675+07:00**: **2/2 smoke đạt; 14/68 main pass/succeeded, 6 đang chạy/chưa kết thúc, 48 chưa nhận**.
-Driver11224/launcher14260 vẫn sống; không khởi chạy hoặc resume driver mới.
-Cả2smoke đã qua full post-phase check và kiểm identity/ledger/cap.
+Checkpoint **2026-10-16T16:07:49.664785+07:00**: **2/2 smoke đạt; 37/68 main pass/succeeded, 6 đang chạy/chưa kết thúc, 25 chưa nhận**.
+Driver11224/launcher14260 vẫn sống;6wrappers active. Không khởi chạy/resume
+driver mới. Cả2smoke đã full post-phase check và identity/ledger/cap PASS.
 
-Đã kiểm cơ học 16 bundle hoàn tất: mọi length/SHA khớp, child
-returncode0, admission/finish cùng manifest. 96 mục trong manifest mới,
-17seal gốc và5policy tài nguyên khớp;0lỗi/STOP/drift/unexpected output.
-Đây là kiểm tính toàn vẹn/tiến độ, chưa phân tích hiệu quả trên panel đang chạy.
-Chưa đủ68 và final checks; chưa analysis-started/analysis-complete hoặc REPORT mới.
+Đã kiểm cơ học 39 bundle hoàn tất bằng verifier hiện có đã xác thực source:
+mọi length/SHA khớp, child returncode0, admission/finish cùng manifest.
+96 mục manifest mới+17seal gốc+5policy tài nguyên khớp;0lỗi/STOP/drift/
+unexpected output. Chỉ kiểm tính toàn vẹn/tiến độ, chưa phân tích hiệu quả
+trên partial panel. Chưa đủ68/final checks; chưa analysis-started/complete.
 
 Manifest: `cedecbb1a97d31ec8ab295fd16c99fb607f14d622779247d8df6d9b219b42d6f`.
-Evidence: `heartbeat-20261016-150626-mechanical.json` (SHA256 `87bc7472c09d9099a8dee091ab50f4ac16494b4fc3166a8fb2e2641c13595cb2`).
-Root log: run-20261016-1401.log. AC100%;C39.656GiB/E40.766GiB.
-Giữ C30/E40GiB, AC-only,410MiB/job,6workers; không xóa/hạ sàn/rerun failed.
-Selftest13/13; .NET1033pass/1034,1known clean-tree failure,exit1 vẫn giữ nguyên.
+Evidence: `heartbeat-20261016-160749-mechanical.json`,SHA256 `8489fb2dfb814de3b3971f380089cbf80906b7685ea228e37c91a41cf2824788`.
+Root log: run-20261016-1401.log. AC100%;C37.875GiB/E40.765GiB.
+Giữ C30/E40GiB,AC-only,410MiB/job,6workers;không xóa/hạ sàn/retry failed.
+Selftest13/13;.NET1033pass/1034,1known clean-tree failure,exit1 giữ nguyên.
 
 ## GitHub đã push
 
 - [Mã, kết quả và audit](https://github.com/tsunflowerr/RideBound/tree/codex/research-handoff-20261016),
-  commit đã push trước checkpoint: `0129c27c930224621edf1b92c4f6c3f34690eae1`.
+  commit đã push trước checkpoint: `3db8e0686a8f078bd1e5bd5e19632f5669d16d55`.
 - [Khóa luận và chương trình/báo cáo nghiên cứu](https://github.com/tsunflowerr/Report_INT3508/tree/codex/ridebound-handoff-20261016),
   commit `1d529f5f7629b7e13c9bb608737cef5b668cf313`. PDF77trang giữ hash26c8dea1…1dd69.
 - Nguồn runner riêng `research/tier3-cost-first` đã push dce84ec.

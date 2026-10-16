@@ -1,7 +1,7 @@
 # Trạng thái và decision log
 
 > Tệp sống — cập nhật ở cuối mọi task RideBound
-> Tiếp phiên ngoài cây chính: 2026-10-16 — ADR-079: owner cho push GitHub và chạy thêm C60/C120 cost-first; đang chuẩn bị/kiểm đầu vào nghiên cứu mới, chưa có kết quả mới. Nghiên cứu C30/U và PDF77trang đã giao; audit bảo vệ còn mở R01–R04, chưa đóng WP12. Trạng thái lịch đọc hồ sơ mới.
+> Tiếp phiên ngoài cây chính: 2026-10-16 — ADR-079: owner cho push GitHub và chạy thêm C60/C120 cost-first; đã push hai nhánh bàn giao; đang chạy smoke C60/C120, chưa có kết quả mới. Nghiên cứu C30/U và PDF77trang đã giao; audit bảo vệ còn mở R01–R04, chưa đóng WP12. Trạng thái lịch đọc hồ sơ mới.
 > Cập nhật gần nhất: 2026-08-28 (cây chính); nhánh thăm dò `research/deadline-gate`: 2026-09-24 (ADR-074 Proposed); nhánh thăm dò `research/tier3-failure-aware`: 2026-09-25 (ADR-075, ADR-076 Proposed; thí điểm T3.7 xong, cổng dừng phục hồi bị kích hoạt); nhánh thăm dò `research/tier3-no-worse`: 2026-09-26 (ADR-077 Proposed; 28 job đầu-cuối A1 pass), 2026-09-29 (Tầng 3 việc A: 48 job `V`/`M` với hai luật phục hồi, thăm dò), 2026-09-30 (Tầng 3 việc B: 88 job khung 7:00–9:00 chỉ tắc đường thật, thăm dò), 2026-10-01 (w07x: mức hứa 90–240 s, 104 job, thăm dò), 2026-10-02 (T3.8/T3.9 trên panel A: 185 job, thăm dò có niêm phong), 2026-10-06 (hứa giờ có tính trước tắc đường: lớp lời hứa phát lại 170 job, 43 job đầu-cuối, thăm dò có niêm phong)
 
 ## 1. Trạng thái tổng thể
@@ -13,7 +13,8 @@
 | Implementation | `WP1_Q1_COMPLETE; WP2_COMPLETE; WP3_COMPLETE_14_OF_14; WP4_COMPLETE_14_OF_14; WP5_COMPLETE_14_OF_14; WP6_COMPLETE_14_OF_14; WP7_COMPLETE_14_OF_14; WP8_COMPLETE_14_OF_14; WP9_COMPLETE_001_TO_009; WP10_COMPLETE_NEGATIVE_CAPABILITY_001_TO_010; WP13_COMPLETE_001_TO_013; WP14_V1_STOPPED_FAIL; WP14R_001_TO_008R_DONE_009_MATRIX_HALTED_40_OF_160_010_SLICE_DONE` |
 | Current work package | `ADR-073 freeze v3 AUTHORIZED, receipt SHA 07baeda2…fa9227; RB-WP14R-008 remains CLOSED — FAIL CLOSED under v2; RB-WP14R-008R paired gate running under v3; 009..012/WP15/H7 UNAUTHORIZED; WP14-v1 and H6/E1 frozen; F2-inert prediction registered pre-outcome` |
 | Repository | `https://github.com/tsunflowerr/RideBound` |
-| Thesis / Stage 1b continuation | ADR-078: COMPLETE exploratory Stage1b;68/68 main and final post-phase/extract/report exit0;83/83 independent extraction-arithmetic checks. I_L+180,I_served+42,I_timely60−138;Stage1b H1–H6 PASS,H7 FAIL(7<10),no Stage2. Results reported; both timers PAUSED. Resource boundary after20 runs preserved; actual thesis updated 2026-10-16, 77 pages, backed up and verified. [Hồ sơ](benchmarking/thesis-stage1b-continuation-2026-10-15.md) |
+| Thesis / Stage 1b continuation | ADR-078: COMPLETE exploratory Stage1b;68/68 main and final post-phase/extract/report exit0;83/83 independent extraction-arithmetic checks. I_L+180,I_served+42,I_timely60−138;Stage1b H1–H6 PASS,H7 FAIL(7<10),no Stage2. Results reported; hourly was paused at closure and is now ACTIVE for ADR079; one-off PAUSED. Resource boundary after20 runs preserved; actual thesis updated 2026-10-16, 77 pages, backed up and verified. [Hồ sơ](benchmarking/thesis-stage1b-continuation-2026-10-15.md) |
+| Cost-cap sensitivity / GitHub handoff | ADR079: both codex branches pushed; source dce84ec pushed; new manifest cedecbb1…42d6f,13/13 selftests,full preflight PASS;2 smoke active before68 main. Hourly ACTIVE; no new outcome yet. [Hồ sơ](benchmarking/cost-cap-sensitivity-handoff-2026-10-16.md) |
 | Main baseline | B1 `rolling-cost` |
 | Main treatment | C1 `ridebound-hard-vector` |
 | Layer 2 | FleetPy 1.0.2 |
@@ -6315,3 +6316,18 @@ Claude/Antigravity. Không có quyền commit/push mới trong lượt này.
 
 
 Cập nhật thực thi16/10 khoảng14:03+07: full freeze exit0,manifest cedecbb1…42d6f;driver11224/launcher14260 khởi động14:01:08, đang preflight trước2smoke;0/68main. Hourly đã ACTIVE cho đợt mới,one-off PAUSED. Nguồn cost-first đã push dce84ec;hai gói bàn giao chờ push. Xem CURRENT-STATUS.md trên C để tránh driver trùng.
+
+
+## GitHub đã bàn giao, C60/C120 đang chạy — 2026-10-16T14:09:33.348015+07:00
+
+Đã push research/tier3-cost-first=dce84ec; hai nhánh bàn giao codex đã push
+thành công: RideBound d4ee68692573dcf23748d188f515fe1bbedbd089, Report_INT3508 1d529f5f7629b7e13c9bb608737cef5b668cf313.
+Đọc START-HERE.md; raw/env/vendor/paper giữ local, nguồn/báo cáo/hash lên GitHub.
+Freeze manifest cedecbb1…42d6f đạt; driver11224/launcher14260 từ14:01:08.
+Smoke0/2pass,2active/chưa kết thúc;
+main0/68pass. Không có lỗi/dừng mới tại checkpoint.
+13/13 selftests; .NET1033/1034 với1knownfailure,exit1.
+Hourly ACTIVE cho đợt mới;one-off PAUSED. C30/E40GiB/AC/410MiB giữ nguyên.
+Checkpoint local chi tiết: cost-cap-sensitivity-v1/CURRENT-STATUS.md vàcheckpoint.json.
+Không clone rồi chạy trùng trên máy công ty. Không phân tích partial hoặc đổi
+frozen inputs;driver tự đi tiếp sau2smoke. Chưa nhận có kết quả C60/C120.

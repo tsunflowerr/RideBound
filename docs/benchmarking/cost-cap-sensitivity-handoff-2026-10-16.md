@@ -27,3 +27,18 @@ mới nhất trước; không sửa chúng để làm như lúc chạy đã đư
 
 
 Cập nhật thực thi16/10 khoảng14:03+07: full freeze exit0,manifest cedecbb1…42d6f;driver11224/launcher14260 khởi động14:01:08, đang preflight trước2smoke;0/68main. Hourly đã ACTIVE cho đợt mới,one-off PAUSED. Nguồn cost-first đã push dce84ec;hai gói bàn giao chờ push. Xem CURRENT-STATUS.md trên C để tránh driver trùng.
+
+
+## GitHub đã bàn giao, C60/C120 đang chạy — 2026-10-16T14:09:33.348015+07:00
+
+Đã push research/tier3-cost-first=dce84ec; hai nhánh bàn giao codex đã push
+thành công: RideBound d4ee68692573dcf23748d188f515fe1bbedbd089, Report_INT3508 1d529f5f7629b7e13c9bb608737cef5b668cf313.
+Đọc START-HERE.md; raw/env/vendor/paper giữ local, nguồn/báo cáo/hash lên GitHub.
+Freeze manifest cedecbb1…42d6f đạt; driver11224/launcher14260 từ14:01:08.
+Smoke0/2pass,2active/chưa kết thúc;
+main0/68pass. Không có lỗi/dừng mới tại checkpoint.
+13/13 selftests; .NET1033/1034 với1knownfailure,exit1.
+Hourly ACTIVE cho đợt mới;one-off PAUSED. C30/E40GiB/AC/410MiB giữ nguyên.
+Checkpoint local chi tiết: cost-cap-sensitivity-v1/CURRENT-STATUS.md vàcheckpoint.json.
+Không clone rồi chạy trùng trên máy công ty. Không phân tích partial hoặc đổi
+frozen inputs;driver tự đi tiếp sau2smoke. Chưa nhận có kết quả C60/C120.

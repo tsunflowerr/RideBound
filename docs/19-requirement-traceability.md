@@ -4,8 +4,8 @@
 
 | Yêu cầu | Chứng cứ | Trạng thái/giới hạn |
 |---|---|---|
-| Mang mã/kết quả lên máy công ty | ADR079; hai nhánh codex handoff; START-HERE và inventory xuất | Đang chuẩn bị push; không rewrite lịch sử, không raw/vendor/env/secret/paper |
-| Chạy C60/C120 cost-first | Plan mới trên C; đúng runner v3/WP4, 34 ô;13/13 selftests | Full input check đang chạy; chưa có kết quả;2 smoke trước68main |
+| Mang mã/kết quả lên máy công ty | ADR079; hai nhánh codex handoff; START-HERE và inventory xuất | Đã push hai nhánh codex; không rewrite lịch sử, không raw/vendor/env/secret/paper |
+| Chạy C60/C120 cost-first | Plan mới trên C; đúng runner v3/WP4, 34 ô;13/13 selftests | Full freeze/preflight PASS;2 smoke active;0/68main;chưa có kết quả mới |
 | Bảo toàn dữ liệu/kết quả cũ | Original seal/freeze/binding, bundle index và kết quả C30/U | Không sửa/rerun; H6/E1/H7 giữ nguyên; không per-step/Stage2 |
 | Thực thi trong tài nguyên owner cho phép | C30/E40GiB, AC-only,410MiB/job,6workers; locks/stop/receipt | Không hạ sàn/xóa/retry failed; chỉ phân tích full panel sau kiểm cuối |
 | Phân biệt code portable với tái lập raw | START-HERE, external input paths và hash | Clone để đọc/sửa nguồn; máy mới cần provision/rebind execution manifest |
@@ -831,3 +831,18 @@ các đường dẫn tương đối dưới đây tính từ thư mục đó); k
 
 
 Cập nhật thực thi16/10 khoảng14:03+07: full freeze exit0,manifest cedecbb1…42d6f;driver11224/launcher14260 khởi động14:01:08, đang preflight trước2smoke;0/68main. Hourly đã ACTIVE cho đợt mới,one-off PAUSED. Nguồn cost-first đã push dce84ec;hai gói bàn giao chờ push. Xem CURRENT-STATUS.md trên C để tránh driver trùng.
+
+
+## GitHub đã bàn giao, C60/C120 đang chạy — 2026-10-16T14:09:33.348015+07:00
+
+Đã push research/tier3-cost-first=dce84ec; hai nhánh bàn giao codex đã push
+thành công: RideBound d4ee68692573dcf23748d188f515fe1bbedbd089, Report_INT3508 1d529f5f7629b7e13c9bb608737cef5b668cf313.
+Đọc START-HERE.md; raw/env/vendor/paper giữ local, nguồn/báo cáo/hash lên GitHub.
+Freeze manifest cedecbb1…42d6f đạt; driver11224/launcher14260 từ14:01:08.
+Smoke0/2pass,2active/chưa kết thúc;
+main0/68pass. Không có lỗi/dừng mới tại checkpoint.
+13/13 selftests; .NET1033/1034 với1knownfailure,exit1.
+Hourly ACTIVE cho đợt mới;one-off PAUSED. C30/E40GiB/AC/410MiB giữ nguyên.
+Checkpoint local chi tiết: cost-cap-sensitivity-v1/CURRENT-STATUS.md vàcheckpoint.json.
+Không clone rồi chạy trùng trên máy công ty. Không phân tích partial hoặc đổi
+frozen inputs;driver tự đi tiếp sau2smoke. Chưa nhận có kết quả C60/C120.

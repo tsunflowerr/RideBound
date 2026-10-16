@@ -293,3 +293,17 @@ sống tại checkpoint,không resume. AC100%,C36.086GiB/E40.765GiB.
 Evidence:heartbeat-20261016-170756-mechanical.json,SHA256fe81a6aa10c6e28c49654e9e9c23003ddf518a42b2bc531e53ec8c439695c63f. Chưa đủ68/final/analysis;không phân tích
 partial panel hoặc sửa luận văn. Hourly ACTIVE,one-off PAUSED;giữ sàn/ràng
 buộc tài nguyên vàH6/E1/H7,không per-step/Stage2.
+
+
+## Đủ68main,đang kiểm cuối — 2026-10-16T17:17:22.473151+07:00
+
+2/2 smoke và68/68 main pass/succeeded;0active/0pending;driver đang full post-phase check. Đã kiểm70bundle hoàn tất:length/SHA/childexit0/binding
+đúng;96pinned+17seal+5policy khớp.0lỗi/STOP/drift;AC100%,
+C35.816GiB/E40.765GiB. Evidence:heartbeat-20261016-171722-mechanical.json,SHA25698d5877b400db79f619e1a2047b1f8ac55b22e9ee111c4f7f0f37650e9437322.
+Chưa main-complete/analysis-started/analysis-complete/finalexit0 tại checkpoint.
+Không restart/rerun/analysis trùng vàkhông nhận nghiên cứu đã phân tích xong.
+Đã chuẩn bị verify-cost-cap-final.py ngoài frozen harness,hash0cf5a4d966d82afaf44c1b4ac7131944eae7907e12bd9b1c5b01d5e420cfbd1b;
+chỉ chạy sau nativeexit0+analysis-complete. Kiểm CSV/JSON/cell/day/baseline,
+không claim raw/forecast độc lập. .NET kiểm lại1033/1034 với1knownfailure,exit1.
+Hourly ACTIVE,one-off PAUSED;chỉ tắt sau báo kết quả đầy đủ vàpush xong.
+Giữ H6/E1/H7,không per-step/Stage2 hoặc sửa luận văn từ partial results.

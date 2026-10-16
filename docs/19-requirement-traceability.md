@@ -5,7 +5,7 @@
 | Yêu cầu | Chứng cứ | Trạng thái/giới hạn |
 |---|---|---|
 | Mang mã/kết quả lên máy công ty | ADR079; hai nhánh codex handoff; START-HERE và inventory xuất | Đã push hai nhánh codex; không rewrite lịch sử, không raw/vendor/env/secret/paper |
-| Chạy C60/C120 cost-first | heartbeat-20261016-170756-mechanical.json;67bundle+96pinned+17seal+5policy khớp | 2/2 smoke đạt; 65/68 main pass/succeeded, 3 đang chạy/chưa kết thúc, 0 chưa nhận;0stop;không restart hoặc partial analysis |
+| Chạy C60/C120 cost-first | heartbeat-20261016-171722-mechanical.json;70bundle+96pinned+17seal+5policy khớp | 2/2 smoke và68/68 main pass/succeeded;0active/0pending;driver đang full post-phase check;0stop;chưa final/analysis,không restart |
 | Bảo toàn dữ liệu/kết quả cũ | Original seal/freeze/binding, bundle index và kết quả C30/U | Không sửa/rerun; H6/E1/H7 giữ nguyên; không per-step/Stage2 |
 | Thực thi trong tài nguyên owner cho phép | C30/E40GiB, AC-only,410MiB/job,6workers; locks/stop/receipt | Không hạ sàn/xóa/retry failed; chỉ phân tích full panel sau kiểm cuối |
 | Phân biệt code portable với tái lập raw | START-HERE, external input paths và hash | Clone để đọc/sửa nguồn; máy mới cần provision/rebind execution manifest |

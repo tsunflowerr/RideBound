@@ -1,23 +1,46 @@
-# C60/C120 — trạng thái tiếp tục
+# C60/C120 — đủ lượt chạy, còn kiểm cuối và phân tích
 
-Checkpoint **2026-10-16T17:07:56.317806+07:00**: **2/2 smoke đạt; 65/68 main pass/succeeded, 3 đang chạy/chưa kết thúc, 0 chưa nhận**.
-Driver11224/launcher14260 còn sống tại checkpoint;không restart/resume.
-Đã kiểm cơ học 67 bundle hoàn tất: length/SHA/nativeexit0/admission-finish
-khớp;96pinned+17seal+5policy khớp;0lỗi/STOP/drift/unexpected output.
-Cả2smoke đã full post-phase và identity/ledger/cap PASS.
-Chưa đủ68/final checks;chưa phân tích partial panel hoặc sửa luận văn.
+Checkpoint **2026-10-16T17:17:22.473151+07:00**: **2/2 smoke và68/68 main pass/succeeded;0active/0pending;driver đang full post-phase check**.
+Driver11224/launcher14260 còn sống;không tạo/resume driver. Rootlog đã ghi
+main68/68 pass rồi full original/new frozen-input check begins.
+**Chưa có main-complete.json,analysis-started/complete hoặc final exit0** tại
+checkpoint này;chưa có kết quả hiệu quả mới để diễn giải hoặc sửa luận văn.
 
+Đã kiểm cơ học đủ70bundle(68main+2smoke):mọi length/SHA/nativeexit0 và
+admission/finish binding khớp;96pinned+17seal+5policy khớp.0lỗi/STOP/drift/
+unexpected output. Evidence:`heartbeat-20261016-171722-mechanical.json`,SHA256`98d5877b400db79f619e1a2047b1f8ac55b22e9ee111c4f7f0f37650e9437322`.
 Manifest:`cedecbb1a97d31ec8ab295fd16c99fb607f14d622779247d8df6d9b219b42d6f`.
-Evidence:`heartbeat-20261016-170756-mechanical.json`,SHA256`fe81a6aa10c6e28c49654e9e9c23003ddf518a42b2bc531e53ec8c439695c63f`.
-AC100%,C36.086GiB/E40.765GiB. C30/E40GiB/AC/410MiB/6workers giữ nguyên.
-Rootlog:run-20261016-1401.log. Snapshot có thời điểm;kiểm process/log hiện tại
-trước lệnh tiếp theo. Đã chuẩn bị checker số học độc lập ngoài harness đã khóa,
-chỉ chạy sau nativeexit0 và analysis-complete;không sửa analysis/driver/freeze.
+AC100%,C35.816GiB/E40.765GiB;C30/E40/AC/410MiB/6workers giữ nguyên.
+
+## Khi driver kết thúc
+
+Driver tự phân tích sau main post-check đạt;không chạy analysis trùng. Chỉ khi
+rootlog có exit0,driver/launcher/analysis children đã hết,analysis-complete.json
+vàresults/REPORT.md tồn tại,mọi stop/mismatch đều không có,mới kiểm báo cáo.
+Sau đó chạy checker số học độc lập mới(READ-ONLY trên kết quả):
+
+C:/Users/quang/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe
+-X utf8 -I -B C:/RideBoundContinuation/2026-10-16/verify-cost-cap-final.py
+
+Checker SHA256:`0cf5a4d966d82afaf44c1b4ac7131944eae7907e12bd9b1c5b01d5e420cfbd1b`. Đây là công cụ kiểm mới ngoài harness
+đã khóa;không đổi driver/analysis/manifest hoặc nghiên cứu. Nó chỉ đối chiếu
+CSV/JSON/cell/day/baseline/receipt,không nhận raw-ledger/forecast decoding độc
+lập. Output độc quyền C:/RideBoundContinuation/2026-10-16/cost-cap-final-independent-arithmetic.json.
+Nếu output đã có thì đọc/hash/đối chiếu trước,không overwrite/chạy lại bừa.
+Nếu checker trượt,giữ kết quả và lỗi;không sửa analysis/raw để cứu số.
+.NET kiểm lại1033pass/1034,1known clean-tree failure,exit1;log+summary ở
+C:/RideBoundContinuation/2026-10-16/dotnet-test-final-verification-20261016.log
+vàdotnet-final-verification-summary.json,không gọi suite xanh.
+
+Khi kiểm kết quả đạt:cập nhật docs18/19/ADR079/RESUME/CURRENT,báo cả đánh đổi
+và giới hạn,push báo cáo/hash nhẹ vào nhánh bàn giao. Giữ PDF77trang và nội
+dung luận văn hiện có cho đến khi báo kết quả xong;không tự sửa từ partial.
+Sau khi báo cáo đầy đủ và push xong,tắt hourly,giữ one-off PAUSED,không archive.
 
 ## GitHub đã push
 
 - [Mã, kết quả và audit](https://github.com/tsunflowerr/RideBound/tree/codex/research-handoff-20261016),
-  commit đã push trước checkpoint: `4a0731e4bc87d2acad7742c149a76122167c7935`.
+  commit đã push trước checkpoint: `fafee2f388b36df535fda565a48d2c9244fbb0e1`.
 - [Khóa luận và chương trình/báo cáo nghiên cứu](https://github.com/tsunflowerr/Report_INT3508/tree/codex/ridebound-handoff-20261016),
   commit `1d529f5f7629b7e13c9bb608737cef5b668cf313`. PDF77trang giữ hash26c8dea1…1dd69.
 - Nguồn runner riêng `research/tier3-cost-first` đã push dce84ec.

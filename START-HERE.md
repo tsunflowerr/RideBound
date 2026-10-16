@@ -88,3 +88,6 @@ log mới đi kèm phải được đọc theo actual exit, không nhận suite 
 
 Không có quyền triển khai, mở WP15/Stage2, xóa corpora hoặc sửa dữ liệu để cứu
 kết quả. Khi sửa mã, chạy `dotnet test RideBound.slnx` và cập nhật docs18/19.
+
+Khảo sát C60/C120 đã báo và push xong; lịch theo giờ và báo thức06:20 đều
+PAUSED. Không có job pending, không resume/rerun đợt này; không archive chat.

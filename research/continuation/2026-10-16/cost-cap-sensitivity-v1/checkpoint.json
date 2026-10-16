@@ -1,5 +1,5 @@
 {
-  "observedAt": "2026-10-16T18:14:17.513937+07:00",
+  "observedAt": "2026-10-16T18:17:17.444172+07:00",
   "counts": {
     "smoke": {
       "total": 2,
@@ -41,7 +41,7 @@
   "analysisComplete": true,
   "checker": "C:\\RideBoundContinuation\\2026-10-16\\verify-cost-cap-final.py",
   "checkerSha256": "0cf5a4d966d82afaf44c1b4ac7131944eae7907e12bd9b1c5b01d5e420cfbd1b",
-  "hourlyAutomation": "ACTIVE",
+  "hourlyAutomation": "PAUSED",
   "oneoffAutomation": "PAUSED",
   "status": "COMPLETE_VERIFIED",
   "nativeExit": 0,
@@ -53,5 +53,9 @@
     "proof": "../cost-cap-final-independent-arithmetic.json"
   },
   "runtimeSnapshot": "../cost-cap-final-runtime-snapshot.json",
-  "nextAction": "Report and publish; pause hourly; do not resume/rerun"
+  "nextAction": "Completed, reported and published; monitor paused. No pending jobs, no resume/rerun.",
+  "publication": {
+    "RideBound": "f483e71d8258cabd6ad2c37eac53dd5f7348ab53",
+    "Report_INT3508": "74f78c486de46091386719ec944bcddd238798d2"
+  }
 }

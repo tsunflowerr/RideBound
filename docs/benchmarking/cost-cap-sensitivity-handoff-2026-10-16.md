@@ -1,6 +1,6 @@
 # Bàn giao và khảo sát trần với bộ chọn ưu tiên chi phí — 16/10/2026
 
-> Đã hoàn tất: C60/C120 COMPLETE: 2/2 smoke, 68/68 main; final verification và analysis exit0 lúc17:24:02+07; 4.355/4.355 đối chiếu số học đạt;0active/0pending/0STOP. C60 so C30: +32phục vụ/+113ghép/+19muộn60/+13trong60; C120 so C60: +34phục vụ/+192ghép/+121muộn60/−87trong60. Thăm dò34ô/nămngày đã thấy, không optimum/satisfaction/profit. PDF77trang giữ nguyên; audit/WP12 còn mở. Hourly ACTIVE chờ báo kết quả vàpush;one-off PAUSED.
+> Đã hoàn tất: C60/C120 COMPLETE: 2/2 smoke, 68/68 main; final verification và analysis exit0 lúc17:24:02+07; 4.355/4.355 đối chiếu số học đạt;0active/0pending/0STOP. C60 so C30: +32phục vụ/+113ghép/+19muộn60/+13trong60; C120 so C60: +34phục vụ/+192ghép/+121muộn60/−87trong60. Thăm dò34ô/nămngày đã thấy, không optimum/satisfaction/profit. PDF77trang giữ nguyên; audit/WP12 còn mở. Hourly PAUSED sau khi báo vàpush kết quả;one-off PAUSED.
 
 Owner cho push GitHub và chạy C60/C120 trong chat. ADR079 thay quyền no-push
 cũ trong phạm vi này; không thay claim, frozen evidence hay giới hạn tài nguyên.
@@ -98,7 +98,7 @@ Giữ H6/E1/H7,không per-step/Stage2 hoặc sửa luận văn từ partial resu
 
 ## Kết quả C60/C120 đã kiểm — 2026-10-16T18:14:17.513937+07:00
 
-C60/C120 COMPLETE: 2/2 smoke, 68/68 main; final verification và analysis exit0 lúc17:24:02+07; 4.355/4.355 đối chiếu số học đạt;0active/0pending/0STOP. C60 so C30: +32phục vụ/+113ghép/+19muộn60/+13trong60; C120 so C60: +34phục vụ/+192ghép/+121muộn60/−87trong60. Thăm dò34ô/nămngày đã thấy, không optimum/satisfaction/profit. PDF77trang giữ nguyên; audit/WP12 còn mở. Hourly ACTIVE chờ báo kết quả vàpush;one-off PAUSED.
+C60/C120 COMPLETE: 2/2 smoke, 68/68 main; final verification và analysis exit0 lúc17:24:02+07; 4.355/4.355 đối chiếu số học đạt;0active/0pending/0STOP. C60 so C30: +32phục vụ/+113ghép/+19muộn60/+13trong60; C120 so C60: +34phục vụ/+192ghép/+121muộn60/−87trong60. Thăm dò34ô/nămngày đã thấy, không optimum/satisfaction/profit. PDF77trang giữ nguyên; audit/WP12 còn mở. Hourly PAUSED sau khi báo vàpush kết quả;one-off PAUSED.
 
 | Trần cost-first | Phục vụ | Muộn >60s p0 | Trong60s | Ghép xe | Bị sửa ETA | Sửa lặp | Đón muộn | Muộn >60s D0 |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -115,3 +115,12 @@ H6/E1/H7=7<10 và cây nguồn E giữ nguyên;không Stage2/per-step/rerun.
 Toàn bộ JSON/TSV/hash và giải thích ở `C:/RideBoundContinuation/2026-10-16/COST-CAP-RESULTS.md`.
 .NET1033/1034 với1known clean-tree failure,exit1;không suite xanh.
 PDF77trang giữ hash26c8dea1…1dd69,chưa chèn kết quả cap mới;readiness/WP12 mở.
+
+
+## Đóng lịch theo dõi — 2026-10-16T18:17:17.444172+07:00
+
+Đã báo kết quả đầy đủ và xác minh push hai nhánh bàn giao. Lịch theo giờ đã
+PAUSED bằng automation_update; one-off06:20 giữ PAUSED; không archive chat.
+Receipt: C:/RideBoundContinuation/2026-10-16/cost-cap-monitor-closure.json.
+Không còn job chờ; không resume/rerun đợt này. Kết quả và raw được giữ nguyên.
+Các trạng thái ACTIVE/đang chạy trong mục lịch sử chỉ đúng tại thời điểm cũ.

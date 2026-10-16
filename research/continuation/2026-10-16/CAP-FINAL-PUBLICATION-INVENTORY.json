@@ -1,7 +1,7 @@
 {
   "publishedAt": "2026-10-16T18:14:17.513937+07:00",
   "scope": "Additive completed-cap results, logs, bundle metadata and live-doc checkpoint; original export inventory remains historical",
-  "note": "Documentation/checkpoints can receive a later monitor-closure update; scientific results and receipts are unchanged",
+  "note": "Current docs/checkpoints refreshed after actual monitor pause; scientific results and frozen receipts unchanged",
   "files": [
     {
       "source": "C:\\RideBoundContinuation\\2026-10-16\\cost-cap-sensitivity-v1\\analysis-complete.json",
@@ -24,14 +24,14 @@
     {
       "source": "C:\\RideBoundContinuation\\2026-10-16\\cost-cap-sensitivity-v1\\checkpoint.json",
       "target": "research\\continuation\\2026-10-16\\cost-cap-sensitivity-v1\\checkpoint.json",
-      "bytes": 1562,
-      "sha256": "b997ad2416ec08d2b59d21ea0543d989168aec323bf7fcf7daa51dc2818fa09e"
+      "bytes": 1743,
+      "sha256": "5151380bd8af1127e7ea0b4ff6f4cd7d502627f165a7ab691f631da0512e053a"
     },
     {
       "source": "C:\\RideBoundContinuation\\2026-10-16\\cost-cap-sensitivity-v1\\CURRENT-STATUS.md",
       "target": "research\\continuation\\2026-10-16\\cost-cap-sensitivity-v1\\CURRENT-STATUS.md",
-      "bytes": 1954,
-      "sha256": "0abc294712557f3c2dfab5f2c59178b47047efe3bbe9ec854731066ca662cc1f"
+      "bytes": 2533,
+      "sha256": "806b836383c65376c3feed586f6f98729475edcf1e88d429422772a7f6890ed7"
     },
     {
       "source": "C:\\RideBoundContinuation\\2026-10-16\\cost-cap-sensitivity-v1\\dotnet-test-costfirst.log",
@@ -1428,8 +1428,8 @@
     {
       "source": "C:\\RideBoundContinuation\\2026-10-16\\COST-CAP-RESULTS.md",
       "target": "research\\continuation\\2026-10-16\\COST-CAP-RESULTS.md",
-      "bytes": 6708,
-      "sha256": "fd3cffc6908f01a39c117bcba54cba634d0b3394eead05d2eb141243e905583a"
+      "bytes": 6773,
+      "sha256": "e6fa9ecb8fa60ea282cf9113c828e25f55d39d3ee7cf11ad3b7a89b7e0d5b40c"
     },
     {
       "source": "C:\\RideBoundContinuation\\2026-10-16\\cost-cap-final-independent-arithmetic.json",
@@ -1452,26 +1452,26 @@
     {
       "source": "C:\\RideBoundContinuation\\2026-10-15\\RESUME-STATUS.md",
       "target": "research\\continuation\\2026-10-15\\RESUME-STATUS.md",
-      "bytes": 41795,
-      "sha256": "113cab26200c29d305b41ec2aa1c40ea58a6c6ec8ba0b496951c0ab238667e12"
+      "bytes": 42331,
+      "sha256": "a687e29b120a035507eae75c9ca135cf59b320ad031606213e563ec68e31d712"
     },
     {
       "source": "C:\\Code\\RideBound-noworse\\docs\\18-status-and-decision-log.md",
       "target": "docs\\18-status-and-decision-log.md",
-      "bytes": 455796,
-      "sha256": "19e28566a6a73154ef294c79261af50dddeac74a96235f4b1ca3c6f3eb2e5156"
+      "bytes": 456010,
+      "sha256": "d3f175a6ef0ec1c8d09e8a23b4a9c077c33beef0223e3bfadee7e429e65a5d11"
     },
     {
       "source": "C:\\Code\\RideBound-noworse\\docs\\19-requirement-traceability.md",
       "target": "docs\\19-requirement-traceability.md",
-      "bytes": 105595,
-      "sha256": "9419827cfd74ca11e00c2d8bd8bae2552bd51a1a5f2685febd00f3aacbe78e14"
+      "bytes": 106131,
+      "sha256": "d1e330e1d0a54ff575b33e9a6d9b5f76755ce3bac871f5aff20d34feb7163f1b"
     },
     {
       "source": "C:\\Code\\RideBound-noworse\\docs\\benchmarking\\cost-cap-sensitivity-handoff-2026-10-16.md",
       "target": "docs\\benchmarking\\cost-cap-sensitivity-handoff-2026-10-16.md",
-      "bytes": 9235,
-      "sha256": "1d60601178c84e09b795b5b1e98e96854470637c611a57eeff2ecaab0d1e14a8"
+      "bytes": 9773,
+      "sha256": "82af41702740528abbd9ca83578846f2822b28a5ab470a1b1401e02ebf2f4230"
     },
     {
       "source": "C:\\RideBoundData\\research\\tier3-cost-cap-sensitivity-v1\\smoke\\CF-C-120-d20181114-s10-r1-w08\\bundle-manifest.json",
@@ -2738,6 +2738,13 @@
       "target": "research\\continuation\\2026-10-16\\cost-cap-new-raw-bundle-index.json",
       "bytes": 51595,
       "sha256": "43bfd2bd4e661581cd08bc3643b405e19d4b2af01d9c8066508f63dc01f8acac"
+    },
+    {
+      "source": "C:\\RideBoundContinuation\\2026-10-16\\cost-cap-monitor-closure.json",
+      "target": "research\\continuation\\2026-10-16\\cost-cap-monitor-closure.json",
+      "bytes": 787,
+      "sha256": "62c5ed1e65c61aeebf9c36879787fd9fe2c847b7fd9975c6af8319c6482f493d"
     }
-  ]
+  ],
+  "monitorClosureAt": "2026-10-16T18:17:17.444172+07:00"
 }

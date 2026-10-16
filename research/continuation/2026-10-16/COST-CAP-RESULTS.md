@@ -90,4 +90,5 @@ Nguồn runner nằm trong nhánh bàn giao RideBound; raw transcript, dữ li�
 runtime, binary và vendor vẫn ở máy gốc. Metadata bundle, log, kế hoạch,
 manifest và hash được bàn giao; clone chưa đủ để chạy lại trên máy mới.
 Đợt này đã kết thúc: không resume/rerun launcher hoặc analysis. Không xóa dữ liệu.
-Lịch theo giờ sẽ được tắt sau khi báo kết quả và push; báo thức 06:20 giữ PAUSED.
+Đã báo kết quả và push hai nhánh bàn giao; lịch theo giờ PAUSED lúc 2026-10-16T18:17:17.444172+07:00.
+Báo thức 06:20 giữ PAUSED; không archive chat.

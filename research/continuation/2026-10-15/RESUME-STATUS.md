@@ -257,3 +257,16 @@ Hourly ACTIVE cho đợt mới;one-off PAUSED. C30/E40GiB/AC/410MiB giữ nguyê
 Checkpoint local chi tiết: cost-cap-sensitivity-v1/CURRENT-STATUS.md vàcheckpoint.json.
 Không clone rồi chạy trùng trên máy công ty. Không phân tích partial hoặc đổi
 frozen inputs;driver tự đi tiếp sau2smoke. Chưa nhận có kết quả C60/C120.
+
+
+## Heartbeat C60/C120 — 2026-10-16T15:06:26.407675+07:00
+
+2/2 smoke đạt; 14/68 main pass/succeeded, 6 đang chạy/chưa kết thúc, 48 chưa nhận. Driver11224/launcher14260 đang chạy,6wrappers active;
+không resume hoặc tạo driver mới. Cả2smoke đã full post-phase check và
+identity/ledger/cap PASS. Kiểm16 bundle hoàn tất với length/SHA/nativeexit0/
+admission-finish binding;96manifest entries+17seal+5policy khớp.
+0lỗi/STOP/drift/unexpected output;AC100%,C39.656GiB/E40.766GiB.
+Evidence: C:/RideBoundContinuation/2026-10-16/cost-cap-sensitivity-v1/heartbeat-20261016-150626-mechanical.json.
+Chỉ kiểm cơ học, chưa phân tích partial panel hoặc nhận kết quả khoa học mới.
+Chưa đủ68/final/analysis;hourly ACTIVE,one-off PAUSED. Giữ sàn C30/E40,
+AC/reserve410MiB/6workers, H6/E1/H7, không per-step/Stage2 hoặc sửa luận văn.

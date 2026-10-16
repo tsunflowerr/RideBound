@@ -1,20 +1,25 @@
 # C60/C120 — trạng thái tiếp tục
 
-Checkpoint **2026-10-16T14:09:33.348015+07:00**. Driver11224/launcher14260 khởi động14:01:08+07.
-Full freeze exit0 lúc14:00:29; full preflight trước chạy PASS.
-Smoke: 0/2pass, 2active/chưa kết thúc.
-Main: 0/68pass, 0đã nhận; chưa có báo cáo kết quả mới.
+Checkpoint **2026-10-16T15:06:26.407675+07:00**: **2/2 smoke đạt; 14/68 main pass/succeeded, 6 đang chạy/chưa kết thúc, 48 chưa nhận**.
+Driver11224/launcher14260 vẫn sống; không khởi chạy hoặc resume driver mới.
+Cả2smoke đã qua full post-phase check và kiểm identity/ledger/cap.
 
-Manifest: `cedecbb1a97d31ec8ab295fd16c99fb607f14d622779247d8df6d9b219b42d6f`. Selftest13/13; .NET1033pass/1034,
-1known clean-tree failure,exit1. Root log: run-20261016-1401.log.
-C còn41.018GiB,E còn40.766GiB tại checkpoint.
-Không có receipt lỗi/dừng mới tại checkpoint. Trước lệnh tiếp theo phải kiểm
-process/log/output hiện tại; checkpoint không phải trạng thái thời gian thực.
+Đã kiểm cơ học 16 bundle hoàn tất: mọi length/SHA khớp, child
+returncode0, admission/finish cùng manifest. 96 mục trong manifest mới,
+17seal gốc và5policy tài nguyên khớp;0lỗi/STOP/drift/unexpected output.
+Đây là kiểm tính toàn vẹn/tiến độ, chưa phân tích hiệu quả trên panel đang chạy.
+Chưa đủ68 và final checks; chưa analysis-started/analysis-complete hoặc REPORT mới.
+
+Manifest: `cedecbb1a97d31ec8ab295fd16c99fb607f14d622779247d8df6d9b219b42d6f`.
+Evidence: `heartbeat-20261016-150626-mechanical.json` (SHA256 `87bc7472c09d9099a8dee091ab50f4ac16494b4fc3166a8fb2e2641c13595cb2`).
+Root log: run-20261016-1401.log. AC100%;C39.656GiB/E40.766GiB.
+Giữ C30/E40GiB, AC-only,410MiB/job,6workers; không xóa/hạ sàn/rerun failed.
+Selftest13/13; .NET1033pass/1034,1known clean-tree failure,exit1 vẫn giữ nguyên.
 
 ## GitHub đã push
 
 - [Mã, kết quả và audit](https://github.com/tsunflowerr/RideBound/tree/codex/research-handoff-20261016),
-  commit đã push trước checkpoint: `d4ee68692573dcf23748d188f515fe1bbedbd089`.
+  commit đã push trước checkpoint: `0129c27c930224621edf1b92c4f6c3f34690eae1`.
 - [Khóa luận và chương trình/báo cáo nghiên cứu](https://github.com/tsunflowerr/Report_INT3508/tree/codex/ridebound-handoff-20261016),
   commit `1d529f5f7629b7e13c9bb608737cef5b668cf313`. PDF77trang giữ hash26c8dea1…1dd69.
 - Nguồn runner riêng `research/tier3-cost-first` đã push dce84ec.

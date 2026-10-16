@@ -1,3 +1,24 @@
 launch mode=run manifest=cedecbb1a97d31ec8ab295fd16c99fb607f14d622779247d8df6d9b219b42d6f at 2026-10-16T14:01:08.6777706+07:00
 full original/new frozen-input check begins
 full original/new frozen-input check PASS
+smoke 1/2 CF-C-60-d20181114-s10-r1-w08 pass
+smoke 2/2 CF-C-120-d20181114-s10-r1-w08 pass
+full original/new frozen-input check begins
+full original/new frozen-input check PASS
+{"phase": "smoke", "counts": {"pass": 2, "pending": 0, "partial": 0, "failed": 0, "admitted-no-output": 0}}
+smoke identity/ledger/cap PASS C-60 90
+smoke identity/ledger/cap PASS C-120 93
+main 1/68 CF-C-60-d20181114-s10-r3-w07 pass
+main 2/68 CF-C-120-d20181114-s10-r3-w07 pass
+main 3/68 CF-C-60-d20181114-s10-r3-w08 pass
+main 4/68 CF-C-60-d20181114-s10-r4-w07 pass
+main 5/68 CF-C-120-d20181114-s10-r3-w08 pass
+main 6/68 CF-C-120-d20181114-s10-r4-w07 pass
+main 7/68 CF-C-60-d20181114-s10-r3-w17 pass
+main 8/68 CF-C-120-d20181114-s10-r3-w17 pass
+main 9/68 CF-C-60-d20181115-s10-r1-w07 pass
+main 10/68 CF-C-120-d20181115-s10-r1-w07 pass
+main 11/68 CF-C-60-d20181114-s10-r4-w08 pass
+main 12/68 CF-C-60-d20181114-s10-r4-w17 pass
+main 13/68 CF-C-120-d20181114-s10-r4-w08 pass
+main 14/68 CF-C-120-d20181114-s10-r4-w17 pass

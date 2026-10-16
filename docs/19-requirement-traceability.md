@@ -1,5 +1,40 @@
 # Ma trận truy vết yêu cầu
 
+## Bàn giao GitHub và khảo sát C60/C120 — 2026-10-16
+
+| Yêu cầu | Chứng cứ | Trạng thái/giới hạn |
+|---|---|---|
+| Mang mã/kết quả lên máy công ty | ADR079; hai nhánh codex handoff; START-HERE và inventory xuất | Đang chuẩn bị push; không rewrite lịch sử, không raw/vendor/env/secret/paper |
+| Chạy C60/C120 cost-first | Plan mới trên C; đúng runner v3/WP4, 34 ô;13/13 selftests | Full input check đang chạy; chưa có kết quả;2 smoke trước68main |
+| Bảo toàn dữ liệu/kết quả cũ | Original seal/freeze/binding, bundle index và kết quả C30/U | Không sửa/rerun; H6/E1/H7 giữ nguyên; không per-step/Stage2 |
+| Thực thi trong tài nguyên owner cho phép | C30/E40GiB, AC-only,410MiB/job,6workers; locks/stop/receipt | Không hạ sàn/xóa/retry failed; chỉ phân tích full panel sau kiểm cuối |
+| Phân biệt code portable với tái lập raw | START-HERE, external input paths và hash | Clone để đọc/sửa nguồn; máy mới cần provision/rebind execution manifest |
+
+Chi tiết [hồ sơ mới](benchmarking/cost-cap-sensitivity-handoff-2026-10-16.md).
+
+## Tiếp phiên khóa luận và Stage 1b — 2026-10-15
+
+ADR-078 ghi nhận nghiên cứu ngoài cây chính; không nâng work package.
+[Hồ sơ](benchmarking/thesis-stage1b-continuation-2026-10-15.md).
+
+| Yêu cầu | Chứng cứ | Gate/giới hạn |
+|---|---|---|
+| Kế thừa đúng trạng thái, không chạy trùng | Script/output inherited-state, 17/17 seal SHA, 4 gate/2 smoke bundle | Main/freeze/binding chưa có lúc kiểm; giữ raw và failure receipts |
+| Selector mới hoạt động đúng | 746 CF-C30 + 768 CF-U quyết định từ frame bytes | Activation/correctness, không phải service/profit claim |
+| Khóa analysis trước main | Sửa R46, review chéo, 19/19 + 18/18; full v3 192/192; judge READY; khóa 10 tệp 01:10 +07 | Manifest f2db6445…952f1; 17 tệp seal cũ giữ nguyên, bản gốc analysis được lưu C; thresholds giữ nguyên |
+| Tính lại số lịch sử | 1.836 đối chiếu R19 không lệch trong full v2 | Ba diagnostic fixtures được sửa đúng tình huống, không bỏ test |
+| Baseline minh bạch | Required dotnet test trên cost-first checkout: 1.033 pass + 1 known failure | Exit 1; không nhận suite pass hoặc baseline BeGo mới |
+| Luận văn dễ đọc, đủ đánh đổi và provenance | Bản thật 77 trang đã cập nhật 2026-10-16; backup/receipt thesis-v5-deployment.json;47/47 kiểm bảng;visual review toàn PDF | Tên cấu hình tự nhiên, không stage jargon;giữ giới hạn/đối chứng bất lợi;QA không phải tái lập mọi số lịch sử |
+| Giữ quyền và biên repo | E core/job read-only, output C, AC-only; owner đổi C45 thành C30 GiB ngày15/10, E40/reserve410MiB giữ nguyên | Không xóa, commit/push, chạy Stage2 hoặc cứu H6/WP14; không hạ dưới sàn mới |
+| Hoãn tài nguyên tách khỏi lỗi thực nghiệm | Main68/68 pass; toàn bộ bundle khớp length/SHA/returncode0/binding; final post-phase exit0 lúc11:28;0stop | Không retry failed/partial; boundary sau20 run giữ rõ; admission evidence/main-final-admission.json trên C |
+| Phân tích toàn panel bằng mã đã khóa | Extract/report exit0;9.638 rider rows/136 role-runs;19 SF constants+25/25 dấu ô tái lập;83/83 kiểm số học độc lập đạt | Native exit0 sau68/final post-phase exit0;outputs exclusive;không claim kiểm độc lập raw/forecast bằng arithmetic checker |
+| Ghi nhận thay đổi chính sách tài nguyên, giữ frozen inputs | Resource30-v3 manifest7c862409…11950;12/12 boundary checks;17 seal/10 analysis/binding gốc khớp | Chỉ đổi FLOOR_MIB=30720 trong bộ nhớ sau xác thực nguyên byte v7; nêu rõ ranh giới sau20 run, không tự nhận toàn bộ chạy dưới sàn45 |
+| Tự tiếp tục một lần, giữ theo dõi theo giờ | Wake06:20 thực tế nhận09:33;one-off PAUSED09:33;hourly PAUSED sau báo kết quả11:43 | Không driver trùng,dời ngày hoặc archive;closure evidence/analysis-completion.json |
+| Báo cả kết quả và đánh đổi, giữ claim hẹp | I_L+180,I_served+42,I_timely60−138;CF-C30 served2364,late60 72,shared432;exposed106 vsSF-C30 33;forecast late60 11 vs10 | Thăm dò34 ô/5 ngày phụ thuộc;không causal/general/profit/cumulative-vs-per-step claim;giữ H6/E1 gốc |
+| Giữ điểm dừng Stage2 | Stage1b G0,H1–H6 PASS,H7 FAIL(7<10) trong report đã khóa | Không xây/chạy per-step arm;H7 fail là resource screen,không phủ định cơ chế tích lũy |
+| Tắt theo dõi khi phân tích và báo xong | evidence/analysis-completion.json;main/extract/report exit0;hourly vàone-off đều PAUSED | Không archive chat;không rerun/overwrite;luận văn thật đã cập nhật theo yêu cầu mới, có sao lưu và receipt ngày2026-10-16 |
+| Rà mức sẵn sàng bảo vệ, không đồng nhất PDF với hoàn tất nghiên cứu | [Audit13điểm](C:/RideBoundContinuation/2026-10-16/thesis-readiness-audit/THESIS-READINESS-AUDIT.md);trace-evidence/selection-trace;22payload+13result entries khớp | Còn mô tả60→49→34/15, giả định CI, trạng thái dự báo và mẫu áp dụng;chưa đóng bản nộp/WP12;không chạy nghiên cứu mới |
+
 ## 1. Yêu cầu từ mục tiêu dự án
 
 | ID | Yêu cầu | Thiết kế/tài liệu | Artifact dự kiến | Verification | Trạng thái |
@@ -794,18 +829,5 @@ các đường dẫn tương đối dưới đây tính từ thư mục đó); k
 | Đưa dự báo vào bộ điều phối (wrapper v1.3) | 32 job sau cổng; `optimize/check_runs_v2.py` kiểm tỉ số theo bảng niêm phong | 3/32 dừng `RBWP7_FLEETPY_PLAN_INFEASIBLE`; B-C1 chỉ đạt trên ô chạy xong; quy tắc triển khai chọn lớp lời hứa (`optimize/test-family-b-2026-10-06-report.txt`); kiểm độc lập khớp (`optimize/independent-B/RESULT.md`) |
 | Giới hạn đã biết | thế giới tắc đường là một hệ số chung toàn thành phố (kết quả gần như tất định, là mức trần); ô hiệu chỉnh trùng ngày-khung với ô kiểm tra; 8 ngày-khung; một tuần dữ liệu có ngày nghỉ bù 12/11 làm nguồn; không mô hình hủy chuyến; 2,3% khách có lời hứa đón đầu tiên hiển thị vượt hạn đón | `optimize/FORECAST-REPORT.md` §6 |
 
-## 33. ADR-078 traceability — thứ tự xếp hạng `cost-first` cho C1 (thăm dò, Proposed)
 
-Nhánh `research/tier3-cost-first` từ `761915c`, chưa commit; mặc định tắt; không authorize `RB-WP14R-009..012`, WP15 hay
-H7; không tuyên bố mới.
-
-| Requirement | Cài đặt/evidence | Gate |
-|---|---|---|
-| Mặc định không đổi, cấu hình cũ giữ hash | khóa `selectionObjectiveOrder` vắng ⇒ `StabilityFirst`; danh sách tầng và đóng góp như cũ; bytes chuẩn hóa không đổi | `Stability_first_keeps_the_exact_hard_vector_level_list_and_is_the_default`; `A_configuration_without_the_order_key_keeps_the_archived_tier3_bindings` (tính lại `C-30` `a2f11a3a…5f1c`, `U` `251b331e…c346` của T3.8; `C-120` `a9ac58b3…9010` do Codex dẫn xuất); suite cũ 1025 test vẫn xanh |
-| `cost-first` chỉ bỏ tầng mức dùng và tầng revision | case `HardVector when hardTreatmentActive && StabilityFirst` trong `SolverBackedFleetSelection.cs`; tầng forced, số khách nhận, chi phí, phá hòa theo id giữ nguyên | `Cost_first_drops_only_the_utilization_and_revision_levels`; `Cost_first_keeps_the_forced_level_condition_and_equals_stability_first_without_hard_limits`; đột biến bỏ cả tầng forced hoặc tầng chi phí ⇒ đỏ |
-| Cổng, khóa, phục hồi, sinh ứng viên không đổi | profile vẫn `HardVector`; thứ tự chỉ vào bộ chọn | `Cost_first_C1_ranks_the_same_gated_candidates_by_cost_and_picks_a_cheaper_plan` (64 seed: cùng tập phương án, cùng witness bị loại; qua validator như Runner; 8/64 seed rẻ hơn hẳn); `Cost_first_under_no_worse_recovery_keeps_the_forced_treatment_and_the_no_worse_gate` (luật (b): xe vẫn bị ép, tầng đầu `forced-reference-count`, qua cổng no-worse; hai thứ tự chọn cùng phương án ở trạng thái này) |
-| Thứ tự đi hết đường cấu hình → options → bộ chọn | `Wp4RunnerConfiguration.Decode` và `CreateSolverPolicyOptionsForRun`; `SolverBackedRidePoolingPolicy.Decide` | `Selection_objective_order_is_optional_stability_first_and_cost_first_only_for_C1`; đột biến mất thứ tự ở options theo seed hoặc ở lời gọi bộ chọn ⇒ đỏ |
-| Cấu hình sai thì hỏng to | giá trị lạ/rỗng/không phải chuỗi; `cost-first` ngoài C1 solver-backed (B1, C2) | cùng test cấu hình; `Cost_first_is_rejected_outside_the_hard_vector_profile`; `Cost_first_policy_options_are_valid_only_for_C1_and_default_to_stability_first` |
-| Transcript cho biết thứ tự đã chạy | không thêm trường; tên tầng đã có ở `objectiveBounds[].objectiveName`; cấu hình gắn qua `policyConfigurationHash` | ghi ở ADR-078 Decision 5 |
-| Suite | `dotnet test RideBound.slnx` | trước 1024/1025 (`StrictBagItBundleTests` đỏ trên cây sạch, đã biết); sau 1034/1034; review độc lập không blocker |
-| Giới hạn đã biết | chưa chạy FleetPy; chưa publish Runner; khai báo tường minh `stability-first` đổi hash; ở một quyết định, tầng của `cost-first` trùng trường hợp không có giới hạn cứng; xếp hạng mức dùng của no-worse (ADR-077) không còn tác dụng; chỉ xếp hạng trên danh mục đã giữ | ADR-078 Consequences |
+Cập nhật thực thi16/10 khoảng14:03+07: full freeze exit0,manifest cedecbb1…42d6f;driver11224/launcher14260 khởi động14:01:08, đang preflight trước2smoke;0/68main. Hourly đã ACTIVE cho đợt mới,one-off PAUSED. Nguồn cost-first đã push dce84ec;hai gói bàn giao chờ push. Xem CURRENT-STATUS.md trên C để tránh driver trùng.

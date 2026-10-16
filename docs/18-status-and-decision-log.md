@@ -1,7 +1,8 @@
 # Trạng thái và decision log
 
 > Tệp sống — cập nhật ở cuối mọi task RideBound
-> Cập nhật gần nhất: 2026-08-28 (cây chính); nhánh thăm dò `research/deadline-gate`: 2026-09-24 (ADR-074 Proposed); nhánh thăm dò `research/tier3-failure-aware`: 2026-09-25 (ADR-075, ADR-076 Proposed; thí điểm T3.7 xong, cổng dừng phục hồi bị kích hoạt); nhánh thăm dò `research/tier3-no-worse`: 2026-09-26 (ADR-077 Proposed; 28 job đầu-cuối A1 pass), 2026-09-29 (Tầng 3 việc A: 48 job `V`/`M` với hai luật phục hồi, thăm dò), 2026-09-30 (Tầng 3 việc B: 88 job khung 7:00–9:00 chỉ tắc đường thật, thăm dò), 2026-10-01 (w07x: mức hứa 90–240 s, 104 job, thăm dò), 2026-10-02 (T3.8/T3.9 trên panel A: 185 job, thăm dò có niêm phong), 2026-10-06 (hứa giờ có tính trước tắc đường: lớp lời hứa phát lại 170 job, 43 job đầu-cuối, thăm dò có niêm phong); nhánh thăm dò `research/tier3-cost-first`: 2026-10-11 (ADR-078 Proposed; tùy chọn thứ tự xếp hạng `cost-first`, mặc định tắt; chưa commit, chưa chạy mô phỏng)
+> Tiếp phiên ngoài cây chính: 2026-10-16 — ADR-079: owner cho push GitHub và chạy thêm C60/C120 cost-first; đang chuẩn bị/kiểm đầu vào nghiên cứu mới, chưa có kết quả mới. Nghiên cứu C30/U và PDF77trang đã giao; audit bảo vệ còn mở R01–R04, chưa đóng WP12. Trạng thái lịch đọc hồ sơ mới.
+> Cập nhật gần nhất: 2026-08-28 (cây chính); nhánh thăm dò `research/deadline-gate`: 2026-09-24 (ADR-074 Proposed); nhánh thăm dò `research/tier3-failure-aware`: 2026-09-25 (ADR-075, ADR-076 Proposed; thí điểm T3.7 xong, cổng dừng phục hồi bị kích hoạt); nhánh thăm dò `research/tier3-no-worse`: 2026-09-26 (ADR-077 Proposed; 28 job đầu-cuối A1 pass), 2026-09-29 (Tầng 3 việc A: 48 job `V`/`M` với hai luật phục hồi, thăm dò), 2026-09-30 (Tầng 3 việc B: 88 job khung 7:00–9:00 chỉ tắc đường thật, thăm dò), 2026-10-01 (w07x: mức hứa 90–240 s, 104 job, thăm dò), 2026-10-02 (T3.8/T3.9 trên panel A: 185 job, thăm dò có niêm phong), 2026-10-06 (hứa giờ có tính trước tắc đường: lớp lời hứa phát lại 170 job, 43 job đầu-cuối, thăm dò có niêm phong)
 
 ## 1. Trạng thái tổng thể
 
@@ -12,6 +13,7 @@
 | Implementation | `WP1_Q1_COMPLETE; WP2_COMPLETE; WP3_COMPLETE_14_OF_14; WP4_COMPLETE_14_OF_14; WP5_COMPLETE_14_OF_14; WP6_COMPLETE_14_OF_14; WP7_COMPLETE_14_OF_14; WP8_COMPLETE_14_OF_14; WP9_COMPLETE_001_TO_009; WP10_COMPLETE_NEGATIVE_CAPABILITY_001_TO_010; WP13_COMPLETE_001_TO_013; WP14_V1_STOPPED_FAIL; WP14R_001_TO_008R_DONE_009_MATRIX_HALTED_40_OF_160_010_SLICE_DONE` |
 | Current work package | `ADR-073 freeze v3 AUTHORIZED, receipt SHA 07baeda2…fa9227; RB-WP14R-008 remains CLOSED — FAIL CLOSED under v2; RB-WP14R-008R paired gate running under v3; 009..012/WP15/H7 UNAUTHORIZED; WP14-v1 and H6/E1 frozen; F2-inert prediction registered pre-outcome` |
 | Repository | `https://github.com/tsunflowerr/RideBound` |
+| Thesis / Stage 1b continuation | ADR-078: COMPLETE exploratory Stage1b;68/68 main and final post-phase/extract/report exit0;83/83 independent extraction-arithmetic checks. I_L+180,I_served+42,I_timely60−138;Stage1b H1–H6 PASS,H7 FAIL(7<10),no Stage2. Results reported; both timers PAUSED. Resource boundary after20 runs preserved; actual thesis updated 2026-10-16, 77 pages, backed up and verified. [Hồ sơ](benchmarking/thesis-stage1b-continuation-2026-10-15.md) |
 | Main baseline | B1 `rolling-cost` |
 | Main treatment | C1 `ridebound-hard-vector` |
 | Layer 2 | FleetPy 1.0.2 |
@@ -5153,80 +5155,185 @@ phương án bị ép khi:
 - Tầng `forced-reference-count` vẫn đứng trước số khách nhận. Một phương án no-worse được đếm 1, như no-op bị ép.
 - Công việc validate thêm chưa được cộng vào `validationWorkUnits`.
 
-### ADR-078 — 2026-10-11 — Proposed (thăm dò; nhánh `research/tier3-cost-first` từ `761915c`; chưa commit)
+### ADR-079 — 2026-10-16 — Accepted (bàn giao GitHub và độ nhạy C60/C120)
 
-**Context.**
-- Giai đoạn 1b của nghiên cứu (chủ nghiên cứu đã duyệt) cần một biến thể C1 xếp hạng theo chi phí vận hành ngay sau
-  số khách nhận, trong khi mọi cổng cứng, khóa và luật phục hồi giữ nguyên.
-- Ở C1, khi có giới hạn cứng áp dụng, bộ chọn đội xe xếp sau `accepted-request-count` tầng `worst-hard-utilization-ppm`,
-  rồi 10 tầng `revision:*`, rồi mới tới `operational-cost` (`SolverBackedFleetSelection.cs:319-331` ở `761915c`).
-- Chuyển sang B1 `rolling-cost` không đáp ứng: đường đó không chạy bộ đánh giá cứng và không có tầng
-  `forced-reference-count` (`SolverBackedRidePoolingPolicy.cs:322-353`, `SolverBackedFleetSelection.cs:276-295` ở
-  `761915c`).
+**Context:** Owner trực tiếp yêu cầu đưa mã/kết quả lên GitHub để tiếp tục trên
+máy công ty, cho phép dùng báo cáo khi raw lớn; đồng thời yêu cầu chạy thêm
+C60/C120 với bộ chọn ưu tiên chi phí. Quyền này thay hạn chế commit/push cũ
+trong phạm vi bàn giao; không cho sửa/xóa frozen evidence hoặc hạ sàn tài nguyên.
 
-**Decision.** Thêm khóa WP4 `selectionObjectiveOrder`, mặc định `stability-first`:
-1. Vắng khóa nghĩa là `stability-first`, tức hành vi hiện tại. Cấu hình không có khóa giữ nguyên bytes chuẩn hóa, nên
-   content hash và `policyConfigurationHash` không đổi.
-2. `cost-first` chỉ hợp lệ với C1 solver-backed. Các tầng còn lại: `forced-reference-count` (giữ nguyên điều kiện bật
-   cũ), `accepted-request-count`, `operational-cost`, `candidate-id-rank:<xe>`. Hai nhóm bị bỏ:
-   `worst-hard-utilization-ppm` và 10 tầng `revision:*`. Khi không có giới hạn cứng áp dụng, hai thứ tự cho cùng danh
-   sách tầng.
-3. Không đổi: policy kind và profile vẫn là `HardVector`; bộ đánh giá cứng, cổng, khóa, luật phục hồi (a)/(b), lên xe
-   muộn, sinh và giữ ứng viên, ngân sách solver, validator toàn đội. `Map()` vẫn báo mức dùng lớn nhất và revision của
-   lựa chọn.
-4. Giá trị lạ, rỗng, không phải chuỗi, hoặc `cost-first` ngoài C1 solver-backed đều là lỗi cấu hình.
-5. Không thêm trường bằng chứng mới. Khi `emitSolverExecutionEvidence: true`, mỗi quyết định đã ghi tên từng tầng ở
-   `solver.executionEvidence.selection.{primary,final}SolverDiagnostics.objectiveBounds[].objectiveName`. Dưới
-   `cost-first`, danh sách đó không có tầng mức dùng và revision. Ở cấp lần chạy, `policyConfigurationHash` trong
-   `initializeRun` gắn với bytes cấu hình có khóa. Một trường mới sẽ phải sửa codec quyết định, vì tập trường của
-   evidence là cố định (`DecisionMessages.cs:167-175`, kiểm ở `:844-851`).
+**Decision:** Nhánh `codex/research-handoff-20261016` dựa trên cost-first dce84ec
+chứa mã mới nhất, docs, kết quả nhẹ và audit. Nhánh tương ứng
+`codex/ridebound-handoff-20261016` ở Report_INT3508 giữ nguồn/PDF khóa luận,
+trạng thái báo cáo thực tập do owner đã có và chương trình/báo cáo nghiên cứu.
+Không viết lại lịch sử hoặc sửa cây nguồn E. Raw/vendor/env/paper tải về giữ local;
+bàn giao có inventory/hash và hướng dẫn external inputs, không nhận clone đủ tái lập.
 
-**Alternatives considered.**
-- Dùng B1 `rolling-cost`: loại, vì mất bộ đánh giá cứng và tầng forced-reference.
-- Thêm profile mới, ví dụ `HardVectorCostFirst`: loại, vì profile được ghi vào evidence danh mục ứng viên
-  (`SolverExecutionEvidenceMapper.cs:291-296`) và codec chỉ nhận một tập giá trị cố định (`DecisionMessages.cs:992-996`).
-  Một tham số thứ tự riêng chỉ chạm ba tệp production.
+Nghiên cứu độ nhạy mới: hai smoke calibration rồi 34 ô × C60/C120 =68 main,
+đúng runner v3 và WP4 cost-first của C30/U; chỉ trần drop_eta_total_ms đổi.
+Plan/harness mới trên C, outputs mới `tier3-cost-cap-sensitivity-v1`; original
+seal/driver/analysis/raw/H6/E1/H7 giữ nguyên. Không per-step, Stage2 hoặc sửa dự báo.
+AC-only, C30GiB/E40GiB, reserve410MiB/job, tối đa6workers; pending-only resume,
+không retry failed/partial/anchor-only. Chỉ phân tích khi đủ68 và kiểm cuối đạt.
 
-**Evidence.**
-- `dotnet test RideBound.slnx` trước khi sửa: 1024/1025, một lỗi là `StrictBagItBundleTests` (đòi `GitDirty == true`
-  trên cây sạch). Sau khi sửa: 1034/1034, tức 1025 cũ cộng 9 test mới.
-- Test mới:
-  - Algorithms, bộ chọn (5 test): danh sách 16 tầng stability-first đúng tên, đúng thứ tự, và trùng khi không truyền
-    tham số; `cost-first` chỉ bỏ tầng mức dùng và tầng revision, mọi tầng còn lại giống hệt; tầng forced giữ điều kiện
-    cũ; khi không có giới hạn cứng hai thứ tự như nhau; từ chối `cost-first` ngoài profile `HardVector`; options chỉ
-    nhận C1.
-  - Algorithms, đầu-cuối dưới Runner (2 test):
-    - 64 seed exact-small: cùng tập phương án và cùng witness bị loại ở hai thứ tự; phương án `cost-first` qua validator
-      như Runner; 8/64 seed cho phương án rẻ hơn hẳn, và ở mỗi seed đó stability-first hơn hẳn về mức dùng hoặc revision.
-    - `cost-first` cộng luật phục hồi (b), như cấu hình Tầng 3: xe vẫn bị ép; cùng tập phương án; tầng đầu vẫn là
-      `forced-reference-count`; khách mới vẫn được nhận; phương án qua cổng no-worse như Runner. Ở trạng thái này hai thứ
-      tự chọn cùng một phương án (chi phí 360, 3 phương án), nên test kiểm bất biến, không kiểm khác biệt xếp hạng.
-  - Runner (2 test): đọc khóa (vắng, `stability-first`, `cost-first`, 4 giá trị sai, ngoài C1); tính lại
-    `policyConfigurationHash` lưu trữ của T3.8 từ chính đầu vào: `C-30` `a2f11a3a…5f1c` (51/51 lần chạy), `U`
-    `251b331e…c346` (34/34 lần chạy). Kèm `C-120` `a9ac58b3…9010`: giá trị này do Codex dẫn xuất, không có lần chạy
-    lưu trữ để đối chiếu.
-- 7 đột biến (bỏ qua `cost-first`, bỏ cả tầng forced, bỏ cả tầng chi phí, không truyền thứ tự vào bộ chọn, mất thứ tự
-  khi dựng options theo seed, đọc `cost-first` thành `stability-first`, nhận `cost-first` cho mọi chính sách
-  solver-backed) đều bị test bắt.
-- Review độc lập (agent mới, chỉ đọc): không blocker. Mục nên sửa duy nhất là thiếu test `cost-first` cộng no-worse; đã
-  thêm test. Hai nit đã sửa: so đóng góp của từng phương án trên các tầng giữ lại, và thay một khẳng định luôn đúng.
-- Chưa chạy FleetPy với `cost-first`. Cổng tương đương Gate-0 chưa chạy.
+**Evidence/status:** 13/13 selftests entrypoint đạt; required .NET trên checkout
+cost-first giữ đúng 1known clean-tree failure (exit1), không nhận suite xanh.
+Full original/new input verification đang chạy; chưa có kết quả C60/C120.
+Chi tiết [plan mới](C:/RideBoundContinuation/2026-10-16/cost-cap-sensitivity-v1/PLAN.md)
+và [hồ sơ bàn giao](benchmarking/cost-cap-sensitivity-handoff-2026-10-16.md).
+Suy luận vẫn thăm dò trên 34 ô đã xem, không optimum/satisfaction/profit/general claim.
+Những mốc no-push ở ADR078/seal là lịch sử; giữ nguyên thay vì sửa lại receipt.
 
-**Consequences và giới hạn.**
-- Là tùy chọn thăm dò. Mặc định không đổi. Không tuyên bố lợi ích nào.
-- Khai báo tường minh `"stability-first"` đổi content hash, dù hành vi như mặc định. Muốn tái lập binding lưu trữ thì
-  phải bỏ hẳn khóa.
-- Ở một quyết định đơn lẻ, danh sách tầng của `cost-first` trùng với trường hợp không có giới hạn cứng. Muốn biết lần
-  chạy dùng thứ tự nào thì đọc cấu hình theo `policyConfigurationHash`.
-- `objectiveBounds` có thể thiếu tầng khi solver hết ngân sách.
-- Dưới `cost-first`, phần xếp hạng mức dùng của ADR-077 (bỏ qua chiều vượt trần của khách được miễn) không còn tác dụng,
-  vì không còn tầng mức dùng. Một xe bị ép vì thế có thể chọn tuyến no-worse rẻ nhất, kể cả tuyến đẩy khách không được
-  miễn tới gần trần hơn. Phần miễn trừ, cổng "không tệ hơn" và các trần trong validator không đổi.
-- Thứ tự chỉ áp lên danh mục ứng viên đã được giữ lại. Với `service-set-stability-portfolio-v1`, phép so là "xếp hạng
-  theo chi phí trên cùng danh mục đã giữ", không phải trên mọi ứng viên sinh ra.
-- Evidence danh mục ứng viên vẫn ghi `objectiveProfile: "hardVector"` cho cả hai thứ tự. Thứ tự chỉ đọc được từ danh
-  sách tầng hoặc từ hash cấu hình.
-- Chưa có Runner publish chứa thay đổi này.
+### ADR-078 — 2026-10-15 — Accepted (ghi nhận tiếp phiên thăm dò bên ngoài)
+
+**Context:** Người dùng yêu cầu kế thừa phiên Claude, tiếp tục cả khóa luận và
+Stage 1b theo các quyết định mới nhất; phải kiểm tệp thật trước khi chạy tiếp.
+
+**Decision:** Giữ cây chính/worktree job trên E chỉ đọc; cập nhật trạng thái ở
+cây nghiên cứu trên C, không commit/push. Bảo toàn seal, driver/comparator,
+ngưỡng, raw và kết quả âm. Sửa analysis chưa khóa theo R46: source/cache, CSV
+bytes, receipt/build/binding/stop, mode/source và so sánh undefined. Ledger
+arithmetic là validity độc lập. Ghi quy ước median/H7 trước main. Main chỉ sau
+full self-test/judge inventory; không tự Stage 2 hoặc chép bản ghép vào luận văn thật.
+
+**Evidence:** [Hồ sơ](benchmarking/thesis-stage1b-continuation-2026-10-15.md):
+17/17 SHA, 4 gate/2 smoke, selector frame bytes, targeted 19/19 và 18/18;
+1.836 số lịch sử khớp. Full v3 192/192, judge READY TO FREEZE; khóa 10 tệp lúc
+01:10:29 +07, manifest f2db6445…952f1; main driver bắt đầu 01:11:07, preflight
+qua/binding ghi 01:19:44, bốn lượt đầu active lúc kiểm. Required suite cost-first checkout
+1.033 pass + 1 known clean-tree failure, exit 1. PDF v4 74 trang; visual QA 15–17.
+
+Heartbeat04:05: tổng16/68 main pass/succeeded; bảy bundle mới khớp length/SHA,
+không stop. Driver trước kết thúc03:34:41 exit3 do52 deferred-disk, post-phase
+verification không lỗi. AC và C46,74/E40,80 GiB cho phép resume pending-only
+04:07:05; driver7088 qua preflight. Snapshot04:10:58:16 pass,4 active,48 chưa
+nhận, C46,59 GiB. Chưa đủ68/post-phase exit0 nên chưa phân tích; câu hỏi thêm
+dung lượng chưa có trả lời, không giảm sàn hoặc xóa tệp.
+
+Owner steering09:22–09:26 +07 thay câu hỏi dung lượng bằng quyền trực tiếp:
+“Cho phép ổ cứng không dưới 30gb”, rồi “Cứ chạy đầy đủ đi đừng lo về dung lượng”.
+Áp dụng C30 GiB, E40 GiB và reserve410 MiB giữ nguyên. Bốn bundle mới khớp
+length/SHA, tổng20 pass; đủ17 seal/10 analysis và binding vẫn khớp. Driver cũ
+kết thúc04:22:25 exit3 do48 deferred-disk; C43,07 GiB không đủ sàn45 cũ nhưng
+đủ sàn mới. Amendment tài nguyên riêng trên C xác thực nguyên byte driver v7,
+chỉ đổi FLOOR_MIB trong bộ nhớ; không ghi lại frozen source/seal/binding.
+[Amendment](C:/RideBoundContinuation/2026-10-15/resource30-v3/STAGE1B-AMENDMENTS.md)
+và manifest7c862409…11950;12/12 kiểm admission/AC/STOP/drift/reservation/skip đạt
+qua hidden detached launcher. Hai bản thử trước main được giữ nguyên; không
+có main job nào chạy dưới chúng. Resume09:28:30, launcher20396/driver3888,
+log C:/RideBoundContinuation/2026-10-15/evidence/run-main-resource30-2026-10-15-092829.log;
+preflight lúc09:29. Các heartbeat đã cập nhật sàn mới và đúng launcher/pin.
+
+Báo thức một lần06:20 thực tế gửi heartbeat09:33 +07. Đã xử lý và chuyển riêng
+ti-p-t-c-ridebound-l-c-05-40 sang PAUSED, không dời ngày/archive; hourly ACTIVE.
+Snapshot09:33:54 vẫn20 pass/48 pending, driver3888 preflight,0stop/resourcefail;
+evidence/oneoff-wake-2026-10-15-093354.json trên C. Không tạo driver trùng.
+
+Heartbeat10:24–10:25 +07: **40/68 main pass/run succeeded**,6 wrappers active,
+22 chưa nhận; driver3888 đã qua preflight và tiếp tục chạy.20 bundle mới khớp
+length/SHA, returncode0 và admission/job-log binding;0 pending child receipts.
+17 tệp seal,10 analysis,5 resource-policy và binding khớp;0 failure/STOP/drift.
+C41,348/E40,805 GiB, máy AC100%. Evidence
+C:/RideBoundContinuation/2026-10-15/evidence/main-mechanical-progress-2026-10-15-102547.json.
+Chưa đủ68/final post-phase exit0, chưa chạy analysis; không restart driver.
+
+Heartbeat11:24–11:28: đủ68/68 pass;28 bundle cuối khớp length/SHA,returncode0
+và binding. Driver/launcher kết thúc **exit0 lúc11:28:00+07**, full post-phase
+verification và resource-policy check đạt. Main admission trên C:
+evidence/main-final-admission.json, nối sáu evidence cho đủ68. Không stop.
+Đã bắt đầu extractor nguyên SHA6ff7f303…3429c lúc11:29 từ cwd gốc/interpreter-B;
+orchestration chỉ giữ env/lệnh/log/receipts, không đổi mã analysis. Chờ extract
+exit0 mới chạy report; kết quả chưa được diễn giải hoặc chép vào luận văn.
+
+**Closure11:43 +07:** extract exit0 lúc11:31:45; report exit0 lúc11:40:13;
+9.638 rider rows/136 role-runs,19 SF constants và25/25 dấu ô được tái lập.
+83/83 kiểm số học độc lập trên extraction/report đạt (không claim dựng lại
+độc lập raw/forecast). Stage1b G0,H1–H6 PASS;H7 FAIL:7 served witnesses<10,
+**không mở Stage2/per-step arm**. I_L=+180,I_served=+42,I_timely60=−138,
+identity đúng;23/25 ô w08/w17 dương,5/5 ngày dương,không CI/causal claim.
+CF-C30 so SF-C30: served2364 vs2338;late60 72/2364 vs76/2338;
+shared432 vs313;forecast late60 11/2364 vs10/2338;exposed106 vs33.
+Trong CF, cap giảm138 served và595 shared,giảm307 late60,tăng169 timely60;
+không che các đánh đổi. Cap overshoot0,max29,657s;median guard đạt.
+[Kết quả](C:/RideBoundContinuation/2026-10-15/results/STAGE1B-RESULTS.md),
+[báo cáo đầy đủ](C:/RideBoundContinuation/2026-10-15/results/stage1b-report.txt),
+completion receipt evidence/analysis-completion.json trên C.
+Results manifest SHA dac8c1e1…3cdec;32 mục đối chiếu SHA trong3 inventory(17+10+5) khớp sau analysis.
+Đã báo kết quả trong chat trước mọi sửa luận văn và **PAUSED hourly** theo yêu
+cầu khi hoàn tất;one-off đã PAUSED,không archive. Dữ liệu/H6/E1 gốc,baseline,
+claim hẹp và biên repo giữ nguyên. Next: người dùng xem kết quả và bản PDF74
+trang đã ghép; luận văn thật vẫn chờ owner duyệt,không tự sửa/commit/push.
+
+## Cập nhật khóa luận — 2026-10-16T00:09:00.907016+07:00
+
+Người dùng yêu cầu cập nhật toàn bộ nội dung theo cách đọc tự nhiên, bổ sung
+đánh đổi giữa hai thứ tự chọn phương án và giải thích lý do cần phép so bổ sung.
+Đây là quyền cập nhật bản luận văn thật, thay trạng thái chờ duyệt trước đó.
+
+Đã sao lưu nguyên thư mục luận văn cũ tại `C:/RideBoundContinuation/2026-10-15/actual-thesis-backup-20261016-000900` (có manifest từng tệp),
+rồi cập nhật đúng `E:/Code/Report_INT3508/ridebound/`. Bản PDF cuối **77 trang**,
+SHA-256 `26c8dea1334e68091b421a831bf14e809e76a396e0444b75398d662a8921dd69`. Bộ nguồn, logo, README và hồ sơ kiểm đi kèm khớp bản đã kiểm.
+Biên nhận: [thesis-v5-deployment.json](C:/RideBoundContinuation/2026-10-15/thesis-v5-deployment.json).
+
+Đã đồng bộ tóm tắt Việt/Anh, Chương 1, 3, 4, 5 và phụ lục. Dùng “ưu tiên ổn
+định” và “ưu tiên chi phí kế hoạch”, bỏ cách gọi bộ chọn cũ/mới và tên giai đoạn
+nội bộ khỏi nội dung PDF. Bảng bốn cấu hình giữ cả served/shared, trễ, đón muộn,
+khách bị sửa giờ và sửa lặp. Nêu rõ +26 served/+119 shared cùng C30 đổi lại
+33→106 khách bị sửa giờ, 0→2 bị sửa lặp, 43→44 đón muộn, 10→11 forecast late60.
+Phép so kiểm xem giới hạn còn giữ được khi bỏ xếp hạng ổn định; không kết luận
+selector ban đầu kém hơn, không nhận pure causal isolation hay trần30 tối ưu.
+
+Giữ đối chứng hạn chót/đệm bất lợi, hạn chế dự báo, H6/E1 và điểm dừng H7.
+Phân biệt bảy lịch sử ở trần giả định120 với một cumulative-only prune C30;
+không suy thành outcome advantage của cộng dồn so per-step. Kế hoạch chạy thêm
+bốn cấu hình không còn bị ghi là chưa làm/hướng tương lai.
+
+Tectonic exit0; không Overfull, undefined/duplicate references hoặc TeX errors;
+không ký tự ngoài trang. Đã render và xem bố cục toàn bộ 77 trang, xem riêng
+các trang quan trọng ở cỡ lớn; sửa chồng chữ Hình3.3, mục lục/danh sách bảng tràn
+một dòng và nới bảng đánh đổi. Chi tiết [visual review](C:/RideBoundContinuation/2026-10-15/thesis-v5/chung-cu/VISUAL-REVIEW.md).
+47/47 kiểm bảng bổ sung và các chênh lệch chính đạt;13 mục manifest kết quả gốc
+khớp. Đây là kiểm từ extraction, không tự nhận giải mã raw/forecast độc lập
+hoặc tính lại mọi số lịch sử trong toàn luận văn.
+
+Không sửa mã C#, chạy lại mô phỏng/analysis, huấn luyện mô hình, đổi seal/env,
+commit/push hoặc bật timer. Baseline .NET 1.033/1.034 với1knownfailure giữ nguyên.
+File báo cáo thực tập đã kiểm băm trước/sau không đổi; hai repo E giữ chỉ đọc.
+Các tệp khác trong thư mục luận văn không nằm trong payload được giữ nguyên.
+Next: người dùng đọc bản cuối; công việc nghiên cứu/thực thi mới theo yêu cầu riêng.
+
+## Rà soát mức sẵn sàng bảo vệ — 16/10/2026
+
+Theo yêu cầu người dùng, đã truy vết bản PDF77trang hiện tại tới nguồn LaTeX,
+mã chuẩn hóa/dự báo/thống kê và đầu ra đã giữ.22tệp payload và13mục manifest
+kết quả khớp; số gộp bốn cấu hình khớp; hash5tệp chuẩn hóa hiện tại trùng
+34517a83…4d90của49report, mỗi report108yêu cầu. Không sửa PDF/nguồn luận văn,
+core, frozen inputs, code phân tích, output cũ, env, Git hay lịch tự động.
+
+**Trạng thái:** bản thảo đầy đủ và nghiên cứu bổ sung đã xong; chưa đóng
+“toàn bộ khóa luận/bản nộp đã hoàn tất”. Review chỉ ra việc cần hoàn thiện:
+R01công khai60tổ hợp→49dựng được→34test/15hiệu chỉnh và11tổ hợp bị loại trước
+mô phỏng do giới hạn96nút/quy tắc chuẩn hóa; R02khoảng95% theo8nhóm ngày–khung
+còn phụ thuộc chéo và chỉ3ngày bật dự báo; R03cần phân biệt lớp lời hứa phát
+lại với tích hợp dự báo vào điều phối (29/32hoàn tất,3dừng;34/1471lời hứa đón
+hiển thị vượt hạn); R04có chênh với hướng dẫn UET công khai, cần xác nhận mẫu
+áp dụng trước chỉnh hình thức. Không coi mọi hạn chế là lỗi thuật toán.
+
+Chưa có đối chứng trực tiếp cộng dồn-vs-từng-lần, xác nhận mới trên ngày chưa
+xem, lợi nhuận/realizedcost, SLAđộ trễ mỗi quyết định hoặc artifact tái lập từ
+máy sạch được xác nhận trong lượt này. Đây là giới hạn của mức claim, không
+tự cấp quyền chạy nghiên cứu mới. H6/E1/cross-system cũ giữ đúng verdict;
+không nâng WP12, không Stage2. Baseline.NET1.033/1.034với1knownfailure giữ nguyên.
+
+Next: bổ sung mô tả chọn mẫu; hạ/giải thích suy luận thống kê; ma trận trạng
+thái thành phần và phạm vi đóng góp; chốt mẫu áp dụng với GVHD/khoa; recipe,
+slide và demo đúng phiên bản. Chi tiết13điểm, câu hỏi bảo vệ và thứ tự xử lý:
+[báo cáo rà soát](C:/RideBoundContinuation/2026-10-16/thesis-readiness-audit/THESIS-READINESS-AUDIT.md).
+
+**Consequences:** Không đổi implementation/protocol, baseline/panel, H6/E1/
+WP14/WP14R hoặc novelty boundary. C30 GiB riêng Stage1b theo quyết định mới
+15/10 thay C45; E40 GiB, AC-only và reserve410 MiB/job giữ nguyên. Tác tử sửa/review/judge mới đều là Codex; không gán review mới cho
+Claude/Antigravity. Không có quyền commit/push mới trong lượt này.
 
 ## 8. Work package tracker
 
@@ -5253,16 +5360,6 @@ phương án bị ép khi:
 | WP16–WP20 | Roadmap-level only | — | — | Không ticket hóa trước verified WP14R frontier/closure gate |
 
 ## 9. Change history
-
-- 2026-10-11 (nhánh thăm dò `research/tier3-cost-first` từ `761915c`; chưa commit): ADR-078 **Proposed**. Mọi kết quả
-  mang nhãn thăm dò; không authorize `RB-WP14R-009..012`, WP15 hay H7; không tuyên bố mới.
-  - Khóa WP4 `selectionObjectiveOrder` (`stability-first` mặc định, `cost-first` chỉ cho C1 solver-backed). `cost-first`
-    bỏ tầng `worst-hard-utilization-ppm` và 10 tầng `revision:*`, giữ tầng forced-reference, số khách nhận, chi phí và
-    tầng phá hòa theo id. Cổng, khóa, luật phục hồi và sinh ứng viên không đổi.
-  - Cấu hình không có khóa giữ nguyên hash. Test tính lại `policyConfigurationHash` lưu trữ của T3.8 `C-30` và `U`.
-  - .NET trước 1024/1025 (lỗi `StrictBagItBundleTests` đã biết trên cây sạch), sau 1034/1034. 7/7 đột biến bị bắt.
-    Review độc lập: không blocker; mục nên sửa (test `cost-first` cộng no-worse) đã thêm.
-  - Chưa chạy FleetPy, chưa publish Runner. `§1` và `§5` của cây chính không đổi.
 
 - 2026-10-06 (nhánh thăm dò `research/tier3-no-worse`; không đổi code trong kho): hứa giờ có tính trước tắc đường. Mọi
   kết quả mang nhãn thăm dò; không authorize `RB-WP14R-009..012`, WP15 hay H7. Không tuyên bố mới: dự báo giờ đi theo giờ
@@ -6215,3 +6312,6 @@ phương án bị ép khi:
 - 2026-07-28: Tách RideBound thành Git repository riêng, hoàn tất WP0 scaffold và chuyển next action sang WP1.
 - 2026-07-27: Hoàn tất kiểm tra cấu trúc và mã hóa; chuyển docs sang `COMPLETE_V1_VERIFIED_PENDING_USER_REVIEW`.
 - 2026-07-27: Khởi tạo status log và docs v1.
+
+
+Cập nhật thực thi16/10 khoảng14:03+07: full freeze exit0,manifest cedecbb1…42d6f;driver11224/launcher14260 khởi động14:01:08, đang preflight trước2smoke;0/68main. Hourly đã ACTIVE cho đợt mới,one-off PAUSED. Nguồn cost-first đã push dce84ec;hai gói bàn giao chờ push. Xem CURRENT-STATUS.md trên C để tránh driver trùng.

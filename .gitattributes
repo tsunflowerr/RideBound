@@ -11,3 +11,9 @@
 *.yml text eol=lf
 *.yaml text eol=lf
 *.slnx text eol=lf
+
+# Preserve exact evidence/configuration bytes and their recorded SHA-256 values.
+research/continuation/** -text
+benchmarks/fixtures/wp6/public/fleetpy-manhattan-v1/tier3-development-w07-v1/** -text
+benchmarks/fixtures/wp6/public/fleetpy-manhattan-v1/tier3-panel-a-extra-v1/** -text
+benchmarks/fixtures/wp6/public/fleetpy-manhattan-v1/tier3-snow-v1/** -text

@@ -7,6 +7,9 @@ gốc; claim hiện hành vẫn phải theo `../01-research-charter.md` và
 
 ## Nội dung
 
+- [Survey ràng buộc thời gian 2026-10-06](ridepooling-service-constraints-survey-2026-10-06.md):
+  ADR-076; 9 bài toàn văn/210 trang, tiền lệ MOIA, phân biệt nghĩa vụ, trade-off
+  và giới hạn diễn giải forecast bên ngoài. Corpus và handoff Claude giữ ngoài Git.
 - Sáu báo cáo tổng hợp trong thư mục này.
 - `wp5-distributed-integration-evidence-2026-08-05.md`: paper/official primary
   evidence cho transaction/outbox/idempotency/lease/recovery của ADR-025, gồm

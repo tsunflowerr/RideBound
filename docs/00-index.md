@@ -2,7 +2,7 @@
 
 > Trạng thái: WP0–WP10 và WP13 hoàn thành; WP14-v1 dừng fail-closed; WP14R `001..007`
 > Done và `008` **Closed — FAIL CLOSED** do defect freeze v2; WP15 chỉ có refinement draft
-> Cập nhật: 2026-08-29
+> Cập nhật: 2026-10-06 (survey PDF về ràng buộc thời gian và giá trị thực tiễn; tiến độ implementation giữ nguyên)
 > Nguồn sự thật về tiến độ: [18-status-and-decision-log.md](18-status-and-decision-log.md)
 
 ## 1. Mục đích của bộ tài liệu
@@ -105,6 +105,9 @@ Bộ tài liệu này trả lời năm câu hỏi:
 | [20-risks-and-scope-control.md](20-risks-and-scope-control.md) | Risk register và cơ chế dừng |
 | [21-paper-to-design-evidence.md](21-paper-to-design-evidence.md) | Paper nào ảnh hưởng quyết định nào |
 | [22-glossary.md](22-glossary.md) | Giải thích thuật ngữ bằng tiếng Việt |
+| [thesis-final-audit-2026-10-05.md](benchmarking/thesis-final-audit-2026-10-05.md) | ADR-074: kiểm khóa luận bên ngoài, ranh giới claim và chứng cứ; không nâng work package |
+| [ridebound-business-need-audit-2026-10-05.md](research/ridebound-business-need-audit-2026-10-05.md) | ADR-075: nhu cầu doanh nghiệp, paper/tech blog, kết quả bất lợi và phép thử giá trị tăng thêm |
+| [ridepooling-service-constraints-survey-2026-10-06.md](research/ridepooling-service-constraints-survey-2026-10-06.md) | ADR-076: 9 bài toàn văn/210 trang; định nghĩa wait/ride/delay, tiền lệ MOIA, trade-off và audit forecast mới |
 | [23-delivery-backlog-and-ticket-policy.md](tasks/23-delivery-backlog-and-ticket-policy.md) | Quy tắc topic/ticket, DoR/DoD và cách chọn việc tiếp theo |
 | [24-wp1-contracts-ticket-plan.md](tasks/24-wp1-contracts-ticket-plan.md) | 15 ticket WP1 có scope, rules, BDD và acceptance criteria |
 | [25-wp2-online-state-refinement.md](tasks/25-wp2-online-state-refinement.md) | Ticket refinement WP2; khóa state/reducer/B1 trước khi viết code |

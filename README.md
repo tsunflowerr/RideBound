@@ -1,5 +1,7 @@
 # RideBound
 
+> Bàn giao mới nhất: [mã, kết quả, khóa luận và cách tiếp tục trên máy khác](START-HERE.md).
+
 **Auditable bounded-revision online ridepooling.**
 
 RideBound nghiên cứu ghép xe trực tuyến trong khi giới hạn có chứng nhận số lần

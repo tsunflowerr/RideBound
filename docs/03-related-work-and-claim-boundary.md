@@ -2,11 +2,11 @@
 
 ## 1. Kết luận trước
 
-Dynamic insertion, reassignment, ETA update, delay threshold, route similarity và least-commitment đều đã có tiền lệ. RideBound chỉ còn đủ mới khi giữ đúng tổ hợp:
+Dynamic insertion, reassignment, ETA update, delay threshold, route similarity và least-commitment đều đã có tiền lệ. Phạm vi đóng góp được bảo vệ là tổ hợp được hiện thực và kiểm trong nghiên cứu:
 
 > **per-passenger + path-dependent + multi-dimensional + cumulative/switch budget + multi-epoch rolling insertion + machine-checkable certificate**
 
-Nếu bỏ “path-dependent” hoặc chỉ thêm `delay <= 5 phút`, novelty không còn đủ mạnh.
+Tổ hợp này không tự chứng minh quyền ưu tiên trên toàn bộ văn liệu. Không gọi từng thành phần hoặc việc thêm `delay <= 5 phút` là mới.
 
 ## 2. Các va chạm trực tiếp
 
@@ -51,9 +51,9 @@ Khác biệt: đó là multi-period static planning giữa các ngày, không ph
 
 Nguồn: [Unreliability in ridesharing systems](https://www.sciencedirect.com/science/article/pii/S0968090X2030735X).
 
-Paper chỉ ra việc assignment/schedule thay đổi có thể tạo bất ổn đáng kể và phân biệt thông tin báo ban đầu với kết quả thực. Đây là động lực trực tiếp để RideBound chuyển từ đo hiện tượng sang kiểm soát nó.
+Paper chỉ ra việc assignment/schedule thay đổi có thể tạo bất ổn đáng kể và phân biệt thông tin báo ban đầu với kết quả thực. Phần 6 còn kiểm soát độ muộn trước quyết định bằng cơ chế siết mốc tham chiếu; không được mô tả nguồn này như chỉ đo bất ổn sau chuyến đi.
 
-Không claim việc phát hiện unreliability là mới.
+Không claim việc phát hiện unreliability, kiểm soát trước quyết định hoặc đánh đổi dịch vụ–ổn định là mới.
 
 ### Anticipatory walking in ridepooling — 2026
 
@@ -200,3 +200,72 @@ Kết quả không mở novelty claim:
 
 ADR-036 chỉ đóng mechanical correctness/reproducibility của WP1–WP6. Claim ladder
 vẫn dừng ở tầng 2; tầng 3–5 phải chờ WP7–WP10 và preregistration.
+
+## 10. Ranh giới bản khóa luận sau kiểm nguồn — 2026-10-05
+
+Lượt biên tập khóa luận bên ngoài repository bổ sung các tiền lệ gần nhất, theo
+[ADR-074 và hồ sơ kiểm](benchmarking/thesis-final-audit-2026-10-05.md):
+
+- [Fielbaum và Alonso-Mora 2020](https://doi.org/10.1016/j.trc.2020.102831)
+  có cả phép đo hậu nghiệm và kiểm soát trước quyết định; hai phần phải được phân biệt.
+- [Elmi và cộng sự 2026](https://doi.org/10.1016/j.trc.2026.105897)
+  có độ chùng thông thường và cơ chế bảo đảm cho khách được chọn. Bảo vệ từng khách
+  hoặc bảo đảm ETA riêng lẻ không phải novelty của RideBound.
+- [Schulz và Pfeiffer 2026](https://doi.org/10.1007/s00291-026-00847-0)
+  dùng hạn chót trả từ thông báo đầu, với độ chùng 900 giây trong thiết lập đã đọc.
+  So với các trần 30/60/120 giây phải báo khác biệt độ chặt; phép so trong RideBound
+  là so hình thức cổng trên cùng hệ, không tái lập toàn thuật toán của paper.
+- [Haferkamp 2024](https://doi.org/10.1016/j.ejtl.2024.100134)
+  biến giờ đón đã chọn thành ràng buộc có độ lệch nhỏ cho phép. Không nhận việc giữ
+  giờ đón đã thỏa thuận là mới.
+
+Phần giữ tuyến là phép chiếu mô hình tại cùng trạng thái, không nhận diện đầy đủ
+tác động nhân quả của giao thông. Tam giác nghiêm không tự chứng minh vi phạm giả
+thiết bao hàm H. Kết quả âm H6 vẫn âm; T38 có chuyến nguồn chung và phụ thuộc theo
+ngày nên chưa cấp bảo đảm quần thể hoặc độ phủ 90% cho ngày mới. Lượt biên tập này
+không nâng trạng thái implementation, claim ladder hay quyền mở work package.
+
+## 11. Nhu cầu doanh nghiệp và giá trị tăng thêm — 2026-10-05
+
+[Kiểm nhu cầu ADR-075](research/ridebound-business-need-audit-2026-10-05.md)
+đối chiếu văn liệu, sản phẩm và kết quả nội bộ. Timefold có phạt mềm thay lịch
+đã thông báo; Google có khóa/nới thời gian, thứ tự và xe khi tái tối ưu; một số
+chuyến đặt trước Lyft có cam kết bằng credit. Đây là bằng chứng cho nhu cầu
+giảm gián đoạn và giữ kết quả phục vụ, không xác nhận nhu cầu mua đúng ledger C.
+
+Không nhận giảm C là tăng hài lòng, giảm trễ thực, tăng doanh thu hoặc giảm công
+lao động. C có thể bằng 0 khi khách đến muộn; nó cũng có thể tính phí một sửa
+chữa khôi phục ETA đã báo. H6 mất 7,13 điểm phần trăm phục vụ; T38 chưa cho thấy
+ưu thế trên E2 chung và so vi phạm lời hứa riêng không phải so cùng một SLA.
+
+Giá trị hiện được bảo vệ là đặc tả/hiện thực/kiểm nghĩa vụ và kết quả đánh đổi có
+giới hạn. Giá trị thực tiễn tăng thêm **chưa xác nhận**. Muốn nâng claim cần một
+người vận hành có vấn đề, chi phí và ngưỡng chấp nhận cụ thể; so với hạn chót,
+khóa và phạt mềm trên kết quả thực hoặc công việc audit thực. Không tìm thấy
+người mua trong lượt tìm có mục tiêu không chứng minh không ai cần ở mọi nơi.
+
+## 12. Ràng buộc dịch vụ sau survey toàn văn — 2026-10-06
+
+[Survey ADR-076](research/ridepooling-service-constraints-survey-2026-10-06.md)
+đối chiếu 9 bài/210 trang PDF, cùng nguồn bổ trợ và code/result hiện có. Pickup
+window, onboard ride cap, total delay, deadline từ offer đầu và ledger C là các
+nghĩa vụ khác nhau. Không trích “10 phút” hoặc “1,5 lần” khi bỏ gốc thời gian,
+intercept/cap hoặc việc có tính waiting.
+
+MOIA/Zwick 2020 có sweep thời gian chờ; 10 phút tốt hơn 15 phút trong cấu hình
+greedy đã đọc, không phải chuẩn ngành hoặc mức tối ưu của RideBound. Bài MOIA
+2022 giữ wait 10 phút, nhưng công thức detour có intercept/cap; PDF chưa xác
+nhận waiting inclusion của chính công thức đó. Mahfouz 2026 tính cả waiting
+trong 1,5 lần direct + 5 phút. Pure onboard 1,5 lần hiện tại chưa được hiệu
+chỉnh theo sở thích khách. Ngân sách C 30 giây chưa có căn cứ WTP/ROI bên ngoài.
+
+Cohen/Via 2022 có thí nghiệm bồi hoàn và đầu ra usage/spending thực; ETA error
+là **lỗi giờ đón**, không phải drop ETA. Can thiệp credit không chứng minh giảm
+drop lateness một phút hoặc C thấp làm tăng giữ khách/lợi nhuận. Nhu cầu reliability
+có chứng cứ, giá trị tăng thêm của ledger vẫn chưa xác nhận.
+
+Forecast replay mới 2026-10-06 gần endpoint hiển thị hơn, nhưng 0,17% là mean
+21 cell active; all34 là 0,51%, các baseline khác cũng được lợi. Không nâng
+thành bảo đảm quần thể, human peer review hoặc chứng nhận trách nhiệm pháp lý.
+Survey không thay contract, cứu H6, nghiệm thu extension bên ngoài hoặc cấp
+quyền chạy matrix/triển khai mới.

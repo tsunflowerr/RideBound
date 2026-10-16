@@ -93,29 +93,56 @@ almost nothing for them to constrain. The budget is the factor that permits
 revision in the first place: removing it yields 67 disruptive decisions and 1584
 served; tightening it to 60 yields 22 and 1540.
 
-### F2, measured directly
+### F2, and what actually establishes its inertness
 
 F2 adds `ratchetLocks`: an ETA lock there is violated only when a candidate
 pushes a promise **later**, while earlier is permitted — the one-sided mechanism
 of Alonso-Mora et al. Its value therefore depends on revisions that move a
 promise earlier existing at all.
 
-Over 421,752 revisions in 160 bundles:
+**The evidence is the arm comparison, not the direction counters.** `c1-h6ref`
+locks the pickup ETA in both directions; `c1-ratchet` locks it one-sidedly. Had a
+single chosen candidate moved a pickup ETA earlier, the ratchet arm would have
+accepted what the exact lock rejected and the two arms would necessarily differ.
+They agree on all eight counters across all sixteen cells. No such candidate was
+ever chosen.
+
+`c1-nopickuplock` closes the argument from the other side: removing the lock
+entirely changes nothing, so the lock never bound in the first place. And
+`c1-freeze300`/`600` are inert by construction — `finalConfirmationLocks` already
+holds the pickup ETA for the whole `WaitingPickup` lifecycle, and "the last five
+minutes" is a subset of that, so the extra rule locks what is already locked.
+
+One cause therefore explains all three: on this panel the solver never chose a
+plan that moved a waiting rider's pickup ETA, so all three are safety valves on
+something never under pressure.
+
+### The direction counters, and their limit
+
+Over 421,752 revisions in 160 bundles, split by whether the revision was charged
+decision-induced burden:
 
 | | earlier | later | equal |
 |---|---:|---:|---:|
-| Decision-induced | **0** | **683** | 0 |
+| Charged to a decision | 0 | **683** | 0 |
 | Exogenous only, drop | 214,924 | 206,224 | — |
 | Exogenous only, pickup | 102,949 | 107,307 | — |
 
-Every decision that moved a promise moved it later. Not most — all 683.
-`ratchetAdmissibleObservations` is 0, so the permissive half of F2 had nothing to
-permit. This is not a wiring fault: the mechanism is correct and the regime never
-produced the case it was built to exploit.
+Read precisely: of 683 revisions where a decision was charged burden, the
+published promise ended up later in all 683 — favourable traffic never offset the
+decision into a net improvement.
 
-The exogenous columns are the control. Drift is 51.03% and 48.96% earlier, which
-is what noise looks like, while the decision-induced column is perfectly
-one-sided. A broken `decisionDelta` filter would make the two look alike.
+**The limit must be stated.** This table cannot establish that no decision wanted
+to move a pickup ETA earlier. `decisionDelta` is non-negative by data contract —
+the calculator throws on a negative value — so a decision that moved an ETA
+*earlier* carries `decisionDelta = 0` and is classified "exogenous only", not
+"charged". `ratchetAdmissibleObservations` being 0 therefore supports only the
+narrow statement in the paragraph above. The conclusion about F2 rests on the arm
+comparison, and this table is corroboration rather than the primary evidence.
+
+The exogenous rows remain a useful control. Drift is 51.03% and 48.96% earlier,
+which is what noise looks like, while the charged rows are perfectly one-sided. A
+broken `decisionDelta` filter would make the two look alike.
 
 Two independent tools cross-check: decision-moved-later totals 70,523,899 ms
 against 70,517,032 ms of summed attributed burden, a 0.0097% difference arising

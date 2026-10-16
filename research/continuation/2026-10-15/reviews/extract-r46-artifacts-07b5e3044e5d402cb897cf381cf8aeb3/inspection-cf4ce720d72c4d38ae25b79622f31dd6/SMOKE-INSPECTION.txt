@@ -1,0 +1,2 @@
+inspected-by: synthetic regression fixture
+inspection: accepted

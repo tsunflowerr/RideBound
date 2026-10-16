@@ -1,6 +1,6 @@
 # Bàn giao và khảo sát trần với bộ chọn ưu tiên chi phí — 16/10/2026
 
-> Checkpoint 2026-10-16T16:07:49.664785+07:00: 2/2 smoke đạt; 37/68 main pass/succeeded, 6 đang chạy/chưa kết thúc, 25 chưa nhận;0lỗi/STOP/drift. Chưa phân tích panel đang chạy.
+> Checkpoint2026-10-16T17:07:56.317806+07:00:2/2 smoke đạt; 65/68 main pass/succeeded, 3 đang chạy/chưa kết thúc, 0 chưa nhận;0lỗi/STOP/drift,chưa partial analysis.
 
 Owner cho push GitHub và chạy C60/C120 trong chat. ADR079 thay quyền no-push
 cũ trong phạm vi này; không thay claim, frozen evidence hay giới hạn tài nguyên.
@@ -70,3 +70,13 @@ Evidence: C:/RideBoundContinuation/2026-10-16/cost-cap-sensitivity-v1/heartbeat-
 (SHA2568489fb2dfb814de3b3971f380089cbf80906b7685ea228e37c91a41cf2824788). Chỉ kiểm cơ học;chưa phân tích partial panel,
 chưa có kết quả hiệu quả mới hoặc sửa luận văn. Hourly ACTIVE,one-off PAUSED.
 Giữ C30/E40/AC/410MiB/6workers,H6/E1/H7;không per-step/Stage2 hoặc retry failed.
+
+
+## Heartbeat C60/C120 — 2026-10-16T17:07:56.317806+07:00
+
+2/2 smoke đạt; 65/68 main pass/succeeded, 3 đang chạy/chưa kết thúc, 0 chưa nhận. Đã kiểm67 bundle length/SHA/nativeexit0/binding,
+96pinned+17seal+5policy khớp;0lỗi/STOP/drift. Driver11224/launcher14260 còn
+sống tại checkpoint,không resume. AC100%,C36.086GiB/E40.765GiB.
+Evidence:heartbeat-20261016-170756-mechanical.json,SHA256fe81a6aa10c6e28c49654e9e9c23003ddf518a42b2bc531e53ec8c439695c63f. Chưa đủ68/final/analysis;không phân tích
+partial panel hoặc sửa luận văn. Hourly ACTIVE,one-off PAUSED;giữ sàn/ràng
+buộc tài nguyên vàH6/E1/H7,không per-step/Stage2.

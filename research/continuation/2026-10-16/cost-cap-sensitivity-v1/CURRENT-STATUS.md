@@ -1,25 +1,23 @@
 # C60/C120 — trạng thái tiếp tục
 
-Checkpoint **2026-10-16T16:07:49.664785+07:00**: **2/2 smoke đạt; 37/68 main pass/succeeded, 6 đang chạy/chưa kết thúc, 25 chưa nhận**.
-Driver11224/launcher14260 vẫn sống;6wrappers active. Không khởi chạy/resume
-driver mới. Cả2smoke đã full post-phase check và identity/ledger/cap PASS.
+Checkpoint **2026-10-16T17:07:56.317806+07:00**: **2/2 smoke đạt; 65/68 main pass/succeeded, 3 đang chạy/chưa kết thúc, 0 chưa nhận**.
+Driver11224/launcher14260 còn sống tại checkpoint;không restart/resume.
+Đã kiểm cơ học 67 bundle hoàn tất: length/SHA/nativeexit0/admission-finish
+khớp;96pinned+17seal+5policy khớp;0lỗi/STOP/drift/unexpected output.
+Cả2smoke đã full post-phase và identity/ledger/cap PASS.
+Chưa đủ68/final checks;chưa phân tích partial panel hoặc sửa luận văn.
 
-Đã kiểm cơ học 39 bundle hoàn tất bằng verifier hiện có đã xác thực source:
-mọi length/SHA khớp, child returncode0, admission/finish cùng manifest.
-96 mục manifest mới+17seal gốc+5policy tài nguyên khớp;0lỗi/STOP/drift/
-unexpected output. Chỉ kiểm tính toàn vẹn/tiến độ, chưa phân tích hiệu quả
-trên partial panel. Chưa đủ68/final checks; chưa analysis-started/complete.
-
-Manifest: `cedecbb1a97d31ec8ab295fd16c99fb607f14d622779247d8df6d9b219b42d6f`.
-Evidence: `heartbeat-20261016-160749-mechanical.json`,SHA256 `8489fb2dfb814de3b3971f380089cbf80906b7685ea228e37c91a41cf2824788`.
-Root log: run-20261016-1401.log. AC100%;C37.875GiB/E40.765GiB.
-Giữ C30/E40GiB,AC-only,410MiB/job,6workers;không xóa/hạ sàn/retry failed.
-Selftest13/13;.NET1033pass/1034,1known clean-tree failure,exit1 giữ nguyên.
+Manifest:`cedecbb1a97d31ec8ab295fd16c99fb607f14d622779247d8df6d9b219b42d6f`.
+Evidence:`heartbeat-20261016-170756-mechanical.json`,SHA256`fe81a6aa10c6e28c49654e9e9c23003ddf518a42b2bc531e53ec8c439695c63f`.
+AC100%,C36.086GiB/E40.765GiB. C30/E40GiB/AC/410MiB/6workers giữ nguyên.
+Rootlog:run-20261016-1401.log. Snapshot có thời điểm;kiểm process/log hiện tại
+trước lệnh tiếp theo. Đã chuẩn bị checker số học độc lập ngoài harness đã khóa,
+chỉ chạy sau nativeexit0 và analysis-complete;không sửa analysis/driver/freeze.
 
 ## GitHub đã push
 
 - [Mã, kết quả và audit](https://github.com/tsunflowerr/RideBound/tree/codex/research-handoff-20261016),
-  commit đã push trước checkpoint: `3db8e0686a8f078bd1e5bd5e19632f5669d16d55`.
+  commit đã push trước checkpoint: `4a0731e4bc87d2acad7742c149a76122167c7935`.
 - [Khóa luận và chương trình/báo cáo nghiên cứu](https://github.com/tsunflowerr/Report_INT3508/tree/codex/ridebound-handoff-20261016),
   commit `1d529f5f7629b7e13c9bb608737cef5b668cf313`. PDF77trang giữ hash26c8dea1…1dd69.
 - Nguồn runner riêng `research/tier3-cost-first` đã push dce84ec.

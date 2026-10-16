@@ -307,3 +307,24 @@ chỉ chạy sau nativeexit0+analysis-complete. Kiểm CSV/JSON/cell/day/baselin
 không claim raw/forecast độc lập. .NET kiểm lại1033/1034 với1knownfailure,exit1.
 Hourly ACTIVE,one-off PAUSED;chỉ tắt sau báo kết quả đầy đủ vàpush xong.
 Giữ H6/E1/H7,không per-step/Stage2 hoặc sửa luận văn từ partial results.
+
+
+## Kết quả C60/C120 đã kiểm — 2026-10-16T18:14:17.513937+07:00
+
+C60/C120 COMPLETE: 2/2 smoke, 68/68 main; final verification và analysis exit0 lúc17:24:02+07; 4.355/4.355 đối chiếu số học đạt;0active/0pending/0STOP. C60 so C30: +32phục vụ/+113ghép/+19muộn60/+13trong60; C120 so C60: +34phục vụ/+192ghép/+121muộn60/−87trong60. Thăm dò34ô/nămngày đã thấy, không optimum/satisfaction/profit. PDF77trang giữ nguyên; audit/WP12 còn mở. Hourly ACTIVE chờ báo kết quả vàpush;one-off PAUSED.
+
+| Trần cost-first | Phục vụ | Muộn >60s p0 | Trong60s | Ghép xe | Bị sửa ETA | Sửa lặp | Đón muộn | Muộn >60s D0 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| C30 | 2364 | 72 | 2292 | 432 | 106 | 2 | 44 | 11 |
+| C60 | 2396 | 91 | 2305 | 545 | 166 | 3 | 45 | 21 |
+| C120 | 2430 | 212 | 2218 | 737 | 284 | 14 | 47 | 142 |
+| Không trần | 2502 | 379 | 2123 | 1027 | 434 | 50 | 39 | 318 |
+
+C giới hạn tổng biến động ETA trả do điều phối, không giới hạn thời gian chờ
+hoặc trễ thực tế. C60 có số hoàn thành trong60s cao nhất trong các mức đã thử;
+đây là mô tả bộ thử, không là trần tối ưu. D0 là phát lại chỉ đọc, chưa tích hợp
+vào quyết định. Không có raw decoder độc lập mới;4355check là số học/binding.
+H6/E1/H7=7<10 và cây nguồn E giữ nguyên;không Stage2/per-step/rerun.
+Toàn bộ JSON/TSV/hash và giải thích ở `C:/RideBoundContinuation/2026-10-16/COST-CAP-RESULTS.md`.
+.NET1033/1034 với1known clean-tree failure,exit1;không suite xanh.
+PDF77trang giữ hash26c8dea1…1dd69,chưa chèn kết quả cap mới;readiness/WP12 mở.

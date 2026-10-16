@@ -28,7 +28,17 @@ C45 GiB: đó là mốc cũ. Người dùng đã cho cập nhật khóa luận, 
 push/bổ sung C60/C120. Các kế hoạch/receipt đã niêm phong được giữ nguyên byte;
 quyền mới được ghi riêng trong hồ sơ hiện tại.
 
-## Kết quả đã có
+## Khảo sát bổ sung đã hoàn tất
+
+C60/C120: 2/2 smoke và68/68 main; kiểm cuối/phân tích exit0,4355/4355 đối chiếu.
+Đọc [kết quả và đánh đổi](research/continuation/2026-10-16/COST-CAP-RESULTS.md)
+và [bốn tệp phân tích gốc](research/continuation/2026-10-16/cost-cap-sensitivity-v1/results/REPORT.md).
+C30/C60/C120/không trần lần lượt phục vụ2364/2396/2430/2502,muộn>60s72/91/212/379.
+C60 là điểm đánh đổi trung gian trên bộ thử đã thấy;không claim trần tối ưu.
+Đợt đã xong,không resume/rerun launcher hoặc analysis. PDF77trang chưa chèn
+các kết quả mới; audit mức sẵn sàng bảo vệ/WP12 còn mở.
+
+## Kết quả C30 và so sánh selector trước đó
 
 68/68 lượt chính ưu tiên chi phí ở C30/không trần đã pass và kiểm cuối exit 0.
 Mỗi cấu hình dưới đây có 3.672 yêu cầu qua 34 ô/5 ngày phụ thuộc:

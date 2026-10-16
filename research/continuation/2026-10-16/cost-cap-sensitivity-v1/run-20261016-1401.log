@@ -77,3 +77,78 @@ main 66/68 CF-C-120-d20181118-s10-r4-w08 pass
 main 67/68 CF-C-60-d20181118-s10-r4-w17 pass
 main 68/68 CF-C-120-d20181118-s10-r4-w17 pass
 full original/new frozen-input check begins
+full original/new frozen-input check PASS
+{"phase": "main", "counts": {"pass": 68, "pending": 0, "partial": 0, "failed": 0, "admitted-no-output": 0}}
+extracted 1/68
+extracted 2/68
+extracted 3/68
+extracted 4/68
+extracted 5/68
+extracted 6/68
+extracted 7/68
+extracted 8/68
+extracted 9/68
+extracted 10/68
+extracted 11/68
+extracted 12/68
+extracted 13/68
+extracted 14/68
+extracted 15/68
+extracted 16/68
+extracted 17/68
+extracted 18/68
+extracted 19/68
+extracted 20/68
+extracted 21/68
+extracted 22/68
+extracted 23/68
+extracted 24/68
+extracted 25/68
+extracted 26/68
+extracted 27/68
+extracted 28/68
+extracted 29/68
+extracted 30/68
+extracted 31/68
+extracted 32/68
+extracted 33/68
+extracted 34/68
+extracted 35/68
+extracted 36/68
+extracted 37/68
+extracted 38/68
+extracted 39/68
+extracted 40/68
+extracted 41/68
+extracted 42/68
+extracted 43/68
+extracted 44/68
+extracted 45/68
+extracted 46/68
+extracted 47/68
+extracted 48/68
+extracted 49/68
+extracted 50/68
+extracted 51/68
+extracted 52/68
+extracted 53/68
+extracted 54/68
+extracted 55/68
+extracted 56/68
+extracted 57/68
+extracted 58/68
+extracted 59/68
+extracted 60/68
+extracted 61/68
+extracted 62/68
+extracted 63/68
+extracted 64/68
+extracted 65/68
+extracted 66/68
+extracted 67/68
+extracted 68/68
+analysis complete C:\RideBoundContinuation\2026-10-16\cost-cap-sensitivity-v1\results
+full original/new frozen-input check begins
+full original/new frozen-input check PASS
+ALL MAIN + FINAL VERIFICATION + ANALYSIS COMPLETE
+exit=0 at 2026-10-16T17:24:02.6813136+07:00

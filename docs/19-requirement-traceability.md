@@ -5,9 +5,9 @@
 | Yêu cầu | Chứng cứ | Trạng thái/giới hạn |
 |---|---|---|
 | Mang mã/kết quả lên máy công ty | ADR079; hai nhánh codex handoff; START-HERE và inventory xuất | Đã push hai nhánh codex; không rewrite lịch sử, không raw/vendor/env/secret/paper |
-| Chạy C60/C120 cost-first | heartbeat-20261016-171722-mechanical.json;70bundle+96pinned+17seal+5policy khớp | 2/2 smoke và68/68 main pass/succeeded;0active/0pending;driver đang full post-phase check;0stop;chưa final/analysis,không restart |
+| Chạy C60/C120 cost-first | main/analysis-complete.json;rootlog exit0;independent-arithmetic4355/4355 | COMPLETE:2/2smoke,68/68main,0active/pending;C60 +32served/+19late60 soC30;C120 +34served/+121late60 soC60;thăm dò,không optimum |
 | Bảo toàn dữ liệu/kết quả cũ | Original seal/freeze/binding, bundle index và kết quả C30/U | Không sửa/rerun; H6/E1/H7 giữ nguyên; không per-step/Stage2 |
-| Thực thi trong tài nguyên owner cho phép | C30/E40GiB, AC-only,410MiB/job,6workers; locks/stop/receipt | Không hạ sàn/xóa/retry failed; chỉ phân tích full panel sau kiểm cuối |
+| Thực thi trong tài nguyên owner cho phép | C30/E40GiB,AC-only,410MiB/job,6workers;final runtime snapshot | Đã hoàn tất,không hạ sàn/xóa/retry;không resume/rerun |
 | Phân biệt code portable với tái lập raw | START-HERE, external input paths và hash | Clone để đọc/sửa nguồn; máy mới cần provision/rebind execution manifest |
 
 Chi tiết [hồ sơ mới](benchmarking/cost-cap-sensitivity-handoff-2026-10-16.md).
@@ -846,3 +846,24 @@ Hourly ACTIVE cho đợt mới;one-off PAUSED. C30/E40GiB/AC/410MiB giữ nguyê
 Checkpoint local chi tiết: cost-cap-sensitivity-v1/CURRENT-STATUS.md vàcheckpoint.json.
 Không clone rồi chạy trùng trên máy công ty. Không phân tích partial hoặc đổi
 frozen inputs;driver tự đi tiếp sau2smoke. Chưa nhận có kết quả C60/C120.
+
+
+## Kết quả C60/C120 đã kiểm — 2026-10-16T18:14:17.513937+07:00
+
+C60/C120 COMPLETE: 2/2 smoke, 68/68 main; final verification và analysis exit0 lúc17:24:02+07; 4.355/4.355 đối chiếu số học đạt;0active/0pending/0STOP. C60 so C30: +32phục vụ/+113ghép/+19muộn60/+13trong60; C120 so C60: +34phục vụ/+192ghép/+121muộn60/−87trong60. Thăm dò34ô/nămngày đã thấy, không optimum/satisfaction/profit. PDF77trang giữ nguyên; audit/WP12 còn mở. Hourly ACTIVE chờ báo kết quả vàpush;one-off PAUSED.
+
+| Trần cost-first | Phục vụ | Muộn >60s p0 | Trong60s | Ghép xe | Bị sửa ETA | Sửa lặp | Đón muộn | Muộn >60s D0 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| C30 | 2364 | 72 | 2292 | 432 | 106 | 2 | 44 | 11 |
+| C60 | 2396 | 91 | 2305 | 545 | 166 | 3 | 45 | 21 |
+| C120 | 2430 | 212 | 2218 | 737 | 284 | 14 | 47 | 142 |
+| Không trần | 2502 | 379 | 2123 | 1027 | 434 | 50 | 39 | 318 |
+
+C giới hạn tổng biến động ETA trả do điều phối, không giới hạn thời gian chờ
+hoặc trễ thực tế. C60 có số hoàn thành trong60s cao nhất trong các mức đã thử;
+đây là mô tả bộ thử, không là trần tối ưu. D0 là phát lại chỉ đọc, chưa tích hợp
+vào quyết định. Không có raw decoder độc lập mới;4355check là số học/binding.
+H6/E1/H7=7<10 và cây nguồn E giữ nguyên;không Stage2/per-step/rerun.
+Toàn bộ JSON/TSV/hash và giải thích ở `C:/RideBoundContinuation/2026-10-16/COST-CAP-RESULTS.md`.
+.NET1033/1034 với1known clean-tree failure,exit1;không suite xanh.
+PDF77trang giữ hash26c8dea1…1dd69,chưa chèn kết quả cap mới;readiness/WP12 mở.

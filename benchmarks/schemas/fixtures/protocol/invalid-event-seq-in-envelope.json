@@ -1,0 +1,10 @@
+{
+  "schemaVersion": "1.0.0",
+  "messageType": "eventBatch",
+  "runId": "run-001",
+  "scenarioId": "scenario-001",
+  "epochId": 1,
+  "eventSeq": 1,
+  "simTimeMs": 0,
+  "payload": {}
+}

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "1.0.0",
+  "messageType": "eventBatch",
+  "runId": "Run-A",
+  "scenarioId": "Scenario-X",
+  "epochId": 1,
+  "simTimeMs": 500,
+  "payload": {
+    "events": [
+      {
+        "eventSeq": 1,
+        "eventType": "futureEvent",
+        "payload": {
+          "untouched": true
+        }
+      }
+    ]
+  }
+}

@@ -241,7 +241,7 @@ public readonly record struct SimulationTimeMilliseconds
     }
 }
 
-internal static class OpaqueIdentifier
+public static class OpaqueIdentifier
 {
     public static bool IsValid(string? value)
     {

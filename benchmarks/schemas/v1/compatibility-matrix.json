@@ -1,0 +1,32 @@
+{
+  "matrixVersion": "1.0.0",
+  "receiverVersion": "1.0.0",
+  "rows": [
+    {
+      "senderMajor": "equal",
+      "senderMinor": "equal",
+      "senderPatch": "any",
+      "behavior": "accept",
+      "unknownFieldBehavior": "reject",
+      "reason": "Patch releases cannot change schema or canonical semantics."
+    },
+    {
+      "senderMajor": "equal",
+      "senderMinor": "higher",
+      "senderPatch": "any",
+      "behavior": "rejectMessage",
+      "protocolCode": "UNSUPPORTED_SCHEMA_MINOR",
+      "exception": "acceptOnlyWithExplicitSafeForwardMinorProfile",
+      "reason": "An additive field is safe only when its ignore/default behavior is published."
+    },
+    {
+      "senderMajor": "different",
+      "senderMinor": "any",
+      "senderPatch": "any",
+      "behavior": "failSession",
+      "protocolCode": "UNSUPPORTED_SCHEMA_MAJOR",
+      "reason": "A different major can change unit, ordering, lifecycle or hash meaning."
+    }
+  ],
+  "safeForwardMinorProfiles": []
+}

@@ -24,13 +24,28 @@ public enum ProtocolEnvelopeErrorCode
     InvalidIdentifier,
     ValueOutOfRange,
     FieldNotAllowed,
+    UnsupportedSchemaMajor,
+    UnsupportedSchemaMinor,
 }
 
 public sealed record ProtocolEnvelopeError(
     ProtocolEnvelopeErrorCode Code,
     string Field,
     string Message,
-    ProtocolVersion? SchemaVersion = null);
+    ProtocolVersion? SchemaVersion = null)
+{
+    public ProtocolFailureDisposition Disposition =>
+        Code == ProtocolEnvelopeErrorCode.UnsupportedSchemaMajor
+            ? ProtocolFailureDisposition.FailSession
+            : ProtocolFailureDisposition.RejectMessage;
+}
+
+public enum ProtocolFailureDisposition
+{
+    RejectMessage,
+    FailSession,
+    TerminateProcess,
+}
 
 public sealed record ProtocolEnvelopeDecodeResult
 {

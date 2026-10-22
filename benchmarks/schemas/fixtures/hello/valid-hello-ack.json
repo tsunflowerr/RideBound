@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "1.0.0",
+  "messageType": "helloAck",
+  "payload": {
+    "selectedSchemaVersion": "1.0.0",
+    "capabilitySelection": {
+      "status": "accepted",
+      "positionModel": "directedEdgeProgress",
+      "capabilities": [
+        "dynamicTravelTimes",
+        "exactEventOrdering",
+        "oldPlanProjection"
+      ],
+      "maxFleetSize": 5000,
+      "maxRequestCount": 100000
+    }
+  }
+}

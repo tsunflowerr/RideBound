@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "1.0.0",
+  "messageType": "hello",
+  "payload": {
+    "adapterId": "future-adapter",
+    "adapterVersion": "1.0.0",
+    "supportedSchemaVersions": [
+      "1.0.0"
+    ],
+    "positionModel": "nodeOnly",
+    "capabilities": [
+      "teleportVehicles"
+    ],
+    "maxFleetSize": 10,
+    "maxRequestCount": 100
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "1.0.0",
+  "messageType": "initializeRun",
+  "runId": "run-001",
+  "scenarioId": "manhattan-20260729-a",
+  "payload": {
+    "manifest": {
+      "protocolVersion": "1.0.0",
+      "masterSeed": 20260729,
+      "policyId": "rolling-cost",
+      "policyVersion": "1.0.0",
+      "policyConfigurationHash": "1111111111111111111111111111111111111111111111111111111111111111",
+      "scenarioContentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+      "graphSnapshotHash": "3333333333333333333333333333333333333333333333333333333333333333",
+      "travelTimeSnapshotHash": "4444444444444444444444444444444444444444444444444444444444444444",
+      "costUnitId": "abstract-generalized-cost-v1",
+      "sourceUnitConversions": [
+        {
+          "quantity": "time",
+          "sourceUnit": "second",
+          "canonicalUnit": "millisecond",
+          "roundingRule": "roundTiesToEven"
+        },
+        {
+          "quantity": "distance",
+          "sourceUnit": "meter",
+          "canonicalUnit": "millimeter",
+          "roundingRule": "roundTiesToEven"
+        }
+      ],
+      "capabilitySelection": {
+        "status": "accepted",
+        "positionModel": "directedEdgeProgress",
+        "capabilities": [
+          "dynamicTravelTimes",
+          "exactEventOrdering",
+          "oldPlanProjection"
+        ],
+        "maxFleetSize": 5000,
+        "maxRequestCount": 100000
+      },
+      "adapter": {
+        "adapterId": "fleetpy-ridebound",
+        "adapterVersion": "1.0.0"
+      },
+      "simulator": {
+        "simulatorId": "fleetpy",
+        "simulatorVersion": "1.0.2",
+        "upstreamCommitSha": "053aa9d4fcfde91c5d303435d5748f9206c071b0"
+      },
+      "coreCommitSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "binarySha256": "5555555555555555555555555555555555555555555555555555555555555555"
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "1.0.0",
+  "messageType": "helloAck",
+  "payload": {
+    "selectedSchemaVersion": "1.0.0",
+    "capabilitySelection": {
+      "status": "downgraded",
+      "positionModel": "nodeOnly",
+      "capabilities": [
+        "exactEventOrdering"
+      ],
+      "maxFleetSize": 5000,
+      "maxRequestCount": 100000,
+      "downgradePolicyId": "node-only-no-old-plan-v1"
+    }
+  }
+}

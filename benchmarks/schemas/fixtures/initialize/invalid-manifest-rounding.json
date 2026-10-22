@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "1.0.0",
+  "messageType": "initializeRun",
+  "runId": "run-001",
+  "scenarioId": "manhattan-20260729-a",
+  "payload": {
+    "manifest": {
+      "protocolVersion": "1.0.0",
+      "masterSeed": 1,
+      "policyId": "rolling-cost",
+      "policyVersion": "1.0.0",
+      "policyConfigurationHash": "1111111111111111111111111111111111111111111111111111111111111111",
+      "scenarioContentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+      "graphSnapshotHash": "3333333333333333333333333333333333333333333333333333333333333333",
+      "travelTimeSnapshotHash": "4444444444444444444444444444444444444444444444444444444444444444",
+      "costUnitId": "abstract-generalized-cost-v1",
+      "sourceUnitConversions": [
+        {
+          "quantity": "time",
+          "sourceUnit": "second",
+          "canonicalUnit": "millisecond",
+          "roundingRule": "roundAwayFromZero"
+        }
+      ],
+      "capabilitySelection": {
+        "status": "accepted",
+        "positionModel": "nodeOnly",
+        "capabilities": [
+          "exactEventOrdering"
+        ],
+        "maxFleetSize": 10,
+        "maxRequestCount": 100
+      },
+      "adapter": {
+        "adapterId": "fixture-adapter",
+        "adapterVersion": "1.0.0"
+      },
+      "simulator": {
+        "simulatorId": "fixture-simulator",
+        "simulatorVersion": "1.0.0",
+        "upstreamCommitSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "coreCommitSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "binarySha256": "5555555555555555555555555555555555555555555555555555555555555555"
+    }
+  }
+}

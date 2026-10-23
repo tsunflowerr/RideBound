@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "1.0.0",
+  "draft": "https://json-schema.org/draft/2020-12/schema",
+  "entries": [
+    {
+      "contractType": "RideBound.Contracts.Protocol.ProtocolEnvelope",
+      "messageType": "*",
+      "schema": "protocol-envelope.schema.json",
+      "fixtureDirectory": "../fixtures/protocol",
+      "implementationStatus": "implemented-envelope"
+    },
+    {
+      "contractType": "RideBound.Contracts.Protocol.HelloPayload",
+      "messageType": "hello",
+      "schema": "hello.schema.json",
+      "fixtureDirectory": "../fixtures/hello",
+      "implementationStatus": "implemented"
+    },
+    {
+      "contractType": "RideBound.Contracts.Protocol.HelloAckPayload",
+      "messageType": "helloAck",
+      "schema": "hello-ack.schema.json",
+      "fixtureDirectory": "../fixtures/hello",
+      "implementationStatus": "implemented"
+    },
+    {
+      "contractType": "RideBound.Contracts.Protocol.InitializeRunPayload",
+      "messageType": "initializeRun",
+      "schema": "initialize-run.schema.json",
+      "fixtureDirectory": "../fixtures/initialize",
+      "implementationStatus": "implemented"
+    },
+    {
+      "contractType": "RideBound.Contracts.Protocol.InitializedPayload",
+      "messageType": "initialized",
+      "schema": "initialized.schema.json",
+      "fixtureDirectory": "../fixtures/initialize",
+      "implementationStatus": "implemented"
+    },
+    {
+      "contractType": "vocabulary-only",
+      "messageType": "eventBatch|decision|decisionApplied|checkpoint|restore|finalizeRun|runSummary|shutdown|error",
+      "schema": "protocol-envelope.schema.json",
+      "fixtureDirectory": "../fixtures/protocol",
+      "implementationStatus": "payload-planned-RB-WP1-008-or-later"
+    }
+  ]
+}

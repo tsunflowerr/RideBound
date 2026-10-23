@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/tsunflowerr/RideBound/main/benchmarks/schemas/v1/manifest-identity.schema.json",
+  "title": "RideBound immutable run manifest identity v1",
+  "type": "object",
+  "required": [
+    "protocolVersion",
+    "masterSeed",
+    "policyId",
+    "policyVersion",
+    "policyConfigurationHash",
+    "scenarioContentHash",
+    "graphSnapshotHash",
+    "travelTimeSnapshotHash",
+    "costUnitId",
+    "sourceUnitConversions",
+    "capabilitySelection",
+    "adapter",
+    "simulator",
+    "coreCommitSha",
+    "binarySha256"
+  ],
+  "properties": {
+    "protocolVersion": {
+      "$ref": "definitions.schema.json#/$defs/schemaVersion"
+    },
+    "masterSeed": {
+      "$ref": "definitions.schema.json#/$defs/canonicalNonNegativeInteger"
+    },
+    "policyId": {
+      "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+    },
+    "policyVersion": {
+      "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+    },
+    "policyConfigurationHash": {
+      "$ref": "definitions.schema.json#/$defs/sha256Hex"
+    },
+    "scenarioContentHash": {
+      "$ref": "definitions.schema.json#/$defs/sha256Hex"
+    },
+    "graphSnapshotHash": {
+      "$ref": "definitions.schema.json#/$defs/sha256Hex"
+    },
+    "travelTimeSnapshotHash": {
+      "$ref": "definitions.schema.json#/$defs/sha256Hex"
+    },
+    "costUnitId": {
+      "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+    },
+    "sourceUnitConversions": {
+      "type": "array",
+      "minItems": 1,
+      "x-ridebound-semantic-set": true,
+      "x-ridebound-sort": "quantity-ordinal",
+      "x-ridebound-uniqueBy": "quantity",
+      "items": {
+        "type": "object",
+        "required": [
+          "quantity",
+          "sourceUnit",
+          "canonicalUnit",
+          "roundingRule"
+        ],
+        "properties": {
+          "quantity": {
+            "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+          },
+          "sourceUnit": {
+            "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+          },
+          "canonicalUnit": {
+            "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+          },
+          "roundingRule": {
+            "const": "roundTiesToEven"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "capabilitySelection": {
+      "$ref": "capability-selection.schema.json"
+    },
+    "adapter": {
+      "type": "object",
+      "required": [
+        "adapterId",
+        "adapterVersion"
+      ],
+      "properties": {
+        "adapterId": {
+          "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+        },
+        "adapterVersion": {
+          "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+        }
+      },
+      "additionalProperties": false
+    },
+    "simulator": {
+      "type": "object",
+      "required": [
+        "simulatorId",
+        "simulatorVersion",
+        "upstreamCommitSha"
+      ],
+      "properties": {
+        "simulatorId": {
+          "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+        },
+        "simulatorVersion": {
+          "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+        },
+        "upstreamCommitSha": {
+          "$ref": "definitions.schema.json#/$defs/sourceCommitSha"
+        }
+      },
+      "additionalProperties": false
+    },
+    "coreCommitSha": {
+      "$ref": "definitions.schema.json#/$defs/sourceCommitSha"
+    },
+    "binarySha256": {
+      "$ref": "definitions.schema.json#/$defs/sha256Hex"
+    }
+  },
+  "additionalProperties": false
+}

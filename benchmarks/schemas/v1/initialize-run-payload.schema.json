@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/tsunflowerr/RideBound/main/benchmarks/schemas/v1/initialize-run-payload.schema.json",
+  "title": "RideBound initializeRun payload v1",
+  "type": "object",
+  "required": [
+    "manifest"
+  ],
+  "properties": {
+    "manifest": {
+      "$ref": "manifest-identity.schema.json"
+    }
+  },
+  "additionalProperties": false
+}

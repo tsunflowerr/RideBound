@@ -1,0 +1,7 @@
+{
+  "fixtureId": "checkpoint-restore-equivalence",
+  "supportLevel": "future-behavior",
+  "expectedValidator": "wp3-checkpoint-replay",
+  "minimumWorkPackage": "WP3",
+  "expectedOutcome": "pass"
+}

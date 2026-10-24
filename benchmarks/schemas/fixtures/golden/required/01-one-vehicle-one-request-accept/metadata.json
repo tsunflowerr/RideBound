@@ -1,0 +1,7 @@
+{
+  "fixtureId": "one-vehicle-one-request-accept",
+  "supportLevel": "future-behavior",
+  "expectedValidator": "wp2-online-engine",
+  "minimumWorkPackage": "WP2",
+  "expectedOutcome": "pass"
+}

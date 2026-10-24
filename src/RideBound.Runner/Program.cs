@@ -1,2 +1,6 @@
-Console.Error.WriteLine(
-    "RideBound.Runner scaffold is ready; protocol behavior starts in WP1.");
+using RideBound.Runner.Protocol;
+
+return await RunnerHost.RunAsync(
+    Console.OpenStandardInput(),
+    Console.OpenStandardOutput(),
+    Console.Error);

@@ -1,0 +1,7 @@
+{
+  "fixtureId": "duplicate-event-idempotent",
+  "supportLevel": "runner-executable",
+  "expectedValidator": "runner-session",
+  "minimumWorkPackage": "WP1",
+  "expectedOutcome": "pass"
+}

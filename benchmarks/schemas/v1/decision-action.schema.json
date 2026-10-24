@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/tsunflowerr/RideBound/main/benchmarks/schemas/v1/decision-action.schema.json",
+  "title": "RideBound decision action v1",
+  "type": "object",
+  "required": [
+    "decisionType",
+    "payload"
+  ],
+  "properties": {
+    "decisionType": {
+      "type": "string",
+      "enum": [
+        "offerProposed",
+        "requestAccepted",
+        "requestRejected",
+        "requestDeferred",
+        "vehiclePlanUpdated",
+        "promisePublished",
+        "commitmentBreachDeclared"
+      ]
+    },
+    "payload": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/tsunflowerr/RideBound/main/benchmarks/schemas/v1/protocol-event.schema.json",
+  "title": "RideBound protocol event v1",
+  "type": "object",
+  "required": [
+    "eventSeq",
+    "eventType",
+    "payload"
+  ],
+  "properties": {
+    "eventSeq": {
+      "$ref": "definitions.schema.json#/$defs/canonicalPositiveInteger"
+    },
+    "eventType": {
+      "type": "string",
+      "enum": [
+        "requestArrived",
+        "bookingConfirmed",
+        "offerDeclined",
+        "requestCancelledBeforeAcceptance",
+        "requestCancelledAfterAcceptance",
+        "vehicleAdvanced",
+        "vehicleReachedStop",
+        "passengerBoarded",
+        "passengerAlighted",
+        "travelTimesUpdated",
+        "timerTick",
+        "incidentOpened",
+        "incidentResolved"
+      ]
+    },
+    "payload": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

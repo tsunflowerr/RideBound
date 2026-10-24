@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/tsunflowerr/RideBound/main/benchmarks/schemas/v1/error.schema.json",
+  "title": "RideBound error message v1",
+  "allOf": [
+    {
+      "$ref": "protocol-envelope.schema.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "messageType": {
+          "const": "error"
+        },
+        "payload": {
+          "$ref": "error-payload.schema.json"
+        }
+      }
+    }
+  ]
+}

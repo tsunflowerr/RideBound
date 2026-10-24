@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/tsunflowerr/RideBound/main/benchmarks/schemas/v1/decision-payload.schema.json",
+  "title": "RideBound decision payload v1",
+  "type": "object",
+  "required": [
+    "status",
+    "reasonCode",
+    "actions",
+    "certificate",
+    "solver",
+    "stateBeforeHash",
+    "stateAfterHash",
+    "previousDecisionHash",
+    "decisionHash"
+  ],
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": [
+        "notProduced",
+        "produced"
+      ],
+      "x-ridebound-decision-hash": "include"
+    },
+    "reasonCode": {
+      "type": "string",
+      "enum": [
+        "ACCEPTED",
+        "NO_FEASIBLE_INSERTION",
+        "CAPACITY",
+        "TIME_WINDOW",
+        "MAX_RIDE_TIME",
+        "FROZEN_PREFIX",
+        "COMMITMENT_BUDGET",
+        "SOLVER_TIMEOUT_SAFE_FALLBACK",
+        "INCIDENT_OVERRIDE",
+        "WP1_STRUCTURAL_ONLY"
+      ],
+      "x-ridebound-decision-hash": "include"
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "$ref": "decision-action.schema.json"
+      },
+      "x-ridebound-decision-hash": "include",
+      "x-ridebound-order": "preserve"
+    },
+    "certificate": {
+      "type": "object",
+      "required": [
+        "status",
+        "reasonCode"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "notProduced",
+            "produced"
+          ]
+        },
+        "reasonCode": {
+          "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+        }
+      },
+      "additionalProperties": false,
+      "x-ridebound-decision-hash": "include"
+    },
+    "solver": {
+      "type": "object",
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "notRun",
+            "completed",
+            "safeFallback"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "x-ridebound-decision-hash": "include"
+    },
+    "stateBeforeHash": {
+      "$ref": "definitions.schema.json#/$defs/sha256Hex",
+      "x-ridebound-decision-hash": "include"
+    },
+    "stateAfterHash": {
+      "$ref": "definitions.schema.json#/$defs/sha256Hex",
+      "x-ridebound-decision-hash": "include"
+    },
+    "previousDecisionHash": {
+      "$ref": "definitions.schema.json#/$defs/sha256Hex",
+      "x-ridebound-decision-hash": "exclude-chain-input"
+    },
+    "decisionHash": {
+      "$ref": "definitions.schema.json#/$defs/sha256Hex",
+      "x-ridebound-decision-hash": "exclude-circular"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "notProduced"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "actions": {
+            "maxItems": 0
+          },
+          "certificate": {
+            "properties": {
+              "status": {
+                "const": "notProduced"
+              }
+            }
+          },
+          "solver": {
+            "properties": {
+              "status": {
+                "const": "notRun"
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false
+}

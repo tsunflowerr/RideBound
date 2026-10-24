@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/tsunflowerr/RideBound/main/benchmarks/schemas/v1/event-batch-payload.schema.json",
+  "title": "RideBound eventBatch payload v1",
+  "type": "object",
+  "required": [
+    "events"
+  ],
+  "properties": {
+    "events": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "protocol-event.schema.json"
+      },
+      "x-ridebound-order": "eventSeq-global-consecutive-input-order"
+    }
+  },
+  "additionalProperties": false
+}

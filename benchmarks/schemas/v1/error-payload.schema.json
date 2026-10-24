@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/tsunflowerr/RideBound/main/benchmarks/schemas/v1/error-payload.schema.json",
+  "title": "RideBound error payload v1",
+  "type": "object",
+  "required": [
+    "code",
+    "disposition",
+    "message"
+  ],
+  "properties": {
+    "code": {
+      "type": "string",
+      "enum": [
+        "MALFORMED_UTF8",
+        "MALFORMED_JSON",
+        "MESSAGE_TOO_LARGE",
+        "INVALID_SCHEMA_VERSION",
+        "UNKNOWN_MESSAGE_TYPE",
+        "SCHEMA_VALIDATION_FAILED",
+        "UNKNOWN_FIELD",
+        "UNSUPPORTED_SCHEMA_MAJOR",
+        "UNSUPPORTED_SCHEMA_MINOR",
+        "INVALID_SESSION_STATE",
+        "IDENTITY_MISMATCH",
+        "CAPABILITY_REQUIRED_MISSING",
+        "EVENT_SEQUENCE_GAP",
+        "EVENT_SEQUENCE_OVERLAP",
+        "EPOCH_GAP",
+        "DUPLICATE_PAYLOAD_CONFLICT",
+        "HASH_MISMATCH",
+        "MANIFEST_MUTATION",
+        "INTERNAL_ERROR",
+        "INCOMPLETE_FRAME_EOF"
+      ]
+    },
+    "disposition": {
+      "type": "string",
+      "enum": [
+        "rejectMessage",
+        "failSession",
+        "terminateProcess"
+      ]
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "x-ridebound-sanitized": true,
+      "x-ridebound-hash": "exclude-diagnostic"
+    }
+  },
+  "additionalProperties": false
+}

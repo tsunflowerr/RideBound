@@ -1,4 +1,5 @@
 using System.Text.Json;
+using RideBound.Contracts.Protocol;
 using RideBound.Contracts.Serialization;
 using RideBound.Contracts.Tests.Fixtures;
 
@@ -78,7 +79,7 @@ public sealed class SchemaAssetTests
                     == "implemented")
             .ToArray();
 
-        Assert.Equal(4, implementedEntries.Length);
+        Assert.Equal(8, implementedEntries.Length);
 
         foreach (var entry in implementedEntries)
         {
@@ -105,6 +106,12 @@ public sealed class SchemaAssetTests
                      "manifest-identity.schema.json",
                      "initialize-run-payload.schema.json",
                      "initialized-payload.schema.json",
+                     "event-batch-payload.schema.json",
+                     "decision-action.schema.json",
+                     "decision-payload.schema.json",
+                     "decision-applied-payload.schema.json",
+                     "error-payload.schema.json",
+                     "golden-fixture-metadata.schema.json",
                  })
         {
             using var document = JsonDocument.Parse(
@@ -112,6 +119,54 @@ public sealed class SchemaAssetTests
 
             Assert.False(document.RootElement.GetProperty("additionalProperties").GetBoolean());
         }
+    }
+
+    [Fact]
+    public void Every_decision_field_declares_hash_inclusion_or_exclusion()
+    {
+        using var document = JsonDocument.Parse(
+            FixtureLoader.ReadSchemaUtf8("v1/decision-payload.schema.json"));
+        var properties = document.RootElement.GetProperty("properties");
+
+        foreach (var property in properties.EnumerateObject())
+        {
+            Assert.True(
+                property.Value.TryGetProperty(
+                    "x-ridebound-decision-hash",
+                    out _),
+                $"Decision field '{property.Name}' has no hash classification.");
+        }
+    }
+
+    [Fact]
+    public void Decision_schema_vocabularies_match_executable_contract()
+    {
+        using var actionDocument = JsonDocument.Parse(
+            FixtureLoader.ReadSchemaUtf8("v1/decision-action.schema.json"));
+        using var payloadDocument = JsonDocument.Parse(
+            FixtureLoader.ReadSchemaUtf8("v1/decision-payload.schema.json"));
+        var schemaActionTypes = actionDocument.RootElement
+            .GetProperty("properties")
+            .GetProperty("decisionType")
+            .GetProperty("enum")
+            .EnumerateArray()
+            .Select(value => value.GetString()!)
+            .Order(StringComparer.Ordinal);
+        var runtimeActionTypes = Enum.GetValues<DecisionType>()
+            .Select(DecisionTypeVocabulary.ToProtocolValue)
+            .Order(StringComparer.Ordinal);
+        var schemaReasons = payloadDocument.RootElement
+            .GetProperty("properties")
+            .GetProperty("reasonCode")
+            .GetProperty("enum")
+            .EnumerateArray()
+            .Select(value => value.GetString()!)
+            .Order(StringComparer.Ordinal);
+
+        Assert.Equal(runtimeActionTypes, schemaActionTypes);
+        Assert.Equal(
+            DecisionReasonCodes.All.Order(StringComparer.Ordinal),
+            schemaReasons);
     }
 
     [Fact]

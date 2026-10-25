@@ -1,5 +1,6 @@
 using RideBound.Domain.Common;
 using RideBound.Domain.Requests;
+using RideBound.Domain.Routes;
 
 namespace RideBound.Domain.Tests;
 
@@ -34,4 +35,41 @@ internal static class TestData
             partySize,
             "standard",
             "uniform-v1").Value!;
+
+    public static RouteStop Pickup(RequestId? id = null, string stopId = "pickup") =>
+        new(
+            new StopId(stopId),
+            NodeOne,
+            RouteStopKind.Pickup,
+            id ?? RequestOne,
+            new Duration(0));
+
+    public static RouteStop DropOff(RequestId? id = null, string stopId = "drop") =>
+        new(
+            new StopId(stopId),
+            NodeTwo,
+            RouteStopKind.DropOff,
+            id ?? RequestOne,
+            new Duration(0));
+
+    public static RouteStop Waypoint(
+        string stopId = "waypoint",
+        NodeId? nodeId = null) =>
+        new(
+            new StopId(stopId),
+            nodeId ?? NodeOne,
+            RouteStopKind.Waypoint,
+            null,
+            new Duration(0));
+
+    public static RoutePlan Route(
+        IEnumerable<RouteStop>? frozen = null,
+        IEnumerable<RouteStop>? mutable = null,
+        long executed = 0,
+        long version = 0) =>
+        RoutePlan.Create(
+            new PlanVersion(version),
+            executed,
+            frozen ?? [],
+            mutable ?? []).Value!;
 }

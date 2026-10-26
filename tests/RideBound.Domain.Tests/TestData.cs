@@ -1,6 +1,8 @@
 using RideBound.Domain.Common;
 using RideBound.Domain.Requests;
 using RideBound.Domain.Routes;
+using RideBound.Domain.Runs;
+using RideBound.Domain.Vehicles;
 
 namespace RideBound.Domain.Tests;
 
@@ -72,4 +74,31 @@ internal static class TestData
             executed,
             frozen ?? [],
             mutable ?? []).Value!;
+
+    public static VehicleState EmptyVehicle(
+        RoutePlan? route = null,
+        VehicleId? id = null,
+        long capacity = 4,
+        long observedEpoch = 0) =>
+        VehicleState.Create(
+            id ?? VehicleOne,
+            capacity,
+            0,
+            new NodePosition(NodeZero),
+            [],
+            [],
+            route ?? Route(),
+            observedEpoch).Value!;
+
+    public static RideBoundRun EmptyRun() =>
+        RideBoundRun.Create(
+            new RunIdentifier("run-1"),
+            new ScenarioIdentifier("scenario-1"),
+            new SimTime(0));
+
+    public static RideBoundRun RunWithPendingAndVehicle(RoutePlan? route = null)
+    {
+        var withRequest = EmptyRun().AddRequest(PendingRequest()).Value!;
+        return withRequest.BootstrapVehicle(EmptyVehicle(route)).Value!;
+    }
 }

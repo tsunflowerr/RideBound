@@ -79,4 +79,5 @@ public static class EventReductionFailureCodes
     public const string PendingTransitionExists = "PENDING_TRANSITION_EXISTS";
     public const string NoPendingTransition = "NO_PENDING_TRANSITION";
     public const string AcknowledgementMismatch = "ACKNOWLEDGEMENT_MISMATCH";
+    public const string DecisionStateMismatch = "DECISION_STATE_MISMATCH";
 }

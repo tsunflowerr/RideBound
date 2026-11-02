@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/tsunflowerr/RideBound/main/benchmarks/schemas/v1/vehicle-snapshot.schema.json",
+  "title": "RideBound full vehicle snapshot v1",
+  "type": "object",
+  "required": [
+    "vehicleId",
+    "capacity",
+    "occupiedSeats",
+    "position",
+    "onboardRequestIds",
+    "acceptedRequestIds",
+    "route"
+  ],
+  "properties": {
+    "vehicleId": {
+      "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+    },
+    "capacity": {
+      "$ref": "definitions.schema.json#/$defs/canonicalPositiveInteger"
+    },
+    "occupiedSeats": {
+      "$ref": "definitions.schema.json#/$defs/canonicalNonNegativeInteger"
+    },
+    "position": {
+      "$ref": "position.schema.json"
+    },
+    "onboardRequestIds": {
+      "type": "array",
+      "items": {
+        "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+      },
+      "uniqueItems": true,
+      "x-ridebound-semantic-set": true,
+      "x-ridebound-sort": "ordinal"
+    },
+    "acceptedRequestIds": {
+      "type": "array",
+      "items": {
+        "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+      },
+      "uniqueItems": true,
+      "x-ridebound-semantic-set": true,
+      "x-ridebound-sort": "ordinal"
+    },
+    "route": {
+      "$ref": "route-plan.schema.json"
+    }
+  },
+  "additionalProperties": false
+}

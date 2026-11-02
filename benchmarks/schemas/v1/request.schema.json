@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/tsunflowerr/RideBound/main/benchmarks/schemas/v1/request.schema.json",
+  "title": "RideBound online request v1",
+  "type": "object",
+  "required": [
+    "requestId",
+    "arrivalTimeMs",
+    "originNodeId",
+    "destinationNodeId",
+    "earliestPickupMs",
+    "latestPickupMs",
+    "maxRideTimeMs",
+    "partySize",
+    "serviceClass",
+    "commitmentPolicyId"
+  ],
+  "properties": {
+    "requestId": {
+      "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+    },
+    "arrivalTimeMs": {
+      "$ref": "definitions.schema.json#/$defs/canonicalNonNegativeInteger"
+    },
+    "originNodeId": {
+      "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+    },
+    "destinationNodeId": {
+      "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+    },
+    "earliestPickupMs": {
+      "$ref": "definitions.schema.json#/$defs/canonicalNonNegativeInteger"
+    },
+    "latestPickupMs": {
+      "$ref": "definitions.schema.json#/$defs/canonicalNonNegativeInteger"
+    },
+    "maxRideTimeMs": {
+      "$ref": "definitions.schema.json#/$defs/canonicalPositiveInteger"
+    },
+    "partySize": {
+      "$ref": "definitions.schema.json#/$defs/canonicalPositiveInteger"
+    },
+    "serviceClass": {
+      "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+    },
+    "commitmentPolicyId": {
+      "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+    }
+  },
+  "additionalProperties": false
+}

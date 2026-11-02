@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/tsunflowerr/RideBound/main/benchmarks/schemas/v1/vehicle-reached-stop-event-payload.schema.json",
+  "title": "RideBound vehicleReachedStop payload v1",
+  "type": "object",
+  "required": [
+    "vehicleId",
+    "stopId",
+    "planVersion",
+    "position"
+  ],
+  "properties": {
+    "vehicleId": {
+      "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+    },
+    "stopId": {
+      "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+    },
+    "planVersion": {
+      "$ref": "definitions.schema.json#/$defs/canonicalNonNegativeInteger"
+    },
+    "position": {
+      "type": "object",
+      "required": [
+        "kind",
+        "nodeId"
+      ],
+      "properties": {
+        "kind": {
+          "const": "node"
+        },
+        "nodeId": {
+          "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -24,5 +24,58 @@
       "type": "object"
     }
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "decisionType": {
+            "const": "requestAccepted"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "request-accepted-action-payload.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "decisionType": {
+            "enum": [
+              "requestRejected",
+              "requestDeferred"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "request-outcome-action-payload.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "decisionType": {
+            "const": "vehiclePlanUpdated"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "vehicle-plan-updated-action-payload.schema.json"
+          }
+        }
+      }
+    }
+  ],
   "additionalProperties": false
 }

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/tsunflowerr/RideBound/main/benchmarks/schemas/v1/request-accepted-action-payload.schema.json",
+  "title": "RideBound request accepted action payload v1",
+  "type": "object",
+  "required": [
+    "requestId",
+    "vehicleId",
+    "candidateId"
+  ],
+  "properties": {
+    "requestId": {
+      "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+    },
+    "vehicleId": {
+      "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+    },
+    "candidateId": {
+      "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+    }
+  },
+  "additionalProperties": false
+}

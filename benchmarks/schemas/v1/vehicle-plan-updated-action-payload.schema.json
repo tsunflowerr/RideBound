@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/tsunflowerr/RideBound/main/benchmarks/schemas/v1/vehicle-plan-updated-action-payload.schema.json",
+  "title": "RideBound vehicle plan updated action payload v1",
+  "type": "object",
+  "required": [
+    "vehicleId",
+    "candidateId",
+    "route"
+  ],
+  "properties": {
+    "vehicleId": {
+      "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+    },
+    "candidateId": {
+      "$ref": "definitions.schema.json#/$defs/opaqueIdentifier"
+    },
+    "route": {
+      "$ref": "route-plan.schema.json"
+    }
+  },
+  "additionalProperties": false
+}

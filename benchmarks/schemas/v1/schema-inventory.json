@@ -101,6 +101,13 @@
       "implementationStatus": "implemented"
     },
     {
+      "contractType": "RideBound.Contracts.Protocol.OnlineDecisionAction",
+      "messageType": "decision-action",
+      "schema": "decision-action.schema.json",
+      "fixtureDirectory": "../fixtures/runner",
+      "implementationStatus": "implemented"
+    },
+    {
       "contractType": "RideBound.Contracts.Protocol.DecisionAppliedPayload",
       "messageType": "decisionApplied",
       "schema": "decision-applied.schema.json",

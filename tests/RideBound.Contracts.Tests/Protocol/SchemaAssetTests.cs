@@ -79,7 +79,7 @@ public sealed class SchemaAssetTests
                     == "implemented")
             .ToArray();
 
-        Assert.Equal(15, implementedEntries.Length);
+        Assert.Equal(16, implementedEntries.Length);
 
         foreach (var entry in implementedEntries)
         {

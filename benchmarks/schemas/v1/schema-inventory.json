@@ -41,7 +41,56 @@
       "contractType": "RideBound.Contracts.Protocol.EventBatchPayload",
       "messageType": "eventBatch",
       "schema": "event-batch.schema.json",
-      "fixtureDirectory": "../fixtures/golden/required",
+      "fixtureDirectory": "../fixtures/wp2",
+      "implementationStatus": "implemented"
+    },
+    {
+      "contractType": "RideBound.Contracts.Protocol.PositionContract",
+      "messageType": "event-model",
+      "schema": "position.schema.json",
+      "fixtureDirectory": "../fixtures/wp2",
+      "implementationStatus": "implemented"
+    },
+    {
+      "contractType": "RideBound.Contracts.Protocol.RequestContract",
+      "messageType": "requestArrived",
+      "schema": "request.schema.json",
+      "fixtureDirectory": "../fixtures/wp2",
+      "implementationStatus": "implemented"
+    },
+    {
+      "contractType": "RideBound.Contracts.Protocol.RouteStopContract",
+      "messageType": "vehicleAdvanced",
+      "schema": "route-stop.schema.json",
+      "fixtureDirectory": "../fixtures/wp2",
+      "implementationStatus": "implemented"
+    },
+    {
+      "contractType": "RideBound.Contracts.Protocol.RoutePlanContract",
+      "messageType": "vehicleAdvanced",
+      "schema": "route-plan.schema.json",
+      "fixtureDirectory": "../fixtures/wp2",
+      "implementationStatus": "implemented"
+    },
+    {
+      "contractType": "RideBound.Contracts.Protocol.VehicleSnapshotContract",
+      "messageType": "vehicleAdvanced",
+      "schema": "vehicle-snapshot.schema.json",
+      "fixtureDirectory": "../fixtures/wp2",
+      "implementationStatus": "implemented"
+    },
+    {
+      "contractType": "RideBound.Contracts.Protocol.TravelArcContract",
+      "messageType": "travelTimesUpdated",
+      "schema": "travel-arc.schema.json",
+      "fixtureDirectory": "../fixtures/wp2",
+      "implementationStatus": "implemented"
+    },
+    {
+      "contractType": "RideBound.Contracts.Protocol.TravelTimeSnapshotContract",
+      "messageType": "travelTimesUpdated",
+      "schema": "travel-time-snapshot.schema.json",
+      "fixtureDirectory": "../fixtures/wp2",
       "implementationStatus": "implemented"
     },
     {

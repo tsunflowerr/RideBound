@@ -65,8 +65,8 @@ public sealed class RunnerEndToEndTests
         var transcript = FixtureLoader.ReadUtf8(
             "runner/full-tiny-transcript.input.ndjson");
         var tampered = transcript.Replace(
-            "\"eventType\":\"timerTick\"",
-            "\"eventType\":\"incidentOpened\"",
+            "\"eventType\":\"timerTick\",\"payload\":{}",
+            "\"eventType\":\"incidentResolved\",\"payload\":{\"incidentId\":\"tampered\"}",
             StringComparison.Ordinal);
 
         var original = await RunInMemory(transcript);

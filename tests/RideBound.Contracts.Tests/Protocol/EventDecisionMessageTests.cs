@@ -17,7 +17,7 @@ public sealed class EventDecisionMessageTests
                     return new ProtocolEvent(
                         sequence,
                         eventType,
-                        ParseObject("{}"));
+                        CreatePayload(eventType));
                 })
             .ToArray();
         var encoded = EventBatchPayloadCodec.Encode(new EventBatchPayload(events));
@@ -191,5 +191,60 @@ public sealed class EventDecisionMessageTests
     {
         using var document = JsonDocument.Parse(Encoding.UTF8.GetBytes(json));
         return document.RootElement.Clone();
+    }
+
+    private static ProtocolEventPayload CreatePayload(EventType eventType)
+    {
+        var request = new RequestContract(
+            "r-1",
+            0,
+            "n-1",
+            "n-2",
+            0,
+            1000,
+            1000,
+            1,
+            "standard",
+            "uniform-v1");
+        Sha256Hex.TryCreate(new string('a', 64), out var hash);
+
+        return eventType switch
+        {
+            EventType.RequestArrived => new RequestArrivedEventPayload(request),
+            EventType.BookingConfirmed
+                or EventType.OfferDeclined
+                or EventType.RequestCancelledBeforeAcceptance
+                or EventType.RequestCancelledAfterAcceptance =>
+                new RequestReferenceEventPayload("r-1"),
+            EventType.VehicleAdvanced => new VehicleAdvancedEventPayload(
+                new VehicleSnapshotContract(
+                    "v-1",
+                    4,
+                    0,
+                    new NodePositionContract("n-1"),
+                    [],
+                    [],
+                    new RoutePlanContract(0, 0, [], []))),
+            EventType.VehicleReachedStop => new VehicleReachedStopEventPayload(
+                "v-1",
+                "s-1",
+                0,
+                new NodePositionContract("n-1")),
+            EventType.PassengerBoarded or EventType.PassengerAlighted =>
+                new PassengerEventPayload("v-1", "r-1", 0),
+            EventType.TravelTimesUpdated => new TravelTimesUpdatedEventPayload(
+                new TravelTimeSnapshotContract(
+                    1,
+                    hash!,
+                    [new TravelArcContract("n-1", "n-2", 1)])),
+            EventType.TimerTick => TimerTickEventPayload.Instance,
+            EventType.IncidentOpened => new IncidentOpenedEventPayload(
+                "incident-1",
+                "ROAD_CLOSED",
+                ["v-1"]),
+            EventType.IncidentResolved => new IncidentResolvedEventPayload(
+                "incident-1"),
+            _ => throw new ArgumentOutOfRangeException(nameof(eventType)),
+        };
     }
 }

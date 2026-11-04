@@ -10,9 +10,7 @@
       {
         "eventSeq": 1,
         "eventType": "timerTick",
-        "payload": {
-          "fixtureIntent": "checkpoint-restore-equivalence"
-        }
+        "payload": {}
       }
     ]
   }

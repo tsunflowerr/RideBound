@@ -11,7 +11,18 @@
         "eventSeq": 1,
         "eventType": "requestArrived",
         "payload": {
-          "fixtureIntent": "accept-one-request"
+          "request": {
+            "requestId": "r-01",
+            "arrivalTimeMs": 1000,
+            "originNodeId": "n-1",
+            "destinationNodeId": "n-2",
+            "earliestPickupMs": 1000,
+            "latestPickupMs": 2000,
+            "maxRideTimeMs": 2000,
+            "partySize": 1,
+            "serviceClass": "standard",
+            "commitmentPolicyId": "uniform-v1"
+          }
         }
       }
     ]

@@ -88,9 +88,7 @@ public sealed class RunnerEndToEndTests
     public async Task Executable_process_keeps_diagnostics_off_stdout()
     {
         var assembly = typeof(RunnerHost).Assembly.Location;
-        var startInfo = new ProcessStartInfo(
-            "dotnet",
-            $"\"{assembly}\"")
+        var startInfo = new ProcessStartInfo("dotnet")
         {
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
@@ -98,6 +96,9 @@ public sealed class RunnerEndToEndTests
             UseShellExecute = false,
             CreateNoWindow = true,
         };
+        startInfo.ArgumentList.Add(assembly);
+        startInfo.ArgumentList.Add("--mode");
+        startInfo.ArgumentList.Add("conformance");
         using var process = Process.Start(startInfo);
         Assert.NotNull(process);
         await process.StandardInput.WriteAsync(
@@ -179,6 +180,8 @@ public sealed class RunnerEndToEndTests
             CreateNoWindow = true,
         };
         startInfo.ArgumentList.Add(assembly);
+        startInfo.ArgumentList.Add("--mode");
+        startInfo.ArgumentList.Add("conformance");
 
         using var process = Process.Start(startInfo);
         Assert.NotNull(process);

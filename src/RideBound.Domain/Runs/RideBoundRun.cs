@@ -1,6 +1,7 @@
 using System.Collections.Frozen;
 using RideBound.Domain.Common;
 using RideBound.Domain.Requests;
+using RideBound.Domain.Routes;
 using RideBound.Domain.Vehicles;
 
 namespace RideBound.Domain.Runs;
@@ -40,6 +41,142 @@ public sealed class RideBoundRun
         ScenarioIdentifier scenarioId,
         SimTime initialTime) =>
         new(id, scenarioId, 0, initialTime, [], []);
+
+    public static DomainResult<RideBoundRun> Rehydrate(
+        RunIdentifier id,
+        ScenarioIdentifier scenarioId,
+        long appliedEpoch,
+        SimTime simulationTime,
+        IEnumerable<RideRequest> requests,
+        IEnumerable<VehicleState> vehicles)
+    {
+        ArgumentNullException.ThrowIfNull(requests);
+        ArgumentNullException.ThrowIfNull(vehicles);
+        var requestArray = requests.ToArray();
+        var vehicleArray = vehicles.ToArray();
+
+        if (appliedEpoch is < 0 or > DomainLimits.MaxCanonicalInteger
+            || requestArray.Select(value => value.Id).Distinct().Count()
+                != requestArray.Length
+            || vehicleArray.Select(value => value.Id).Distinct().Count()
+                != vehicleArray.Length)
+        {
+            return DomainResult<RideBoundRun>.Fail(
+                RunFailureCodes.InvalidEpoch,
+                "Checkpoint run identity, epoch, or entity sets are invalid.",
+                id.Value);
+        }
+
+        var requestMap = requestArray.ToDictionary(value => value.Id);
+        var vehicleMap = vehicleArray.ToDictionary(value => value.Id);
+
+        foreach (var request in requestArray.Where(
+                     value => value.AssignedVehicleId is not null))
+        {
+            if (!vehicleMap.ContainsKey(request.AssignedVehicleId!.Value))
+            {
+                return DomainResult<RideBoundRun>.Fail(
+                    RunFailureCodes.VehicleRiderMismatch,
+                    "Checkpoint request assignment references an unknown vehicle.",
+                    request.Id.Value,
+                    "assignedVehicleId");
+            }
+        }
+
+        foreach (var vehicle in vehicleArray)
+        {
+            long derivedLoad = 0;
+
+            foreach (var stop in vehicle.Route.RemainingStops)
+            {
+                if (stop.RequestId is RequestId requestId
+                    && (!requestMap.TryGetValue(requestId, out var request)
+                        || !request.IsAcceptedActive
+                        || request.AssignedVehicleId != vehicle.Id))
+                {
+                    return DomainResult<RideBoundRun>.Fail(
+                        RunFailureCodes.VehicleRiderMismatch,
+                        "Checkpoint remaining route stop has no active matching assignment.",
+                        requestId.Value,
+                        "routeStops");
+                }
+            }
+
+            foreach (var requestId in vehicle.AcceptedRequestIds)
+            {
+                if (!requestMap.TryGetValue(requestId, out var request)
+                    || !request.IsAcceptedActive
+                    || request.AssignedVehicleId != vehicle.Id
+                    || request.Lifecycle == RequestLifecycle.Onboard
+                        != vehicle.OnboardRequestIds.Contains(requestId))
+                {
+                    return DomainResult<RideBoundRun>.Fail(
+                        RunFailureCodes.VehicleRiderMismatch,
+                        "Checkpoint vehicle rider sets disagree with request state.",
+                        requestId.Value,
+                        "acceptedRequestIds");
+                }
+            }
+
+            foreach (var requestId in vehicle.OnboardRequestIds)
+            {
+                derivedLoad = checked(derivedLoad + requestMap[requestId].PartySize);
+            }
+
+            if (derivedLoad != vehicle.OccupiedSeats)
+            {
+                return DomainResult<RideBoundRun>.Fail(
+                    RunFailureCodes.VehicleRiderMismatch,
+                    "Checkpoint occupied seats disagree with onboard riders.",
+                    vehicle.Id.Value,
+                    "occupiedSeats");
+            }
+        }
+
+        foreach (var request in requestArray.Where(value => value.IsAcceptedActive))
+        {
+            if (request.AssignedVehicleId is not VehicleId vehicleId
+                || !vehicleMap.TryGetValue(vehicleId, out var vehicle)
+                || !vehicle.AcceptedRequestIds.Contains(request.Id))
+            {
+                return DomainResult<RideBoundRun>.Fail(
+                    RunFailureCodes.VehicleRiderMismatch,
+                    "Checkpoint active request has no matching vehicle assignment.",
+                    request.Id.Value,
+                    "assignedVehicleId");
+            }
+
+            var remaining = vehicle.Route.RemainingStops.ToArray();
+            var pickupCount = remaining.Count(
+                stop => stop.RequestId == request.Id
+                    && stop.Kind == RouteStopKind.Pickup);
+            var dropCount = remaining.Count(
+                stop => stop.RequestId == request.Id
+                    && stop.Kind == RouteStopKind.DropOff);
+            var expectedPickupCount = request.Lifecycle
+                == RequestLifecycle.Onboard
+                    ? 0
+                    : 1;
+
+            if (pickupCount != expectedPickupCount || dropCount != 1)
+            {
+                return DomainResult<RideBoundRun>.Fail(
+                    RunFailureCodes.VehicleRiderMismatch,
+                    "Checkpoint route does not preserve the active request stops.",
+                    request.Id.Value,
+                    "routeStops");
+            }
+        }
+
+        return DomainResult<RideBoundRun>.Success(
+            new RideBoundRun(
+                id,
+                scenarioId,
+                appliedEpoch,
+                simulationTime,
+                requestMap,
+                vehicleMap));
+    }
 
     public DomainResult<RideBoundRun> AdvanceEpoch(long epoch, SimTime simulationTime)
     {
@@ -283,7 +420,26 @@ public sealed class RideBoundRun
         VehicleId vehicleId,
         RequestId requestId,
         PlanVersion planVersion,
-        SimTime pickupTime)
+        SimTime pickupTime) =>
+        BoardCore(vehicleId, requestId, planVersion, pickupTime,
+            allowLatePickup: false, validatePickupWindow: false);
+
+    public DomainResult<RideBoundRun> Board(
+        VehicleId vehicleId,
+        RequestId requestId,
+        PlanVersion planVersion,
+        SimTime pickupTime,
+        bool allowLatePickup) =>
+        BoardCore(vehicleId, requestId, planVersion, pickupTime,
+            allowLatePickup, validatePickupWindow: true);
+
+    private DomainResult<RideBoundRun> BoardCore(
+        VehicleId vehicleId,
+        RequestId requestId,
+        PlanVersion planVersion,
+        SimTime pickupTime,
+        bool allowLatePickup,
+        bool validatePickupWindow)
     {
         if (!TryGetRequestAndVehicle(
                 requestId,
@@ -295,7 +451,9 @@ public sealed class RideBoundRun
             return failure!;
         }
 
-        var boardedRequest = request!.Board(vehicleId, pickupTime);
+        var boardedRequest = validatePickupWindow
+            ? request!.Board(vehicleId, pickupTime, allowLatePickup)
+            : request!.Board(vehicleId, pickupTime);
         var boardedVehicle = vehicle!.Board(
             requestId,
             request.PartySize,
@@ -361,6 +519,101 @@ public sealed class RideBoundRun
         return updated.IsSuccess
             ? ReplaceVehicle(updated.Value!)
             : FromFailure(updated.Failure!);
+    }
+
+    /// <summary>
+    /// Moves one waiting rider from its vehicle (donor) to <paramref name="receiverVehicleId"/>
+    /// in one step: the request's assignment and both accepted sets change together. Both
+    /// routes must already be applied: the donor route has no remaining stop of the rider and
+    /// the receiver's mutable suffix has its pickup before its drop, once each.
+    /// </summary>
+    public DomainResult<RideBoundRun> ReassignWaitingRequest(
+        RequestId requestId,
+        VehicleId receiverVehicleId)
+    {
+        if (!TryGetRequestAndVehicle(
+                requestId,
+                receiverVehicleId,
+                out var request,
+                out var receiver,
+                out var failure))
+        {
+            return failure!;
+        }
+
+        var reassigned = request!.ReassignWaiting(receiverVehicleId);
+
+        if (!reassigned.IsSuccess)
+        {
+            return FromFailure(reassigned.Failure!);
+        }
+
+        if (request.AssignedVehicleId is not VehicleId donorId
+            || !Vehicles.TryGetValue(donorId, out var donor))
+        {
+            return DomainResult<RideBoundRun>.Fail(
+                RunFailureCodes.VehicleRiderMismatch,
+                "Waiting request has no matching donor vehicle state.",
+                requestId.Value,
+                "assignedVehicleId");
+        }
+
+        var suffix = receiver!.Route.MutableSuffix;
+        var pickupIndexes = Enumerable.Range(0, suffix.Count)
+            .Where(index => suffix[index].RequestId == requestId
+                && suffix[index].Kind == RouteStopKind.Pickup)
+            .ToArray();
+        var dropIndexes = Enumerable.Range(0, suffix.Count)
+            .Where(index => suffix[index].RequestId == requestId
+                && suffix[index].Kind == RouteStopKind.DropOff)
+            .ToArray();
+
+        if (pickupIndexes.Length != 1
+            || dropIndexes.Length != 1
+            || pickupIndexes[0] > dropIndexes[0]
+            || receiver.Route.RemainingStops.Count(stop => stop.RequestId == requestId) != 2)
+        {
+            return DomainResult<RideBoundRun>.Fail(
+                RunFailureCodes.VehicleRiderMismatch,
+                "Receiver route must carry the relocated request's pickup before its drop, once each.",
+                requestId.Value,
+                "routeStops");
+        }
+
+        var released = donor.Release(requestId);
+
+        if (!released.IsSuccess)
+        {
+            return FromFailure(released.Failure!);
+        }
+
+        var assigned = receiver.Assign(requestId);
+
+        if (!assigned.IsSuccess)
+        {
+            return FromFailure(assigned.Failure!);
+        }
+
+        return DomainResult<RideBoundRun>.Success(
+            Copy(
+                AppliedEpoch,
+                SimulationTime,
+                Requests.Select(
+                    pair => pair.Key == requestId
+                        ? new KeyValuePair<RequestId, RideRequest>(
+                            requestId,
+                            reassigned.Value!)
+                        : pair),
+                Vehicles.Select(
+                    pair => pair.Key == donorId
+                        ? new KeyValuePair<VehicleId, VehicleState>(
+                            donorId,
+                            released.Value!)
+                        : pair.Key == receiverVehicleId
+                            ? new KeyValuePair<VehicleId, VehicleState>(
+                                receiverVehicleId,
+                                assigned.Value!)
+                            : pair)));
     }
 
     private bool TryGetRequestAndVehicle(

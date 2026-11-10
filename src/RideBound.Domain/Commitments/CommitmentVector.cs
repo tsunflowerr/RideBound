@@ -102,9 +102,10 @@ public sealed record CommitmentVector
         for (var index = 0; index < values.Length; index++)
         {
             var dimension = CommitmentDimensionVocabulary.Ordered[index];
-            values[index] = checked(Get(dimension) + delta.Get(dimension));
+            var before = Get(dimension);
+            var addition = delta.Get(dimension);
 
-            if (values[index] > DomainLimits.MaxCanonicalInteger)
+            if (before > DomainLimits.MaxCanonicalInteger - addition)
             {
                 return DomainResult<CommitmentVector>.Fail(
                     CommitmentFailureCodes.VectorOverflow,
@@ -112,6 +113,8 @@ public sealed record CommitmentVector
                     dimension: CommitmentDimensionVocabulary.ToProtocolValue(
                         dimension));
             }
+
+            values[index] = before + addition;
         }
 
         return DomainResult<CommitmentVector>.Success(
@@ -138,4 +141,38 @@ public static class CommitmentFailureCodes
     public const string LedgerConflict = "COMMITMENT_LEDGER_CONFLICT";
     public const string BudgetExceeded = "COMMITMENT_BUDGET_EXCEEDED";
     public const string PhaseLock = "COMMITMENT_PHASE_LOCK";
+
+    /// <summary>
+    /// The candidate moves the drop ETA outside the deadline measured from the
+    /// rider's initial promise. Unlike a phase lock, which compares with the
+    /// exogenous projection, a deadline can be tripped by exogenous drift alone.
+    /// </summary>
+    public const string DeadlineExceeded = "COMMITMENT_DEADLINE_EXCEEDED";
+
+    /// <summary>
+    /// The candidate moves a rider's drop ETA further from its exogenous projection
+    /// than the per-decision revision limit allows. Like a phase lock it compares with
+    /// the exogenous projection, so drift alone never trips it and the kept route never
+    /// does; it is therefore never a forced-reference exemption code.
+    /// </summary>
+    public const string RevisionLimitExceeded = "COMMITMENT_REVISION_LIMIT_EXCEEDED";
+
+    /// <summary>
+    /// A treatment assessment rejected every generated candidate for one
+    /// vehicle, including the safety no-op. This is fail-closed: the run stops
+    /// with an explicit witness instead of handing the solver a vehicle that has
+    /// no selectable option.
+    /// </summary>
+    public const string VehicleHasNoFeasibleCandidate =
+        "C1_VEHICLE_HAS_NO_FEASIBLE_CANDIDATE";
+
+    /// <summary>
+    /// A treatment assessment rejected the safety no-op of a vehicle while other
+    /// candidates survived. Reported only to a caller whose selection model
+    /// requires exactly one no-op per vehicle, where this state cannot be solved;
+    /// it replaces a later generic mapping error. The no-op may have been rejected
+    /// at any validation stage, so the cited rejection, not this code, names the
+    /// cause.
+    /// </summary>
+    public const string SafetyNoOpRejected = "COMMITMENT_SAFETY_NOOP_REJECTED";
 }

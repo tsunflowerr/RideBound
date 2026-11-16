@@ -86,6 +86,30 @@ public sealed class PromiseProjector
             pickupNodeId = previous.PickupNodeId;
             pickupEta = previous.PickupEta;
         }
+        else if (request.Lifecycle == RequestLifecycle.Onboard
+            && request.ActualPickupTime is not null)
+        {
+            // Booking confirmation and boarding can legitimately be reduced in
+            // the same simulator batch. In booking-confirmation mode there is no
+            // prior publication yet, so recover the just-realized pickup from the
+            // executed frozen prefix and bind its actual service time.
+            var realizedPickup = route.FrozenPrefix
+                .Take(route.ExecutedStopCount)
+                .LastOrDefault(
+                    stop => stop.RequestId == requestId
+                        && stop.Kind == RouteStopKind.Pickup);
+
+            if (realizedPickup is null)
+            {
+                return Fail(
+                    requestId,
+                    "Onboard request has no realized pickup stop in the executed route.");
+            }
+
+            pickupStopId = realizedPickup.StopId;
+            pickupNodeId = realizedPickup.NodeId;
+            pickupEta = request.ActualPickupTime.Value;
+        }
         else
         {
             return Fail(

@@ -215,13 +215,20 @@ public sealed class PromiseDeltaCalculator
         return inversions;
     }
 
-    private static IEnumerable<(RequestId RequestId, RouteStopKind Kind)>
+    private static IEnumerable<(
+        RequestId RequestId,
+        RouteStopKind Kind,
+        StopId StopId)>
         ComparableIncumbents(PromiseProjection promise) =>
         promise.ServiceOrder
             .Where(
                 token => token.RequestId is not null
                     && token.RequestId != promise.RequestId)
-            .Select(token => (token.RequestId!.Value, token.Kind));
+            .Select(
+                token => (
+                    token.RequestId!.Value,
+                    token.Kind,
+                    token.StopId));
 
     private static long CountPrePickupInsertions(
         PromiseProjection before,

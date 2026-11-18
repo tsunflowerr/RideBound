@@ -1,4 +1,4 @@
-using System.Text;
+using System.Text.Unicode;
 
 namespace RideBound.Runner.Protocol;
 
@@ -15,17 +15,20 @@ public sealed record NdjsonReadResult(
     string? ErrorCode = null,
     string? ErrorMessage = null);
 
+/// <remarks>
+/// Reads an NDJSON line in bounded chunks, scans each chunk for LF, and validates the collected
+/// bytes as UTF-8. The line limit counts all bytes before LF, including a trailing CR. Oversized
+/// frames are drained through LF, and incomplete frames at EOF remain errors.
+/// </remarks>
 public sealed class NdjsonReader
 {
     public const int DefaultMaximumLineBytes = 1_048_576;
 
-    private static readonly UTF8Encoding StrictUtf8 = new(
-        encoderShouldEmitUTF8Identifier: false,
-        throwOnInvalidBytes: true);
+    private const int ChunkBytes = 65_536;
 
     private readonly Stream _stream;
     private readonly int _maximumLineBytes;
-    private readonly byte[] _readBuffer = new byte[8192];
+    private readonly byte[] _readBuffer = new byte[ChunkBytes];
     private int _readOffset;
     private int _readCount;
 
@@ -52,88 +55,104 @@ public sealed class NdjsonReader
     public async ValueTask<NdjsonReadResult> ReadAsync(
         CancellationToken cancellationToken = default)
     {
-        var line = new List<byte>();
+        var chunks = new List<byte[]>();
+        long length = 0;
         var tooLarge = false;
 
         while (true)
         {
-            var next = await ReadByteAsync(cancellationToken).ConfigureAwait(false);
-
-            if (next is null)
+            if (_readOffset >= _readCount)
             {
-                if (line.Count == 0 && !tooLarge)
-                {
-                    return new NdjsonReadResult(NdjsonReadKind.EndOfStream);
-                }
+                _readCount = await _stream.ReadAsync(
+                    _readBuffer.AsMemory(),
+                    cancellationToken).ConfigureAwait(false);
+                _readOffset = 0;
 
-                return new NdjsonReadResult(
-                    NdjsonReadKind.Error,
-                    ErrorCode: "INCOMPLETE_FRAME_EOF",
-                    ErrorMessage: "Input ended before the NDJSON line-feed delimiter.");
-            }
-
-            if (next.Value == (byte)'\n')
-            {
-                if (tooLarge)
+                if (_readCount == 0)
                 {
+                    if (length == 0 && !tooLarge)
+                    {
+                        return new NdjsonReadResult(NdjsonReadKind.EndOfStream);
+                    }
+
                     return new NdjsonReadResult(
                         NdjsonReadKind.Error,
-                        ErrorCode: "MESSAGE_TOO_LARGE",
-                        ErrorMessage: $"NDJSON message exceeds {_maximumLineBytes} bytes.");
+                        ErrorCode: "INCOMPLETE_FRAME_EOF",
+                        ErrorMessage: "Input ended before the NDJSON line-feed delimiter.");
                 }
-
-                if (line.Count > 0 && line[^1] == (byte)'\r')
-                {
-                    line.RemoveAt(line.Count - 1);
-                }
-
-                var bytes = line.ToArray();
-
-                try
-                {
-                    _ = StrictUtf8.GetString(bytes);
-                }
-                catch (DecoderFallbackException)
-                {
-                    return new NdjsonReadResult(
-                        NdjsonReadKind.Error,
-                        ErrorCode: "MALFORMED_UTF8",
-                        ErrorMessage: "NDJSON message is not valid UTF-8.");
-                }
-
-                return new NdjsonReadResult(NdjsonReadKind.Message, bytes);
             }
+
+            var available = _readBuffer.AsSpan(_readOffset, _readCount - _readOffset);
+            var lineFeed = available.IndexOf((byte)'\n');
+            var content = lineFeed < 0 ? available : available[..lineFeed];
 
             if (!tooLarge)
             {
-                if (line.Count == _maximumLineBytes)
+                if (length + content.Length > _maximumLineBytes)
                 {
                     tooLarge = true;
-                    line.Clear();
+                    chunks.Clear();
+                    length = 0;
                 }
-                else
+                else if (!content.IsEmpty)
                 {
-                    line.Add(next.Value);
+                    chunks.Add(content.ToArray());
+                    length += content.Length;
                 }
             }
+
+            _readOffset += content.Length;
+
+            if (lineFeed < 0)
+            {
+                continue;
+            }
+
+            _readOffset++;
+
+            if (tooLarge)
+            {
+                return new NdjsonReadResult(
+                    NdjsonReadKind.Error,
+                    ErrorCode: "MESSAGE_TOO_LARGE",
+                    ErrorMessage: $"NDJSON message exceeds {_maximumLineBytes} bytes.");
+            }
+
+            var bytes = Join(chunks, length);
+
+            if (bytes.Length > 0 && bytes[^1] == (byte)'\r')
+            {
+                bytes = bytes[..^1];
+            }
+
+            if (!Utf8.IsValid(bytes))
+            {
+                return new NdjsonReadResult(
+                    NdjsonReadKind.Error,
+                    ErrorCode: "MALFORMED_UTF8",
+                    ErrorMessage: "NDJSON message is not valid UTF-8.");
+            }
+
+            return new NdjsonReadResult(NdjsonReadKind.Message, bytes);
         }
     }
 
-    private async ValueTask<byte?> ReadByteAsync(CancellationToken cancellationToken)
+    private static byte[] Join(List<byte[]> chunks, long length)
     {
-        if (_readOffset >= _readCount)
+        if (chunks.Count == 1)
         {
-            _readCount = await _stream.ReadAsync(
-                _readBuffer.AsMemory(),
-                cancellationToken).ConfigureAwait(false);
-            _readOffset = 0;
-
-            if (_readCount == 0)
-            {
-                return null;
-            }
+            return chunks[0];
         }
 
-        return _readBuffer[_readOffset++];
+        var result = GC.AllocateUninitializedArray<byte>(checked((int)length));
+        var offset = 0;
+
+        foreach (var chunk in chunks)
+        {
+            chunk.CopyTo(result, offset);
+            offset += chunk.Length;
+        }
+
+        return result;
     }
 }

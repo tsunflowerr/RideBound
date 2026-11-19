@@ -63,19 +63,14 @@ internal static class CommitmentTestData
     public static CommitmentPolicy Policy(
         long? hardLimit = 10,
         CommitmentPhase phases = CommitmentPhase.AllActive,
-        Duration? freezeHorizon = null,
-        PromiseLock freezeLocks = PromiseLock.None,
         PromiseLock confirmationLocks = PromiseLock.None) =>
         new(
             "test-boundary-v1",
-            CommitmentBudgetBasis.DecisionInduced,
             CommitmentDimensionVocabulary.Ordered.Select(
                 dimension => new CommitmentDimensionLimit(
                     dimension,
                     hardLimit,
                     phases)),
             new MaterialRevisionRule(1_000, 60_000),
-            freezeHorizon,
-            freezeLocks,
             confirmationLocks);
 }

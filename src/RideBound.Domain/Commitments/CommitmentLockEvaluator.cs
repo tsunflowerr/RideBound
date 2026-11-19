@@ -11,26 +11,16 @@ public sealed record CommitmentLockWitness(
 public sealed class CommitmentLockEvaluator
 {
     /// <summary>
-    /// Rule of a drop ETA later than the initial promise plus the slack (and, for a
-    /// relaxed deadline, also later than the exogenous projection).
+    /// Rule of a drop ETA later than both the initial promise plus the slack and the
+    /// exogenous projection.
     /// </summary>
     public const string DeadlineCapRule = "deadline_cap";
-
-    /// <summary>Rule of a drop ETA earlier than the initial promise minus the slack.</summary>
-    public const string DeadlineFloorRule = "deadline_floor";
-
-    /// <summary>
-    /// Rule of a drop ETA moved further from the exogenous projection than the
-    /// per-decision revision limit.
-    /// </summary>
-    public const string RevisionCapRule = "revision_cap";
 
     public IReadOnlyList<CommitmentLockWitness> Evaluate(
         RideRequest request,
         PublishedPromise previous,
         PromiseProjection exogenous,
         PromiseProjection candidate,
-        SimTime evaluationTime,
         CommitmentPolicy policy,
         PromiseProjection? anchor = null,
         ShadowAllocation? shadowAllocation = null)
@@ -49,22 +39,22 @@ public sealed class CommitmentLockEvaluator
                 "Lock evaluation request and promise identities must match.");
         }
 
-        // Waiting-rider relocation lifts only this rule's vehicle lock, and only for a
+        // The rules in order: the accepted assignment, then onboard, then final confirmation.
+        // Waiting-rider relocation lifts only the accepted-assignment vehicle lock, and only for a
         // confirmed waiting rider; the onboard and configured rules still apply.
-        var activeLocks = policy.WaitingRiderRelocation
+        var acceptedLocks = policy.WaitingRiderRelocation
             && request.Lifecycle == RequestLifecycle.WaitingPickup
                 ? PromiseLock.None
                 : PromiseLock.Vehicle;
-        var rules = new List<(PromiseLock Locks, string Rule)>();
+        var rules = new List<(PromiseLock Locks, string Rule)>
+        {
+            (acceptedLocks, "accepted_assignment"),
+        };
 
         if (request.Lifecycle == RequestLifecycle.Onboard)
         {
             rules.Add(
-                (
-                    PromiseLock.Vehicle
-                    | PromiseLock.PickupStop
-                    | PromiseLock.PickupEta,
-                    "onboard"));
+                (PromiseLock.Vehicle | PromiseLock.PickupStop | PromiseLock.PickupEta, "onboard"));
         }
 
         if (request.Lifecycle == RequestLifecycle.WaitingPickup
@@ -73,18 +63,6 @@ public sealed class CommitmentLockEvaluator
             rules.Add((policy.FinalConfirmationLocks, "final_confirmation"));
         }
 
-        if (policy.FreezeHorizon is Duration horizon
-            && previous.Projection.PickupEta.Milliseconds
-                >= evaluationTime.Milliseconds
-            && previous.Projection.PickupEta.Milliseconds
-                - evaluationTime.Milliseconds
-                <= horizon.Milliseconds
-            && policy.FreezeHorizonLocks != PromiseLock.None)
-        {
-            rules.Add((policy.FreezeHorizonLocks, "freeze_horizon"));
-        }
-
-        rules.Insert(0, (activeLocks, "accepted_assignment"));
         var witnesses = new List<CommitmentLockWitness>();
 
         foreach (var (locks, rule) in rules)
@@ -107,8 +85,7 @@ public sealed class CommitmentLockEvaluator
 
         // The deadline witness goes last, so a lock witness keeps its position
         // and callers reading the first witness still see the lock.
-        if (policy.DropEtaDeadlineSlack is not null
-            || policy.DropEtaDeadlineSlackPermille is not null)
+        if (policy.DropEtaDeadlineSlackPermille is not null)
         {
             AddDeadlineWitness(
                 ordered,
@@ -118,12 +95,6 @@ public sealed class CommitmentLockEvaluator
                 anchor,
                 policy,
                 shadowAllocation);
-        }
-
-        // The revision cap is appended after the deadline for the same reason.
-        if (policy.DropEtaRevisionLimit is Duration limit)
-        {
-            AddRevisionCapWitness(ordered, request, exogenous, candidate, limit, policy);
         }
 
         return ordered.ToArray();
@@ -185,11 +156,10 @@ public sealed class CommitmentLockEvaluator
     /// <summary>
     /// Every lock above compares the candidate with the exogenous projection, so
     /// exogenous drift never trips a lock. The deadline compares it with the
-    /// rider's initial promise instead, so drift alone can trip it, including on
-    /// the safety no-op. It is a gate that lives next to the locks, not a lock.
-    /// A relaxed deadline also requires the candidate to be later than the
-    /// exogenous projection, so it fails only past max(initial + slack, kept route)
-    /// and drift alone never trips it.
+    /// rider's initial promise instead. It is a gate that lives next to the locks,
+    /// not a lock. The deadline is relaxed: it also requires the candidate to be
+    /// later than the exogenous projection, so it fails only past
+    /// max(initial + slack, kept route) and drift alone never trips it.
     /// </summary>
     private static void AddDeadlineWitness(
         ICollection<CommitmentLockWitness> witnesses,
@@ -214,72 +184,23 @@ public sealed class CommitmentLockEvaluator
                 nameof(anchor));
         }
 
-        // Fixed slack, or the slack-proportional share of this rider's first promise (scaled by
-        // its Shadow class under a shadow-allocated policy).
+        // The slack-proportional share of this rider's first promise (scaled by its Shadow class
+        // under a shadow-allocated policy).
         var slack = policy.DeadlineSlackFor(anchor, request.MaxRideTime, shadowAllocation)
             ?? throw new InvalidOperationException("A deadline rule has no slack.");
 
         // Both values are canonical non-negative integers below 2^53, so the
-        // difference and its negation fit in a long.
+        // difference fits in a long.
         var shift = candidate.DropEta.Milliseconds - anchor.DropEta.Milliseconds;
 
-        if (shift > slack.Milliseconds)
-        {
-            // The kept route has candidate == exogenous, so a relaxed deadline never
-            // rejects it and never makes a vehicle forced.
-            if (!policy.DropEtaDeadlineRelaxed
-                || candidate.DropEta.Milliseconds > exogenous.DropEta.Milliseconds)
-            {
-                witnesses.Add(
-                    new CommitmentLockWitness(request.Id, "drop_eta_ms", DeadlineCapRule));
-            }
-        }
-        else if (policy.DropEtaDeadlineTwoSided && -shift > slack.Milliseconds)
+        // The kept route has candidate == exogenous, so the deadline never rejects it.
+        if (shift > slack.Milliseconds
+            && candidate.DropEta.Milliseconds > exogenous.DropEta.Milliseconds)
         {
             witnesses.Add(
-                new CommitmentLockWitness(request.Id, "drop_eta_ms", DeadlineFloorRule));
+                new CommitmentLockWitness(request.Id, "drop_eta_ms", DeadlineCapRule));
         }
     }
-
-    /// <summary>
-    /// The per-decision revision cap compares the candidate with the exogenous
-    /// projection, as every lock does, so drift is free and the kept route never
-    /// trips it. It has no memory: each decision is judged on its own change, in
-    /// either direction. It applies in the phases of the drop_eta_total_ms dimension.
-    /// </summary>
-    private static void AddRevisionCapWitness(
-        ICollection<CommitmentLockWitness> witnesses,
-        RideRequest request,
-        PromiseProjection exogenous,
-        PromiseProjection candidate,
-        Duration limit,
-        CommitmentPolicy policy)
-    {
-        if ((policy.Limits[CommitmentDimension.DropEtaTotalMs].ApplicablePhases
-                & ToPhase(request.Lifecycle)) == 0)
-        {
-            return;
-        }
-
-        // Both values are canonical non-negative integers below 2^53, so the
-        // difference and its absolute value fit in a long.
-        var change = candidate.DropEta.Milliseconds - exogenous.DropEta.Milliseconds;
-
-        if (Math.Abs(change) > limit.Milliseconds)
-        {
-            witnesses.Add(
-                new CommitmentLockWitness(request.Id, "drop_eta_ms", RevisionCapRule));
-        }
-    }
-
-    private static CommitmentPhase ToPhase(RequestLifecycle lifecycle) =>
-        lifecycle switch
-        {
-            RequestLifecycle.Accepted => CommitmentPhase.Accepted,
-            RequestLifecycle.WaitingPickup => CommitmentPhase.WaitingPickup,
-            RequestLifecycle.Onboard => CommitmentPhase.Onboard,
-            _ => CommitmentPhase.None,
-        };
 
     /// <summary>
     /// An exact lock rejects any movement. A ratcheted lock rejects only movement

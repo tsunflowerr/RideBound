@@ -20,7 +20,8 @@ public sealed record InsertionCandidate(
     RoutePlan Route,
     IReadOnlyList<RequestId> NewRequestIds,
     CandidateSchedule Schedule,
-    bool IsNoOp);
+    bool IsNoOp,
+    long? CertifiedForwardSlackMilliseconds = null);
 
 public sealed record CandidatePruneWitness(
     string CandidateId,

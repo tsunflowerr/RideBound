@@ -114,4 +114,5 @@ public static class CandidateGenerationFailureCodes
         "EXACT_SMALL_CANDIDATE_CAP_EXCEEDED";
     public const string PlanVersionOverflow = "PLAN_VERSION_OVERFLOW";
     public const string ScheduleEvaluationFailed = "SCHEDULE_EVALUATION_FAILED";
+    public const string SlackProfileFailed = "SLACK_PROFILE_FAILED";
 }

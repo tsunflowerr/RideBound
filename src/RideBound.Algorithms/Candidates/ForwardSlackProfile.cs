@@ -228,7 +228,10 @@ public sealed class ForwardSlackProfileBuilder : IForwardSlackProfileBuilder
 
         return ForwardSlackProfileBuildResult.Success(
             new ForwardSlackProfile(
-                evaluated.Schedule,
+                evaluated.Schedule with
+                {
+                    Stops = Array.AsReadOnly(scheduledStops),
+                },
                 Array.AsReadOnly(entries),
                 entries.Length == 0
                     ? null

@@ -10,15 +10,16 @@ namespace RideBound.Algorithms.Candidates;
 public sealed class InsertionCandidateGenerator
 {
     private readonly PhysicalPlanValidator _validator;
-    private readonly CandidateScheduleEvaluator _scheduleEvaluator;
+    private readonly ForwardSlackProfileCache _slackCache;
 
     public InsertionCandidateGenerator(
         PhysicalPlanValidator? validator = null,
-        CandidateScheduleEvaluator? scheduleEvaluator = null)
+        CandidateScheduleEvaluator? scheduleEvaluator = null,
+        ForwardSlackProfileCache? slackCache = null)
     {
         _validator = validator ?? new PhysicalPlanValidator();
-        _scheduleEvaluator =
-            scheduleEvaluator ?? new CandidateScheduleEvaluator();
+        _slackCache = slackCache ?? new ForwardSlackProfileCache(
+            new ForwardSlackProfileBuilder(scheduleEvaluator));
     }
 
     public CandidateGenerationResult Generate(
@@ -282,14 +283,14 @@ public sealed class InsertionCandidateGenerator
             return;
         }
 
-        var schedule = _scheduleEvaluator.Evaluate(
+        var profileLookup = _slackCache.GetOrBuild(
             state,
             vehicle,
             route,
             state.TravelTimes!,
             state.Run.SimulationTime);
 
-        if (!schedule.IsSuccess)
+        if (!profileLookup.Result.IsSuccess)
         {
             prunedById.TryAdd(
                 candidateId,
@@ -297,11 +298,12 @@ public sealed class InsertionCandidateGenerator
                     candidateId,
                     vehicle.Id,
                     orderedRequests,
-                    schedule.Code!,
-                    schedule.Message!));
+                    profileLookup.Result.Code!,
+                    profileLookup.Result.Message!));
             return;
         }
 
+        var profile = profileLookup.Result.Profile!;
         feasibleById.TryAdd(
             candidateId,
             new InsertionCandidate(
@@ -309,8 +311,9 @@ public sealed class InsertionCandidateGenerator
                 vehicle.Id,
                 route,
                 orderedRequests,
-                schedule.Schedule!,
-                isNoOp));
+                profile.Schedule,
+                isNoOp,
+                profile.CertifiedDelayAtRouteStartMilliseconds));
     }
 
     private sealed record VehicleGenerationResult(

@@ -243,6 +243,95 @@ public sealed class ForwardSlackProfileTests
             cached.Result.Profile.CertifiedDelayAtRouteStartMilliseconds);
     }
 
+    [Fact]
+    public void Profile_cache_cannot_bypass_physical_validator()
+    {
+        var request = WaitingRequest(partySize: 5);
+        var vehicle = AlgorithmTestData.Vehicle(capacity: 4);
+        var state = AlgorithmTestData.CreateState(
+            [request],
+            [vehicle],
+            arcs: UnitArcs());
+        var builder = new CountingProfileBuilder();
+        var generator = new InsertionCandidateGenerator(
+            slackCache: new ForwardSlackProfileCache(builder));
+
+        var result = generator.Generate(
+            state,
+            new CandidateGenerationOptions(100, 1, exactSmallMode: true));
+
+        Assert.True(result.IsSuccess, result.Witness?.Message);
+        var set = Assert.Single(result.VehicleCandidates!);
+        Assert.Single(set.Candidates, candidate => candidate.IsNoOp);
+        Assert.Contains(set.PrunedCandidates, prune => prune.Code == "CAPACITY");
+        Assert.Equal(1, builder.BuildCount);
+    }
+
+    [Fact]
+    public void Repeated_generation_reuses_structural_route_profiles()
+    {
+        var request = WaitingRequest();
+        var vehicle = AlgorithmTestData.Vehicle();
+        var state = AlgorithmTestData.CreateState(
+            [request],
+            [vehicle],
+            arcs: UnitArcs());
+        var builder = new CountingProfileBuilder();
+        var cache = new ForwardSlackProfileCache(builder);
+        var generator = new InsertionCandidateGenerator(slackCache: cache);
+        var options = new CandidateGenerationOptions(100, 1, exactSmallMode: true);
+
+        var first = generator.Generate(state, options);
+        var buildsAfterFirst = builder.BuildCount;
+        var hitsBefore = cache.HitCount;
+        var second = generator.Generate(state, options);
+
+        Assert.True(first.IsSuccess, first.Witness?.Message);
+        Assert.True(second.IsSuccess, second.Witness?.Message);
+        Assert.True(buildsAfterFirst > 0);
+        Assert.Equal(buildsAfterFirst, builder.BuildCount);
+        Assert.True(cache.HitCount > hitsBefore);
+        Assert.Equal(
+            first.VehicleCandidates!.Single().Candidates.Select(c => c.CandidateId),
+            second.VehicleCandidates!.Single().Candidates.Select(c => c.CandidateId));
+        var accepted = Assert.Single(
+            second.VehicleCandidates!.Single().Candidates,
+            candidate => !candidate.IsNoOp);
+        Assert.Equal(1_800, accepted.CertifiedForwardSlackMilliseconds);
+        var stops = Assert.IsAssignableFrom<IList<ScheduledStop>>(
+            accepted.Schedule.Stops);
+        Assert.Throws<NotSupportedException>(() =>
+        {
+            stops[0] = stops[0] with { ArrivalTime = new SimTime(0) };
+        });
+    }
+
+    [Fact]
+    public void Terminal_evaluation_prunes_a_route_when_its_profile_fails()
+    {
+        var request = WaitingRequest();
+        var vehicle = AlgorithmTestData.Vehicle();
+        var state = AlgorithmTestData.CreateState(
+            [request],
+            [vehicle],
+            arcs: UnitArcs());
+        var builder = new FailingNonEmptyProfileBuilder();
+        var generator = new InsertionCandidateGenerator(
+            slackCache: new ForwardSlackProfileCache(builder));
+
+        var result = generator.Generate(
+            state,
+            new CandidateGenerationOptions(100, 1, exactSmallMode: true));
+
+        Assert.True(result.IsSuccess, result.Witness?.Message);
+        var candidates = Assert.Single(result.VehicleCandidates!);
+        Assert.Single(candidates.Candidates, candidate => candidate.IsNoOp);
+        Assert.Contains(
+            candidates.PrunedCandidates,
+            witness => witness.Code == "TEST_PROFILE_FAILURE");
+        Assert.Equal(1, builder.NonEmptyBuildCount);
+    }
+
     private static (OnlineState State, VehicleState Vehicle, RoutePlan Route)
         WaitingRoute()
     {
@@ -342,7 +431,7 @@ public sealed class ForwardSlackProfileTests
                 NonEmptyBuildCount++;
                 return ForwardSlackProfileBuildResult.Failure(
                     "TEST_PROFILE_FAILURE",
-                    "Synthetic failed profile used to prove node-local reuse.");
+                    "Synthetic failure while building a non-empty route profile.");
             }
 
             return _inner.Build(

@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using RideBound.Algorithms.Candidates;
 using RideBound.Contracts.Protocol;
 using RideBound.Contracts.Serialization;
 using RideBound.Contracts.Tests.Fixtures;
@@ -135,11 +136,33 @@ public sealed class OnlineRunnerSessionTests
         Assert.NotEqual(original.StateAfterHash, changed.StateAfterHash);
     }
 
-    private static RunnerSession CreateInitializedOnlineSession()
+    [Fact]
+    public void Bounded_search_defers_the_request_and_publishes_no_changed_plan()
+    {
+        var session = CreateInitializedOnlineSession(
+            new CandidateGenerationOptions(100, 1, maximumExplorationWorkUnits: 1));
+        var result = session.Process(ReadFixture("wp2/valid-bootstrap-event-batch.json"));
+
+        Assert.Equal("decision", result.Response?.MessageType.Value);
+        var decision = DecisionPayloadCodec.Decode(result.Response!.Payload);
+        Assert.True(decision.IsSuccess, decision.Error?.Message);
+        var deferred = Assert.Single(
+            decision.Value!.Actions,
+            action => action.GetProperty("decisionType").GetString() == "requestDeferred");
+        Assert.Equal("CANDIDATE_BOUND", deferred.GetProperty("payload").GetProperty("reasonCode").GetString());
+        Assert.DoesNotContain(
+            decision.Value.Actions,
+            action => action.GetProperty("decisionType").GetString() == "vehiclePlanUpdated");
+        Assert.Equal(RunnerSessionStatus.AwaitingDecisionApplied, session.Status);
+    }
+
+    private static RunnerSession CreateInitializedOnlineSession(
+        CandidateGenerationOptions? candidateOptions = null)
     {
         var session = new RunnerSession(
             RunnerDefaults.CapabilityRequirements,
-            RunnerExecutionMode.OnlineRollingCost);
+            RunnerExecutionMode.OnlineRollingCost,
+            candidateOptions: candidateOptions);
         var hello = session.Process(ReadFixture("hello/valid-hello.json"));
         Assert.Equal("helloAck", hello.Response?.MessageType.Value);
         var initialize = JsonNode.Parse(

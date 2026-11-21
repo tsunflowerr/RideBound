@@ -26,6 +26,24 @@ public sealed class ExactSmallDifferentialTests
         Assert.True(
             generated.IsSuccess,
             $"seed={seed}; generator={generated.Witness}");
+        var bounded = generator.Generate(
+            state,
+            new CandidateGenerationOptions(100_000, 2, maximumExplorationWorkUnits: 100_000));
+        Assert.True(bounded.IsSuccess, $"seed={seed}; bounded search={bounded.Witness}");
+        Assert.True(bounded.Diagnostics!.IsComplete);
+        var boundedByVehicle = bounded.VehicleCandidates!.ToDictionary(set => set.VehicleId);
+
+        foreach (var exactSet in generated.VehicleCandidates!)
+        {
+            var boundedSet = boundedByVehicle[exactSet.VehicleId];
+            Assert.Equal(
+                exactSet.Candidates.Select(CandidateSummary),
+                boundedSet.Candidates.Select(CandidateSummary));
+            Assert.Equal(
+                exactSet.PrunedCandidates.Select(prune => (prune.CandidateId, prune.Code)),
+                boundedSet.PrunedCandidates.Select(prune => (prune.CandidateId, prune.Code)));
+        }
+
         var oracle = ExactSmallOracle.Generate(state);
         var productionIds =
             new Dictionary<(VehicleId, string), string>();
@@ -224,6 +242,9 @@ public sealed class ExactSmallDifferentialTests
 
         return arcs;
     }
+
+    private static (string Id, long Cost, long? Slack) CandidateSummary(InsertionCandidate candidate) =>
+        (candidate.CandidateId, candidate.Schedule.OperationalCost, candidate.CertifiedForwardSlackMilliseconds);
 
     private static string SemanticKey(InsertionCandidate candidate) =>
         string.Join(

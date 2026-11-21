@@ -119,6 +119,28 @@ public sealed class RollingCostPolicyTests
     }
 
     [Fact]
+    public void A_pruned_path_does_not_reject_a_request_when_search_is_incomplete()
+    {
+        var first = AlgorithmTestData.PendingRequest("request-a", partySize: 5);
+        var second = AlgorithmTestData.PendingRequest("request-b");
+        var state = AlgorithmTestData.CreateState(
+            [first, second],
+            [AlgorithmTestData.Vehicle(capacity: 4)]);
+
+        var result = new RollingCostPolicy().Decide(
+            state,
+            new CandidateGenerationOptions(100, 2, maximumExplorationWorkUnits: 3));
+
+        Assert.True(result.IsSuccess, result.Witness?.Message);
+        var decision = result.Decision!;
+        Assert.Contains(decision.PrunedCandidates, prune => prune.NewRequestIds.Contains(second.Id));
+        var action = Assert.Single(decision.RequestActions, action => action.RequestId == second.Id);
+        Assert.Equal(RequestDecisionOutcome.Deferred, action.Outcome);
+        Assert.Equal("CANDIDATE_BOUND", action.ReasonCode);
+        Assert.Equal(RequestLifecycle.Pending, decision.ProposedState.Run.Requests[second.Id].Lifecycle);
+    }
+
+    [Fact]
     public void Feasible_unselected_request_is_deferred_and_stays_pending()
     {
         var first = AlgorithmTestData.PendingRequest(

@@ -62,7 +62,8 @@ public sealed class RollingCostPolicy
         var applied = ApplySelection(
             state,
             selection.Selection!,
-            generated.VehicleCandidates!);
+            generated.VehicleCandidates!,
+            generated.Diagnostics!.IsComplete);
 
         return applied.IsSuccess
             ? applied
@@ -75,13 +76,23 @@ public sealed class RollingCostPolicy
     {
         foreach (var plan in selection.VehiclePlans)
         {
-            var validation = _validator.Validate(
-                new PhysicalValidationContext(
+            var isUnchanged = plan.Candidate.IsNoOp
+                && state.Run.Vehicles.TryGetValue(plan.VehicleId, out var vehicle)
+                && ReferenceEquals(vehicle.Route, plan.Candidate.Route);
+            var validation = isUnchanged
+                ? _validator.ValidateWithExogenousRelief(
                     state.Run,
                     plan.VehicleId,
                     plan.Candidate.Route,
                     state.TravelTimes!,
-                    state.Run.SimulationTime));
+                    state.Run.SimulationTime)
+                : _validator.Validate(
+                    new PhysicalValidationContext(
+                        state.Run,
+                        plan.VehicleId,
+                        plan.Candidate.Route,
+                        state.TravelTimes!,
+                        state.Run.SimulationTime));
 
             if (!validation.IsFeasible)
             {
@@ -101,7 +112,8 @@ public sealed class RollingCostPolicy
     private static RollingCostDecisionResult ApplySelection(
         OnlineState state,
         FleetSelection selection,
-        IReadOnlyList<VehicleCandidateSet> generated)
+        IReadOnlyList<VehicleCandidateSet> generated,
+        bool searchIsComplete)
     {
         var run = state.Run;
         var selectedRequests = selection.VehiclePlans
@@ -192,7 +204,7 @@ public sealed class RollingCostPolicy
                 .Where(value => value.NewRequestIds.Contains(request.Id))
                 .ToArray();
 
-            if (relatedPrunes.Length == 0)
+            if (!searchIsComplete || relatedPrunes.Length == 0)
             {
                 actions.Add(
                     new RequestDecisionAction(

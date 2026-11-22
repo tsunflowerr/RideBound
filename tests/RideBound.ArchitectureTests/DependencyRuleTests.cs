@@ -129,6 +129,39 @@ public sealed class DependencyRuleTests
         Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
     }
 
+    [Fact]
+    public void OrTools_package_is_pinned_only_in_the_solver_adapter()
+    {
+        var projects = Directory.GetFiles(
+            Path.Combine(FindRepositoryRoot(), "src"),
+            "*.csproj",
+            SearchOption.AllDirectories);
+        var references = projects
+            .Select(
+                path => new
+                {
+                    Path = path,
+                    Packages = XDocument.Load(path)
+                        .Descendants("PackageReference")
+                        .Where(
+                            element => string.Equals(
+                                element.Attribute("Include")?.Value,
+                                "Google.OrTools",
+                                StringComparison.Ordinal))
+                        .Select(
+                            element => element.Attribute("Version")?.Value)
+                        .ToArray(),
+                })
+            .Where(value => value.Packages.Length > 0)
+            .ToArray();
+
+        var solver = Assert.Single(references);
+        Assert.Equal(
+            "RideBound.Solvers.OrTools.csproj",
+            Path.GetFileName(solver.Path));
+        Assert.Equal("9.15.6755", Assert.Single(solver.Packages));
+    }
+
     private static string FindProjectFile(string projectName)
     {
         return Path.Combine(

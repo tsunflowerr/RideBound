@@ -327,6 +327,168 @@ public sealed class CandidateSelectionModelTests
         Assert.Equal("relocation", result.Failure?.Dimension);
     }
 
+    [Theory]
+    [InlineData(0, 1, 0)]
+    [InlineData(1, 0, 0)]
+    [InlineData(1, 1, -1)]
+    [InlineData(1, 1, 2_147_483_648)]
+    public void Deterministic_budget_rejects_unsupported_values(
+        long work,
+        long deterministicMicros,
+        long seed)
+    {
+        var result = DeterministicSolverBudget.Create(
+            work,
+            deterministicMicros,
+            seed);
+
+        Assert.Equal(
+            CandidateSelectionFailureCodes.InvalidBudget,
+            result.Failure?.Code);
+    }
+
+    [Fact]
+    public void Objective_bound_preserves_exact_gap_and_validates_direction()
+    {
+        var minimize = Levels()[2];
+        var maximize = Levels()[0];
+
+        var minBound = ObjectiveSolveBound.Create(2, minimize, 50, 40);
+        var maxBound = ObjectiveSolveBound.Create(0, maximize, 1, 2);
+        var invalid = ObjectiveSolveBound.Create(2, minimize, 40, 50);
+
+        Assert.True(minBound.IsSuccess, minBound.Failure?.Message);
+        Assert.Equal(10, minBound.Value!.GapNumerator);
+        Assert.Equal(50, minBound.Value.GapDenominator);
+        Assert.False(minBound.Value.IsProvenOptimal);
+        Assert.Equal(1, maxBound.Value!.GapNumerator);
+        Assert.Equal(
+            CandidateSelectionFailureCodes.InvalidDiagnostics,
+            invalid.Failure?.Code);
+    }
+
+    [Fact]
+    public void Diagnostics_cannot_exceed_deterministic_budget_or_reorder_bounds()
+    {
+        var problem = CreateProblemResult().Value!;
+        var budget = Budget();
+        var accepted = ObjectiveSolveBound.Create(
+            0,
+            problem.ObjectiveLevels[0],
+            1,
+            1).Value!;
+        var wrongFirst = ObjectiveSolveBound.Create(
+            1,
+            problem.ObjectiveLevels[1],
+            30,
+            30).Value!;
+
+        var overBudget = CandidateSelectionSolverDiagnostics.Create(
+            problem,
+            budget,
+            consumedWorkUnits: 101,
+            consumedDeterministicTimeMicros: 500,
+            wallTimeMilliseconds: 1,
+            []);
+        var reordered = CandidateSelectionSolverDiagnostics.Create(
+            problem,
+            budget,
+            consumedWorkUnits: 1,
+            consumedDeterministicTimeMicros: 1,
+            wallTimeMilliseconds: 1,
+            [wrongFirst, accepted]);
+
+        Assert.Equal(
+            CandidateSelectionFailureCodes.InvalidDiagnostics,
+            overBudget.Failure?.Code);
+        Assert.Equal(
+            CandidateSelectionFailureCodes.InvalidDiagnostics,
+            reordered.Failure?.Code);
+    }
+
+    [Fact]
+    public void Optimal_status_requires_exact_bounds_matching_solution()
+    {
+        var problem = CreateProblemResult().Value!;
+        var solution = CandidateSelectionSolution.Create(
+            problem,
+            ["v1-accept", "v2-noop"]).Value!;
+        var exactBounds = problem.ObjectiveLevels
+            .Select(
+                (level, index) => ObjectiveSolveBound.Create(
+                    index,
+                    level,
+                    solution.ObjectiveValues[index],
+                    solution.ObjectiveValues[index]).Value!)
+            .ToArray();
+        var diagnostics = Diagnostics(problem, exactBounds);
+
+        var result = CandidateSelectionSolveResult.Optimal(
+            solution,
+            diagnostics);
+
+        Assert.Equal(CandidateSelectionSolveStatus.Optimal, result.Status);
+        Assert.Same(solution, result.Solution);
+
+        var mismatchedBounds = exactBounds.ToArray();
+        mismatchedBounds[2] = ObjectiveSolveBound.Create(
+            2,
+            problem.ObjectiveLevels[2],
+            49,
+            49).Value!;
+        var mismatchedDiagnostics = Diagnostics(problem, mismatchedBounds);
+
+        Assert.Throws<ArgumentException>(
+            () => CandidateSelectionSolveResult.Optimal(
+                solution,
+                mismatchedDiagnostics));
+    }
+
+    [Fact]
+    public void Result_statuses_distinguish_no_solution_and_safe_fallback()
+    {
+        var problem = CreateProblemResult().Value!;
+        var solution = CandidateSelectionSolution.Create(
+            problem,
+            ["v1-noop", "v2-noop"]).Value!;
+        var diagnostics = Diagnostics(problem, []);
+
+        var statuses = new[]
+        {
+            CandidateSelectionSolveResult.Feasible(solution, diagnostics),
+            CandidateSelectionSolveResult.SafeFallback(
+                solution,
+                diagnostics,
+                "BUDGET_EXHAUSTED",
+                "Safe no-op fallback selected."),
+            CandidateSelectionSolveResult.Infeasible(
+                diagnostics,
+                "INFEASIBLE",
+                "No assignment exists."),
+            CandidateSelectionSolveResult.Unknown(
+                diagnostics,
+                "UNKNOWN",
+                "Search ended without a conclusion."),
+            CandidateSelectionSolveResult.ModelInvalid(
+                diagnostics,
+                "MODEL_INVALID",
+                "Solver rejected the translated model."),
+        };
+
+        Assert.Equal(
+            [
+                CandidateSelectionSolveStatus.Feasible,
+                CandidateSelectionSolveStatus.SafeFallback,
+                CandidateSelectionSolveStatus.Infeasible,
+                CandidateSelectionSolveStatus.Unknown,
+                CandidateSelectionSolveStatus.ModelInvalid,
+            ],
+            statuses.Select(result => result.Status));
+        Assert.NotNull(statuses[0].Solution);
+        Assert.NotNull(statuses[1].Solution);
+        Assert.All(statuses.Skip(2), result => Assert.Null(result.Solution));
+    }
+
     private static DomainResult<CandidateSelectionProblem> CreateProblemResult() =>
         CandidateSelectionProblem.Create(
             [VehicleTwo, VehicleOne],
@@ -376,4 +538,21 @@ public sealed class CandidateSelectionModelTests
         string optionId,
         VehicleId vehicleId) =>
         new(optionId, vehicleId, [], [0, 0, 0], true);
+
+    private static DeterministicSolverBudget Budget() =>
+        DeterministicSolverBudget.Create(
+            maximumWorkUnits: 100,
+            maximumDeterministicTimeMicros: 1_000,
+            randomSeed: 1).Value!;
+
+    private static CandidateSelectionSolverDiagnostics Diagnostics(
+        CandidateSelectionProblem problem,
+        IReadOnlyList<ObjectiveSolveBound> bounds) =>
+        CandidateSelectionSolverDiagnostics.Create(
+            problem,
+            Budget(),
+            consumedWorkUnits: 10,
+            consumedDeterministicTimeMicros: 100,
+            wallTimeMilliseconds: 1,
+            bounds).Value!;
 }

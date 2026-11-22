@@ -1,4 +1,5 @@
 using RideBound.Algorithms.Candidates;
+using RideBound.Application.Optimization;
 using RideBound.Application.State;
 using RideBound.Domain.Common;
 
@@ -56,7 +57,12 @@ public sealed record RollingCostDecision(
     IReadOnlyList<RequestDecisionAction> RequestActions,
     IReadOnlyList<CandidatePruneWitness> PrunedCandidates,
     int AcceptedRequestCount,
-    long OperationalCost);
+    long OperationalCost)
+{
+    public CandidateSelectionExecutionResult? SelectionExecution { get; init; }
+
+    public CandidateGenerationDiagnostics? GenerationDiagnostics { get; init; }
+}
 
 public sealed record RollingCostDecisionResult
 {

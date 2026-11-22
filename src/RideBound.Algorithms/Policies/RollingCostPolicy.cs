@@ -1,4 +1,9 @@
+using System.Buffers.Binary;
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using RideBound.Algorithms.Candidates;
+using RideBound.Application.Optimization;
 using RideBound.Application.State;
 using RideBound.Domain.Common;
 using RideBound.Domain.Requests;
@@ -25,7 +30,24 @@ public sealed class RollingCostPolicy
 
     public RollingCostDecisionResult Decide(
         OnlineState state,
-        CandidateGenerationOptions options)
+        CandidateGenerationOptions options) =>
+        DecideCore(state, options, null);
+
+    public RollingCostDecisionResult DecideWithSolver(
+        OnlineState state,
+        CandidateGenerationOptions options,
+        ICandidateSelectionSolver solver,
+        DeterministicCandidateSelectionExecutionBudget executionBudget)
+    {
+        ArgumentNullException.ThrowIfNull(solver);
+        ArgumentNullException.ThrowIfNull(executionBudget);
+        return DecideCore(state, options, (solver, executionBudget));
+    }
+
+    private RollingCostDecisionResult DecideCore(
+        OnlineState state,
+        CandidateGenerationOptions options,
+        (ICandidateSelectionSolver Solver, DeterministicCandidateSelectionExecutionBudget Budget)? configuration)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(options);
@@ -41,6 +63,11 @@ public sealed class RollingCostPolicy
                     generated.Witness.VehicleId,
                     generated.Witness.RequestId,
                     Dimension: generated.Witness.Dimension));
+        }
+
+        if (configuration is { } configured)
+        {
+            return Solve(state, generated, configured.Solver, configured.Budget);
         }
 
         var selection = _selector.Select(generated.VehicleCandidates!);
@@ -68,6 +95,153 @@ public sealed class RollingCostPolicy
         return applied.IsSuccess
             ? applied
             : RollingCostDecisionResult.Failure(applied.Witness!);
+    }
+
+    private RollingCostDecisionResult Solve(
+        OnlineState state,
+        CandidateGenerationResult generation,
+        ICandidateSelectionSolver solver,
+        DeterministicCandidateSelectionExecutionBudget budget)
+    {
+        var accounting = CreateAccounting(generation.Diagnostics!, budget);
+        if (!accounting.IsSuccess)
+        {
+            return RollingCostDecisionResult.Failure(
+                new RollingCostWitness(
+                    accounting.Failure!.Code,
+                    accounting.Failure.Message,
+                    Dimension: accounting.Failure.Dimension));
+        }
+
+        var candidates = generation.VehicleCandidates!;
+        if (candidates.Count == 0)
+        {
+            var empty = ApplySelection(
+                state,
+                new FleetSelection([], 0, 0),
+                candidates,
+                generation.Diagnostics!.IsComplete);
+            return empty.IsSuccess
+                ? RollingCostDecisionResult.Success(
+                    empty.Decision! with { GenerationDiagnostics = generation.Diagnostics })
+                : empty;
+        }
+
+        var validator = new SolverFleetValidator(this, state, generation);
+        var selected = new SolverBackedFleetSelector(solver).Select(
+            candidates,
+            budget,
+            accounting.Value!,
+            validator);
+        if (!selected.IsSuccess)
+        {
+            return RollingCostDecisionResult.Failure(selected.Witness!);
+        }
+
+        // Return the proposed state that passed the executor's independent validation.
+        return RollingCostDecisionResult.Success(
+            validator.Decision! with
+            {
+                SelectionExecution = selected.Selection!.Execution,
+                GenerationDiagnostics = generation.Diagnostics,
+            });
+    }
+
+    private static DomainResult<CandidateSelectionPreSolveAccounting> CreateAccounting(
+        CandidateGenerationDiagnostics diagnostics,
+        DeterministicCandidateSelectionExecutionBudget budget)
+    {
+        var generationWork = 0L;
+        foreach (var loss in diagnostics.VehicleLosses)
+        {
+            if (loss.ExplorationWorkUnits > budget.MaximumGenerationWorkUnits - generationWork)
+            {
+                return DomainResult<CandidateSelectionPreSolveAccounting>.Fail(
+                    CandidateSelectionFailureCodes.InvalidExecutionAccounting,
+                    "Fleet generation work exceeds the configured execution budget.",
+                    dimension: "preSolveAccounting");
+            }
+
+            generationWork += loss.ExplorationWorkUnits;
+        }
+
+        var omittedCount = 0L;
+        var saturated = false;
+        foreach (var omission in diagnostics.Omissions)
+        {
+            saturated |= omission.CountWasSaturated;
+            if (omission.Count > DomainLimits.MaxCanonicalInteger - omittedCount)
+            {
+                omittedCount = DomainLimits.MaxCanonicalInteger;
+                saturated = true;
+            }
+            else
+            {
+                omittedCount += omission.Count;
+            }
+        }
+
+        return CandidateSelectionPreSolveAccounting.Create(
+            budget,
+            generationWork,
+            consumedValidationWorkUnits: 0,
+            omittedCount,
+            omittedCount == 0 ? null : AggregateOmissionDigest(diagnostics.Omissions),
+            saturated);
+    }
+
+    private static string AggregateOmissionDigest(IReadOnlyList<CandidateOmissionWitness> omissions)
+    {
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        hash.AppendData("RideBound.Wp4OmissionAccounting.v1\0"u8);
+        foreach (var omission in omissions
+                     .OrderBy(value => value.Code, StringComparer.Ordinal)
+                     .ThenBy(value => value.StableDigest, StringComparer.Ordinal))
+        {
+            Append(omission.Code);
+            Append(omission.Count.ToString(CultureInfo.InvariantCulture));
+            Append(omission.StableDigest);
+            Append(omission.CountWasSaturated ? "1" : "0");
+        }
+
+        return Convert.ToHexStringLower(hash.GetHashAndReset());
+
+        void Append(string value)
+        {
+            var bytes = Encoding.UTF8.GetBytes(value);
+            Span<byte> length = stackalloc byte[sizeof(int)];
+            BinaryPrimitives.WriteInt32BigEndian(length, bytes.Length);
+            hash.AppendData(length);
+            hash.AppendData(bytes);
+        }
+    }
+
+    private sealed class SolverFleetValidator(
+        RollingCostPolicy policy,
+        OnlineState state,
+        CandidateGenerationResult generation) : IFleetSelectionValidator
+    {
+        public RollingCostDecision? Decision { get; private set; }
+
+        public CandidateSelectionValidationResult Validate(FleetSelection selection)
+        {
+            Decision = null;
+            var failure = policy.ValidateSelection(state, selection);
+            if (failure is not null)
+            {
+                return CandidateSelectionValidationResult.Invalid(failure.Code, failure.Message);
+            }
+
+            var applied = ApplySelection(
+                state,
+                selection,
+                generation.VehicleCandidates!,
+                generation.Diagnostics!.IsComplete);
+            Decision = applied.Decision;
+            return applied.IsSuccess
+                ? CandidateSelectionValidationResult.Valid()
+                : CandidateSelectionValidationResult.Invalid(applied.Witness!.Code, applied.Witness.Message);
+        }
     }
 
     private RollingCostWitness? ValidateSelection(

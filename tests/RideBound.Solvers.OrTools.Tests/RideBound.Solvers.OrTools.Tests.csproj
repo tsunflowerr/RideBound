@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\RideBound.Algorithms\RideBound.Algorithms.csproj" />
     <ProjectReference Include="..\..\src\RideBound.Application\RideBound.Application.csproj" />
     <ProjectReference Include="..\..\src\RideBound.Domain\RideBound.Domain.csproj" />
     <ProjectReference Include="..\..\src\RideBound.Solvers.OrTools\RideBound.Solvers.OrTools.csproj" />

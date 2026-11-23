@@ -9,6 +9,14 @@ public sealed class CandidateFleetSelector
         IReadOnlyList<VehicleCandidateSet> vehicleCandidateSets)
     {
         ArgumentNullException.ThrowIfNull(vehicleCandidateSets);
+        if (vehicleCandidateSets.SelectMany(set => set.Candidates).Any(
+                candidate => candidate.RelocatedRequestId is not null
+                    || candidate.RelocationRole is not null))
+        {
+            return FleetSelectionResult.Failure(
+                RollingCostWitness.UncoupledRelocation());
+        }
+
         var orderedSets = vehicleCandidateSets
             .OrderBy(value => value.VehicleId.Value, StringComparer.Ordinal)
             .ToArray();

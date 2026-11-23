@@ -23,6 +23,40 @@ public sealed class SolverBackedFleetSelectionTests
     }
 
     [Fact]
+    public void Fleet_selectors_reject_candidates_requiring_relocation_coupling()
+    {
+        var vehicle = AlgorithmTestData.VehicleOne;
+        var donor = Candidate("donor", vehicle, [], 0) with
+        {
+            IsNoOp = false,
+            RelocatedRequestId = new RequestId("waiting"),
+            RelocationRole = RelocationRole.Donor,
+        };
+        var sets = new[] { Set(vehicle, Candidate("noop", vehicle, [], 10), donor) };
+
+        var standard = new CandidateFleetSelector().Select(sets);
+        var solverBacked = Select(sets);
+
+        Assert.Equal(RollingCostFailureCodes.RelocationRequiresCoupledSelection, standard.Witness?.Code);
+        Assert.Equal(RollingCostFailureCodes.RelocationRequiresCoupledSelection, solverBacked.Witness?.Code);
+    }
+
+    [Fact]
+    public void Rolling_cost_entry_points_reject_relocation_options_before_solving()
+    {
+        var state = AlgorithmTestData.CreateState([], [AlgorithmTestData.Vehicle()]);
+        var options = new CandidateGenerationOptions(
+            100, 1, waitingRiderRelocation: new WaitingRiderRelocationGenerationOptions());
+        var policy = new RollingCostPolicy();
+
+        var standard = policy.Decide(state, options);
+        var solverBacked = policy.DecideWithSolver(state, options, new UnexpectedSolver(), Budget());
+
+        Assert.Equal(RollingCostFailureCodes.RelocationRequiresCoupledSelection, standard.Witness?.Code);
+        Assert.Equal(RollingCostFailureCodes.RelocationRequiresCoupledSelection, solverBacked.Witness?.Code);
+    }
+
+    [Fact]
     public void Duplicate_candidate_ids_report_the_global_identity_collision()
     {
         var result = Select(

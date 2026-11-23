@@ -52,6 +52,12 @@ public sealed class RollingCostPolicy
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(options);
 
+        if (options.WaitingRiderRelocation is not null)
+        {
+            return RollingCostDecisionResult.Failure(
+                RollingCostWitness.UncoupledRelocation());
+        }
+
         var generated = _generator.Generate(state, options);
 
         if (!generated.IsSuccess)

@@ -69,6 +69,14 @@ public sealed class SolverBackedFleetSelector
         ArgumentNullException.ThrowIfNull(preSolveAccounting);
         ArgumentNullException.ThrowIfNull(validator);
 
+        if (candidateSets.SelectMany(set => set.Candidates).Any(
+                candidate => candidate.RelocatedRequestId is not null
+                    || candidate.RelocationRole is not null))
+        {
+            return SolverBackedFleetSelectionResult.Failure(
+                RollingCostWitness.UncoupledRelocation());
+        }
+
         var mapping = SelectionModelMapping.Create(candidateSets);
 
         if (mapping.Witness is not null)

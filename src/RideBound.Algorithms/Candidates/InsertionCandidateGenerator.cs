@@ -8,11 +8,12 @@ using RideBound.Domain.Vehicles;
 
 namespace RideBound.Algorithms.Candidates;
 
-public sealed class InsertionCandidateGenerator
+public sealed partial class InsertionCandidateGenerator
 {
     private readonly PhysicalPlanValidator _validator;
     private readonly ForwardSlackProfileCache _slackCache;
     private readonly CandidatePortfolioRetainer _portfolioRetainer;
+    private readonly WaitingRiderRelocationBuilder _relocationBuilder = new();
 
     public InsertionCandidateGenerator(
         PhysicalPlanValidator? validator = null,
@@ -104,6 +105,19 @@ public sealed class InsertionCandidateGenerator
             breaches.AddRange(generated.Breaches);
         }
 
+        IReadOnlyList<RelocationCandidateLoss>? relocationLosses = null;
+        if (options.WaitingRiderRelocation is { } relocationOptions)
+        {
+            var relocations = GenerateRelocations(state, requests, options, relocationOptions);
+            for (var index = 0; index < vehicleSets.Count; index++)
+            {
+                vehicleSets[index] = relocations.MergeInto(vehicleSets[index]);
+            }
+
+            omissions.AddRange(relocations.Omissions);
+            relocationLosses = relocations.Losses.AsReadOnly();
+        }
+
         return CandidateGenerationResult.Success(
             vehicleSets.AsReadOnly(),
             new CandidateGenerationDiagnostics(
@@ -112,7 +126,8 @@ public sealed class InsertionCandidateGenerator
                 omittedRequests.Length,
                 vehicleSets.Select(set => set.Loss!).ToArray(),
                 omissions.AsReadOnly(),
-                breaches.AsReadOnly()));
+                breaches.AsReadOnly(),
+                relocationLosses));
     }
 
     private VehicleGenerationResult GenerateForVehicle(
@@ -366,12 +381,18 @@ public sealed class InsertionCandidateGenerator
         IReadOnlyList<RideRequest> requests,
         CandidateGenerationOptions options,
         IDictionary<string, InsertionCandidate> feasibleById,
-        IDictionary<string, CandidatePruneWitness> prunedById)
+        IDictionary<string, CandidatePruneWitness> prunedById,
+        RelocationRoot? relocationRoot = null)
     {
         var frontier = new PriorityQueue<ExplorationNode, SearchPriority>(
             SearchPriorityComparer.Instance);
-        var root = CreateNode(0, vehicle.Route.MutableSuffix, []);
-        frontier.Enqueue(root, CreatePriority(state, vehicle, requests, root));
+        var root = CreateNode(
+            0,
+            relocationRoot?.Suffix ?? vehicle.Route.MutableSuffix,
+            []);
+        frontier.Enqueue(
+            root,
+            CreatePriority(state, vehicle, requests, root, relocationRoot is null));
         var workUnits = 0L;
         var evaluatedPaths = 0L;
 
@@ -388,7 +409,8 @@ public sealed class InsertionCandidateGenerator
                 }
 
                 evaluatedPaths++;
-                EvaluateTerminal(state, vehicle, node, feasibleById, prunedById);
+                EvaluateTerminal(
+                    state, vehicle, node, feasibleById, prunedById, relocationRoot?.Relocation);
                 continue;
             }
 
@@ -520,13 +542,16 @@ public sealed class InsertionCandidateGenerator
         OnlineState state,
         VehicleState vehicle,
         IReadOnlyList<RideRequest> requests,
-        ExplorationNode node)
+        ExplorationNode node,
+        bool rootIsActiveRoute = true)
     {
         var remaining = requests.Count - node.RequestIndex;
         var potentialAccepted = node.InsertedRequestIds.Count + remaining;
         var mandatoryService = node.MandatoryServiceMilliseconds;
 
-        var route = node.RequestIndex == 0 ? vehicle.Route : node.Project(vehicle).Value;
+        var route = node.RequestIndex == 0 && rootIsActiveRoute
+            ? vehicle.Route
+            : node.Project(vehicle).Value;
         long? slack = 0;
 
         if (route is not null)
@@ -634,7 +659,8 @@ public sealed class InsertionCandidateGenerator
         VehicleState vehicle,
         ExplorationNode node,
         IDictionary<string, InsertionCandidate> feasibleById,
-        IDictionary<string, CandidatePruneWitness> prunedById)
+        IDictionary<string, CandidatePruneWitness> prunedById,
+        WaitingRiderRelocation? relocation = null)
     {
         var route = node.Project(vehicle);
 
@@ -649,7 +675,9 @@ public sealed class InsertionCandidateGenerator
                 ServiceQualityAllowance.Strict,
                 feasibleById,
                 prunedById,
-                node.SlackLookup);
+                node.SlackLookup,
+                relocation,
+                relocation is null ? null : RelocationRole.Donor);
         }
     }
 
@@ -662,7 +690,9 @@ public sealed class InsertionCandidateGenerator
         ServiceQualityAllowance serviceQuality,
         IDictionary<string, InsertionCandidate> feasibleById,
         IDictionary<string, CandidatePruneWitness> prunedById,
-        ForwardSlackCacheLookup? prefetchedProfile = null)
+        ForwardSlackCacheLookup? prefetchedProfile = null,
+        WaitingRiderRelocation? relocation = null,
+        RelocationRole? relocationRole = null)
     {
         var orderedRequests = insertedRequestIds
             .OrderBy(value => value.Value, StringComparer.Ordinal)
@@ -686,7 +716,8 @@ public sealed class InsertionCandidateGenerator
                 route,
                 state.TravelTimes!,
                 state.Run.SimulationTime,
-                serviceQuality));
+                serviceQuality,
+                relocation));
 
         if (!validation.IsFeasible)
         {
@@ -746,7 +777,9 @@ public sealed class InsertionCandidateGenerator
                 orderedRequests,
                 profile.Schedule,
                 isNoOp,
-                profile.CertifiedDelayAtRouteStartMilliseconds));
+                profile.CertifiedDelayAtRouteStartMilliseconds,
+                relocation?.RequestId,
+                relocationRole));
     }
 
     /// <summary>

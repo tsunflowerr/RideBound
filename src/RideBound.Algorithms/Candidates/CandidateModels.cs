@@ -14,6 +14,23 @@ public sealed record CandidateSchedule(
     IReadOnlyList<ScheduledStop> Stops,
     long OperationalCost);
 
+/// <summary>
+/// The side of a waiting-rider relocation (G2) a candidate stands for: the donor route
+/// drops the rider, the receiver route carries it. Only a donor and a receiver of the
+/// same rider together form a move.
+/// </summary>
+public enum RelocationRole
+{
+    Donor,
+    Receiver,
+}
+
+/// <param name="RelocatedRequestId">
+/// The waiting rider a G2 candidate moves; null for every ordinary candidate.
+/// </param>
+/// <param name="RelocationRole">
+/// Donor or receiver of that move; null exactly when <paramref name="RelocatedRequestId"/> is.
+/// </param>
 public sealed record InsertionCandidate(
     string CandidateId,
     VehicleId VehicleId,
@@ -21,7 +38,9 @@ public sealed record InsertionCandidate(
     IReadOnlyList<RequestId> NewRequestIds,
     CandidateSchedule Schedule,
     bool IsNoOp,
-    long? CertifiedForwardSlackMilliseconds = null);
+    long? CertifiedForwardSlackMilliseconds = null,
+    RequestId? RelocatedRequestId = null,
+    RelocationRole? RelocationRole = null);
 
 public sealed record CandidatePruneWitness(
     string CandidateId,
@@ -58,6 +77,21 @@ public sealed record VehicleCandidateLoss(
     bool OmissionCountWasSaturated = false);
 
 /// <summary>
+/// G2 accounting for one donor vehicle with at least one eligible waiting rider. Kept apart
+/// from <see cref="VehicleCandidateLoss"/>, whose meaning stays that of the ordinary search.
+/// </summary>
+public sealed record RelocationCandidateLoss(
+    VehicleId DonorVehicleId,
+    long EligibleRiderCount,
+    long WorkUnits,
+    long EvaluatedReceiverRouteCount,
+    long FeasibleReceiverCount,
+    long FeasibleDonorCount,
+    long OmittedUnexpandedDonorPathCount,
+    bool OmissionCountWasSaturated,
+    long RidersWithoutFeasibleReceiver);
+
+/// <summary>
 /// A service-quality deadline the vehicle's unchanged active route can no longer
 /// meet under the current travel snapshot. It is attributed to traffic,
 /// not to the decision about to be taken, and it never removes the safety no-op.
@@ -79,12 +113,15 @@ public sealed record CandidateGenerationDiagnostics(
     long OmittedRequestCount,
     IReadOnlyList<VehicleCandidateLoss> VehicleLosses,
     IReadOnlyList<CandidateOmissionWitness> Omissions,
-    IReadOnlyList<ExogenousServiceQualityBreach> ExogenousServiceQualityBreaches)
+    IReadOnlyList<ExogenousServiceQualityBreach> ExogenousServiceQualityBreaches,
+    IReadOnlyList<RelocationCandidateLoss>? RelocationLosses = null)
 {
     public bool IsComplete => OmittedRequestCount == 0
         && VehicleLosses.All(
             loss => loss.OmittedUnexpandedCandidatePathCount == 0
-                && loss.OmittedFeasibleCandidateCountByCap == 0);
+                && loss.OmittedFeasibleCandidateCountByCap == 0)
+        && (RelocationLosses is null
+            || RelocationLosses.All(loss => loss.OmittedUnexpandedDonorPathCount == 0));
 }
 
 public sealed record CandidateGenerationResult
@@ -130,7 +167,8 @@ public sealed record CandidateGenerationOptions
         int maximumCandidatesPerVehicle,
         int maximumNewRequestsPerVehicle,
         bool exactSmallMode = false,
-        long maximumExplorationWorkUnits = 100_000)
+        long maximumExplorationWorkUnits = 100_000,
+        WaitingRiderRelocationGenerationOptions? waitingRiderRelocation = null)
     {
         if (maximumCandidatesPerVehicle < 1)
         {
@@ -151,10 +189,18 @@ public sealed record CandidateGenerationOptions
                 nameof(maximumExplorationWorkUnits));
         }
 
+        if (exactSmallMode && waitingRiderRelocation is not null)
+        {
+            throw new ArgumentException(
+                "Waiting-rider relocation requires bounded mode.",
+                nameof(waitingRiderRelocation));
+        }
+
         MaximumCandidatesPerVehicle = maximumCandidatesPerVehicle;
         MaximumNewRequestsPerVehicle = maximumNewRequestsPerVehicle;
         MaximumExplorationWorkUnits = maximumExplorationWorkUnits;
         ExactSmallMode = exactSmallMode;
+        WaitingRiderRelocation = waitingRiderRelocation;
     }
 
     public int MaximumCandidatesPerVehicle { get; }
@@ -165,11 +211,33 @@ public sealed record CandidateGenerationOptions
 
     public bool ExactSmallMode { get; }
 
+    public WaitingRiderRelocationGenerationOptions? WaitingRiderRelocation { get; }
+
     public static CandidateGenerationOptions ExactSmall { get; } =
         new(
             maximumCandidatesPerVehicle: 100_000,
             maximumNewRequestsPerVehicle: 2,
             exactSmallMode: true);
+}
+
+/// <summary>
+/// G2 generation bounds. Every eligible waiting rider of a donor is considered. A null target cap
+/// means every other vehicle as a receiver; the k nearest targets are ranked by travel time from
+/// the vehicle's schedule start node to the rider's origin, ties by ordinal vehicle id.
+/// </summary>
+public sealed record WaitingRiderRelocationGenerationOptions
+{
+    public WaitingRiderRelocationGenerationOptions(int? maximumTargetVehicles = null)
+    {
+        if (maximumTargetVehicles is < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maximumTargetVehicles));
+        }
+
+        MaximumTargetVehicles = maximumTargetVehicles;
+    }
+
+    public int? MaximumTargetVehicles { get; }
 }
 
 public static class CandidateGenerationFailureCodes
@@ -182,6 +250,8 @@ public static class CandidateGenerationFailureCodes
     public const string RequestBoundOmission = "REQUEST_BOUND_OMISSION";
     public const string WorkBoundOmission = "WORK_BOUND_OMISSION";
     public const string CandidateCapOmission = "CANDIDATE_CAP_OMISSION";
+    public const string RelocationWorkBoundOmission =
+        "RELOCATION_WORK_BOUND_OMISSION";
     public const string ExactSmallRequestBoundExceeded =
         "EXACT_SMALL_REQUEST_BOUND_EXCEEDED";
     public const string ExactSmallCandidateCapExceeded =

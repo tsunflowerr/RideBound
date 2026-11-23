@@ -95,13 +95,20 @@ public sealed record RollingCostWitness(
     VehicleId? VehicleId = null,
     RequestId? RequestId = null,
     string? CandidateId = null,
-    string? Dimension = null);
+    string? Dimension = null)
+{
+    internal static RollingCostWitness UncoupledRelocation() => new(
+        RollingCostFailureCodes.RelocationRequiresCoupledSelection,
+        "Waiting-rider relocation requires coupled donor and receiver selection.");
+}
 
 public static class RollingCostFailureCodes
 {
     public const string CandidateGenerationFailed =
         "CANDIDATE_GENERATION_FAILED";
     public const string NoVehiclePlan = "NO_VEHICLE_PLAN";
+    public const string RelocationRequiresCoupledSelection =
+        "RELOCATION_REQUIRES_COUPLED_SELECTION";
     public const string OperationalCostOverflow = "OPERATIONAL_COST_OVERFLOW";
     public const string SelectedCandidateInvalid = "SELECTED_CANDIDATE_INVALID";
     public const string DecisionApplyFailed = "DECISION_APPLY_FAILED";

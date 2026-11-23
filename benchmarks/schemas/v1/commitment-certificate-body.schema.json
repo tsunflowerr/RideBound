@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/tsunflowerr/RideBound/main/benchmarks/schemas/v1/commitment-certificate-body.schema.json",
+  "title": "RideBound commitment certificate body v1",
+  "type": "object",
+  "required": [
+    "certificateVersion", "validatorVersion", "normalOperation",
+    "inputStateHash", "proposedStateHash", "publicationIds",
+    "physicalPlanCount", "promiseCount", "witnesses"
+  ],
+  "properties": {
+    "certificateVersion": { "const": "1.0.0" },
+    "validatorVersion": { "$ref": "definitions.schema.json#/$defs/opaqueIdentifier" },
+    "normalOperation": { "type": "boolean" },
+    "inputStateHash": { "$ref": "definitions.schema.json#/$defs/sha256Hex" },
+    "proposedStateHash": { "$ref": "definitions.schema.json#/$defs/sha256Hex" },
+    "publicationIds": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "definitions.schema.json#/$defs/opaqueIdentifier" }
+    },
+    "physicalPlanCount": { "$ref": "definitions.schema.json#/$defs/canonicalNonNegativeInteger" },
+    "promiseCount": { "$ref": "definitions.schema.json#/$defs/canonicalNonNegativeInteger" },
+    "witnesses": {
+      "type": "array",
+      "items": { "$ref": "certificate-witness.schema.json" }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "normalOperation": { "const": true } },
+        "required": ["normalOperation"]
+      },
+      "then": {
+        "properties": { "witnesses": { "maxItems": 0 } }
+      },
+      "else": {
+        "properties": { "witnesses": { "minItems": 1 } }
+      }
+    }
+  ],
+  "additionalProperties": false
+}

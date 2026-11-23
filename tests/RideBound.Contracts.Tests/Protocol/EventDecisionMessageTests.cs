@@ -1,6 +1,8 @@
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using RideBound.Contracts.Protocol;
+using RideBound.Contracts.Serialization;
 
 namespace RideBound.Contracts.Tests.Protocol;
 
@@ -100,7 +102,10 @@ public sealed class EventDecisionMessageTests
             DecisionProductionStatus.Produced,
             DecisionReasonCodes.Accepted,
             decisionTypes.Select(CreateAction).ToArray(),
-            new CertificateShell(CertificateStatus.Produced, "VALIDATED"),
+            new CertificateShell(
+                CertificateStatus.Produced,
+                "VALIDATED",
+                Certificate(zero!) with { PublicationIds = ["promise-1"], PromiseCount = 1 }),
             new SolverStatusShell(SolverStatus.Completed),
             zero!,
             zero!,
@@ -250,6 +255,202 @@ public sealed class EventDecisionMessageTests
                 """),
         };
     }
+
+    [Fact]
+    public void Produced_certificate_requires_body_and_body_changes_decision_hash()
+    {
+        var zeroText = new string('0', 64);
+        Sha256Hex.TryCreate(zeroText, out var zero);
+        using var missingBody = JsonDocument.Parse(
+            $$"""
+            {
+              "status":"produced",
+              "reasonCode":"ACCEPTED",
+              "actions":[],
+              "certificate":{"status":"produced","reasonCode":"VALIDATED"},
+              "solver":{"status":"completed"},
+              "stateBeforeHash":"{{zeroText}}",
+              "stateAfterHash":"{{zeroText}}",
+              "previousDecisionHash":"{{zeroText}}",
+              "decisionHash":"{{zeroText}}"
+            }
+            """);
+
+        var rejected = DecisionPayloadCodec.Decode(missingBody.RootElement);
+
+        Assert.False(rejected.IsSuccess);
+        Assert.Equal("$.payload.certificate.body", rejected.Error?.Field);
+
+        var first = new DecisionPayload(
+            DecisionProductionStatus.Produced,
+            DecisionReasonCodes.Accepted,
+            [],
+            new CertificateShell(
+                CertificateStatus.Produced,
+                "VALIDATED",
+                Certificate(zero!)),
+            new SolverStatusShell(SolverStatus.Completed),
+            zero!, zero!, zero!, zero!);
+        var changed = first with
+        {
+            Certificate = first.Certificate with
+            {
+                Body = first.Certificate.Body! with { PromiseCount = 1 },
+            },
+        };
+
+        Assert.False(
+            CanonicalJson.Canonicalize(
+                    DecisionPayloadCodec.Encode(first, hashProjection: true))
+                .SequenceEqual(
+                    CanonicalJson.Canonicalize(
+                        DecisionPayloadCodec.Encode(
+                            changed,
+                            hashProjection: true))));
+    }
+
+    [Fact]
+    public void Produced_certificate_is_bound_to_decision_states_and_publication_actions()
+    {
+        Sha256Hex.TryCreate(new string('0', 64), out var zero);
+        Sha256Hex.TryCreate(new string('1', 64), out var other);
+        var action = CreateAction(DecisionType.PromisePublished);
+        var valid = new DecisionPayload(
+            DecisionProductionStatus.Produced,
+            DecisionReasonCodes.Accepted,
+            [action],
+            new CertificateShell(
+                CertificateStatus.Produced,
+                "VALIDATED",
+                Certificate(zero!) with
+                {
+                    PublicationIds = ["promise-1"],
+                    PromiseCount = 1,
+                }),
+            new SolverStatusShell(SolverStatus.NotRun),
+            zero!, zero!, zero!, zero!);
+
+        var encoded = DecisionPayloadCodec.Encode(valid);
+        using var document = JsonDocument.Parse(encoded);
+        Assert.True(DecisionPayloadCodec.Decode(document.RootElement).IsSuccess);
+
+        var wrongState = valid with
+        {
+            Certificate = valid.Certificate with
+            {
+                Body = valid.Certificate.Body! with
+                {
+                    ProposedStateHash = other!,
+                },
+            },
+        };
+        var wrongPublication = valid with
+        {
+            Certificate = valid.Certificate with
+            {
+                Body = valid.Certificate.Body! with
+                {
+                    PublicationIds = ["publication-other"],
+                },
+            },
+        };
+
+        Assert.Throws<ArgumentException>(
+            () => DecisionPayloadCodec.Encode(wrongState));
+        Assert.Throws<ArgumentException>(
+            () => DecisionPayloadCodec.Encode(wrongPublication));
+        Assert.Throws<ArgumentException>(
+            () => DecisionPayloadCodec.Encode(valid with { Actions = [action, action] }));
+
+        var tamperedState = JsonNode.Parse(encoded)!;
+        tamperedState["certificate"]!["body"]!["proposedStateHash"] = other!.Value;
+        var stateResult = DecisionPayloadCodec.Decode(JsonSerializer.SerializeToElement(tamperedState));
+        Assert.Equal("$.payload.certificate.body", stateResult.Error?.Field);
+
+        var tamperedPublication = JsonNode.Parse(encoded)!;
+        tamperedPublication["actions"]![0]!["payload"]!["publicationId"] = "publication-other";
+        var publicationResult = DecisionPayloadCodec.Decode(JsonSerializer.SerializeToElement(tamperedPublication));
+        Assert.Equal("$.payload.certificate.body.publicationIds", publicationResult.Error?.Field);
+
+        var duplicatedAction = JsonNode.Parse(encoded)!;
+        var actions = duplicatedAction["actions"]!.AsArray();
+        actions.Add(actions[0]!.DeepClone());
+        var duplicateResult = DecisionPayloadCodec.Decode(JsonSerializer.SerializeToElement(duplicatedAction));
+        Assert.Equal("$.payload.certificate.body.publicationIds", duplicateResult.Error?.Field);
+
+        var missingCertificate = JsonNode.Parse(encoded)!;
+        missingCertificate["certificate"] = new JsonObject
+        {
+            ["status"] = "notProduced",
+            ["reasonCode"] = DecisionPayloadCodec.CertificateNotAvailableReasonCode,
+        };
+        var missingResult = DecisionPayloadCodec.Decode(JsonSerializer.SerializeToElement(missingCertificate));
+        Assert.Equal("$.payload.certificate", missingResult.Error?.Field);
+    }
+
+    [Fact]
+    public void Certificate_normal_operation_and_witnesses_are_consistent()
+    {
+        Sha256Hex.TryCreate(new string('0', 64), out var zero);
+        var nonNormal = Certificate(zero!) with
+        {
+            NormalOperation = false,
+            Witnesses =
+            [
+                new CertificateWitnessContract(
+                    "budget",
+                    "COMMITMENT_BUDGET_EXCEEDED",
+                    RequestId: "r-1",
+                    Dimension: "pickup_eta_total_ms",
+                    Limit: 10,
+                    Before: 7,
+                    Delta: 4,
+                    After: 11),
+            ],
+        };
+        var payload = new DecisionPayload(
+            DecisionProductionStatus.Produced,
+            DecisionReasonCodes.IncidentOverride,
+            [],
+            new CertificateShell(
+                CertificateStatus.Produced,
+                DecisionReasonCodes.IncidentOverride,
+                nonNormal),
+            new SolverStatusShell(SolverStatus.SafeFallback),
+            zero!, zero!, zero!, zero!);
+
+        var encoded = DecisionPayloadCodec.Encode(payload);
+        using var document = JsonDocument.Parse(encoded);
+        var decoded = DecisionPayloadCodec.Decode(document.RootElement);
+
+        Assert.True(decoded.IsSuccess, decoded.Error?.Message);
+        var witness = Assert.Single(
+            decoded.Value!.Certificate.Body!.Witnesses);
+        Assert.Equal(10, witness.Limit);
+        Assert.Equal(11, witness.After);
+
+        var inconsistent = payload with
+        {
+            Certificate = payload.Certificate with
+            {
+                Body = nonNormal with { NormalOperation = true },
+            },
+        };
+        Assert.Throws<ArgumentException>(
+            () => DecisionPayloadCodec.Encode(inconsistent));
+    }
+
+    private static CommitmentCertificateBody Certificate(Sha256Hex hash) =>
+        new(
+            "1.0.0",
+            "commitment-validator-v1",
+            true,
+            hash,
+            hash,
+            [],
+            1,
+            0,
+            []);
 
     [Fact]
     public void Error_encoder_sanitizes_multiline_diagnostic()

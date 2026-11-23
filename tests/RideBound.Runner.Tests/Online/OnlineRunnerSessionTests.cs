@@ -328,6 +328,9 @@ public sealed class OnlineRunnerSessionTests
             receiver["payload"]!["vehicle"]!["position"]!["nodeId"] = "n-3";
             events.Add(receiver);
             var accepted = ReadDecision(session, Bytes(boot));
+            Assert.Equal(CertificateStatus.Produced, accepted.Decision.Certificate.Status);
+            Assert.Empty(accepted.Decision.Certificate.Body!.PublicationIds);
+            Assert.Equal(2, accepted.Decision.Certificate.Body.PhysicalPlanCount);
             var acceptedAction = Assert.Single(accepted.Decision.Actions, x => IsAction(x, "requestAccepted"));
             Assert.Equal("v-1", acceptedAction.GetProperty("payload").GetProperty("vehicleId").GetString());
             Assert.DoesNotContain(accepted.Decision.Actions, x => IsAction(x, "promisePublished"));
@@ -363,6 +366,14 @@ public sealed class OnlineRunnerSessionTests
                 .GetProperty("payload");
             Assert.Equal("v-2", revision.GetProperty("promise").GetProperty("vehicleId").GetString());
             Assert.Equal(2, revision.GetProperty("promiseVersion").GetInt64());
+            Assert.Equal(CertificateStatus.Produced, moved.Decision.Certificate.Status);
+            var certificate = moved.Decision.Certificate.Body!;
+            Assert.True(certificate.NormalOperation);
+            Assert.Equal(moved.Decision.StateBeforeHash, certificate.InputStateHash);
+            Assert.Equal(moved.Decision.StateAfterHash, certificate.ProposedStateHash);
+            Assert.Equal([revision.GetProperty("publicationId").GetString()!], certificate.PublicationIds);
+            Assert.Equal(1, certificate.PromiseCount);
+            Assert.Empty(certificate.Witnesses);
             Assert.Equal(1, revision.GetProperty("budgetAfter").GetProperty("vehicleSwitchCount").GetInt64());
             Assert.Equal(moved.Frame, ReadDecision(session, Bytes(update)).Frame);
 

@@ -436,7 +436,7 @@ public sealed class RunnerSession
                 DecisionProductionStatus.Produced,
                 online.ReasonCode!,
                 online.Actions!,
-                new CertificateShell(
+                online.Certificate ?? new CertificateShell(
                     CertificateStatus.NotProduced,
                     DecisionPayloadCodec.CertificateNotAvailableReasonCode),
                 new SolverStatusShell(online.Solver),
@@ -689,11 +689,24 @@ public sealed class RunnerSession
                 SolverStatus.Completed,
             _ => SolverStatus.NotRun,
         };
+        var stateAfterHash = OnlineStateCanonicalizer.CalculateHash(proposedState!);
+        var certificate = _c1Configuration is null
+            ? null
+            : new CertificateShell(
+                CertificateStatus.Produced,
+                "VALIDATED",
+                new CommitmentCertificateBody(
+                    CommitmentContractCodec.CurrentCertificateVersion,
+                    "commitment-validator-v1",
+                    NormalOperation: true,
+                    _stateHash,
+                    stateAfterHash,
+                    publications.Select(value => value.PublicationId).Order(StringComparer.Ordinal).ToArray(),
+                    proposedState!.Run.Vehicles.Count,
+                    proposedState.Run.Requests.Values.Count(value => value.IsAcceptedActive),
+                    []));
         return OnlineDecisionBuildResult.Success(
-            OnlineStateCanonicalizer.CalculateHash(proposedState!),
-            reasonCode,
-            actions,
-            solverStatus);
+            stateAfterHash, reasonCode, actions, solverStatus, certificate);
     }
 
     private (RollingCostDecision? Decision, OnlineState? State, IReadOnlyList<PromisePublication> Publications,
@@ -819,14 +832,16 @@ public sealed class RunnerSession
         string? ReasonCode,
         IReadOnlyList<JsonElement>? Actions,
         SolverStatus Solver,
+        CertificateShell? Certificate,
         OnlineDecisionBuildError? Error)
     {
         public static OnlineDecisionBuildResult Success(
             Sha256Hex stateAfterHash,
             string reasonCode,
             IReadOnlyList<JsonElement> actions,
-            SolverStatus solverStatus) =>
-            new(stateAfterHash, reasonCode, actions, solverStatus, null);
+            SolverStatus solverStatus,
+            CertificateShell? certificate) =>
+            new(stateAfterHash, reasonCode, actions, solverStatus, certificate, null);
 
         public static OnlineDecisionBuildResult Fail(
             string code,
@@ -837,6 +852,7 @@ public sealed class RunnerSession
                 null,
                 null,
                 SolverStatus.NotRun,
+                null,
                 new OnlineDecisionBuildError(code, disposition, message));
     }
 

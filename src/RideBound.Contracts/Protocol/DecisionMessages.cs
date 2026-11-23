@@ -34,7 +34,8 @@ public enum SolverStatus
 
 public sealed record CertificateShell(
     CertificateStatus Status,
-    string ReasonCode);
+    string ReasonCode,
+    CommitmentCertificateBody? Body = null);
 
 public sealed record SolverStatusShell(SolverStatus Status);
 
@@ -140,6 +141,7 @@ public static class DecisionPayloadCodec
         {
             "status",
             "reasonCode",
+            "body",
         };
 
     private static readonly IReadOnlySet<string> ActionFields =
@@ -326,14 +328,18 @@ public static class DecisionPayloadCodec
                 $"Decision reason code '{reasonCode.Value}' is unknown for protocol v1.");
         }
 
-        if (status == DecisionProductionStatus.NotProduced
-            && (actions.Count != 0
-                || certificate.Value!.Status != CertificateStatus.NotProduced
-                || solver.Value!.Status != SolverStatus.NotRun))
+        var semanticError = ValidateDecisionSemantics(
+            status,
+            actions,
+            certificate.Value!,
+            solver.Value!,
+            beforeHash!,
+            afterHash!);
+
+        if (semanticError is not null)
         {
-            return Invalid(
-                "$.payload",
-                "A notProduced WP1 shell cannot contain actions, a certificate or a solver result.");
+            return ProtocolPayloadDecodeResult<DecisionPayload>.Failure(
+                semanticError);
         }
 
         return ProtocolPayloadDecodeResult<DecisionPayload>.Success(
@@ -352,6 +358,7 @@ public static class DecisionPayloadCodec
     public static byte[] Encode(DecisionPayload payload, bool hashProjection = false)
     {
         ArgumentNullException.ThrowIfNull(payload);
+        ValidatePayloadForEncoding(payload);
 
         return ProtocolPayloadReader.Write(
             writer =>
@@ -364,7 +371,6 @@ public static class DecisionPayloadCodec
 
                 foreach (var action in payload.Actions)
                 {
-                    ValidateActionForEncoding(action, payload);
                     action.WriteTo(writer);
                 }
 
@@ -377,6 +383,12 @@ public static class DecisionPayloadCodec
                 writer.WriteString(
                     "reasonCode",
                     payload.Certificate.ReasonCode);
+                if (payload.Certificate.Body is { } certificateBody)
+                {
+                    writer.WritePropertyName("body");
+                    CommitmentContractCodec.WriteCertificateBody(writer, certificateBody);
+                }
+
                 writer.WriteEndObject();
                 writer.WritePropertyName("solver");
                 writer.WriteStartObject();
@@ -424,13 +436,135 @@ public static class DecisionPayloadCodec
             || action.GetProperty("decisionType").ValueKind != JsonValueKind.String
             || !DecisionTypeVocabulary.TryParse(
                 action.GetProperty("decisionType").GetString(),
-                out _)
+                out var decisionType)
             || action.GetProperty("payload").ValueKind != JsonValueKind.Object)
         {
             throw new ArgumentException(
                 "Every decision action must contain a known decisionType and object payload.",
                 nameof(payload));
         }
+
+        var error = OnlineDecisionActionCodec.ValidatePayload(
+            decisionType, action.GetProperty("payload"), "$.payload.actions[].payload");
+        if (error is not null)
+        {
+            throw new ArgumentException(error.Message, nameof(payload));
+        }
+    }
+
+    private static void ValidatePayloadForEncoding(DecisionPayload payload)
+    {
+        ArgumentNullException.ThrowIfNull(payload.Actions);
+        ArgumentNullException.ThrowIfNull(payload.Certificate);
+        ArgumentNullException.ThrowIfNull(payload.Solver);
+
+        if (!DecisionReasonCodes.All.Contains(
+                payload.ReasonCode,
+                StringComparer.Ordinal)
+            || !OpaqueIdentifier.IsValid(payload.Certificate.ReasonCode))
+        {
+            throw new ArgumentException(
+                "Decision or certificate reason code is invalid.",
+                nameof(payload));
+        }
+
+        foreach (var action in payload.Actions)
+        {
+            ValidateActionForEncoding(action, payload);
+        }
+
+        if (payload.Certificate.Status == CertificateStatus.NotProduced && payload.Certificate.Body is not null)
+        {
+            throw new ArgumentException("A notProduced certificate cannot contain a body.", nameof(payload));
+        }
+
+        var semanticError = ValidateDecisionSemantics(
+            payload.Status,
+            payload.Actions,
+            payload.Certificate,
+            payload.Solver,
+            payload.StateBeforeHash,
+            payload.StateAfterHash);
+
+        if (semanticError is not null)
+        {
+            throw new ArgumentException(semanticError.Message, nameof(payload));
+        }
+    }
+
+    private static ProtocolPayloadError? ValidateDecisionSemantics(
+        DecisionProductionStatus status,
+        IReadOnlyList<JsonElement> actions,
+        CertificateShell certificate,
+        SolverStatusShell solver,
+        Sha256Hex stateBeforeHash,
+        Sha256Hex stateAfterHash)
+    {
+        if (status == DecisionProductionStatus.NotProduced
+            && (actions.Count != 0
+                || certificate.Status != CertificateStatus.NotProduced
+                || solver.Status != SolverStatus.NotRun))
+        {
+            return new ProtocolPayloadError(
+                ProtocolPayloadErrorCode.InvalidValue,
+                "$.payload",
+                "A notProduced WP1 shell cannot contain actions, a certificate or a solver result.");
+        }
+
+        var publicationIds = actions
+            .Where(
+                action => string.Equals(
+                    action.GetProperty("decisionType").GetString(),
+                    "promisePublished",
+                    StringComparison.Ordinal))
+            .Select(
+                action => action.GetProperty("payload")
+                    .GetProperty("publicationId")
+                    .GetString()!)
+            .ToArray();
+
+        if (certificate.Status != CertificateStatus.Produced)
+        {
+            return publicationIds.Length == 0
+                ? null
+                : new ProtocolPayloadError(
+                    ProtocolPayloadErrorCode.InvalidValue,
+                    "$.payload.certificate",
+                    "Promise publication actions require a produced certificate.");
+        }
+
+        var body = certificate.Body;
+
+        if (body is null)
+        {
+            return new ProtocolPayloadError(
+                ProtocolPayloadErrorCode.MissingRequiredField,
+                "$.payload.certificate.body",
+                "A produced certificate requires a body.");
+        }
+
+        if (body.InputStateHash != stateBeforeHash
+            || body.ProposedStateHash != stateAfterHash)
+        {
+            return new ProtocolPayloadError(
+                ProtocolPayloadErrorCode.InvalidValue,
+                "$.payload.certificate.body",
+                "Certificate state hashes must match the containing decision state hashes.");
+        }
+
+        if (publicationIds.Distinct(StringComparer.Ordinal).Count()
+                != publicationIds.Length
+            || publicationIds.Length != body.PublicationIds.Count
+            || !publicationIds.ToHashSet(StringComparer.Ordinal).SetEquals(
+                body.PublicationIds))
+        {
+            return new ProtocolPayloadError(
+                ProtocolPayloadErrorCode.InvalidValue,
+                "$.payload.certificate.body.publicationIds",
+                "Certificate publication IDs must exactly match unique promisePublished actions.");
+        }
+
+        return null;
     }
 
     private static ProtocolPayloadDecodeResult<CertificateShell> DecodeCertificate(
@@ -455,6 +589,7 @@ public static class DecisionPayloadCodec
             element,
             path,
             "reasonCode");
+        var hasBody = element.TryGetProperty("body", out var bodyElement);
         var error = HelloPayloadCodec.FirstError(statusText.Error, reasonCode.Error);
 
         if (error is not null)
@@ -471,8 +606,42 @@ public static class DecisionPayloadCodec
                     "Unknown certificate status."));
         }
 
+        CommitmentCertificateBody? body = null;
+
+        if (status == CertificateStatus.Produced)
+        {
+            if (!hasBody)
+            {
+                return ProtocolPayloadDecodeResult<CertificateShell>.Failure(
+                    new ProtocolPayloadError(
+                        ProtocolPayloadErrorCode.MissingRequiredField,
+                        $"{path}.body",
+                        "A produced certificate requires a body."));
+            }
+
+            var decodedBody = CommitmentContractCodec.ReadCertificateBody(
+                bodyElement,
+                $"{path}.body");
+
+            if (!decodedBody.IsSuccess)
+            {
+                return ProtocolPayloadDecodeResult<CertificateShell>.Failure(
+                    decodedBody.Error!);
+            }
+
+            body = decodedBody.Value;
+        }
+        else if (hasBody)
+        {
+            return ProtocolPayloadDecodeResult<CertificateShell>.Failure(
+                new ProtocolPayloadError(
+                    ProtocolPayloadErrorCode.InvalidValue,
+                    $"{path}.body",
+                    "A notProduced certificate cannot contain a body."));
+        }
+
         return ProtocolPayloadDecodeResult<CertificateShell>.Success(
-            new CertificateShell(status, reasonCode.Value!));
+            new CertificateShell(status, reasonCode.Value!, body));
     }
 
     private static ProtocolPayloadDecodeResult<SolverStatusShell> DecodeSolver(

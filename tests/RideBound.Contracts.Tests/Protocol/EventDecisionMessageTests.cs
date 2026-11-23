@@ -206,6 +206,7 @@ public sealed class EventDecisionMessageTests
 
     private static JsonElement CreateAction(DecisionType decisionType)
     {
+        var zeroBudget = new CommitmentVectorContract(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         return decisionType switch
         {
             DecisionType.RequestAccepted => OnlineDecisionActionCodec.Encode(
@@ -230,6 +231,16 @@ public sealed class EventDecisionMessageTests
                             "v-1",
                             "candidate-1",
                             new RoutePlanContract(0, 0, [], [])))),
+            DecisionType.PromisePublished => OnlineDecisionActionCodec.Encode(
+                new OnlineDecisionAction(
+                    decisionType,
+                    new PromisePublishedActionPayload(
+                        "promise-1", 1, "BOOKING_CONFIRMATION", 1,
+                        new PromiseProjectionContract(
+                            "r-1", "v-1", "pickup", "n-1", "drop", "n-2", 100, 200,
+                            [new PromiseServiceTokenContract("pickup", "r-1", RouteStopKind.Pickup),
+                             new PromiseServiceTokenContract("drop", "r-1", RouteStopKind.DropOff)]),
+                        zeroBudget, zeroBudget, zeroBudget, zeroBudget, zeroBudget))),
             _ => ParseObject(
                 $$"""
                 {

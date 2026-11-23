@@ -4,15 +4,16 @@ using RideBound.Runner.Protocol;
 
 var executionMode = RunnerExecutionMode.OnlineRollingCost;
 RollingCostSolverConfiguration? solverConfiguration = null;
+C1RunnerConfiguration? c1Configuration = null;
 
 if (args.Length > 0)
 {
     if (args is not (["--mode", "online" or "conformance"]
-        or ["--mode", "online", "--rolling-cost-solver-config", _]))
+        or ["--mode", "online", "--rolling-cost-solver-config" or "--c1-solver-config", _]))
     {
         await Console.Error.WriteLineAsync(
             "Usage: RideBound.Runner [--mode online|conformance] | " +
-            "--mode online --rolling-cost-solver-config <path>");
+            "--mode online --rolling-cost-solver-config <path> | --mode online --c1-solver-config <path>");
         return 64;
     }
 
@@ -22,16 +23,25 @@ if (args.Length > 0)
 
     if (args.Length == 4)
     {
+        var isC1 = args[2] == "--c1-solver-config";
         try
         {
-            solverConfiguration = RollingCostSolverConfiguration.Decode(
-                await File.ReadAllBytesAsync(args[3]));
+            var contents = await File.ReadAllBytesAsync(args[3]);
+            if (isC1)
+            {
+                c1Configuration = C1RunnerConfiguration.Decode(contents);
+            }
+            else
+            {
+                solverConfiguration = RollingCostSolverConfiguration.Decode(contents);
+            }
         }
         catch (Exception error) when (
             error is IOException or UnauthorizedAccessException or InvalidDataException
                 or CanonicalJsonException or ArgumentException)
         {
-            await Console.Error.WriteLineAsync($"Invalid rolling-cost solver configuration: {error.Message}");
+            var policyName = isC1 ? "C1" : "rolling-cost";
+            await Console.Error.WriteLineAsync($"Invalid {policyName} solver configuration: {error.Message}");
             return 64;
         }
     }
@@ -42,4 +52,5 @@ return await RunnerHost.RunAsync(
     Console.OpenStandardOutput(),
     Console.Error,
     executionMode: executionMode,
-    solverConfiguration: solverConfiguration);
+    solverConfiguration: solverConfiguration,
+    c1Configuration: c1Configuration);

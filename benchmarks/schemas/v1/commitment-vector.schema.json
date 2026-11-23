@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/tsunflowerr/RideBound/main/benchmarks/schemas/v1/commitment-vector.schema.json",
+  "title": "RideBound commitment vector v1",
+  "type": "object",
+  "required": [
+    "pickupEtaTotalMs",
+    "dropEtaTotalMs",
+    "materialEtaRevisionCount",
+    "vehicleSwitchCount",
+    "pickupStopRelocationMm",
+    "pickupStopSwitchCount",
+    "dropStopRelocationMm",
+    "dropStopSwitchCount",
+    "incumbentOrderInversionCount",
+    "prePickupInsertedStopCount"
+  ],
+  "properties": {
+    "pickupEtaTotalMs": { "$ref": "definitions.schema.json#/$defs/canonicalNonNegativeInteger" },
+    "dropEtaTotalMs": { "$ref": "definitions.schema.json#/$defs/canonicalNonNegativeInteger" },
+    "materialEtaRevisionCount": { "$ref": "definitions.schema.json#/$defs/canonicalNonNegativeInteger" },
+    "vehicleSwitchCount": { "$ref": "definitions.schema.json#/$defs/canonicalNonNegativeInteger" },
+    "pickupStopRelocationMm": { "$ref": "definitions.schema.json#/$defs/canonicalNonNegativeInteger" },
+    "pickupStopSwitchCount": { "$ref": "definitions.schema.json#/$defs/canonicalNonNegativeInteger" },
+    "dropStopRelocationMm": { "$ref": "definitions.schema.json#/$defs/canonicalNonNegativeInteger" },
+    "dropStopSwitchCount": { "$ref": "definitions.schema.json#/$defs/canonicalNonNegativeInteger" },
+    "incumbentOrderInversionCount": { "$ref": "definitions.schema.json#/$defs/canonicalNonNegativeInteger" },
+    "prePickupInsertedStopCount": { "$ref": "definitions.schema.json#/$defs/canonicalNonNegativeInteger" }
+  },
+  "additionalProperties": false
+}

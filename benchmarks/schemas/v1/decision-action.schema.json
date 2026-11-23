@@ -75,6 +75,18 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "decisionType": { "const": "promisePublished" }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": { "$ref": "promise-published-action-payload.schema.json" }
+        }
+      }
     }
   ],
   "additionalProperties": false

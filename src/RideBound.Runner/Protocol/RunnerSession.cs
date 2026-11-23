@@ -2,7 +2,10 @@ using System.Buffers;
 using System.Security.Cryptography;
 using System.Text.Json;
 using RideBound.Algorithms.Candidates;
+using RideBound.Algorithms.Commitments;
 using RideBound.Algorithms.Policies;
+using RideBound.Application.Commitments;
+using RideBound.Application.Events;
 using RideBound.Application.Optimization;
 using RideBound.Application.State;
 using RideBound.Contracts.Protocol;
@@ -46,6 +49,8 @@ public sealed class RunnerSession
     private readonly CandidateGenerationOptions _candidateOptions;
     private readonly RollingCostSolverConfiguration? _solverConfiguration;
     private readonly OrToolsCandidateSelectionSolver? _solver;
+    private readonly C1RunnerConfiguration? _c1Configuration;
+    private readonly SolverBackedRidePoolingPolicy? _c1Policy;
     private HelloPayload? _hello;
     private HelloAckPayload? _helloAcknowledgement;
     private InitializedSessionIdentity? _identity;
@@ -66,10 +71,16 @@ public sealed class RunnerSession
         OnlineEventMapper? onlineEventMapper = null,
         RollingCostPolicy? rollingCostPolicy = null,
         CandidateGenerationOptions? candidateOptions = null,
-        RollingCostSolverConfiguration? solverConfiguration = null)
+        RollingCostSolverConfiguration? solverConfiguration = null,
+        C1RunnerConfiguration? c1Configuration = null)
     {
         ArgumentNullException.ThrowIfNull(requirements);
-        if (solverConfiguration is not null
+        if (solverConfiguration is not null && c1Configuration is not null)
+        {
+            throw new ArgumentException("Choose one online solver configuration.", nameof(c1Configuration));
+        }
+
+        if ((solverConfiguration is not null || c1Configuration is not null)
             && (executionMode != RunnerExecutionMode.OnlineRollingCost || candidateOptions is not null))
         {
             throw new ArgumentException(
@@ -82,8 +93,13 @@ public sealed class RunnerSession
         _onlineEventMapper = onlineEventMapper ?? new OnlineEventMapper();
         _rollingCostPolicy = rollingCostPolicy ?? new RollingCostPolicy();
         _solverConfiguration = solverConfiguration;
-        _solver = solverConfiguration is null ? null : new OrToolsCandidateSelectionSolver();
-        _candidateOptions = solverConfiguration?.CandidateGeneration
+        _c1Configuration = c1Configuration;
+        _solver = solverConfiguration is null && c1Configuration is null
+            ? null
+            : new OrToolsCandidateSelectionSolver();
+        _c1Policy = c1Configuration is null ? null : new SolverBackedRidePoolingPolicy(_solver!);
+        _candidateOptions = c1Configuration?.CandidateGeneration
+            ?? solverConfiguration?.CandidateGeneration
             ?? candidateOptions
             ?? new CandidateGenerationOptions(
                 maximumCandidatesPerVehicle: 10_000,
@@ -243,10 +259,10 @@ public sealed class RunnerSession
         }
 
         var manifest = validation.Identity!.Manifest;
-        if (_executionMode == RunnerExecutionMode.OnlineRollingCost
-            && (_solverConfiguration is null
-                ? manifest.PolicyId == RollingCostSolverConfiguration.PolicyId
-                : !_solverConfiguration.Matches(manifest)))
+        var matchesConfiguration = _c1Configuration?.Matches(manifest)
+            ?? _solverConfiguration?.Matches(manifest)
+            ?? manifest.PolicyId is not (RollingCostSolverConfiguration.PolicyId or C1RunnerConfiguration.PolicyId);
+        if (_executionMode == RunnerExecutionMode.OnlineRollingCost && !matchesConfiguration)
         {
             return Error(
                 "IDENTITY_MISMATCH",
@@ -611,7 +627,22 @@ public sealed class RunnerSession
                 mapped.Witness!.Message);
         }
 
-        var reduced = _onlineCoordinator.Propose(mapped.Batch!);
+        var batch = mapped.Batch!;
+        if (_c1Configuration is { } c1)
+        {
+            foreach (var arrived in batch.Events.OfType<RequestArrived>())
+            {
+                if (!c1.TryGetPolicy(arrived.Request.CommitmentPolicyId, out _))
+                {
+                    return OnlineDecisionBuildResult.Fail(
+                        "SCHEMA_VALIDATION_FAILED",
+                        ProtocolFailureDisposition.RejectMessage,
+                        "The request references a commitment policy absent from the bound configuration.");
+                }
+            }
+        }
+
+        var reduced = _onlineCoordinator.Propose(batch);
 
         if (!reduced.IsSuccess)
         {
@@ -621,27 +652,19 @@ public sealed class RunnerSession
                 reduced.Witness!.Message);
         }
 
-        var decision = _solverConfiguration is null
-            ? _rollingCostPolicy.Decide(reduced.ProposedState!, _candidateOptions)
-            : _rollingCostPolicy.DecideWithSolver(
-                reduced.ProposedState!,
-                _candidateOptions,
-                _solver!,
-                _solverConfiguration.ExecutionBudget);
-
-        if (!decision.IsSuccess)
+        var reducedState = reduced.ProposedState!;
+        var (decision, proposedState, publications, witness) = DecideOnline(
+            _onlineCoordinator.CommittedState, reducedState, batch.Events[^1].EventSequence);
+        if (witness is not null)
         {
             _onlineCoordinator.DiscardPendingProposal();
             return OnlineDecisionBuildResult.Fail(
                 "INTERNAL_ERROR",
                 ProtocolFailureDisposition.FailSession,
-                decision.Witness!.Message);
+                witness.Message);
         }
 
-        var staged = _onlineCoordinator.StageDecisionState(
-            reduced.ProposedState!,
-            decision.Decision!.ProposedState);
-
+        var staged = _onlineCoordinator.StageDecisionState(reducedState, proposedState!);
         if (!staged.IsSuccess)
         {
             _onlineCoordinator.DiscardPendingProposal();
@@ -651,13 +674,15 @@ public sealed class RunnerSession
                 staged.Witness!.Message);
         }
 
-        var actions = OnlineDecisionActionMapper.Map(decision.Decision);
-        var reasonCode = decision.Decision.RequestActions.Any(
+        var actions = OnlineDecisionActionMapper.Map(decision!)
+            .Concat(OnlineDecisionActionMapper.MapPublications(publications))
+            .ToArray();
+        var reasonCode = decision!.RequestActions.Any(
             value => value.Outcome == RequestDecisionOutcome.Accepted)
-            || decision.Decision.RequestActions.Count == 0
+            || decision.RequestActions.Count == 0
                 ? DecisionReasonCodes.Accepted
                 : DecisionReasonCodes.NoFeasibleInsertion;
-        var solverStatus = decision.Decision.SelectionExecution?.SolveResult.Status switch
+        var solverStatus = decision.SelectionExecution?.SolveResult.Status switch
         {
             CandidateSelectionSolveStatus.SafeFallback => SolverStatus.SafeFallback,
             CandidateSelectionSolveStatus.Optimal or CandidateSelectionSolveStatus.Feasible =>
@@ -665,11 +690,31 @@ public sealed class RunnerSession
             _ => SolverStatus.NotRun,
         };
         return OnlineDecisionBuildResult.Success(
-            OnlineStateCanonicalizer.CalculateHash(
-                decision.Decision.ProposedState),
+            OnlineStateCanonicalizer.CalculateHash(proposedState!),
             reasonCode,
             actions,
             solverStatus);
+    }
+
+    private (RollingCostDecision? Decision, OnlineState? State, IReadOnlyList<PromisePublication> Publications,
+        RollingCostWitness? Witness) DecideOnline(OnlineState before, OnlineState reduced, long sourceEventSequence)
+    {
+        if (_c1Configuration is { } configuration)
+        {
+            var context = new CommitmentMechanismContext(
+                before, reduced, configuration, configuration, _manifestHash.Value, sourceEventSequence);
+            var result = _c1Policy!.Decide(context, _candidateOptions, configuration.Solver);
+            return result.Decision is { } selected
+                ? (selected.Decision, selected.CommitmentValidation.ValidatedState,
+                    selected.CommitmentValidation.Publications, null)
+                : (null, null, [], result.Witness);
+        }
+
+        var rollingCost = _solverConfiguration is null
+            ? _rollingCostPolicy.Decide(reduced, _candidateOptions)
+            : _rollingCostPolicy.DecideWithSolver(
+                reduced, _candidateOptions, _solver!, _solverConfiguration.ExecutionBudget);
+        return (rollingCost.Decision, rollingCost.Decision?.ProposedState, [], rollingCost.Witness);
     }
 
     private RunnerSessionResult PayloadError(

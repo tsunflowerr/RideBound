@@ -252,13 +252,17 @@ public sealed class OnlineRunnerSessionTests
         Assert.Equal(RunnerSessionStatus.AwaitingDecisionApplied, session.Status);
     }
 
-    [Fact]
-    public async Task Executable_config_flag_runs_cp_sat_for_the_bound_manifest()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Executable_config_flag_runs_cp_sat_for_the_bound_manifest(bool c1)
     {
         var file = Path.GetTempFileName();
         try
         {
-            var configurationBytes = ReadFixture("runner/rolling-cost-cp-sat.config.json");
+            var configurationBytes = ReadFixture(c1
+                ? "runner/ridebound-hard-vector.config.json"
+                : "runner/rolling-cost-cp-sat.config.json");
             await File.WriteAllBytesAsync(file, configurationBytes);
             var startInfo = new ProcessStartInfo("dotnet")
             {
@@ -271,7 +275,7 @@ public sealed class OnlineRunnerSessionTests
             foreach (var argument in new[]
                      {
                          typeof(RunnerHost).Assembly.Location, "--mode", "online",
-                         "--rolling-cost-solver-config", file,
+                         c1 ? "--c1-solver-config" : "--rolling-cost-solver-config", file,
                      })
             {
                 startInfo.ArgumentList.Add(argument);
@@ -283,8 +287,10 @@ public sealed class OnlineRunnerSessionTests
             var stderrTask = process.StandardError.ReadToEndAsync();
             await process.StandardInput.WriteLineAsync(
                 JsonNode.Parse(ReadFixture("hello/valid-hello.json"))!.ToJsonString());
-            await process.StandardInput.WriteLineAsync(
-                CreateInitialize(RollingCostSolverConfiguration.Decode(configurationBytes)).ToJsonString());
+            var initialize = c1
+                ? CreateC1Initialize(C1RunnerConfiguration.Decode(configurationBytes))
+                : CreateInitialize(RollingCostSolverConfiguration.Decode(configurationBytes));
+            await process.StandardInput.WriteLineAsync(initialize.ToJsonString());
             await process.StandardInput.WriteLineAsync(
                 JsonNode.Parse(ReadFixture("wp2/valid-bootstrap-event-batch.json"))!.ToJsonString());
             process.StandardInput.Close();
@@ -302,6 +308,148 @@ public sealed class OnlineRunnerSessionTests
         {
             File.Delete(file);
         }
+    }
+
+    [Fact]
+    public void C1_relocates_a_waiting_rider_and_replays_the_acknowledged_ledger()
+    {
+        static string[] Trace()
+        {
+            var configuration = C1RunnerConfiguration.Decode(
+                ReadFixture("runner/ridebound-hard-vector.config.json"));
+            var session = CreateC1Session(configuration);
+            Assert.Equal("initialized", session.Process(Bytes(CreateC1Initialize(configuration))).Response?.MessageType.Value);
+            var boot = JsonNode.Parse(ReadFixture("wp2/valid-bootstrap-event-batch.json"))!;
+            var events = boot["payload"]!["events"]!.AsArray();
+            events[2]!["payload"]!["vehicle"]!["route"]!["mutableSuffix"] = new JsonArray();
+            var receiver = events[2]!.DeepClone();
+            receiver["eventSeq"] = 4;
+            receiver["payload"]!["vehicle"]!["vehicleId"] = "v-2";
+            receiver["payload"]!["vehicle"]!["position"]!["nodeId"] = "n-3";
+            events.Add(receiver);
+            var accepted = ReadDecision(session, Bytes(boot));
+            var acceptedAction = Assert.Single(accepted.Decision.Actions, x => IsAction(x, "requestAccepted"));
+            Assert.Equal("v-1", acceptedAction.GetProperty("payload").GetProperty("vehicleId").GetString());
+            Assert.DoesNotContain(accepted.Decision.Actions, x => IsAction(x, "promisePublished"));
+            Assert.Null(session.Process(CreateDecisionApplied(1, 1_000, accepted.Decision.DecisionHash.Value)).Response);
+
+            var booking = JsonNode.Parse(CreateTimerBatch(2, 5, 1_100))!;
+            var bookingEvent = booking["payload"]!["events"]![0]!;
+            bookingEvent["eventType"] = "bookingConfirmed";
+            bookingEvent["payload"] = new JsonObject { ["requestId"] = "r-1" };
+            var confirmed = ReadDecision(session, Bytes(booking));
+            var initial = Assert.Single(confirmed.Decision.Actions, x => IsAction(x, "promisePublished"))
+                .GetProperty("payload");
+            Assert.Equal(1, initial.GetProperty("promiseVersion").GetInt64());
+            Assert.Equal("v-1", initial.GetProperty("promise").GetProperty("vehicleId").GetString());
+            Assert.Null(session.Process(CreateDecisionApplied(2, 1_100, confirmed.Decision.DecisionHash.Value)).Response);
+
+            var update = JsonNode.Parse(CreateTimerBatch(3, 6, 1_200))!;
+            var travelEvent = events[0]!.DeepClone();
+            travelEvent["eventSeq"] = 6;
+            var snapshot = travelEvent["payload"]!["snapshot"]!;
+            snapshot["version"] = 2;
+            snapshot["snapshotHash"] = new string('b', 64);
+            snapshot["arcs"]!.AsArray().Add(
+                new JsonObject { ["fromNodeId"] = "n-3", ["toNodeId"] = "n-1", ["travelTimeMs"] = 10 });
+            update["payload"]!["events"]![0] = travelEvent;
+            var moved = ReadDecision(session, Bytes(update));
+            Assert.Equal(SolverStatus.Completed, moved.Decision.Solver.Status);
+            Assert.Equal(confirmed.Decision.StateAfterHash, moved.Decision.StateBeforeHash);
+            var routes = moved.Decision.Actions.Where(x => IsAction(x, "vehiclePlanUpdated"))
+                .Select(x => x.GetProperty("payload").GetProperty("vehicleId").GetString());
+            Assert.Equal(["v-1", "v-2"], routes);
+            var revision = Assert.Single(moved.Decision.Actions, x => IsAction(x, "promisePublished"))
+                .GetProperty("payload");
+            Assert.Equal("v-2", revision.GetProperty("promise").GetProperty("vehicleId").GetString());
+            Assert.Equal(2, revision.GetProperty("promiseVersion").GetInt64());
+            Assert.Equal(1, revision.GetProperty("budgetAfter").GetProperty("vehicleSwitchCount").GetInt64());
+            Assert.Equal(moved.Frame, ReadDecision(session, Bytes(update)).Frame);
+
+            var following = CreateTimerBatch(4, 7, 1_200);
+            Assert.Equal("error", session.Process(following).Response?.MessageType.Value);
+            Assert.Equal(2, session.AppliedEpoch);
+            Assert.Null(session.Process(CreateDecisionApplied(3, 1_200, moved.Decision.DecisionHash.Value)).Response);
+            var next = ReadDecision(session, following);
+            Assert.Equal(moved.Decision.StateAfterHash, next.Decision.StateBeforeHash);
+            Assert.DoesNotContain(next.Decision.Actions, x => IsAction(x, "promisePublished"));
+
+            var invalid = JsonNode.Parse(moved.Frame)!["payload"]!;
+            var publication = invalid["actions"]!.AsArray()
+                .Single(x => x!["decisionType"]!.GetValue<string>() == "promisePublished")!;
+            publication["payload"]!.AsObject().Remove("budgetAfter");
+            Assert.False(DecisionPayloadCodec.Decode(JsonSerializer.SerializeToElement(invalid)).IsSuccess);
+            return [accepted.Frame, confirmed.Frame, moved.Frame, next.Frame];
+        }
+
+        Assert.Equal(Trace(), Trace());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void C1_requires_the_bound_manifest_configuration(bool loadConfiguration)
+    {
+        var configuration = C1RunnerConfiguration.Decode(
+            ReadFixture("runner/ridebound-hard-vector.config.json"));
+        var session = CreateC1Session(loadConfiguration ? configuration : null);
+        var initialize = CreateC1Initialize(configuration);
+        if (loadConfiguration)
+        {
+            initialize["payload"]!["manifest"]!["policyConfigurationHash"] = new string('f', 64);
+        }
+
+        var result = session.Process(Bytes(initialize));
+        Assert.Equal("IDENTITY_MISMATCH", result.Response?.Payload.GetProperty("code").GetString());
+        Assert.Equal(0, session.AppliedEpoch);
+    }
+
+    [Fact]
+    public void C1_rejects_an_unknown_rider_policy_before_reduction()
+    {
+        var configuration = C1RunnerConfiguration.Decode(
+            ReadFixture("runner/ridebound-hard-vector.config.json"));
+        var session = CreateC1Session(configuration);
+        Assert.Equal("initialized", session.Process(Bytes(CreateC1Initialize(configuration))).Response?.MessageType.Value);
+        var original = ReadFixture("wp2/valid-bootstrap-event-batch.json");
+        var invalid = JsonNode.Parse(original)!;
+        invalid["payload"]!["events"]![1]!["payload"]!["request"]!["commitmentPolicyId"] = "absent-policy";
+        var result = session.Process(Bytes(invalid));
+        Assert.Equal("SCHEMA_VALIDATION_FAILED", result.Response?.Payload.GetProperty("code").GetString());
+        Assert.Equal(0, session.AppliedEpoch);
+        Assert.Equal(SolverStatus.Completed, ReadDecision(session, original).Decision.Solver.Status);
+    }
+
+    private static (DecisionPayload Decision, string Frame) ReadDecision(RunnerSession session, byte[] batch)
+    {
+        var response = session.Process(batch).Response;
+        Assert.True(response?.MessageType.Value == "decision", response?.Payload.GetRawText());
+        var decoded = DecisionPayloadCodec.Decode(response!.Payload);
+        Assert.True(decoded.IsSuccess, decoded.Error?.Message);
+        return (decoded.Value!, Encoding.UTF8.GetString(ProtocolEnvelopeCodec.Encode(response)));
+    }
+
+    private static bool IsAction(JsonElement action, string type) =>
+        action.GetProperty("decisionType").GetString() == type;
+
+    private static byte[] Bytes(JsonNode node) => Encoding.UTF8.GetBytes(node.ToJsonString());
+
+    private static RunnerSession CreateC1Session(C1RunnerConfiguration? configuration)
+    {
+        var session = new RunnerSession(
+            RunnerDefaults.CapabilityRequirements, RunnerExecutionMode.OnlineRollingCost, c1Configuration: configuration);
+        Assert.Equal("helloAck", session.Process(ReadFixture("hello/valid-hello.json")).Response?.MessageType.Value);
+        return session;
+    }
+
+    private static JsonNode CreateC1Initialize(C1RunnerConfiguration configuration)
+    {
+        var initialize = CreateInitialize(null);
+        var manifest = initialize["payload"]!["manifest"]!;
+        manifest["policyId"] = C1RunnerConfiguration.PolicyId;
+        manifest["policyVersion"] = configuration.PolicyVersion;
+        manifest["policyConfigurationHash"] = configuration.ContentHash.Value;
+        return initialize;
     }
 
     private static RollingCostSolverConfiguration ReadSolverConfiguration() =>

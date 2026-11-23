@@ -29,7 +29,8 @@ public static class RunnerHost
         int maximumLineBytes = NdjsonReader.DefaultMaximumLineBytes,
         RunnerExecutionMode executionMode =
             RunnerExecutionMode.StructuralConformance,
-        RollingCostSolverConfiguration? solverConfiguration = null)
+        RollingCostSolverConfiguration? solverConfiguration = null,
+        C1RunnerConfiguration? c1Configuration = null)
     {
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(output);
@@ -40,7 +41,8 @@ public static class RunnerHost
         var session = new RunnerSession(
             RunnerDefaults.CapabilityRequirements,
             executionMode,
-            solverConfiguration: solverConfiguration);
+            solverConfiguration: solverConfiguration,
+            c1Configuration: c1Configuration);
 
         while (true)
         {

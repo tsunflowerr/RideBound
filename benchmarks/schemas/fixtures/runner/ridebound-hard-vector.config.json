@@ -1,0 +1,50 @@
+{
+  "configurationVersion": "1.0.0",
+  "policyId": "ridebound-hard-vector",
+  "policyVersion": "1.0.0",
+  "candidateGeneration": {
+    "maximumCandidatesPerVehicle": 100,
+    "maximumNewRequestsPerVehicle": 4,
+    "maximumExplorationWorkUnits": 10000,
+    "waitingRiderRelocation": {
+      "maximumTargetVehicles": 2
+    }
+  },
+  "solverExecution": {
+    "adapterVersion": "google-ortools-9.15.6755",
+    "maximumGenerationWorkUnits": 100000,
+    "maximumValidationWorkUnits": 1000,
+    "maximumSolverWorkUnits": 100000,
+    "maximumSolverDeterministicTimeMicros": 1000000,
+    "randomSeed": 7
+  },
+  "policies": [
+    {
+      "policyId": "uniform-v1",
+      "limits": [
+        {"dimension": "pickup_eta_total_ms", "applicablePhases": ["accepted", "waitingPickup", "onboard"]},
+        {"dimension": "drop_eta_total_ms", "applicablePhases": ["accepted", "waitingPickup", "onboard"], "hardLimit": 600},
+        {"dimension": "material_eta_revision_count", "applicablePhases": ["accepted", "waitingPickup", "onboard"]},
+        {"dimension": "vehicle_switch_count", "applicablePhases": ["accepted", "waitingPickup", "onboard"]},
+        {"dimension": "pickup_stop_relocation_mm", "applicablePhases": ["accepted", "waitingPickup", "onboard"]},
+        {"dimension": "pickup_stop_switch_count", "applicablePhases": ["accepted", "waitingPickup", "onboard"]},
+        {"dimension": "drop_stop_relocation_mm", "applicablePhases": ["accepted", "waitingPickup", "onboard"]},
+        {"dimension": "drop_stop_switch_count", "applicablePhases": ["accepted", "waitingPickup", "onboard"]},
+        {"dimension": "incumbent_order_inversion_count", "applicablePhases": ["accepted", "waitingPickup", "onboard"]},
+        {"dimension": "pre_pickup_inserted_stop_count", "applicablePhases": ["accepted", "waitingPickup", "onboard"]}
+      ],
+      "materialRevisionRule": {
+        "rawEtaThresholdMs": 1000
+      },
+      "finalConfirmationLocks": [
+        "pickupStop",
+        "pickupEta"
+      ],
+      "ratchetLocks": [
+        "pickupEta"
+      ],
+      "waitingRiderRelocation": true
+    }
+  ],
+  "stopDistances": []
+}

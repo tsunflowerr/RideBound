@@ -68,19 +68,47 @@ public sealed class RollingCostSolverConfiguration
             throw new InvalidDataException("policyVersion must be a valid protocol identifier.");
         }
 
-        var generation = root.GetProperty("candidateGeneration");
-        RequireFields(
-            generation,
-            "candidateGeneration",
-            "maximumCandidatesPerVehicle",
-            "maximumNewRequestsPerVehicle",
-            "maximumExplorationWorkUnits");
-        var candidateOptions = new CandidateGenerationOptions(
+        var candidateOptions = ReadCandidateGeneration(root.GetProperty("candidateGeneration"));
+        var executionBudget = ReadExecutionBudget(root.GetProperty("solverExecution"));
+        Sha256Hex.TryCreate(Convert.ToHexStringLower(SHA256.HashData(canonical)), out var contentHash);
+        return new RollingCostSolverConfiguration(contentHash!, policyVersion, candidateOptions, executionBudget);
+    }
+
+    internal static CandidateGenerationOptions ReadCandidateGeneration(
+        JsonElement generation, bool allowRelocation = false)
+    {
+        string[] fields = ["maximumCandidatesPerVehicle", "maximumNewRequestsPerVehicle", "maximumExplorationWorkUnits"];
+        WaitingRiderRelocationGenerationOptions? relocationOptions = null;
+        if (allowRelocation
+            && generation.ValueKind == JsonValueKind.Object
+            && generation.TryGetProperty("waitingRiderRelocation", out var relocation))
+        {
+            RequireFields(generation, "candidateGeneration", [..fields, "waitingRiderRelocation"]);
+            if (relocation.ValueKind == JsonValueKind.Object && !relocation.EnumerateObject().Any())
+            {
+                relocationOptions = new WaitingRiderRelocationGenerationOptions();
+            }
+            else
+            {
+                RequireFields(relocation, "candidateGeneration.waitingRiderRelocation", "maximumTargetVehicles");
+                relocationOptions = new WaitingRiderRelocationGenerationOptions(
+                    (int)Integer(relocation, "maximumTargetVehicles", 1, int.MaxValue));
+            }
+        }
+        else
+        {
+            RequireFields(generation, "candidateGeneration", fields);
+        }
+
+        return new CandidateGenerationOptions(
             (int)Integer(generation, "maximumCandidatesPerVehicle", 1, int.MaxValue),
             (int)Integer(generation, "maximumNewRequestsPerVehicle", 0, int.MaxValue),
-            maximumExplorationWorkUnits: PositiveInteger(generation, "maximumExplorationWorkUnits"));
+            maximumExplorationWorkUnits: PositiveInteger(generation, "maximumExplorationWorkUnits"),
+            waitingRiderRelocation: relocationOptions);
+    }
 
-        var solver = root.GetProperty("solverExecution");
+    internal static DeterministicCandidateSelectionExecutionBudget ReadExecutionBudget(JsonElement solver)
+    {
         RequireFields(
             solver,
             "solverExecution",
@@ -114,11 +142,10 @@ public sealed class RollingCostSolverConfiguration
             throw new InvalidDataException(executionBudget.Failure!.Message);
         }
 
-        Sha256Hex.TryCreate(Convert.ToHexStringLower(SHA256.HashData(canonical)), out var contentHash);
-        return new RollingCostSolverConfiguration(contentHash!, policyVersion, candidateOptions, executionBudget.Value!);
+        return executionBudget.Value!;
     }
 
-    private static void RequireFields(JsonElement element, string path, params string[] fields)
+    internal static void RequireFields(JsonElement element, string path, params string[] fields)
     {
         if (element.ValueKind != JsonValueKind.Object)
         {
@@ -142,7 +169,7 @@ public sealed class RollingCostSolverConfiguration
         }
     }
 
-    private static string Text(JsonElement element, string name)
+    internal static string Text(JsonElement element, string name)
     {
         var value = element.GetProperty(name);
         return value.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(value.GetString())
@@ -150,10 +177,10 @@ public sealed class RollingCostSolverConfiguration
             : throw new InvalidDataException($"{name} must be a non-empty string.");
     }
 
-    private static long PositiveInteger(JsonElement element, string name) =>
+    internal static long PositiveInteger(JsonElement element, string name) =>
         Integer(element, name, 1, DomainLimits.MaxCanonicalInteger);
 
-    private static long Integer(JsonElement element, string name, long minimum, long maximum)
+    internal static long Integer(JsonElement element, string name, long minimum, long maximum)
     {
         var value = element.GetProperty(name);
         if (value.ValueKind == JsonValueKind.Number

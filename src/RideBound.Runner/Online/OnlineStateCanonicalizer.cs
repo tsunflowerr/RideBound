@@ -6,6 +6,7 @@ using System.Text.Json;
 using RideBound.Application.State;
 using RideBound.Contracts.Protocol;
 using RideBound.Contracts.Serialization;
+using RideBound.Domain.Commitments;
 using RideBound.Domain.Common;
 using RideBound.Domain.Requests;
 using RideBound.Domain.Routes;
@@ -106,6 +107,11 @@ public static class OnlineStateCanonicalizer
                 writer.WriteEndObject();
             }
 
+            if (state.Commitments.Histories.Count != 0)
+            {
+                WriteCommitmentLedger(writer, state.Commitments);
+            }
+
             writer.WriteEndObject();
         }
 
@@ -121,6 +127,70 @@ public static class OnlineStateCanonicalizer
         var text = Convert.ToHexStringLower(SHA256.HashData(buffer.WrittenSpan));
         Sha256Hex.TryCreate(text, out var hash);
         return hash!;
+    }
+
+    private static void WriteCommitmentLedger(Utf8JsonWriter writer, CommitmentLedger ledger)
+    {
+        writer.WritePropertyName("commitmentLedger");
+        writer.WriteStartArray();
+        foreach (var history in ledger.Histories.Values.OrderBy(
+                     value => value.RequestId.Value, StringComparer.Ordinal))
+        {
+            writer.WriteStartObject();
+            writer.WriteString("requestId", history.RequestId.Value);
+            writer.WritePropertyName("entries");
+            writer.WriteStartArray();
+            foreach (var entry in history.Entries)
+            {
+                writer.WriteStartObject();
+                writer.WriteString("kind", entry.Kind == CommitmentLedgerEntryKind.InitialPromise
+                    ? "initialPromise"
+                    : "revision");
+                writer.WriteString("publicationId", entry.PublicationId);
+                writer.WriteString("reasonCode", entry.ReasonCode);
+                writer.WriteNumber("sourceEventSeq", entry.SourceEventSequence);
+                WritePublishedPromise(writer, "publishedPromise", entry.PublishedPromise);
+                if (entry.PreviousPromise is { } previous)
+                {
+                    WritePublishedPromise(writer, "previousPromise", previous);
+                }
+
+                writer.WritePropertyName("exogenousProjection");
+                CommitmentContractCodec.WritePromise(
+                    writer, OnlineDecisionActionMapper.MapPromise(entry.ExogenousProjection));
+                WriteVector(writer, "exogenousDelta", entry.Deltas.Exogenous);
+                WriteVector(writer, "decisionDelta", entry.Deltas.DecisionInduced);
+                WriteVector(writer, "visibleDelta", entry.Deltas.Visible);
+                WriteVector(writer, "budgetBefore", entry.BudgetBefore);
+                WriteVector(writer, "budgetAfter", entry.BudgetAfter);
+                writer.WriteEndObject();
+            }
+
+            writer.WriteEndArray();
+            writer.WriteEndObject();
+        }
+
+        writer.WriteEndArray();
+    }
+
+    private static void WritePublishedPromise(
+        Utf8JsonWriter writer, string field, PublishedPromise promise)
+    {
+        writer.WritePropertyName(field);
+        writer.WriteStartObject();
+        writer.WriteNumber("version", promise.Version.Value);
+        writer.WriteNumber("publishedEpoch", promise.PublishedEpoch);
+        writer.WriteNumber("publishedAtMs", promise.PublishedAt.Milliseconds);
+        writer.WritePropertyName("projection");
+        CommitmentContractCodec.WritePromise(
+            writer, OnlineDecisionActionMapper.MapPromise(promise.Projection));
+        writer.WriteEndObject();
+    }
+
+    private static void WriteVector(Utf8JsonWriter writer, string field, CommitmentVector vector)
+    {
+        writer.WritePropertyName(field);
+        CommitmentContractCodec.WriteVector(writer, OnlineDecisionActionMapper.MapVector(vector));
     }
 
     private static void WriteRequest(Utf8JsonWriter writer, RideRequest request)

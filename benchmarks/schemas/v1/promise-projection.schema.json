@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/tsunflowerr/RideBound/main/benchmarks/schemas/v1/promise-projection.schema.json",
+  "title": "RideBound promise projection v1",
+  "type": "object",
+  "required": [
+    "requestId", "vehicleId", "pickupStopId", "pickupNodeId",
+    "dropStopId", "dropNodeId", "pickupEtaMs", "dropEtaMs", "serviceOrder"
+  ],
+  "properties": {
+    "requestId": { "$ref": "definitions.schema.json#/$defs/opaqueIdentifier" },
+    "vehicleId": { "$ref": "definitions.schema.json#/$defs/opaqueIdentifier" },
+    "pickupStopId": { "$ref": "definitions.schema.json#/$defs/opaqueIdentifier" },
+    "pickupNodeId": { "$ref": "definitions.schema.json#/$defs/opaqueIdentifier" },
+    "dropStopId": { "$ref": "definitions.schema.json#/$defs/opaqueIdentifier" },
+    "dropNodeId": { "$ref": "definitions.schema.json#/$defs/opaqueIdentifier" },
+    "pickupEtaMs": { "$ref": "definitions.schema.json#/$defs/canonicalNonNegativeInteger" },
+    "dropEtaMs": { "$ref": "definitions.schema.json#/$defs/canonicalNonNegativeInteger" },
+    "serviceOrder": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "promise-service-token.schema.json" }
+    }
+  },
+  "additionalProperties": false
+}

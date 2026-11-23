@@ -62,14 +62,29 @@ public sealed class SolverBackedFleetSelector
         IReadOnlyList<VehicleCandidateSet> candidateSets,
         DeterministicCandidateSelectionExecutionBudget executionBudget,
         CandidateSelectionPreSolveAccounting preSolveAccounting,
-        IFleetSelectionValidator validator)
+        IFleetSelectionValidator validator) =>
+        SelectCore(candidateSets, executionBudget, preSolveAccounting, validator, allowRelocation: false);
+
+    internal SolverBackedFleetSelectionResult SelectCoupled(
+        IReadOnlyList<VehicleCandidateSet> candidateSets,
+        DeterministicCandidateSelectionExecutionBudget executionBudget,
+        CandidateSelectionPreSolveAccounting preSolveAccounting,
+        IFleetSelectionValidator validator) =>
+        SelectCore(candidateSets, executionBudget, preSolveAccounting, validator, allowRelocation: true);
+
+    private SolverBackedFleetSelectionResult SelectCore(
+        IReadOnlyList<VehicleCandidateSet> candidateSets,
+        DeterministicCandidateSelectionExecutionBudget executionBudget,
+        CandidateSelectionPreSolveAccounting preSolveAccounting,
+        IFleetSelectionValidator validator,
+        bool allowRelocation)
     {
         ArgumentNullException.ThrowIfNull(candidateSets);
         ArgumentNullException.ThrowIfNull(executionBudget);
         ArgumentNullException.ThrowIfNull(preSolveAccounting);
         ArgumentNullException.ThrowIfNull(validator);
 
-        if (candidateSets.SelectMany(set => set.Candidates).Any(
+        if (!allowRelocation && candidateSets.SelectMany(set => set.Candidates).Any(
                 candidate => candidate.RelocatedRequestId is not null
                     || candidate.RelocationRole is not null))
         {
@@ -211,6 +226,14 @@ public sealed class SolverBackedFleetSelector
                     "operational-cost",
                     candidate => candidate.Schedule.OperationalCost));
 
+            if (allCandidates.Any(candidate => candidate.RelocationRole is not null))
+            {
+                objectives.Add(
+                    MinSum(
+                        "relocation-candidate-count",
+                        candidate => candidate.RelocationRole is null ? 0 : 1));
+            }
+
             foreach (var set in orderedSets)
             {
                 var ranks = set.Candidates
@@ -241,7 +264,13 @@ public sealed class SolverBackedFleetSelector
                         candidate.NewRequestIds,
                         objectives.Select(
                             objective => objective.Contribution(candidate)).ToArray(),
-                        candidate.IsNoOp)));
+                        candidate.IsNoOp,
+                        candidate.RelocationRole == RelocationRole.Donor
+                            ? candidate.RelocatedRequestId
+                            : null,
+                        candidate.RelocationRole == RelocationRole.Receiver
+                            ? candidate.RelocatedRequestId
+                            : null)));
 
             return problem.IsSuccess
                 ? new SelectionModelMapping(problem.Value, candidateMap, null)

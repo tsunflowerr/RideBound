@@ -6,8 +6,6 @@ using RideBound.Algorithms.Candidates;
 using RideBound.Application.Optimization;
 using RideBound.Application.State;
 using RideBound.Domain.Common;
-using RideBound.Domain.Requests;
-using RideBound.Domain.Runs;
 using RideBound.Domain.Validation;
 
 namespace RideBound.Algorithms.Policies;
@@ -83,16 +81,17 @@ public sealed class RollingCostPolicy
             return RollingCostDecisionResult.Failure(selection.Witness!);
         }
 
-        var validationFailure = ValidateSelection(
+        var validationFailure = SelectionApplier.ValidateSelection(
             state,
-            selection.Selection!);
+            selection.Selection!,
+            _validator);
 
         if (validationFailure is not null)
         {
             return RollingCostDecisionResult.Failure(validationFailure);
         }
 
-        var applied = ApplySelection(
+        var applied = SelectionApplier.ApplySelection(
             state,
             selection.Selection!,
             generated.VehicleCandidates!,
@@ -122,7 +121,7 @@ public sealed class RollingCostPolicy
         var candidates = generation.VehicleCandidates!;
         if (candidates.Count == 0)
         {
-            var empty = ApplySelection(
+            var empty = SelectionApplier.ApplySelection(
                 state,
                 new FleetSelection([], 0, 0),
                 candidates,
@@ -153,14 +152,17 @@ public sealed class RollingCostPolicy
             });
     }
 
-    private static DomainResult<CandidateSelectionPreSolveAccounting> CreateAccounting(
+    internal static DomainResult<CandidateSelectionPreSolveAccounting> CreateAccounting(
         CandidateGenerationDiagnostics diagnostics,
-        DeterministicCandidateSelectionExecutionBudget budget)
+        DeterministicCandidateSelectionExecutionBudget budget,
+        long validationWork = 0)
     {
         var generationWork = 0L;
-        foreach (var loss in diagnostics.VehicleLosses)
+        var workUnits = diagnostics.VehicleLosses.Select(loss => loss.ExplorationWorkUnits)
+            .Concat((diagnostics.RelocationLosses ?? []).Select(loss => loss.WorkUnits));
+        foreach (var work in workUnits)
         {
-            if (loss.ExplorationWorkUnits > budget.MaximumGenerationWorkUnits - generationWork)
+            if (work > budget.MaximumGenerationWorkUnits - generationWork)
             {
                 return DomainResult<CandidateSelectionPreSolveAccounting>.Fail(
                     CandidateSelectionFailureCodes.InvalidExecutionAccounting,
@@ -168,7 +170,7 @@ public sealed class RollingCostPolicy
                     dimension: "preSolveAccounting");
             }
 
-            generationWork += loss.ExplorationWorkUnits;
+            generationWork += work;
         }
 
         var omittedCount = 0L;
@@ -190,7 +192,7 @@ public sealed class RollingCostPolicy
         return CandidateSelectionPreSolveAccounting.Create(
             budget,
             generationWork,
-            consumedValidationWorkUnits: 0,
+            validationWork,
             omittedCount,
             omittedCount == 0 ? null : AggregateOmissionDigest(diagnostics.Omissions),
             saturated);
@@ -232,13 +234,13 @@ public sealed class RollingCostPolicy
         public CandidateSelectionValidationResult Validate(FleetSelection selection)
         {
             Decision = null;
-            var failure = policy.ValidateSelection(state, selection);
+            var failure = SelectionApplier.ValidateSelection(state, selection, policy._validator);
             if (failure is not null)
             {
                 return CandidateSelectionValidationResult.Invalid(failure.Code, failure.Message);
             }
 
-            var applied = ApplySelection(
+            var applied = SelectionApplier.ApplySelection(
                 state,
                 selection,
                 generation.VehicleCandidates!,
@@ -249,201 +251,4 @@ public sealed class RollingCostPolicy
                 : CandidateSelectionValidationResult.Invalid(applied.Witness!.Code, applied.Witness.Message);
         }
     }
-
-    private RollingCostWitness? ValidateSelection(
-        OnlineState state,
-        FleetSelection selection)
-    {
-        foreach (var plan in selection.VehiclePlans)
-        {
-            var isUnchanged = plan.Candidate.IsNoOp
-                && state.Run.Vehicles.TryGetValue(plan.VehicleId, out var vehicle)
-                && ReferenceEquals(vehicle.Route, plan.Candidate.Route);
-            var validation = isUnchanged
-                ? _validator.ValidateWithExogenousRelief(
-                    state.Run,
-                    plan.VehicleId,
-                    plan.Candidate.Route,
-                    state.TravelTimes!,
-                    state.Run.SimulationTime)
-                : _validator.Validate(
-                    new PhysicalValidationContext(
-                        state.Run,
-                        plan.VehicleId,
-                        plan.Candidate.Route,
-                        state.TravelTimes!,
-                        state.Run.SimulationTime));
-
-            if (!validation.IsFeasible)
-            {
-                return new RollingCostWitness(
-                    RollingCostFailureCodes.SelectedCandidateInvalid,
-                    validation.Witness!.Message,
-                    plan.VehicleId,
-                    validation.Witness.RequestId,
-                    plan.Candidate.CandidateId,
-                    validation.Witness.Dimension);
-            }
-        }
-
-        return null;
-    }
-
-    private static RollingCostDecisionResult ApplySelection(
-        OnlineState state,
-        FleetSelection selection,
-        IReadOnlyList<VehicleCandidateSet> generated,
-        bool searchIsComplete)
-    {
-        var run = state.Run;
-        var selectedRequests = selection.VehiclePlans
-            .SelectMany(value => value.Candidate.NewRequestIds)
-            .ToHashSet();
-        var feasibleRequests = generated
-            .SelectMany(value => value.Candidates)
-            .SelectMany(value => value.NewRequestIds)
-            .ToHashSet();
-        var pruned = generated
-            .SelectMany(value => value.PrunedCandidates)
-            .OrderBy(value => value.CandidateId, StringComparer.Ordinal)
-            .ToArray();
-
-        foreach (var plan in selection.VehiclePlans.OrderBy(
-                     value => value.VehicleId.Value,
-                     StringComparer.Ordinal))
-        {
-            if (!plan.Candidate.IsNoOp)
-            {
-                var route = run.UpdateVehicleRoute(
-                    plan.VehicleId,
-                    plan.Candidate.Route);
-
-                if (!route.IsSuccess)
-                {
-                    return ApplyFailure(
-                        route.Failure!,
-                        plan.VehicleId,
-                        plan.Candidate.CandidateId);
-                }
-
-                run = route.Value!;
-            }
-
-            foreach (var requestId in plan.Candidate.NewRequestIds.OrderBy(
-                         value => value.Value,
-                         StringComparer.Ordinal))
-            {
-                var accepted = run.AcceptRequest(requestId, plan.VehicleId);
-
-                if (!accepted.IsSuccess)
-                {
-                    return ApplyFailure(
-                        accepted.Failure!,
-                        plan.VehicleId,
-                        plan.Candidate.CandidateId,
-                        requestId);
-                }
-
-                run = accepted.Value!;
-            }
-        }
-
-        var actions = new List<RequestDecisionAction>();
-        var pending = state.Run.Requests.Values
-            .Where(value => value.Lifecycle == RequestLifecycle.Pending)
-            .OrderBy(value => value.Id.Value, StringComparer.Ordinal)
-            .ToArray();
-
-        foreach (var request in pending)
-        {
-            if (selectedRequests.Contains(request.Id))
-            {
-                var selectedPlan = selection.VehiclePlans.Single(
-                    value => value.Candidate.NewRequestIds.Contains(request.Id));
-                actions.Add(
-                    new RequestDecisionAction(
-                        request.Id,
-                        RequestDecisionOutcome.Accepted,
-                        RollingCostReasonCodes.Accepted,
-                        selectedPlan.VehicleId,
-                        selectedPlan.Candidate.CandidateId));
-                continue;
-            }
-
-            if (feasibleRequests.Contains(request.Id))
-            {
-                actions.Add(
-                    new RequestDecisionAction(
-                        request.Id,
-                        RequestDecisionOutcome.Deferred,
-                        RollingCostReasonCodes.FleetSelectionConflict));
-                continue;
-            }
-
-            var relatedPrunes = pruned
-                .Where(value => value.NewRequestIds.Contains(request.Id))
-                .ToArray();
-
-            if (!searchIsComplete || relatedPrunes.Length == 0)
-            {
-                actions.Add(
-                    new RequestDecisionAction(
-                        request.Id,
-                        RequestDecisionOutcome.Deferred,
-                        "CANDIDATE_BOUND"));
-                continue;
-            }
-
-            var rejected = run.RejectRequest(request.Id);
-
-            if (!rejected.IsSuccess)
-            {
-                return ApplyFailure(rejected.Failure!, requestId: request.Id);
-            }
-
-            run = rejected.Value!;
-            actions.Add(
-                new RequestDecisionAction(
-                    request.Id,
-                    RequestDecisionOutcome.Rejected,
-                    FindRejectionReason(request.Id, relatedPrunes)));
-        }
-
-        return RollingCostDecisionResult.Success(
-            new RollingCostDecision(
-                state with { Run = run },
-                selection.VehiclePlans,
-                actions.AsReadOnly(),
-                pruned,
-                selection.AcceptedRequestCount,
-                selection.OperationalCost));
-    }
-
-    private static string FindRejectionReason(
-        RequestId requestId,
-        IReadOnlyList<CandidatePruneWitness> pruned)
-    {
-        var witness = pruned
-            .Where(value => value.NewRequestIds.Contains(requestId))
-            .OrderBy(
-                value => value.NewRequestIds.Count == 1 ? 0 : 1)
-            .ThenBy(value => value.CandidateId, StringComparer.Ordinal)
-            .FirstOrDefault();
-
-        return witness?.Code ?? RollingCostReasonCodes.NoFeasibleInsertion;
-    }
-
-    private static RollingCostDecisionResult ApplyFailure(
-        DomainFailure failure,
-        VehicleId? vehicleId = null,
-        string? candidateId = null,
-        RequestId? requestId = null) =>
-        RollingCostDecisionResult.Failure(
-            new RollingCostWitness(
-                RollingCostFailureCodes.DecisionApplyFailed,
-                failure.Message,
-                vehicleId,
-                requestId,
-                candidateId,
-                failure.Dimension));
 }

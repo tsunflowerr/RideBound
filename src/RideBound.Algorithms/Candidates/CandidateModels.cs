@@ -1,3 +1,4 @@
+using RideBound.Application.Commitments;
 using RideBound.Domain.Common;
 using RideBound.Domain.Routes;
 using RideBound.Domain.Validation;
@@ -48,7 +49,8 @@ public sealed record CandidatePruneWitness(
     IReadOnlyList<RequestId> NewRequestIds,
     string Code,
     string Message,
-    PhysicalViolationWitness? PhysicalWitness = null);
+    PhysicalViolationWitness? PhysicalWitness = null,
+    IReadOnlyList<CommitmentValidationWitness>? CommitmentWitnesses = null);
 
 public sealed record VehicleCandidateSet(
     VehicleId VehicleId,

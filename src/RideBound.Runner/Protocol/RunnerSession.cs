@@ -3,12 +3,15 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using RideBound.Algorithms.Candidates;
 using RideBound.Algorithms.Policies;
+using RideBound.Application.Optimization;
 using RideBound.Application.State;
 using RideBound.Contracts.Protocol;
 using RideBound.Contracts.Serialization;
 using RideBound.Domain.Common;
 using RideBound.Domain.Runs;
+using RideBound.Runner.Configuration;
 using RideBound.Runner.Online;
+using RideBound.Solvers.OrTools;
 
 namespace RideBound.Runner.Protocol;
 
@@ -41,6 +44,8 @@ public sealed class RunnerSession
     private readonly OnlineEventMapper _onlineEventMapper;
     private readonly RollingCostPolicy _rollingCostPolicy;
     private readonly CandidateGenerationOptions _candidateOptions;
+    private readonly RollingCostSolverConfiguration? _solverConfiguration;
+    private readonly OrToolsCandidateSelectionSolver? _solver;
     private HelloPayload? _hello;
     private HelloAckPayload? _helloAcknowledgement;
     private InitializedSessionIdentity? _identity;
@@ -60,14 +65,26 @@ public sealed class RunnerSession
             RunnerExecutionMode.StructuralConformance,
         OnlineEventMapper? onlineEventMapper = null,
         RollingCostPolicy? rollingCostPolicy = null,
-        CandidateGenerationOptions? candidateOptions = null)
+        CandidateGenerationOptions? candidateOptions = null,
+        RollingCostSolverConfiguration? solverConfiguration = null)
     {
         ArgumentNullException.ThrowIfNull(requirements);
+        if (solverConfiguration is not null
+            && (executionMode != RunnerExecutionMode.OnlineRollingCost || candidateOptions is not null))
+        {
+            throw new ArgumentException(
+                "The solver configuration supplies the candidate options and requires online mode.",
+                nameof(solverConfiguration));
+        }
+
         _requirements = requirements;
         _executionMode = executionMode;
         _onlineEventMapper = onlineEventMapper ?? new OnlineEventMapper();
         _rollingCostPolicy = rollingCostPolicy ?? new RollingCostPolicy();
-        _candidateOptions = candidateOptions
+        _solverConfiguration = solverConfiguration;
+        _solver = solverConfiguration is null ? null : new OrToolsCandidateSelectionSolver();
+        _candidateOptions = solverConfiguration?.CandidateGeneration
+            ?? candidateOptions
             ?? new CandidateGenerationOptions(
                 maximumCandidatesPerVehicle: 10_000,
                 maximumNewRequestsPerVehicle: 4,
@@ -222,6 +239,19 @@ public sealed class RunnerSession
                 validation.Error!.ProtocolCode,
                 ProtocolFailureDisposition.RejectMessage,
                 validation.Error.Message,
+                envelope);
+        }
+
+        var manifest = validation.Identity!.Manifest;
+        if (_executionMode == RunnerExecutionMode.OnlineRollingCost
+            && (_solverConfiguration is null
+                ? manifest.PolicyId == RollingCostSolverConfiguration.PolicyId
+                : !_solverConfiguration.Matches(manifest)))
+        {
+            return Error(
+                "IDENTITY_MISMATCH",
+                ProtocolFailureDisposition.RejectMessage,
+                "The manifest policy ID, version and configuration hash must match the Runner solver configuration.",
                 envelope);
         }
 
@@ -393,7 +423,7 @@ public sealed class RunnerSession
                 new CertificateShell(
                     CertificateStatus.NotProduced,
                     DecisionPayloadCodec.CertificateNotAvailableReasonCode),
-                new SolverStatusShell(SolverStatus.NotRun),
+                new SolverStatusShell(online.Solver),
                 _stateHash,
                 stateAfterHash,
                 _previousDecisionHash,
@@ -591,9 +621,13 @@ public sealed class RunnerSession
                 reduced.Witness!.Message);
         }
 
-        var decision = _rollingCostPolicy.Decide(
-            reduced.ProposedState!,
-            _candidateOptions);
+        var decision = _solverConfiguration is null
+            ? _rollingCostPolicy.Decide(reduced.ProposedState!, _candidateOptions)
+            : _rollingCostPolicy.DecideWithSolver(
+                reduced.ProposedState!,
+                _candidateOptions,
+                _solver!,
+                _solverConfiguration.ExecutionBudget);
 
         if (!decision.IsSuccess)
         {
@@ -623,11 +657,19 @@ public sealed class RunnerSession
             || decision.Decision.RequestActions.Count == 0
                 ? DecisionReasonCodes.Accepted
                 : DecisionReasonCodes.NoFeasibleInsertion;
+        var solverStatus = decision.Decision.SelectionExecution?.SolveResult.Status switch
+        {
+            CandidateSelectionSolveStatus.SafeFallback => SolverStatus.SafeFallback,
+            CandidateSelectionSolveStatus.Optimal or CandidateSelectionSolveStatus.Feasible =>
+                SolverStatus.Completed,
+            _ => SolverStatus.NotRun,
+        };
         return OnlineDecisionBuildResult.Success(
             OnlineStateCanonicalizer.CalculateHash(
                 decision.Decision.ProposedState),
             reasonCode,
-            actions);
+            actions,
+            solverStatus);
     }
 
     private RunnerSessionResult PayloadError(
@@ -731,13 +773,15 @@ public sealed class RunnerSession
         Sha256Hex? StateAfterHash,
         string? ReasonCode,
         IReadOnlyList<JsonElement>? Actions,
+        SolverStatus Solver,
         OnlineDecisionBuildError? Error)
     {
         public static OnlineDecisionBuildResult Success(
             Sha256Hex stateAfterHash,
             string reasonCode,
-            IReadOnlyList<JsonElement> actions) =>
-            new(stateAfterHash, reasonCode, actions, null);
+            IReadOnlyList<JsonElement> actions,
+            SolverStatus solverStatus) =>
+            new(stateAfterHash, reasonCode, actions, solverStatus, null);
 
         public static OnlineDecisionBuildResult Fail(
             string code,
@@ -747,6 +791,7 @@ public sealed class RunnerSession
                 null,
                 null,
                 null,
+                SolverStatus.NotRun,
                 new OnlineDecisionBuildError(code, disposition, message));
     }
 

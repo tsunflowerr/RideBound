@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -5,6 +6,7 @@ using RideBound.Algorithms.Candidates;
 using RideBound.Contracts.Protocol;
 using RideBound.Contracts.Serialization;
 using RideBound.Contracts.Tests.Fixtures;
+using RideBound.Runner.Configuration;
 using RideBound.Runner.Protocol;
 
 namespace RideBound.Runner.Tests.Online;
@@ -156,25 +158,196 @@ public sealed class OnlineRunnerSessionTests
         Assert.Equal(RunnerSessionStatus.AwaitingDecisionApplied, session.Status);
     }
 
+    [Fact]
+    public void Solver_status_is_hashed_and_retry_waits_for_the_matching_ack()
+    {
+        var configuration = ReadSolverConfiguration();
+        var session = CreateInitializedOnlineSession(solverConfiguration: configuration);
+        var batch = ReadFixture("wp2/valid-bootstrap-event-batch.json");
+        var produced = session.Process(batch);
+        var decision = DecisionPayloadCodec.Decode(produced.Response!.Payload).Value!;
+        var retry = session.Process(batch);
+        var wrongSession = CreateInitializedOnlineSession(solverConfiguration: configuration);
+        wrongSession.Process(batch);
+        var wrongAck = wrongSession.Process(CreateDecisionApplied(1, 1_000, new string('f', 64)));
+        var baseline = CreateInitializedOnlineSession().Process(batch);
+        var baselineDecision = DecisionPayloadCodec.Decode(baseline.Response!.Payload).Value!;
+
+        Assert.Equal(SolverStatus.Completed, decision.Solver.Status);
+        using var hashProjection = JsonDocument.Parse(DecisionPayloadCodec.Encode(decision, hashProjection: true));
+        Assert.Equal("completed", hashProjection.RootElement.GetProperty("solver").GetProperty("status").GetString());
+        Assert.Equal(CertificateStatus.NotProduced, decision.Certificate.Status);
+        Assert.Equal(baselineDecision.StateAfterHash, decision.StateAfterHash);
+        Assert.NotEqual(baselineDecision.DecisionHash, decision.DecisionHash);
+        Assert.Equal(CanonicalJson.Serialize(produced.Response), CanonicalJson.Serialize(retry.Response!));
+        Assert.Equal("HASH_MISMATCH", wrongAck.Response!.Payload.GetProperty("code").GetString());
+        Assert.Equal(RunnerSessionStatus.Failed, wrongSession.Status);
+        Assert.Equal(0, wrongSession.AppliedEpoch);
+        Assert.Equal(0, session.AppliedEpoch);
+        Assert.Null(session.Process(CreateDecisionApplied(1, 1_000, decision.DecisionHash.Value)).Response);
+        Assert.Equal(1, session.AppliedEpoch);
+        Assert.Equal(decision.DecisionHash, session.PreviousDecisionHash);
+    }
+
+    [Theory]
+    [InlineData("policyId", "rolling-cost")]
+    [InlineData("policyVersion", "2.0.0")]
+    [InlineData("policyConfigurationHash", "2222222222222222222222222222222222222222222222222222222222222222")]
+    public void Mismatched_solver_manifest_is_rejected_before_any_state_is_staged(
+        string field,
+        string value)
+    {
+        var configuration = ReadSolverConfiguration();
+        var session = CreateNegotiatedSession(solverConfiguration: configuration);
+        var initialize = CreateInitialize(configuration);
+        initialize["payload"]!["manifest"]![field] = value;
+
+        var mismatch = session.Process(Encoding.UTF8.GetBytes(initialize.ToJsonString()));
+
+        Assert.Equal("IDENTITY_MISMATCH", mismatch.Response!.Payload.GetProperty("code").GetString());
+        Assert.Equal(RunnerSessionStatus.Negotiated, session.Status);
+        var corrected = session.Process(Encoding.UTF8.GetBytes(CreateInitialize(configuration).ToJsonString()));
+        Assert.Equal("initialized", corrected.Response?.MessageType.Value);
+    }
+
+    [Fact]
+    public void Solver_manifest_requires_the_configuration_to_be_loaded()
+    {
+        var session = CreateNegotiatedSession();
+        var input = Encoding.UTF8.GetBytes(CreateInitialize(ReadSolverConfiguration()).ToJsonString());
+
+        var response = session.Process(input);
+
+        Assert.Equal("IDENTITY_MISMATCH", response.Response!.Payload.GetProperty("code").GetString());
+        Assert.Equal(RunnerSessionStatus.Negotiated, session.Status);
+    }
+
+    [Fact]
+    public void Native_solver_objective_overflow_publishes_a_validated_no_op()
+    {
+        var session = CreateInitializedOnlineSession(solverConfiguration: ReadSolverConfiguration());
+        var batch = JsonNode.Parse(ReadFixture("wp2/valid-bootstrap-event-batch.json"))!;
+        var events = batch["payload"]!["events"]!.AsArray();
+        // Each vehicle can serve this request, but the sum of both per-vehicle
+        // objective upper bounds exceeds the canonical integer range.
+        events[0]!["payload"]!["snapshot"]!["arcs"]![0]!["travelTimeMs"] = 6_000_000_000_000_000L;
+        events[1]!["payload"]!["request"]!["latestPickupMs"] = 8_000_000_000_000_000L;
+        var vehicle = events[2]!;
+        vehicle["payload"]!["vehicle"]!["route"]!["mutableSuffix"] = new JsonArray();
+        var secondVehicle = vehicle.DeepClone();
+        secondVehicle["eventSeq"] = 4;
+        secondVehicle["payload"]!["vehicle"]!["vehicleId"] = "v-2";
+        events.Add(secondVehicle);
+
+        var result = session.Process(Encoding.UTF8.GetBytes(batch.ToJsonString()));
+        Assert.Equal("decision", result.Response?.MessageType.Value);
+        var decoded = DecisionPayloadCodec.Decode(result.Response!.Payload);
+
+        Assert.True(decoded.IsSuccess, decoded.Error?.Message);
+        var decision = decoded.Value!;
+        Assert.Equal(SolverStatus.SafeFallback, decision.Solver.Status);
+        Assert.Equal(
+            "requestDeferred",
+            Assert.Single(decision.Actions).GetProperty("decisionType").GetString());
+        Assert.Equal(RunnerSessionStatus.AwaitingDecisionApplied, session.Status);
+    }
+
+    [Fact]
+    public async Task Executable_config_flag_runs_cp_sat_for_the_bound_manifest()
+    {
+        var file = Path.GetTempFileName();
+        try
+        {
+            var configurationBytes = ReadFixture("runner/rolling-cost-cp-sat.config.json");
+            await File.WriteAllBytesAsync(file, configurationBytes);
+            var startInfo = new ProcessStartInfo("dotnet")
+            {
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+            foreach (var argument in new[]
+                     {
+                         typeof(RunnerHost).Assembly.Location, "--mode", "online",
+                         "--rolling-cost-solver-config", file,
+                     })
+            {
+                startInfo.ArgumentList.Add(argument);
+            }
+
+            using var process = Process.Start(startInfo);
+            Assert.NotNull(process);
+            var stdoutTask = process.StandardOutput.ReadToEndAsync();
+            var stderrTask = process.StandardError.ReadToEndAsync();
+            await process.StandardInput.WriteLineAsync(
+                JsonNode.Parse(ReadFixture("hello/valid-hello.json"))!.ToJsonString());
+            await process.StandardInput.WriteLineAsync(
+                CreateInitialize(RollingCostSolverConfiguration.Decode(configurationBytes)).ToJsonString());
+            await process.StandardInput.WriteLineAsync(
+                JsonNode.Parse(ReadFixture("wp2/valid-bootstrap-event-batch.json"))!.ToJsonString());
+            process.StandardInput.Close();
+            await process.WaitForExitAsync();
+
+            Assert.Equal(0, process.ExitCode);
+            Assert.Empty(await stderrTask);
+            var frames = (await stdoutTask).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            Assert.Equal(3, frames.Length);
+            var lastFrame = JsonNode.Parse(frames[^1])!;
+            Assert.Equal("decision", lastFrame["messageType"]!.GetValue<string>());
+            Assert.Equal("completed", lastFrame["payload"]!["solver"]!["status"]!.GetValue<string>());
+        }
+        finally
+        {
+            File.Delete(file);
+        }
+    }
+
+    private static RollingCostSolverConfiguration ReadSolverConfiguration() =>
+        RollingCostSolverConfiguration.Decode(ReadFixture("runner/rolling-cost-cp-sat.config.json"));
+
     private static RunnerSession CreateInitializedOnlineSession(
-        CandidateGenerationOptions? candidateOptions = null)
+        CandidateGenerationOptions? candidateOptions = null,
+        RollingCostSolverConfiguration? solverConfiguration = null)
+    {
+        var session = CreateNegotiatedSession(candidateOptions, solverConfiguration);
+        var initialized = session.Process(
+            Encoding.UTF8.GetBytes(CreateInitialize(solverConfiguration).ToJsonString()));
+        Assert.Equal("initialized", initialized.Response?.MessageType.Value);
+        return session;
+    }
+
+    private static RunnerSession CreateNegotiatedSession(
+        CandidateGenerationOptions? candidateOptions = null,
+        RollingCostSolverConfiguration? solverConfiguration = null)
     {
         var session = new RunnerSession(
             RunnerDefaults.CapabilityRequirements,
             RunnerExecutionMode.OnlineRollingCost,
-            candidateOptions: candidateOptions);
+            candidateOptions: candidateOptions,
+            solverConfiguration: solverConfiguration);
         var hello = session.Process(ReadFixture("hello/valid-hello.json"));
         Assert.Equal("helloAck", hello.Response?.MessageType.Value);
+        return session;
+    }
+
+    private static JsonNode CreateInitialize(RollingCostSolverConfiguration? solverConfiguration)
+    {
         var initialize = JsonNode.Parse(
             ReadFixture("initialize/valid-initialize-run.json"))!;
         initialize["runId"] = "wp2-run-001";
         initialize["scenarioId"] = "wp2-two-epoch-small";
-        initialize["payload"]!["manifest"]!["travelTimeSnapshotHash"] =
-            new string('a', 64);
-        var initialized = session.Process(
-            Encoding.UTF8.GetBytes(initialize.ToJsonString()));
-        Assert.Equal("initialized", initialized.Response?.MessageType.Value);
-        return session;
+        var manifest = initialize["payload"]!["manifest"]!;
+        manifest["travelTimeSnapshotHash"] = new string('a', 64);
+        if (solverConfiguration is not null)
+        {
+            manifest["policyId"] = RollingCostSolverConfiguration.PolicyId;
+            manifest["policyVersion"] = solverConfiguration.PolicyVersion;
+            manifest["policyConfigurationHash"] = solverConfiguration.ContentHash.Value;
+        }
+
+        return initialize;
     }
 
     private static byte[] CreateTimerBatch(

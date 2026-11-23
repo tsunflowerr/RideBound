@@ -1,0 +1,18 @@
+{
+  "configurationVersion": "1.0.0",
+  "policyId": "rolling-cost-cp-sat",
+  "policyVersion": "1.0.0",
+  "candidateGeneration": {
+    "maximumCandidatesPerVehicle": 100,
+    "maximumNewRequestsPerVehicle": 4,
+    "maximumExplorationWorkUnits": 10000
+  },
+  "solverExecution": {
+    "adapterVersion": "google-ortools-9.15.6755",
+    "maximumGenerationWorkUnits": 100000,
+    "maximumValidationWorkUnits": 1000,
+    "maximumSolverWorkUnits": 100000,
+    "maximumSolverDeterministicTimeMicros": 1000000,
+    "randomSeed": 7
+  }
+}

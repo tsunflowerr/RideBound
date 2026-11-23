@@ -1,5 +1,6 @@
 using System.Text.Json;
 using RideBound.Contracts.Protocol;
+using RideBound.Runner.Configuration;
 
 namespace RideBound.Runner.Protocol;
 
@@ -27,7 +28,8 @@ public static class RunnerHost
         CancellationToken cancellationToken = default,
         int maximumLineBytes = NdjsonReader.DefaultMaximumLineBytes,
         RunnerExecutionMode executionMode =
-            RunnerExecutionMode.StructuralConformance)
+            RunnerExecutionMode.StructuralConformance,
+        RollingCostSolverConfiguration? solverConfiguration = null)
     {
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(output);
@@ -37,7 +39,8 @@ public static class RunnerHost
         var writer = new NdjsonWriter(output);
         var session = new RunnerSession(
             RunnerDefaults.CapabilityRequirements,
-            executionMode);
+            executionMode,
+            solverConfiguration: solverConfiguration);
 
         while (true)
         {

@@ -8,6 +8,7 @@ using RideBound.Contracts.Protocol;
 using RideBound.Contracts.Serialization;
 using RideBound.Domain.Commitments;
 using RideBound.Domain.Common;
+using RideBound.Domain.Incidents;
 using RideBound.Domain.Requests;
 using RideBound.Domain.Routes;
 
@@ -112,15 +113,23 @@ public static class OnlineStateCanonicalizer
                 WriteCommitmentLedger(writer, state.Commitments);
             }
 
+            if (state.Incidents.Incidents.Count != 0 || state.Incidents.Breaches.Count != 0
+                || state.Incidents.LatePickups.Count != 0)
+            {
+                WriteIncidentLedger(writer, state.Incidents);
+            }
+
             writer.WriteEndObject();
         }
 
         return CanonicalJson.Canonicalize(buffer.WrittenSpan);
     }
 
-    public static Sha256Hex CalculateHash(OnlineState state)
+    public static Sha256Hex CalculateHash(OnlineState state) =>
+        CalculateCanonicalHash(Canonicalize(state));
+
+    internal static Sha256Hex CalculateCanonicalHash(ReadOnlySpan<byte> canonical)
     {
-        var canonical = Canonicalize(state);
         var buffer = new ArrayBufferWriter<byte>();
         buffer.Write(DomainPrefix);
         WriteFrame(buffer, "canonicalOnlineState", canonical);
@@ -191,6 +200,114 @@ public static class OnlineStateCanonicalizer
     {
         writer.WritePropertyName(field);
         CommitmentContractCodec.WriteVector(writer, OnlineDecisionActionMapper.MapVector(vector));
+    }
+
+    private static void WriteIncidentLedger(Utf8JsonWriter writer, OperationalIncidentLedger ledger)
+    {
+        writer.WritePropertyName("incidentLedger");
+        writer.WriteStartObject();
+        writer.WritePropertyName("incidents");
+        writer.WriteStartArray();
+        foreach (var incident in ledger.Incidents.Values.OrderBy(
+                     value => value.Id.Value, StringComparer.Ordinal))
+        {
+            writer.WriteStartObject();
+            writer.WriteString("incidentId", incident.Id.Value);
+            writer.WriteString("reasonCode", incident.ReasonCode);
+            WriteRequestSet(writer, "affectedRequestIds", incident.AffectedRequestIds);
+            WriteIdentifiers(writer, "affectedVehicleIds", incident.AffectedVehicleIds.Select(value => value.Value));
+            writer.WriteNumber("openedEventSeq", incident.OpenedEventSequence);
+            writer.WriteNumber("openedAtMs", incident.OpenedAt.Milliseconds);
+            if (incident.ResolvedEventSequence is long resolved)
+            {
+                writer.WriteNumber("resolvedEventSeq", resolved);
+                writer.WriteNumber("resolvedAtMs", incident.ResolvedAt!.Value.Milliseconds);
+            }
+
+            writer.WriteEndObject();
+        }
+
+        writer.WriteEndArray();
+        writer.WritePropertyName("breaches");
+        writer.WriteStartArray();
+        foreach (var breach in ledger.Breaches)
+        {
+            WriteBreach(writer, breach);
+        }
+
+        writer.WriteEndArray();
+        if (ledger.LatePickups.Count != 0)
+        {
+            writer.WritePropertyName("latePickups");
+            writer.WriteStartArray();
+            foreach (var late in ledger.LatePickups)
+            {
+                writer.WriteStartObject();
+                writer.WriteString("requestId", late.RequestId.Value);
+                writer.WriteString("vehicleId", late.VehicleId.Value);
+                writer.WriteNumber("latestPickupMs", late.LatestPickup.Milliseconds);
+                writer.WriteNumber("actualPickupMs", late.ActualPickup.Milliseconds);
+                writer.WriteNumber("sourceEventSeq", late.SourceEventSequence);
+                writer.WriteNumber("recordedEpoch", late.RecordedEpoch);
+                writer.WriteEndObject();
+            }
+
+            writer.WriteEndArray();
+        }
+
+        writer.WriteEndObject();
+    }
+
+    private static void WriteBreach(Utf8JsonWriter writer, CommitmentBreachRecord breach)
+    {
+        writer.WriteStartObject();
+        writer.WriteString("breachId", breach.BreachId);
+        writer.WriteString("requestId", breach.RequestId.Value);
+        writer.WriteBoolean("normalOperation", breach.NormalOperation);
+        switch (breach.Kind)
+        {
+            case CommitmentBreachKind.OperationalIncident:
+                writer.WriteString("incidentId", breach.IncidentId!.Value.Value);
+                break;
+            case CommitmentBreachKind.ExogenousServiceQuality:
+                writer.WriteString("kind", "exogenousServiceQuality");
+                writer.WritePropertyName("serviceQualityWitnesses");
+                writer.WriteStartArray();
+                foreach (var witness in breach.ServiceQualityWitnesses)
+                {
+                    writer.WriteStartObject();
+                    writer.WriteString("requestId", witness.RequestId.Value);
+                    writer.WriteString("code", witness.Code);
+                    writer.WriteString("dimension", witness.Dimension);
+                    writer.WriteNumber("contractualMilliseconds", witness.ContractualMilliseconds);
+                    writer.WriteNumber("exogenousMilliseconds", witness.ExogenousMilliseconds);
+                    writer.WriteEndObject();
+                }
+
+                writer.WriteEndArray();
+                break;
+            default:
+                throw new InvalidOperationException("Unknown commitment breach kind.");
+        }
+
+        WritePublishedPromise(writer, "previousPromise", breach.PreviousPromise);
+        writer.WritePropertyName("exogenousProjection");
+        CommitmentContractCodec.WritePromise(writer, OnlineDecisionActionMapper.MapPromise(breach.ExogenousProjection));
+        writer.WritePropertyName("safetyProjection");
+        CommitmentContractCodec.WritePromise(writer, OnlineDecisionActionMapper.MapPromise(breach.SafetyProjection));
+        writer.WritePropertyName("deltas");
+        writer.WriteStartObject();
+        WriteVector(writer, "exogenous", breach.Deltas.Exogenous);
+        WriteVector(writer, "decisionInduced", breach.Deltas.DecisionInduced);
+        WriteVector(writer, "visible", breach.Deltas.Visible);
+        writer.WriteEndObject();
+        WriteVector(writer, "budgetBefore", breach.BudgetBefore);
+        WriteVector(writer, "attemptedBudgetAfter", breach.AttemptedBudgetAfter);
+        WriteIdentifiers(writer, "witnessCodes", breach.WitnessCodes);
+        writer.WriteNumber("recordedAtMs", breach.RecordedAt.Milliseconds);
+        writer.WriteNumber("recordedEpoch", breach.RecordedEpoch);
+        writer.WriteNumber("sourceEventSeq", breach.SourceEventSequence);
+        writer.WriteEndObject();
     }
 
     private static void WriteRequest(Utf8JsonWriter writer, RideRequest request)
@@ -264,16 +381,19 @@ public static class OnlineStateCanonicalizer
     private static void WriteRequestSet(
         Utf8JsonWriter writer,
         string propertyName,
-        IEnumerable<RequestId> values)
+        IEnumerable<RequestId> values) =>
+        WriteIdentifiers(writer, propertyName, values.Select(value => value.Value));
+
+    private static void WriteIdentifiers(
+        Utf8JsonWriter writer,
+        string propertyName,
+        IEnumerable<string> values)
     {
         writer.WritePropertyName(propertyName);
         writer.WriteStartArray();
-
-        foreach (var requestId in values.OrderBy(
-                     value => value.Value,
-                     StringComparer.Ordinal))
+        foreach (var value in values.Order(StringComparer.Ordinal))
         {
-            writer.WriteStringValue(requestId.Value);
+            writer.WriteStringValue(value);
         }
 
         writer.WriteEndArray();

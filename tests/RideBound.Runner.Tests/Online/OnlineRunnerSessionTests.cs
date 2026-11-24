@@ -376,12 +376,29 @@ public sealed class OnlineRunnerSessionTests
             Assert.Empty(certificate.Witnesses);
             Assert.Equal(1, revision.GetProperty("budgetAfter").GetProperty("vehicleSwitchCount").GetInt64());
             Assert.Equal(moved.Frame, ReadDecision(session, Bytes(update)).Frame);
+            var pendingCheckpoint = session.Process(CreateCheckpointRequest());
+            Assert.Equal("INVALID_SESSION_STATE", pendingCheckpoint.Response?.Payload.GetProperty("code").GetString());
 
             var following = CreateTimerBatch(4, 7, 1_200);
             Assert.Equal("error", session.Process(following).Response?.MessageType.Value);
             Assert.Equal(2, session.AppliedEpoch);
             Assert.Null(session.Process(CreateDecisionApplied(3, 1_200, moved.Decision.DecisionHash.Value)).Response);
+            var checkpoint = ReadCheckpoint(session);
+            Assert.Equal(moved.Decision.StateAfterHash, checkpoint.Content.StateHash);
+            Assert.Equal(moved.Decision.DecisionHash, checkpoint.Content.PreviousDecisionHash);
+
+            var restarted = CreateC1Session(configuration);
+            Assert.Equal("initialized", restarted.Process(Bytes(CreateC1Initialize(configuration))).Response?.MessageType.Value);
+            var restored = restarted.Process(CreateRestoreRequest(checkpoint));
+            Assert.Equal("restore", restored.Response?.MessageType.Value);
+            Assert.Equal("restored", restored.Response?.Payload.GetProperty("status").GetString());
+            Assert.Equal(checkpoint.CheckpointHash.Value, restored.Response?.Payload.GetProperty("checkpointHash").GetString());
+            Assert.Equal(3, restarted.AppliedEpoch);
+            Assert.Equal(7, restarted.NextEventSequence);
+            Assert.Equal(checkpoint.CheckpointHash, ReadCheckpoint(restarted).CheckpointHash);
+
             var next = ReadDecision(session, following);
+            Assert.Equal(next.Frame, ReadDecision(restarted, following).Frame);
             Assert.Equal(moved.Decision.StateAfterHash, next.Decision.StateBeforeHash);
             Assert.DoesNotContain(next.Decision.Actions, x => IsAction(x, "promisePublished"));
 
@@ -430,6 +447,69 @@ public sealed class OnlineRunnerSessionTests
         Assert.Equal(0, session.AppliedEpoch);
         Assert.Equal(SolverStatus.Completed, ReadDecision(session, original).Decision.Solver.Status);
     }
+
+    [Fact]
+    public void A_genesis_checkpoint_can_only_be_restored_once()
+    {
+        var checkpoint = ReadCheckpoint(CreateInitializedOnlineSession());
+        Assert.Equal(0, checkpoint.Content.AppliedEpoch);
+
+        var restarted = CreateInitializedOnlineSession();
+        var restore = CreateRestoreRequest(checkpoint);
+        Assert.Equal("restore", restarted.Process(restore).Response?.MessageType.Value);
+        Assert.Equal(checkpoint.CheckpointHash, ReadCheckpoint(restarted).CheckpointHash);
+        Assert.Equal("error", restarted.Process(restore).Response?.MessageType.Value);
+        Assert.Equal(0, restarted.AppliedEpoch);
+    }
+
+    [Theory]
+    [InlineData("manifest")]
+    [InlineData("epoch")]
+    [InlineData("state")]
+    public void Rehashed_checkpoint_must_match_the_manifest_and_inner_state(string field)
+    {
+        var checkpoint = ReadCheckpoint(CreateInitializedOnlineSession());
+        Sha256Hex.TryCreate(new string('f', 64), out var other);
+        var content = field switch
+        {
+            "manifest" => checkpoint.Content with { ManifestHash = other! },
+            "epoch" => checkpoint.Content with { AppliedEpoch = 1 },
+            _ => checkpoint.Content with { StateHash = other! },
+        };
+        var modified = checkpoint with { Content = content, CheckpointHash = CheckpointPayloadCodec.CalculateHash(content) };
+
+        var restarted = CreateInitializedOnlineSession();
+        var rejected = restarted.Process(CreateRestoreRequest(modified));
+        Assert.Equal("error", rejected.Response?.MessageType.Value);
+        Assert.Equal(field == "manifest" ? "MANIFEST_MUTATION" : "HASH_MISMATCH",
+            rejected.Response?.Payload.GetProperty("code").GetString());
+        Assert.Equal(0, restarted.AppliedEpoch);
+    }
+
+    private static CheckpointPayload ReadCheckpoint(RunnerSession session)
+    {
+        var response = session.Process(CreateCheckpointRequest()).Response;
+        Assert.Equal("checkpoint", response?.MessageType.Value);
+        var decoded = CheckpointPayloadCodec.Decode(response!.Payload);
+        Assert.True(decoded.IsSuccess, decoded.Error?.Message);
+        return decoded.Value!;
+    }
+
+    private static byte[] CreateCheckpointRequest() =>
+        CheckpointEnvelope("checkpoint", new JsonObject());
+
+    private static byte[] CreateRestoreRequest(CheckpointPayload checkpoint) =>
+        CheckpointEnvelope("restore", JsonNode.Parse(CheckpointPayloadCodec.Encode(checkpoint))!);
+
+    private static byte[] CheckpointEnvelope(string type, JsonNode payload) =>
+        Bytes(new JsonObject
+        {
+            ["schemaVersion"] = "1.0.0",
+            ["messageType"] = type,
+            ["runId"] = "wp2-run-001",
+            ["scenarioId"] = "wp2-two-epoch-small",
+            ["payload"] = payload,
+        });
 
     private static (DecisionPayload Decision, string Frame) ReadDecision(RunnerSession session, byte[] batch)
     {

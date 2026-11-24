@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/tsunflowerr/RideBound/main/benchmarks/schemas/v1/checkpoint-payload.schema.json",
+  "title": "RideBound checkpoint payload v1",
+  "type": "object",
+  "required": ["checkpointVersion", "checkpointHash", "content"],
+  "properties": {
+    "checkpointVersion": { "const": "1.0.0" },
+    "checkpointHash": { "$ref": "definitions.schema.json#/$defs/sha256Hex" },
+    "content": { "$ref": "checkpoint-content.schema.json" }
+  },
+  "additionalProperties": false
+}

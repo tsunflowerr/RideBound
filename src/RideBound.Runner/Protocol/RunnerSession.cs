@@ -38,7 +38,7 @@ public sealed record RunnerSessionResult(
     ProtocolEnvelope? Response,
     bool ShouldTerminate = false);
 
-public sealed class RunnerSession
+public sealed partial class RunnerSession
 {
     public const int RetainedBatchResponseCount = 1;
 
@@ -166,6 +166,8 @@ public sealed class RunnerSession
             "initializeRun" => ProcessInitialize(envelope),
             "eventBatch" => ProcessEventBatch(envelope),
             "decisionApplied" => ProcessDecisionApplied(envelope),
+            "checkpoint" => ProcessCheckpoint(envelope),
+            "restore" => ProcessRestore(envelope),
             _ => Error(
                 "INVALID_SESSION_STATE",
                 ProtocolFailureDisposition.RejectMessage,

@@ -11,7 +11,7 @@ using RideBound.Runner.Protocol;
 
 namespace RideBound.Runner.Tests.Online;
 
-public sealed class OnlineRunnerSessionTests
+public sealed partial class OnlineRunnerSessionTests
 {
     [Fact]
     public void Bootstrap_batch_produces_typed_B1_actions_and_waits_for_ack()

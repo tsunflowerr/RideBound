@@ -25,12 +25,14 @@ public sealed class C1RunnerConfiguration : ICommitmentPolicyProvider, IStopDist
         CandidateGenerationOptions generation,
         SolverBackedRidePoolingPolicyOptions solver,
         CommitmentPolicy[] policies,
-        Dictionary<(NodeId From, NodeId To), long> distances)
+        Dictionary<(NodeId From, NodeId To), long> distances,
+        bool recordLatePickups)
     {
         ContentHash = contentHash;
         PolicyVersion = policyVersion;
         CandidateGeneration = generation;
         Solver = solver;
+        RecordLatePickups = recordLatePickups;
         _policies = new CommitmentPolicyCatalog(policies);
         _distances = distances;
     }
@@ -39,6 +41,7 @@ public sealed class C1RunnerConfiguration : ICommitmentPolicyProvider, IStopDist
     public string PolicyVersion { get; }
     public CandidateGenerationOptions CandidateGeneration { get; }
     public SolverBackedRidePoolingPolicyOptions Solver { get; }
+    public bool RecordLatePickups { get; }
 
     public bool Matches(RunManifestIdentity manifest) =>
         manifest.PolicyId == PolicyId
@@ -52,7 +55,7 @@ public sealed class C1RunnerConfiguration : ICommitmentPolicyProvider, IStopDist
         var root = document.RootElement;
         RequireObject(root, "$",
             ["configurationVersion", "policyId", "policyVersion", "candidateGeneration",
-                "solverExecution", "policies", "stopDistances"]);
+                "solverExecution", "policies", "stopDistances"], "lateBoarding");
         if (Text(root, "configurationVersion") != "1.0.0" || Text(root, "policyId") != PolicyId)
         {
             throw new InvalidDataException("C1 requires configurationVersion 1.0.0 and policyId ridebound-hard-vector.");
@@ -90,11 +93,21 @@ public sealed class C1RunnerConfiguration : ICommitmentPolicyProvider, IStopDist
             }
         }
 
+        var recordLatePickups = root.TryGetProperty("lateBoarding", out _)
+            ? Text(root, "lateBoarding") switch
+            {
+                "record-v1" => true,
+                "reject" => false,
+                _ => throw new InvalidDataException("lateBoarding must be record-v1 or reject."),
+            }
+            : false;
+
         var solver = new SolverBackedRidePoolingPolicyOptions(
             RidePoolingPolicyKind.RideBoundHardVector,
             ReadExecutionBudget(root.GetProperty("solverExecution")));
         Sha256Hex.TryCreate(Convert.ToHexStringLower(SHA256.HashData(canonical)), out var contentHash);
-        return new C1RunnerConfiguration(contentHash!, policyVersion, generation, solver, policies, distances);
+        return new C1RunnerConfiguration(
+            contentHash!, policyVersion, generation, solver, policies, distances, recordLatePickups);
     }
 
     public bool TryGetPolicy(string policyId, out CommitmentPolicy policy) =>

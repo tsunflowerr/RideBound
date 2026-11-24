@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using RideBound.Algorithms.Candidates;
 using RideBound.Algorithms.Commitments;
+using RideBound.Algorithms.Dispatch;
 using RideBound.Algorithms.Policies;
 using RideBound.Application.Commitments;
 using RideBound.Application.Events;
@@ -50,7 +51,7 @@ public sealed partial class RunnerSession
     private readonly RollingCostSolverConfiguration? _solverConfiguration;
     private readonly OrToolsCandidateSelectionSolver? _solver;
     private readonly C1RunnerConfiguration? _c1Configuration;
-    private readonly SolverBackedRidePoolingPolicy? _c1Policy;
+    private readonly DispatchStep? _commitmentDispatch;
     private HelloPayload? _hello;
     private HelloAckPayload? _helloAcknowledgement;
     private InitializedSessionIdentity? _identity;
@@ -97,7 +98,9 @@ public sealed partial class RunnerSession
         _solver = solverConfiguration is null && c1Configuration is null
             ? null
             : new OrToolsCandidateSelectionSolver();
-        _c1Policy = c1Configuration is null ? null : new SolverBackedRidePoolingPolicy(_solver!);
+        _commitmentDispatch = c1Configuration is null
+            ? null
+            : new DispatchStep(new SolverBackedRidePoolingPolicy(_solver!));
         _candidateOptions = c1Configuration?.CandidateGeneration
             ?? solverConfiguration?.CandidateGeneration
             ?? candidateOptions
@@ -290,7 +293,7 @@ public sealed partial class RunnerSession
                 new RunIdentifier(_identity!.RunId.Value),
                 new ScenarioIdentifier(_identity.ScenarioId.Value),
                 new SimTime(0));
-            _onlineCoordinator = new EventReductionCoordinator(
+            _onlineCoordinator = CreateOnlineCoordinator(
                 OnlineState.Create(
                     run,
                     _identity.Manifest.TravelTimeSnapshotHash.Value));
@@ -718,11 +721,8 @@ public sealed partial class RunnerSession
         {
             var context = new CommitmentMechanismContext(
                 before, reduced, configuration, configuration, _manifestHash.Value, sourceEventSequence);
-            var result = _c1Policy!.Decide(context, _candidateOptions, configuration.Solver);
-            return result.Decision is { } selected
-                ? (selected.Decision, selected.CommitmentValidation.ValidatedState,
-                    selected.CommitmentValidation.Publications, null)
-                : (null, null, [], result.Witness);
+            var result = _commitmentDispatch!.Run(context, _candidateOptions, configuration.Solver);
+            return (result.Decision, result.StateToStage, result.Publications, result.Witness);
         }
 
         var rollingCost = _solverConfiguration is null
@@ -731,6 +731,9 @@ public sealed partial class RunnerSession
                 reduced, _candidateOptions, _solver!, _solverConfiguration.ExecutionBudget);
         return (rollingCost.Decision, rollingCost.Decision?.ProposedState, [], rollingCost.Witness);
     }
+
+    private EventReductionCoordinator CreateOnlineCoordinator(OnlineState state) =>
+        new(state, new EventReducer(recordLatePickups: _c1Configuration?.RecordLatePickups == true));
 
     private RunnerSessionResult PayloadError(
         ProtocolPayloadError error,

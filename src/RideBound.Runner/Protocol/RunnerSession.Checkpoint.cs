@@ -126,7 +126,7 @@ public sealed partial class RunnerSession
                 envelope);
         }
 
-        _onlineCoordinator = new EventReductionCoordinator(state);
+        _onlineCoordinator = CreateOnlineCoordinator(state);
         _appliedEpoch = content.AppliedEpoch;
         _nextEventSequence = content.NextEventSequence;
         _simulationTimeMilliseconds = content.SimulationTimeMs;

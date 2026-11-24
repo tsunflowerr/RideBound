@@ -87,6 +87,18 @@
           "payload": { "$ref": "promise-published-action-payload.schema.json" }
         }
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "decisionType": { "const": "commitmentBreachDeclared" }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": { "$ref": "commitment-breach-declared-action-payload.schema.json" }
+        }
+      }
     }
   ],
   "additionalProperties": false

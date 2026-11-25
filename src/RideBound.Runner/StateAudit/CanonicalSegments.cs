@@ -20,6 +20,40 @@ internal sealed class CanonicalSegments(IReadOnlyList<ReadOnlyMemory<byte>> part
         return result;
     }
 
+    public bool ContentEquals(CanonicalSegments other)
+    {
+        if (Length != other.Length)
+        {
+            return false;
+        }
+
+        var otherIndex = 0;
+        var otherOffset = 0;
+        foreach (var part in Parts)
+        {
+            var remaining = part.Span;
+            while (!remaining.IsEmpty)
+            {
+                var comparison = other.Parts[otherIndex].Span[otherOffset..];
+                var count = Math.Min(remaining.Length, comparison.Length);
+                if (!remaining[..count].SequenceEqual(comparison[..count]))
+                {
+                    return false;
+                }
+
+                remaining = remaining[count..];
+                otherOffset += count;
+                if (otherOffset == other.Parts[otherIndex].Length)
+                {
+                    otherIndex++;
+                    otherOffset = 0;
+                }
+            }
+        }
+
+        return true;
+    }
+
     public bool ContentEquals(ReadOnlySpan<byte> bytes)
     {
         if (bytes.Length != Length)

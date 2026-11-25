@@ -61,12 +61,7 @@ public sealed class RollingCostPolicy
         if (!generated.IsSuccess)
         {
             return RollingCostDecisionResult.Failure(
-                new RollingCostWitness(
-                    RollingCostFailureCodes.CandidateGenerationFailed,
-                    generated.Witness!.Message,
-                    generated.Witness.VehicleId,
-                    generated.Witness.RequestId,
-                    Dimension: generated.Witness.Dimension));
+                CommitmentMechanismPolicies.GenerationFailure(generated.Witness!));
         }
 
         if (configuration is { } configured)
@@ -81,25 +76,8 @@ public sealed class RollingCostPolicy
             return RollingCostDecisionResult.Failure(selection.Witness!);
         }
 
-        var validationFailure = SelectionApplier.ValidateSelection(
-            state,
-            selection.Selection!,
-            _validator);
-
-        if (validationFailure is not null)
-        {
-            return RollingCostDecisionResult.Failure(validationFailure);
-        }
-
-        var applied = SelectionApplier.ApplySelection(
-            state,
-            selection.Selection!,
-            generated.VehicleCandidates!,
-            generated.Diagnostics!.IsComplete);
-
-        return applied.IsSuccess
-            ? applied
-            : RollingCostDecisionResult.Failure(applied.Witness!);
+        return CommitmentMechanismPolicies.ValidateAndApply(
+            state, selection.Selection!, generated.VehicleCandidates!, generated.Diagnostics!.IsComplete, _validator);
     }
 
     private RollingCostDecisionResult Solve(
@@ -234,17 +212,8 @@ public sealed class RollingCostPolicy
         public CandidateSelectionValidationResult Validate(FleetSelection selection)
         {
             Decision = null;
-            var failure = SelectionApplier.ValidateSelection(state, selection, policy._validator);
-            if (failure is not null)
-            {
-                return CandidateSelectionValidationResult.Invalid(failure.Code, failure.Message);
-            }
-
-            var applied = SelectionApplier.ApplySelection(
-                state,
-                selection,
-                generation.VehicleCandidates!,
-                generation.Diagnostics!.IsComplete);
+            var applied = CommitmentMechanismPolicies.ValidateAndApply(
+                state, selection, generation.VehicleCandidates!, generation.Diagnostics!.IsComplete, policy._validator);
             Decision = applied.Decision;
             return applied.IsSuccess
                 ? CandidateSelectionValidationResult.Valid()

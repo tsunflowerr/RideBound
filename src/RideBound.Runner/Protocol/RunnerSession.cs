@@ -675,7 +675,7 @@ public sealed partial class RunnerSession
         };
         var stateAfterHash = UsesLightAuditHash
             ? CalculateLightStateIdentityHash(proposedState!)
-            : OnlineStateCanonicalizer.CalculateHash(proposedState!);
+            : OnlineStateCanonicalizer.HashV1(_canonicalCache.State(proposedState!));
         var certificate = _c1Configuration is null
             ? null
             : new CertificateShell(

@@ -28,7 +28,8 @@ public static class OnlineStateCanonicalizer
 
     public static Sha256Hex CalculateHash(OnlineState state) => HashV1(CanonicalizeSegments(state));
 
-    internal static CanonicalSegments CanonicalizeSegments(OnlineState state)
+    internal static CanonicalSegments CanonicalizeSegments(
+        OnlineState state, OnlineStateCanonicalCache? cache = null)
     {
         ArgumentNullException.ThrowIfNull(state);
         var builder = new CanonicalSegmentBuilder();
@@ -38,20 +39,20 @@ public static class OnlineStateCanonicalizer
         if (state.Commitments.Histories.Count != 0)
         {
             root.Member("commitmentLedger"u8);
-            WriteCommitmentLedger(builder, state.Commitments);
+            WriteCommitmentLedger(builder, state.Commitments, cache);
         }
 
         if (state.Incidents.Incidents.Count != 0 || state.Incidents.Breaches.Count != 0
             || state.Incidents.LatePickups.Count != 0)
         {
             root.Member("incidentLedger"u8);
-            WriteIncidentLedger(builder, state.Incidents);
+            WriteIncidentLedger(builder, state.Incidents, cache);
         }
 
         root.Member("nextEventSeq"u8).Integer(state.NextEventSequence);
         root.Member("requests"u8);
-        WriteCanonicalArray(builder, state.Run.Requests.Values.OrderBy(
-            request => request.Id.Value, StringComparer.Ordinal), WriteRequest);
+        WriteEntityArray(builder, state.Run.Requests.Values.OrderBy(
+            request => request.Id.Value, StringComparer.Ordinal), WriteRequest, cache);
         root.Member("runId"u8).String(state.Run.Id.Value);
         root.Member("scenarioId"u8).String(state.Run.ScenarioId.Value);
 
@@ -67,12 +68,16 @@ public static class OnlineStateCanonicalizer
         if (state.TravelTimes is { } travel)
         {
             root.Member("travelTimes"u8);
-            WriteTravelTimes(builder, travel);
+            var canonical = cache?.Travel(travel) ?? CanonicalizeTravelTimes(travel);
+            foreach (var part in canonical.Parts)
+            {
+                builder.Fragment(part);
+            }
         }
 
         root.Member("vehicles"u8);
-        WriteCanonicalArray(builder, state.Run.Vehicles.Values.OrderBy(
-            vehicle => vehicle.Id.Value, StringComparer.Ordinal), WriteVehicle);
+        WriteEntityArray(builder, state.Run.Vehicles.Values.OrderBy(
+            vehicle => vehicle.Id.Value, StringComparer.Ordinal), WriteVehicle, cache);
         root.End();
         return builder.Build();
     }
@@ -132,7 +137,38 @@ public static class OnlineStateCanonicalizer
         builder.Glue.Byte((byte)']');
     }
 
-    private static void WriteCommitmentLedger(CanonicalSegmentBuilder builder, CommitmentLedger ledger)
+    private static void WriteEntityArray<T>(
+        CanonicalSegmentBuilder builder,
+        IEnumerable<T> values,
+        Action<Utf8JsonWriter, T> write,
+        OnlineStateCanonicalCache? cache)
+        where T : class
+    {
+        if (cache is null)
+        {
+            WriteCanonicalArray(builder, values, write);
+            return;
+        }
+
+        var glue = builder.Glue;
+        glue.Byte((byte)'[');
+        var first = true;
+        foreach (var value in values)
+        {
+            if (!first)
+            {
+                glue.Byte((byte)',');
+            }
+
+            first = false;
+            builder.Fragment(cache.Entity(value, write));
+        }
+
+        glue.Byte((byte)']');
+    }
+
+    private static void WriteCommitmentLedger(
+        CanonicalSegmentBuilder builder, CommitmentLedger ledger, OnlineStateCanonicalCache? cache)
     {
         var glue = builder.Glue;
         glue.Byte((byte)'[');
@@ -148,7 +184,7 @@ public static class OnlineStateCanonicalizer
             first = false;
             var item = new CanonicalObject(glue);
             item.Member("entries"u8);
-            WriteCanonicalArray(builder, history.Entries, WriteLedgerEntry);
+            WriteEntityArray(builder, history.Entries, WriteLedgerEntry, cache);
             item.Member("requestId"u8).String(history.RequestId.Value);
             item.End();
         }
@@ -156,14 +192,15 @@ public static class OnlineStateCanonicalizer
         glue.Byte((byte)']');
     }
 
-    private static void WriteIncidentLedger(CanonicalSegmentBuilder builder, OperationalIncidentLedger ledger)
+    private static void WriteIncidentLedger(
+        CanonicalSegmentBuilder builder, OperationalIncidentLedger ledger, OnlineStateCanonicalCache? cache)
     {
         var item = new CanonicalObject(builder.Glue);
         item.Member("breaches"u8);
-        WriteCanonicalArray(builder, ledger.Breaches, WriteBreach);
+        WriteEntityArray(builder, ledger.Breaches, WriteBreach, cache);
         item.Member("incidents"u8);
-        WriteCanonicalArray(builder, ledger.Incidents.Values.OrderBy(
-            incident => incident.Id.Value, StringComparer.Ordinal), WriteIncident);
+        WriteEntityArray(builder, ledger.Incidents.Values.OrderBy(
+            incident => incident.Id.Value, StringComparer.Ordinal), WriteIncident, cache);
 
         if (ledger.LatePickups.Count != 0)
         {
@@ -174,8 +211,9 @@ public static class OnlineStateCanonicalizer
         item.End();
     }
 
-    private static void WriteTravelTimes(CanonicalSegmentBuilder builder, TravelTimeSnapshot travel)
+    internal static CanonicalSegments CanonicalizeTravelTimes(TravelTimeSnapshot travel)
     {
+        var builder = new CanonicalSegmentBuilder();
         var item = new CanonicalObject(builder.Glue);
         item.Member("arcs"u8);
         WriteCanonicalArray(builder, travel.TravelTimes.OrderBy(
@@ -184,6 +222,7 @@ public static class OnlineStateCanonicalizer
         item.Member("snapshotHash"u8).String(travel.SnapshotHash);
         item.Member("version"u8).Integer(travel.Version);
         item.End();
+        return builder.Build();
     }
 
     private static void WriteShadowAllocation(

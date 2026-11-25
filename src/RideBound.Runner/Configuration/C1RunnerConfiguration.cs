@@ -10,6 +10,7 @@ using RideBound.Contracts.Serialization;
 using RideBound.Domain.Commitments;
 using RideBound.Domain.Common;
 using RideBound.Domain.Validation;
+using static RideBound.Runner.Configuration.JsonConfig;
 using static RideBound.Runner.Configuration.RollingCostSolverConfiguration;
 
 namespace RideBound.Runner.Configuration;
@@ -17,6 +18,11 @@ namespace RideBound.Runner.Configuration;
 public sealed class C1RunnerConfiguration : ICommitmentPolicyProvider, IStopDistanceLookup
 {
     public const string PolicyId = RidePoolingPolicyRegistry.RideBoundHardVector;
+
+    private static readonly string[] DispatchFields =
+        ["configurationVersion", "policyId", "policyVersion", "candidateGeneration", "solverExecution"];
+    private static readonly string[] DispatchOptions =
+        ["lateBoarding", "shadowAllocation", "planningForecast", "auditHash"];
 
     private readonly CommitmentPolicyCatalog _policies;
     private readonly Dictionary<(NodeId From, NodeId To), long> _distances;
@@ -64,9 +70,38 @@ public sealed class C1RunnerConfiguration : ICommitmentPolicyProvider, IStopDist
         var canonical = CanonicalJson.Canonicalize(utf8Json);
         using var document = JsonDocument.Parse(canonical);
         var root = document.RootElement;
-        RequireObject(root, "$",
-            ["configurationVersion", "policyId", "policyVersion", "candidateGeneration",
-                "solverExecution", "policies", "stopDistances"], "lateBoarding", "shadowAllocation", "planningForecast", "auditHash");
+        RequireObject(root, "$", [.. DispatchFields, "policies", "stopDistances"], DispatchOptions);
+        return Read(root, root, ConfigurationHash(canonical));
+    }
+
+    /// <summary>Reads the C1 commitment settings and dispatch settings from separate files.</summary>
+    public static C1RunnerConfiguration DecodeSeparated(
+        ReadOnlySpan<byte> commitmentJson, ReadOnlySpan<byte> dispatchJson)
+    {
+        var canonicalCommitment = CanonicalJson.Canonicalize(commitmentJson);
+        var canonicalDispatch = CanonicalJson.Canonicalize(dispatchJson);
+        using var commitment = JsonDocument.Parse(canonicalCommitment);
+        using var dispatch = JsonDocument.Parse(canonicalDispatch);
+        RequireFields(commitment.RootElement, "commitment", "configurationVersion", "policies", "stopDistances");
+        RequireObject(dispatch.RootElement, "dispatch", DispatchFields, DispatchOptions);
+        if (Text(commitment.RootElement, "configurationVersion") != "1.0.0")
+        {
+            throw new InvalidDataException("Commitment configurationVersion must be 1.0.0.");
+        }
+
+        var binding = Wp4PolicyConfigurationBinding.Calculate(
+            ConfigurationHash(canonicalCommitment), ConfigurationHash(canonicalDispatch));
+        return Read(dispatch.RootElement, commitment.RootElement, binding);
+    }
+
+    private static Sha256Hex ConfigurationHash(ReadOnlySpan<byte> canonical)
+    {
+        Sha256Hex.TryCreate(Convert.ToHexStringLower(SHA256.HashData(canonical)), out var hash);
+        return hash!;
+    }
+
+    private static C1RunnerConfiguration Read(JsonElement root, JsonElement commitment, Sha256Hex contentHash)
+    {
         if (Text(root, "configurationVersion") != "1.0.0" || Text(root, "policyId") != PolicyId)
         {
             throw new InvalidDataException("C1 requires configurationVersion 1.0.0 and policyId ridebound-hard-vector.");
@@ -78,7 +113,7 @@ public sealed class C1RunnerConfiguration : ICommitmentPolicyProvider, IStopDist
             throw new InvalidDataException("policyVersion must be a valid protocol identifier.");
         }
 
-        var policies = Array(root, "policies").Select(ReadPolicy).ToArray();
+        var policies = Array(commitment, "policies").Select(ReadPolicy).ToArray();
         if (policies.Length == 0)
         {
             throw new InvalidDataException("At least one commitment policy is required.");
@@ -100,7 +135,7 @@ public sealed class C1RunnerConfiguration : ICommitmentPolicyProvider, IStopDist
         }
 
         var distances = new Dictionary<(NodeId From, NodeId To), long>();
-        foreach (var item in Array(root, "stopDistances"))
+        foreach (var item in Array(commitment, "stopDistances"))
         {
             RequireFields(item, "stopDistances[]", "fromNodeId", "toNodeId", "distanceMm");
             var from = new NodeId(Text(item, "fromNodeId"));
@@ -135,9 +170,8 @@ public sealed class C1RunnerConfiguration : ICommitmentPolicyProvider, IStopDist
         var solver = new SolverBackedRidePoolingPolicyOptions(
             RidePoolingPolicyKind.RideBoundHardVector,
             ReadExecutionBudget(root.GetProperty("solverExecution")));
-        Sha256Hex.TryCreate(Convert.ToHexStringLower(SHA256.HashData(canonical)), out var contentHash);
         return new C1RunnerConfiguration(
-            contentHash!, policyVersion, generation, solver, policies, distances,
+            contentHash, policyVersion, generation, solver, policies, distances,
             recordLatePickups, shadow, forecast, usesLightAuditHash);
     }
 
@@ -271,53 +305,5 @@ public sealed class C1RunnerConfiguration : ICommitmentPolicyProvider, IStopDist
         }
 
         return locks;
-    }
-
-    private static bool OptionalBoolean(JsonElement element, string name) =>
-        element.TryGetProperty(name, out var flag)
-            ? flag.ValueKind switch
-            {
-                JsonValueKind.True => true,
-                JsonValueKind.False => false,
-                _ => throw new InvalidDataException($"{name} must be a boolean."),
-            }
-            : false;
-
-    private static long? OptionalPositiveInteger(
-        JsonElement element, string name, long maximum = DomainLimits.MaxCanonicalInteger) =>
-        element.TryGetProperty(name, out _) ? Integer(element, name, 1, maximum) : null;
-
-    private static JsonElement.ArrayEnumerator Array(JsonElement element, string name)
-    {
-        var array = element.GetProperty(name);
-        return array.ValueKind == JsonValueKind.Array
-            ? array.EnumerateArray()
-            : throw new InvalidDataException($"{name} must be an array.");
-    }
-
-    private static void RequireObject(
-        JsonElement element, string path, string[] required, params string[] optional)
-    {
-        if (element.ValueKind != JsonValueKind.Object)
-        {
-            throw new InvalidDataException($"{path} must be an object.");
-        }
-
-        foreach (var property in element.EnumerateObject())
-        {
-            if (!required.Contains(property.Name, StringComparer.Ordinal)
-                && !optional.Contains(property.Name, StringComparer.Ordinal))
-            {
-                throw new InvalidDataException($"Unknown field '{property.Name}' in {path}.");
-            }
-        }
-
-        foreach (var field in required)
-        {
-            if (!element.TryGetProperty(field, out _))
-            {
-                throw new InvalidDataException($"Missing field '{field}' in {path}.");
-            }
-        }
     }
 }

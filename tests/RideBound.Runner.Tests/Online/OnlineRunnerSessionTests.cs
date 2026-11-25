@@ -253,16 +253,33 @@ public sealed partial class OnlineRunnerSessionTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task Executable_config_flag_runs_cp_sat_for_the_bound_manifest(bool c1)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task Executable_config_flag_runs_cp_sat_for_the_bound_manifest(bool c1, bool separated)
     {
         var file = Path.GetTempFileName();
+        string? commitmentFile = null;
         try
         {
             var configurationBytes = ReadFixture(c1
                 ? "runner/ridebound-hard-vector.config.json"
                 : "runner/rolling-cost-cp-sat.config.json");
+            C1RunnerConfiguration? c1Configuration = null;
+            if (separated)
+            {
+                var (commitment, dispatch) = SplitC1Configuration(configurationBytes);
+                commitmentFile = Path.GetTempFileName();
+                var commitmentBytes = Bytes(commitment);
+                configurationBytes = Bytes(dispatch);
+                await File.WriteAllBytesAsync(commitmentFile, commitmentBytes);
+                c1Configuration = C1RunnerConfiguration.DecodeSeparated(commitmentBytes, configurationBytes);
+            }
+            else if (c1)
+            {
+                c1Configuration = C1RunnerConfiguration.Decode(configurationBytes);
+            }
+
             await File.WriteAllBytesAsync(file, configurationBytes);
             var startInfo = new ProcessStartInfo("dotnet")
             {
@@ -281,6 +298,12 @@ public sealed partial class OnlineRunnerSessionTests
                 startInfo.ArgumentList.Add(argument);
             }
 
+            if (commitmentFile is not null)
+            {
+                startInfo.ArgumentList.Add("--commitment-config");
+                startInfo.ArgumentList.Add(commitmentFile);
+            }
+
             using var process = Process.Start(startInfo);
             Assert.NotNull(process);
             var stdoutTask = process.StandardOutput.ReadToEndAsync();
@@ -288,7 +311,7 @@ public sealed partial class OnlineRunnerSessionTests
             await process.StandardInput.WriteLineAsync(
                 JsonNode.Parse(ReadFixture("hello/valid-hello.json"))!.ToJsonString());
             var initialize = c1
-                ? CreateC1Initialize(C1RunnerConfiguration.Decode(configurationBytes))
+                ? CreateC1Initialize(c1Configuration!)
                 : CreateInitialize(RollingCostSolverConfiguration.Decode(configurationBytes));
             await process.StandardInput.WriteLineAsync(initialize.ToJsonString());
             await process.StandardInput.WriteLineAsync(
@@ -307,6 +330,10 @@ public sealed partial class OnlineRunnerSessionTests
         finally
         {
             File.Delete(file);
+            if (commitmentFile is not null)
+            {
+                File.Delete(commitmentFile);
+            }
         }
     }
 

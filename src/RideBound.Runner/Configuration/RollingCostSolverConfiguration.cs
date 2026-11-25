@@ -4,8 +4,8 @@ using RideBound.Algorithms.Candidates;
 using RideBound.Application.Optimization;
 using RideBound.Contracts.Protocol;
 using RideBound.Contracts.Serialization;
-using RideBound.Domain.Common;
 using RideBound.Solvers.OrTools;
+using static RideBound.Runner.Configuration.JsonConfig;
 
 namespace RideBound.Runner.Configuration;
 
@@ -143,53 +143,5 @@ public sealed class RollingCostSolverConfiguration
         }
 
         return executionBudget.Value!;
-    }
-
-    internal static void RequireFields(JsonElement element, string path, params string[] fields)
-    {
-        if (element.ValueKind != JsonValueKind.Object)
-        {
-            throw new InvalidDataException($"{path} must be an object.");
-        }
-
-        foreach (var property in element.EnumerateObject())
-        {
-            if (!fields.Contains(property.Name, StringComparer.Ordinal))
-            {
-                throw new InvalidDataException($"Unknown field '{property.Name}' in {path}.");
-            }
-        }
-
-        foreach (var field in fields)
-        {
-            if (!element.TryGetProperty(field, out _))
-            {
-                throw new InvalidDataException($"Missing field '{field}' in {path}.");
-            }
-        }
-    }
-
-    internal static string Text(JsonElement element, string name)
-    {
-        var value = element.GetProperty(name);
-        return value.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(value.GetString())
-            ? value.GetString()!
-            : throw new InvalidDataException($"{name} must be a non-empty string.");
-    }
-
-    internal static long PositiveInteger(JsonElement element, string name) =>
-        Integer(element, name, 1, DomainLimits.MaxCanonicalInteger);
-
-    internal static long Integer(JsonElement element, string name, long minimum, long maximum)
-    {
-        var value = element.GetProperty(name);
-        if (value.ValueKind == JsonValueKind.Number
-            && value.TryGetInt64(out var parsed)
-            && parsed >= minimum && parsed <= maximum)
-        {
-            return parsed;
-        }
-
-        throw new InvalidDataException($"{name} must be an integer in [{minimum}, {maximum}].");
     }
 }

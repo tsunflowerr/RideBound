@@ -9,11 +9,13 @@ C1RunnerConfiguration? c1Configuration = null;
 if (args.Length > 0)
 {
     if (args is not (["--mode", "online" or "conformance"]
-        or ["--mode", "online", "--rolling-cost-solver-config" or "--c1-solver-config", _]))
+        or ["--mode", "online", "--rolling-cost-solver-config" or "--c1-solver-config", _]
+        or ["--mode", "online", "--c1-solver-config", _, "--commitment-config", _]))
     {
         await Console.Error.WriteLineAsync(
             "Usage: RideBound.Runner [--mode online|conformance] | " +
-            "--mode online --rolling-cost-solver-config <path> | --mode online --c1-solver-config <path>");
+            "--mode online --rolling-cost-solver-config <path> | " +
+            "--mode online --c1-solver-config <path> [--commitment-config <path>]");
         return 64;
     }
 
@@ -21,13 +23,18 @@ if (args.Length > 0)
         ? RunnerExecutionMode.StructuralConformance
         : RunnerExecutionMode.OnlineRollingCost;
 
-    if (args.Length == 4)
+    if (args.Length >= 4)
     {
         var isC1 = args[2] == "--c1-solver-config";
         try
         {
             var contents = await File.ReadAllBytesAsync(args[3]);
-            if (isC1)
+            if (args.Length == 6)
+            {
+                var commitment = await File.ReadAllBytesAsync(args[5]);
+                c1Configuration = C1RunnerConfiguration.DecodeSeparated(commitment, contents);
+            }
+            else if (isC1)
             {
                 c1Configuration = C1RunnerConfiguration.Decode(contents);
             }

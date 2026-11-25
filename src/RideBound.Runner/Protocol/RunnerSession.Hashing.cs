@@ -3,7 +3,7 @@ using System.Text.Json;
 using RideBound.Application.State;
 using RideBound.Contracts.Protocol;
 using RideBound.Contracts.Serialization;
-using RideBound.Runner.Online;
+using RideBound.Runner.StateAudit;
 
 namespace RideBound.Runner.Protocol;
 
@@ -13,6 +13,8 @@ public sealed partial class RunnerSession
     private static readonly byte[] OnlineStateMember = ",\"onlineStateBefore\":"u8.ToArray();
     private static readonly byte[] StateIdentityMember = ",\"stateIdentityBefore\":"u8.ToArray();
     private static readonly byte[] InputEnd = "}"u8.ToArray();
+
+    private readonly OnlineStateCanonicalCache _canonicalCache = new();
 
     private bool UsesLightAuditHash => _c1Configuration?.UsesLightAuditHash == true;
 
@@ -34,7 +36,7 @@ public sealed partial class RunnerSession
             ?
             [
                 EventBatchMember, canonicalBatch,
-                OnlineStateMember, .. OnlineStateCanonicalizer.CanonicalizeSegments(coordinator.CommittedState).Parts,
+                OnlineStateMember, .. _canonicalCache.State(coordinator.CommittedState).Parts,
                 StateIdentityMember, identity.WrittenMemory, InputEnd,
             ]
             : [EventBatchMember, canonicalBatch, StateIdentityMember, identity.WrittenMemory, InputEnd];

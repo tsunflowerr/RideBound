@@ -36,7 +36,8 @@ public sealed partial class RunnerSession
 
         var committed = _onlineCoordinator.CommittedState;
         var canonical = OnlineStateCanonicalizer.CanonicalizeSegments(committed);
-        if (CheckpointStateHash(committed, canonical) != _stateHash)
+        if ((_canonicalCache.FindState(committed) is { } cached && !cached.ContentEquals(canonical))
+            || CheckpointStateHash(committed, canonical) != _stateHash)
         {
             return Error(
                 "INTERNAL_ERROR",

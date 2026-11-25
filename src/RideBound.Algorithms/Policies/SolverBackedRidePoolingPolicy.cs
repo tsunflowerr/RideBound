@@ -137,12 +137,7 @@ public sealed class SolverBackedRidePoolingPolicy
         if (!generated.IsSuccess)
         {
             return SolverBackedPolicyDecisionResult.Failure(
-                new RollingCostWitness(
-                    RollingCostFailureCodes.CandidateGenerationFailed,
-                    generated.Witness!.Message,
-                    generated.Witness.VehicleId,
-                    generated.Witness.RequestId,
-                    Dimension: generated.Witness.Dimension));
+                CommitmentMechanismPolicies.GenerationFailure(generated.Witness!));
         }
 
         var validationWork = generated.VehicleCandidates!.Sum(set => (long)set.Candidates.Count);
@@ -225,23 +220,8 @@ public sealed class SolverBackedRidePoolingPolicy
         {
             Decision = null;
             CommitmentValidation = null;
-            var physicalFailure = SelectionApplier.ValidateSelection(
-                context.ReducedState,
-                selection,
-                physicalValidator);
-
-            if (physicalFailure is not null)
-            {
-                return CandidateSelectionValidationResult.Invalid(
-                    physicalFailure.Code,
-                    physicalFailure.Message);
-            }
-
-            var applied = SelectionApplier.ApplySelection(
-                context.ReducedState,
-                selection,
-                candidates,
-                searchIsComplete);
+            var applied = CommitmentMechanismPolicies.ValidateAndApply(
+                context.ReducedState, selection, candidates, searchIsComplete, physicalValidator);
 
             if (!applied.IsSuccess)
             {

@@ -1,8 +1,10 @@
 using RideBound.Algorithms.Candidates;
 using RideBound.Algorithms.Commitments;
 using RideBound.Algorithms.Policies;
+using RideBound.Algorithms.Shareability;
 using RideBound.Application.Commitments;
 using RideBound.Application.State;
+using RideBound.Domain.Commitments;
 
 namespace RideBound.Algorithms.Dispatch;
 
@@ -12,16 +14,23 @@ public sealed record DispatchStepResult(
     IReadOnlyList<PromisePublication> Publications,
     RollingCostWitness? Witness);
 
-/// <summary>Stages the validated policy decision together with exogenous breach records.</summary>
+/// <summary>Stages the validated decision together with exogenous breaches and optional Shadow classes.</summary>
 public sealed class DispatchStep
 {
     private readonly SolverBackedRidePoolingPolicy _policy;
     private readonly ExogenousServiceQualityBreachBridge _breachBridge = new();
+    private readonly ShadowAllocator? _shadowAllocator;
 
     public DispatchStep(SolverBackedRidePoolingPolicy policy)
+        : this(policy, null)
+    {
+    }
+
+    public DispatchStep(SolverBackedRidePoolingPolicy policy, ShadowAllocator? shadowAllocator)
     {
         ArgumentNullException.ThrowIfNull(policy);
         _policy = policy;
+        _shadowAllocator = shadowAllocator;
     }
 
     public DispatchStepResult Run(
@@ -58,6 +67,24 @@ public sealed class DispatchStep
             }
 
             state = bridged.State!;
+        }
+
+        if (_shadowAllocator is not null)
+        {
+            var opened = validated.Publications
+                .Where(value => value.Entry.Kind == CommitmentLedgerEntryKind.InitialPromise)
+                .Select(value => value.Entry.PublishedPromise.Projection.RequestId)
+                .ToArray();
+            try
+            {
+                state = _shadowAllocator.Allocate(state, opened, state.Run.SimulationTime);
+            }
+            catch (Exception error) when (error is ArgumentException or InvalidOperationException
+                or KeyNotFoundException or OverflowException)
+            {
+                return new DispatchStepResult(null, null, [],
+                    new RollingCostWitness("SHADOW_ALLOCATION_FAILED", error.Message));
+            }
         }
 
         return new DispatchStepResult(selected.Decision, state, validated.Publications, null);

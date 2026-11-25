@@ -124,6 +124,23 @@ public sealed class ShareabilityScorerTests
         }
     }
 
+    [Fact]
+    public void TinyTravelScaleStillFinishesAtThePickupWindowBoundary()
+    {
+        var network = ShareabilityNetwork.Create(
+            3, [0, 1, 2, 2, 0, 1, 1, 2, 0], [0, 1, 2, 3], [1, 2, 0], [1, 1, 1], [0, 0, 0], 1);
+        var rates = ZoneDemandRates.Create(network, [], [], [], [3600], [3600], 1, 0, 0);
+        var scorer = new ShareabilityScorer(
+            network, new ShareabilityCell(1e-21, [1], [0, 1, 2], 1000, 0, rates, Oracle: false));
+
+        var result = scorer.Score(new ShareabilityContext(
+            0, 0, 0, 0, null, 0, 2,
+            [new(1, true, 1000, 100, 1), new(2, false, 2000, 100, 1)],
+            0, 1, 0));
+
+        AssertScore(new ShareabilityScore(2, 2, 0, 3, 1, 2, 3, 0), result);
+    }
+
     private static void AssertScore(ShareabilityScore expected, ShareabilityScore actual)
     {
         AssertBits(expected.Score, actual.Score);

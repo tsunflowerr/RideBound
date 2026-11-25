@@ -113,6 +113,27 @@ public static class OnlineStateCanonicalizer
                 WriteCommitmentLedger(writer, state.Commitments);
             }
 
+            if (state.Commitments.ShadowAllocations.Count != 0)
+            {
+                writer.WriteStartArray("shadowAllocations");
+                foreach (var (requestId, allocation) in state.Commitments.ShadowAllocations.OrderBy(
+                             pair => pair.Key.Value, StringComparer.Ordinal))
+                {
+                    writer.WriteStartObject();
+                    writer.WriteString("requestId", requestId.Value);
+                    writer.WriteString("class", allocation.Class switch
+                    {
+                        ShadowAllocationClass.Guaranteed => "guaranteed",
+                        ShadowAllocationClass.Allowed => "allowed",
+                        _ => throw new InvalidOperationException("Unknown Shadow class."),
+                    });
+                    writer.WriteString("score", allocation.Score);
+                    writer.WriteEndObject();
+                }
+
+                writer.WriteEndArray();
+            }
+
             if (state.Incidents.Incidents.Count != 0 || state.Incidents.Breaches.Count != 0
                 || state.Incidents.LatePickups.Count != 0)
             {

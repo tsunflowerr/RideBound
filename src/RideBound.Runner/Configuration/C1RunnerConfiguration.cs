@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using RideBound.Algorithms.Candidates;
 using RideBound.Algorithms.Policies;
+using RideBound.Algorithms.Shareability;
 using RideBound.Application.Commitments;
 using RideBound.Contracts.Protocol;
 using RideBound.Contracts.Serialization;
@@ -26,13 +27,15 @@ public sealed class C1RunnerConfiguration : ICommitmentPolicyProvider, IStopDist
         SolverBackedRidePoolingPolicyOptions solver,
         CommitmentPolicy[] policies,
         Dictionary<(NodeId From, NodeId To), long> distances,
-        bool recordLatePickups)
+        bool recordLatePickups,
+        ShadowAllocationInputs? shadowAllocation)
     {
         ContentHash = contentHash;
         PolicyVersion = policyVersion;
         CandidateGeneration = generation;
         Solver = solver;
         RecordLatePickups = recordLatePickups;
+        ShadowAllocation = shadowAllocation;
         _policies = new CommitmentPolicyCatalog(policies);
         _distances = distances;
     }
@@ -42,6 +45,7 @@ public sealed class C1RunnerConfiguration : ICommitmentPolicyProvider, IStopDist
     public CandidateGenerationOptions CandidateGeneration { get; }
     public SolverBackedRidePoolingPolicyOptions Solver { get; }
     public bool RecordLatePickups { get; }
+    public ShadowAllocationInputs? ShadowAllocation { get; }
 
     public bool Matches(RunManifestIdentity manifest) =>
         manifest.PolicyId == PolicyId
@@ -55,7 +59,7 @@ public sealed class C1RunnerConfiguration : ICommitmentPolicyProvider, IStopDist
         var root = document.RootElement;
         RequireObject(root, "$",
             ["configurationVersion", "policyId", "policyVersion", "candidateGeneration",
-                "solverExecution", "policies", "stopDistances"], "lateBoarding");
+                "solverExecution", "policies", "stopDistances"], "lateBoarding", "shadowAllocation");
         if (Text(root, "configurationVersion") != "1.0.0" || Text(root, "policyId") != PolicyId)
         {
             throw new InvalidDataException("C1 requires configurationVersion 1.0.0 and policyId ridebound-hard-vector.");
@@ -73,6 +77,14 @@ public sealed class C1RunnerConfiguration : ICommitmentPolicyProvider, IStopDist
             throw new InvalidDataException("At least one commitment policy is required.");
         }
 
+        var hasShadow = root.TryGetProperty("shadowAllocation", out var shadowElement);
+        if (policies.Any(policy => policy.DropEtaShadowAllocation != hasShadow))
+        {
+            throw new InvalidDataException(
+                "shadowAllocation and dropEtaShadowAllocation on every commitment policy must be configured together.");
+        }
+
+        var shadow = hasShadow ? ShadowAllocationConfiguration.Read(shadowElement) : null;
         var generation = ReadCandidateGeneration(root.GetProperty("candidateGeneration"), allowRelocation: true);
         if ((generation.WaitingRiderRelocation is not null) != policies.Any(policy => policy.WaitingRiderRelocation))
         {
@@ -107,7 +119,7 @@ public sealed class C1RunnerConfiguration : ICommitmentPolicyProvider, IStopDist
             ReadExecutionBudget(root.GetProperty("solverExecution")));
         Sha256Hex.TryCreate(Convert.ToHexStringLower(SHA256.HashData(canonical)), out var contentHash);
         return new C1RunnerConfiguration(
-            contentHash!, policyVersion, generation, solver, policies, distances, recordLatePickups);
+            contentHash!, policyVersion, generation, solver, policies, distances, recordLatePickups, shadow);
     }
 
     public bool TryGetPolicy(string policyId, out CommitmentPolicy policy) =>
@@ -128,18 +140,9 @@ public sealed class C1RunnerConfiguration : ICommitmentPolicyProvider, IStopDist
     {
         RequireObject(element, "policy",
             ["policyId", "limits", "materialRevisionRule"], "finalConfirmationLocks", "ratchetLocks",
-            "waitingRiderRelocation", "dropEtaBudgetSlackPermille", "dropEtaDeadlineSlackPermille");
+            "waitingRiderRelocation", "dropEtaBudgetSlackPermille", "dropEtaDeadlineSlackPermille", "dropEtaShadowAllocation");
         var revision = element.GetProperty("materialRevisionRule");
         RequireObject(revision, "materialRevisionRule", [], "rawEtaThresholdMs", "displayBucketWidthMs");
-        var relocation = element.TryGetProperty("waitingRiderRelocation", out var flag)
-            ? flag.ValueKind switch
-            {
-                JsonValueKind.True => true,
-                JsonValueKind.False => false,
-                _ => throw new InvalidDataException("waitingRiderRelocation must be a boolean."),
-            }
-            : false;
-
         return new CommitmentPolicy(
             Text(element, "policyId"),
             Array(element, "limits").Select(ReadLimit),
@@ -150,7 +153,8 @@ public sealed class C1RunnerConfiguration : ICommitmentPolicyProvider, IStopDist
             ratchetLocks: ReadLocks(element, "ratchetLocks"),
             dropEtaBudgetSlackPermille: (int?)OptionalPositiveInteger(element, "dropEtaBudgetSlackPermille", 1000),
             dropEtaDeadlineSlackPermille: (int?)OptionalPositiveInteger(element, "dropEtaDeadlineSlackPermille", 1000),
-            waitingRiderRelocation: relocation);
+            waitingRiderRelocation: OptionalBoolean(element, "waitingRiderRelocation"),
+            dropEtaShadowAllocation: OptionalBoolean(element, "dropEtaShadowAllocation"));
     }
 
     private static CommitmentDimensionLimit ReadLimit(JsonElement element)
@@ -227,6 +231,16 @@ public sealed class C1RunnerConfiguration : ICommitmentPolicyProvider, IStopDist
 
         return locks;
     }
+
+    private static bool OptionalBoolean(JsonElement element, string name) =>
+        element.TryGetProperty(name, out var flag)
+            ? flag.ValueKind switch
+            {
+                JsonValueKind.True => true,
+                JsonValueKind.False => false,
+                _ => throw new InvalidDataException($"{name} must be a boolean."),
+            }
+            : false;
 
     private static long? OptionalPositiveInteger(
         JsonElement element, string name, long maximum = DomainLimits.MaxCanonicalInteger) =>

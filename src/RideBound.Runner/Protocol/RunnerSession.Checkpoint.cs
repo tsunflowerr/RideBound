@@ -88,7 +88,8 @@ public sealed partial class RunnerSession
         }
 
         var restored = OnlineStateCheckpointCodec.Decode(
-            content.OnlineState, _identity!.Manifest.TravelTimeSnapshotHash.Value);
+            content.OnlineState, _identity!.Manifest.TravelTimeSnapshotHash.Value,
+            _c1Configuration?.ShadowAllocation?.Threshold);
         if (!restored.IsSuccess)
         {
             return Error(

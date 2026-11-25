@@ -5,6 +5,7 @@ using RideBound.Algorithms.Candidates;
 using RideBound.Algorithms.Commitments;
 using RideBound.Algorithms.Dispatch;
 using RideBound.Algorithms.Policies;
+using RideBound.Algorithms.Shareability;
 using RideBound.Application.Commitments;
 using RideBound.Application.Events;
 using RideBound.Application.Optimization;
@@ -100,7 +101,9 @@ public sealed partial class RunnerSession
             : new OrToolsCandidateSelectionSolver();
         _commitmentDispatch = c1Configuration is null
             ? null
-            : new DispatchStep(new SolverBackedRidePoolingPolicy(_solver!));
+            : new DispatchStep(
+                new SolverBackedRidePoolingPolicy(_solver!),
+                c1Configuration.ShadowAllocation is { } shadow ? new ShadowAllocator(shadow) : null);
         _candidateOptions = c1Configuration?.CandidateGeneration
             ?? solverConfiguration?.CandidateGeneration
             ?? candidateOptions

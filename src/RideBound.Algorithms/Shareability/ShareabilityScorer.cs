@@ -11,7 +11,10 @@ public sealed record ShareabilityStop(int Node, bool IsPickup, double ProjectedT
 /// <summary>The arc the vehicle is driving: its start node (local) and progress in permille (1..999).</summary>
 public sealed record ShareabilityArc(int From, int Permille);
 
-/// <summary>Context of one score: the vehicle and its route when the target rider is first promised.</summary>
+/// <summary>
+/// Context of one score: the vehicle and its route when the target rider is first promised.
+/// A pickup index of -1 means the target already boarded in the same event batch.
+/// </summary>
 public sealed record ShareabilityContext(
     double EvaluationTime,
     int Bin,
@@ -88,6 +91,12 @@ public sealed class ShareabilityScorer
             throw new ArgumentException("A cell needs at least one bin factor.", nameof(cell));
         }
 
+        if (cell.Factors.Any(factor => cell.Kappa * factor * 1000 is var scale
+            && (!double.IsFinite(scale) || scale <= 0)))
+        {
+            throw new ArgumentException("Bin scales must be finite and positive.", nameof(cell));
+        }
+
         foreach (var node in cell.GlobalOf)
         {
             if ((uint)node >= (uint)network.NodeCount)
@@ -140,23 +149,31 @@ public sealed class ShareabilityScorer
             return -1;
         }
 
-        var d = Math.Floor((omega - remaining) / g);
-        if (d > 1e7)
+        // The cutoff is only compared to ushort free-flow distances.
+        var estimate = Math.Min(Math.Floor((omega - remaining) / g), ushort.MaxValue);
+        if (remaining + g * estimate <= omega
+            && (estimate == ushort.MaxValue || remaining + g * (estimate + 1) > omega))
         {
-            return double.PositiveInfinity;
+            return estimate;
         }
 
-        while (remaining + g * (d + 1) <= omega)
+        // A small scale can leave many successive sums rounded to the same time.
+        var low = 0;
+        var high = (int)ushort.MaxValue;
+        while (low < high)
         {
-            d++;
+            var candidate = low + (high - low + 1) / 2;
+            if (remaining + g * candidate <= omega)
+            {
+                low = candidate;
+            }
+            else
+            {
+                high = candidate - 1;
+            }
         }
 
-        while (d >= 0 && remaining + g * d > omega)
-        {
-            d--;
-        }
-
-        return d;
+        return low;
     }
 
     /// <summary>
@@ -174,7 +191,7 @@ public sealed class ShareabilityScorer
             throw new ArgumentException("Negative bin.", nameof(context));
         }
 
-        if ((uint)context.PickupIndex >= (uint)m || (uint)context.DropIndex >= (uint)m)
+        if (context.PickupIndex < -1 || context.PickupIndex >= m || (uint)context.DropIndex >= (uint)m)
         {
             throw new ArgumentException("Target stops are not on the route.", nameof(context));
         }
@@ -252,9 +269,9 @@ public sealed class ShareabilityScorer
             mainOf[q] = mainNode.Count - 1;
         }
 
-        var kP = mainOf[context.PickupIndex];
+        var kP = context.PickupIndex == -1 ? -1 : mainOf[context.PickupIndex];
         var kK = mainOf[context.DropIndex];
-        if (!(kK >= 1) || kP > kK)
+        if (kP > kK)
         {
             throw new InvalidOperationException($"Bad target main nodes kP {kP} kK {kK}.");
         }
@@ -645,7 +662,7 @@ public sealed class ShareabilityScorer
     // instants at the nodes of the current arc still ahead of the vehicle (section 0); returns their number
     private int IntegrateArc(ShareabilityContext context, MainNodes main, RouteShadow shadow, Integral integral)
     {
-        var (mainNode, arrival, _, _, _, _) = main;
+        var (mainNode, arrival, _, _, kP, _) = main;
         var arc = context.Arc!;
         var n = network.NodeCount;
         var d = network.D;
@@ -679,7 +696,7 @@ public sealed class ShareabilityScorer
                 continue;
             }
 
-            integral.Add(shadow.AtIntermediate(0, path[j], t), t, true);
+            integral.Add(shadow.AtIntermediate(0, path[j], t), t, 0 <= kP);
             kept = t;
             arcInstants++;
         }

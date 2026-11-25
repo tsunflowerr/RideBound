@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using RideBound.Application.State;
 using RideBound.Application.Travel;
@@ -30,7 +31,13 @@ public static class OnlineStateCheckpointCodec
 {
     public static OnlineStateCheckpointReadResult Decode(
         JsonElement element,
-        string expectedInitialHash)
+        string expectedInitialHash) =>
+        Decode(element, expectedInitialHash, shadowThreshold: null);
+
+    public static OnlineStateCheckpointReadResult Decode(
+        JsonElement element,
+        string expectedInitialHash,
+        double? shadowThreshold)
     {
         try
         {
@@ -95,6 +102,25 @@ public static class OnlineStateCheckpointCodec
             var commitments = element.TryGetProperty("commitmentLedger", out var ledger)
                 ? ReadCommitmentLedger(ledger)
                 : CommitmentLedger.Empty;
+            if (shadowThreshold is { } threshold)
+            {
+                if (element.TryGetProperty("shadowAllocations", out var allocations))
+                {
+                    foreach (var item in allocations.EnumerateArray())
+                    {
+                        var score = double.Parse(Text(item, "score"), NumberStyles.Float, CultureInfo.InvariantCulture);
+                        commitments = commitments.WithShadowAllocation(
+                            new RequestId(Text(item, "requestId")), ShadowAllocation.From(score, threshold));
+                    }
+                }
+
+                if (commitments.ShadowAllocations.Count != commitments.Histories.Count)
+                {
+                    return OnlineStateCheckpointReadResult.Failure(
+                        "A Shadow checkpoint needs one allocation per initial promise.");
+                }
+            }
+
             var incidents = hasIncidents
                 ? ReadIncidentLedger(incidentLedger)
                 : OperationalIncidentLedger.Empty;

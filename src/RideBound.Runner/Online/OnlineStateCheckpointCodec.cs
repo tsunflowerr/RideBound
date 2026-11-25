@@ -147,9 +147,9 @@ public static class OnlineStateCheckpointCodec
                 incidents);
             var inputCanonical = CanonicalJson.Canonicalize(
                 JsonSerializer.SerializeToUtf8Bytes(element));
-            var rebuiltCanonical = OnlineStateCanonicalizer.Canonicalize(state);
+            var rebuiltCanonical = OnlineStateCanonicalizer.CanonicalizeSegments(state);
 
-            return inputCanonical.SequenceEqual(rebuiltCanonical)
+            return rebuiltCanonical.ContentEquals(inputCanonical)
                 ? OnlineStateCheckpointReadResult.Success(state)
                 : OnlineStateCheckpointReadResult.Failure(
                     "Checkpoint online state is not an exact canonical domain state.");

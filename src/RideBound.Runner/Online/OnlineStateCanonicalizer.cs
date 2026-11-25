@@ -1,9 +1,9 @@
 using System.Buffers;
 using System.Buffers.Binary;
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using RideBound.Application.State;
+using RideBound.Application.Travel;
 using RideBound.Contracts.Protocol;
 using RideBound.Contracts.Serialization;
 using RideBound.Domain.Commitments;
@@ -11,6 +11,8 @@ using RideBound.Domain.Common;
 using RideBound.Domain.Incidents;
 using RideBound.Domain.Requests;
 using RideBound.Domain.Routes;
+using RideBound.Domain.Vehicles;
+using RideBound.Runner.StateAudit;
 
 namespace RideBound.Runner.Online;
 
@@ -19,188 +21,277 @@ public static class OnlineStateCanonicalizer
     private static readonly byte[] DomainPrefix =
         "RideBound.OnlineStateHash.v1\0"u8.ToArray();
 
-    public static byte[] Canonicalize(OnlineState state)
+    private static readonly byte[] FrameTag = "canonicalOnlineState"u8.ToArray();
+    private const int ArrayChunkSize = 128;
+
+    public static byte[] Canonicalize(OnlineState state) => CanonicalizeSegments(state).ToArray();
+
+    public static Sha256Hex CalculateHash(OnlineState state) => HashV1(CanonicalizeSegments(state));
+
+    internal static CanonicalSegments CanonicalizeSegments(OnlineState state)
     {
         ArgumentNullException.ThrowIfNull(state);
-        var buffer = new ArrayBufferWriter<byte>();
+        var builder = new CanonicalSegmentBuilder();
+        var root = new CanonicalObject(builder.Glue);
+        root.Member("appliedEpoch"u8).Integer(state.Run.AppliedEpoch);
 
-        using (var writer = new Utf8JsonWriter(buffer))
+        if (state.Commitments.Histories.Count != 0)
         {
-            writer.WriteStartObject();
-            writer.WriteString("runId", state.Run.Id.Value);
-            writer.WriteString("scenarioId", state.Run.ScenarioId.Value);
-            writer.WriteNumber("appliedEpoch", state.Run.AppliedEpoch);
-            writer.WriteNumber(
-                "simulationTimeMs",
-                state.Run.SimulationTime.Milliseconds);
-            writer.WriteNumber("nextEventSeq", state.NextEventSequence);
-            writer.WritePropertyName("requests");
-            writer.WriteStartArray();
-
-            foreach (var request in state.Run.Requests.Values.OrderBy(
-                         value => value.Id.Value,
-                         StringComparer.Ordinal))
-            {
-                WriteRequest(writer, request);
-            }
-
-            writer.WriteEndArray();
-            writer.WritePropertyName("vehicles");
-            writer.WriteStartArray();
-
-            foreach (var vehicle in state.Run.Vehicles.Values.OrderBy(
-                         value => value.Id.Value,
-                         StringComparer.Ordinal))
-            {
-                writer.WriteStartObject();
-                writer.WriteString("vehicleId", vehicle.Id.Value);
-                writer.WriteNumber("capacity", vehicle.Capacity);
-                writer.WriteNumber("occupiedSeats", vehicle.OccupiedSeats);
-                writer.WritePropertyName("position");
-                WritePosition(writer, vehicle.Position);
-                WriteRequestSet(
-                    writer,
-                    "onboardRequestIds",
-                    vehicle.OnboardRequestIds);
-                WriteRequestSet(
-                    writer,
-                    "acceptedRequestIds",
-                    vehicle.AcceptedRequestIds);
-                writer.WritePropertyName("route");
-                WriteRoute(writer, vehicle.Route);
-                writer.WriteNumber(
-                    "lastObservedEpoch",
-                    vehicle.LastObservedEpoch);
-                writer.WriteEndObject();
-            }
-
-            writer.WriteEndArray();
-            if (state.TravelTimes is not null)
-            {
-                writer.WritePropertyName("travelTimes");
-                writer.WriteStartObject();
-                writer.WriteNumber("version", state.TravelTimes.Version);
-                writer.WriteString(
-                    "snapshotHash",
-                    state.TravelTimes.SnapshotHash);
-                writer.WritePropertyName("arcs");
-                writer.WriteStartArray();
-
-                foreach (var arc in state.TravelTimes.TravelTimes.OrderBy(
-                             value => value.Key.FromNodeId.Value,
-                             StringComparer.Ordinal)
-                         .ThenBy(
-                             value => value.Key.ToNodeId.Value,
-                             StringComparer.Ordinal))
-                {
-                    writer.WriteStartObject();
-                    writer.WriteString(
-                        "fromNodeId",
-                        arc.Key.FromNodeId.Value);
-                    writer.WriteString("toNodeId", arc.Key.ToNodeId.Value);
-                    writer.WriteNumber(
-                        "travelTimeMs",
-                        arc.Value.Milliseconds);
-                    writer.WriteEndObject();
-                }
-
-                writer.WriteEndArray();
-                writer.WriteEndObject();
-            }
-
-            if (state.Commitments.Histories.Count != 0)
-            {
-                WriteCommitmentLedger(writer, state.Commitments);
-            }
-
-            if (state.Commitments.ShadowAllocations.Count != 0)
-            {
-                writer.WriteStartArray("shadowAllocations");
-                foreach (var (requestId, allocation) in state.Commitments.ShadowAllocations.OrderBy(
-                             pair => pair.Key.Value, StringComparer.Ordinal))
-                {
-                    writer.WriteStartObject();
-                    writer.WriteString("requestId", requestId.Value);
-                    writer.WriteString("class", allocation.Class switch
-                    {
-                        ShadowAllocationClass.Guaranteed => "guaranteed",
-                        ShadowAllocationClass.Allowed => "allowed",
-                        _ => throw new InvalidOperationException("Unknown Shadow class."),
-                    });
-                    writer.WriteString("score", allocation.Score);
-                    writer.WriteEndObject();
-                }
-
-                writer.WriteEndArray();
-            }
-
-            if (state.Incidents.Incidents.Count != 0 || state.Incidents.Breaches.Count != 0
-                || state.Incidents.LatePickups.Count != 0)
-            {
-                WriteIncidentLedger(writer, state.Incidents);
-            }
-
-            writer.WriteEndObject();
+            root.Member("commitmentLedger"u8);
+            WriteCommitmentLedger(builder, state.Commitments);
         }
 
-        return CanonicalJson.Canonicalize(buffer.WrittenSpan);
+        if (state.Incidents.Incidents.Count != 0 || state.Incidents.Breaches.Count != 0
+            || state.Incidents.LatePickups.Count != 0)
+        {
+            root.Member("incidentLedger"u8);
+            WriteIncidentLedger(builder, state.Incidents);
+        }
+
+        root.Member("nextEventSeq"u8).Integer(state.NextEventSequence);
+        root.Member("requests"u8);
+        WriteCanonicalArray(builder, state.Run.Requests.Values.OrderBy(
+            request => request.Id.Value, StringComparer.Ordinal), WriteRequest);
+        root.Member("runId"u8).String(state.Run.Id.Value);
+        root.Member("scenarioId"u8).String(state.Run.ScenarioId.Value);
+
+        if (state.Commitments.ShadowAllocations.Count != 0)
+        {
+            root.Member("shadowAllocations"u8);
+            WriteCanonicalArray(builder, state.Commitments.ShadowAllocations.OrderBy(
+                pair => pair.Key.Value, StringComparer.Ordinal), WriteShadowAllocation);
+        }
+
+        root.Member("simulationTimeMs"u8).Integer(state.Run.SimulationTime.Milliseconds);
+
+        if (state.TravelTimes is { } travel)
+        {
+            root.Member("travelTimes"u8);
+            WriteTravelTimes(builder, travel);
+        }
+
+        root.Member("vehicles"u8);
+        WriteCanonicalArray(builder, state.Run.Vehicles.Values.OrderBy(
+            vehicle => vehicle.Id.Value, StringComparer.Ordinal), WriteVehicle);
+        root.End();
+        return builder.Build();
     }
 
-    public static Sha256Hex CalculateHash(OnlineState state) =>
-        CalculateCanonicalHash(Canonicalize(state));
-
-    internal static Sha256Hex CalculateCanonicalHash(ReadOnlySpan<byte> canonical)
+    internal static Sha256Hex HashV1(CanonicalSegments canonical)
     {
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        hash.AppendData(DomainPrefix);
+        Span<byte> frame = stackalloc byte[sizeof(ulong)];
+        BinaryPrimitives.WriteUInt16BigEndian(frame, (ushort)FrameTag.Length);
+        hash.AppendData(frame[..sizeof(ushort)]);
+        hash.AppendData(FrameTag);
+        BinaryPrimitives.WriteUInt64BigEndian(frame, (ulong)canonical.Length);
+        hash.AppendData(frame);
+        foreach (var part in canonical.Parts)
+        {
+            hash.AppendData(part.Span);
+        }
+
+        Sha256Hex.TryCreate(Convert.ToHexStringLower(hash.GetHashAndReset()), out var result);
+        return result!;
+    }
+
+    // Canonical JSON is compositional. Canonicalize a bounded group of array entries at a
+    // time, then use just its bytes between the square brackets.
+    private static void WriteCanonicalArray<T>(
+        CanonicalSegmentBuilder builder,
+        IEnumerable<T> values,
+        Action<Utf8JsonWriter, T> write)
+    {
+        builder.Glue.Byte((byte)'[');
         var buffer = new ArrayBufferWriter<byte>();
-        buffer.Write(DomainPrefix);
-        WriteFrame(buffer, "canonicalOnlineState", canonical);
-        var text = Convert.ToHexStringLower(SHA256.HashData(buffer.WrittenSpan));
-        Sha256Hex.TryCreate(text, out var hash);
-        return hash!;
+        using var writer = new Utf8JsonWriter(buffer);
+        var first = true;
+        foreach (var chunk in values.Chunk(ArrayChunkSize))
+        {
+            if (!first)
+            {
+                builder.Glue.Byte((byte)',');
+            }
+
+            first = false;
+            writer.WriteStartArray();
+            foreach (var value in chunk)
+            {
+                write(writer, value);
+            }
+
+            writer.WriteEndArray();
+            writer.Flush();
+            var canonical = CanonicalJson.Canonicalize(buffer.WrittenSpan);
+            builder.Fragment(canonical.AsMemory(1, canonical.Length - 2));
+            buffer.ResetWrittenCount();
+            writer.Reset(buffer);
+        }
+
+        builder.Glue.Byte((byte)']');
     }
 
-    private static void WriteCommitmentLedger(Utf8JsonWriter writer, CommitmentLedger ledger)
+    private static void WriteCommitmentLedger(CanonicalSegmentBuilder builder, CommitmentLedger ledger)
     {
-        writer.WritePropertyName("commitmentLedger");
-        writer.WriteStartArray();
+        var glue = builder.Glue;
+        glue.Byte((byte)'[');
+        var first = true;
         foreach (var history in ledger.Histories.Values.OrderBy(
                      value => value.RequestId.Value, StringComparer.Ordinal))
         {
-            writer.WriteStartObject();
-            writer.WriteString("requestId", history.RequestId.Value);
-            writer.WritePropertyName("entries");
-            writer.WriteStartArray();
-            foreach (var entry in history.Entries)
+            if (!first)
             {
-                writer.WriteStartObject();
-                writer.WriteString("kind", entry.Kind == CommitmentLedgerEntryKind.InitialPromise
-                    ? "initialPromise"
-                    : "revision");
-                writer.WriteString("publicationId", entry.PublicationId);
-                writer.WriteString("reasonCode", entry.ReasonCode);
-                writer.WriteNumber("sourceEventSeq", entry.SourceEventSequence);
-                WritePublishedPromise(writer, "publishedPromise", entry.PublishedPromise);
-                if (entry.PreviousPromise is { } previous)
-                {
-                    WritePublishedPromise(writer, "previousPromise", previous);
-                }
-
-                writer.WritePropertyName("exogenousProjection");
-                CommitmentContractCodec.WritePromise(
-                    writer, OnlineDecisionActionMapper.MapPromise(entry.ExogenousProjection));
-                WriteVector(writer, "exogenousDelta", entry.Deltas.Exogenous);
-                WriteVector(writer, "decisionDelta", entry.Deltas.DecisionInduced);
-                WriteVector(writer, "visibleDelta", entry.Deltas.Visible);
-                WriteVector(writer, "budgetBefore", entry.BudgetBefore);
-                WriteVector(writer, "budgetAfter", entry.BudgetAfter);
-                writer.WriteEndObject();
+                glue.Byte((byte)',');
             }
 
-            writer.WriteEndArray();
-            writer.WriteEndObject();
+            first = false;
+            var item = new CanonicalObject(glue);
+            item.Member("entries"u8);
+            WriteCanonicalArray(builder, history.Entries, WriteLedgerEntry);
+            item.Member("requestId"u8).String(history.RequestId.Value);
+            item.End();
         }
 
-        writer.WriteEndArray();
+        glue.Byte((byte)']');
+    }
+
+    private static void WriteIncidentLedger(CanonicalSegmentBuilder builder, OperationalIncidentLedger ledger)
+    {
+        var item = new CanonicalObject(builder.Glue);
+        item.Member("breaches"u8);
+        WriteCanonicalArray(builder, ledger.Breaches, WriteBreach);
+        item.Member("incidents"u8);
+        WriteCanonicalArray(builder, ledger.Incidents.Values.OrderBy(
+            incident => incident.Id.Value, StringComparer.Ordinal), WriteIncident);
+
+        if (ledger.LatePickups.Count != 0)
+        {
+            item.Member("latePickups"u8);
+            WriteCanonicalArray(builder, ledger.LatePickups, WriteLatePickup);
+        }
+
+        item.End();
+    }
+
+    private static void WriteTravelTimes(CanonicalSegmentBuilder builder, TravelTimeSnapshot travel)
+    {
+        var item = new CanonicalObject(builder.Glue);
+        item.Member("arcs"u8);
+        WriteCanonicalArray(builder, travel.TravelTimes.OrderBy(
+            arc => arc.Key.FromNodeId.Value, StringComparer.Ordinal)
+            .ThenBy(arc => arc.Key.ToNodeId.Value, StringComparer.Ordinal), WriteArc);
+        item.Member("snapshotHash"u8).String(travel.SnapshotHash);
+        item.Member("version"u8).Integer(travel.Version);
+        item.End();
+    }
+
+    private static void WriteShadowAllocation(
+        Utf8JsonWriter writer, KeyValuePair<RequestId, ShadowAllocation> pair)
+    {
+        writer.WriteStartObject();
+        writer.WriteString("requestId", pair.Key.Value);
+        writer.WriteString("class", pair.Value.Class switch
+        {
+            ShadowAllocationClass.Guaranteed => "guaranteed",
+            ShadowAllocationClass.Allowed => "allowed",
+            _ => throw new InvalidOperationException("Unknown commitment allocation class."),
+        });
+        writer.WriteString("score", pair.Value.Score);
+        writer.WriteEndObject();
+    }
+
+    private static void WriteVehicle(Utf8JsonWriter writer, VehicleState vehicle)
+    {
+        writer.WriteStartObject();
+        writer.WriteString("vehicleId", vehicle.Id.Value);
+        writer.WriteNumber("capacity", vehicle.Capacity);
+        writer.WriteNumber("occupiedSeats", vehicle.OccupiedSeats);
+        writer.WritePropertyName("position");
+        WritePosition(writer, vehicle.Position);
+        WriteRequestSet(
+            writer,
+            "onboardRequestIds",
+            vehicle.OnboardRequestIds);
+        WriteRequestSet(
+            writer,
+            "acceptedRequestIds",
+            vehicle.AcceptedRequestIds);
+        writer.WritePropertyName("route");
+        WriteRoute(writer, vehicle.Route);
+        writer.WriteNumber(
+            "lastObservedEpoch",
+            vehicle.LastObservedEpoch);
+        writer.WriteEndObject();
+    }
+
+    private static void WriteArc(Utf8JsonWriter writer, KeyValuePair<TravelArc, Duration> arc)
+    {
+        writer.WriteStartObject();
+        writer.WriteString(
+            "fromNodeId",
+            arc.Key.FromNodeId.Value);
+        writer.WriteString("toNodeId", arc.Key.ToNodeId.Value);
+        writer.WriteNumber(
+            "travelTimeMs",
+            arc.Value.Milliseconds);
+        writer.WriteEndObject();
+    }
+
+    private static void WriteLedgerEntry(Utf8JsonWriter writer, CommitmentLedgerEntry entry)
+    {
+        writer.WriteStartObject();
+        writer.WriteString("kind", entry.Kind == CommitmentLedgerEntryKind.InitialPromise
+            ? "initialPromise"
+            : "revision");
+        writer.WriteString("publicationId", entry.PublicationId);
+        writer.WriteString("reasonCode", entry.ReasonCode);
+        writer.WriteNumber("sourceEventSeq", entry.SourceEventSequence);
+        WritePublishedPromise(writer, "publishedPromise", entry.PublishedPromise);
+        if (entry.PreviousPromise is { } previous)
+        {
+            WritePublishedPromise(writer, "previousPromise", previous);
+        }
+
+        writer.WritePropertyName("exogenousProjection");
+        CommitmentContractCodec.WritePromise(
+            writer, OnlineDecisionActionMapper.MapPromise(entry.ExogenousProjection));
+        WriteVector(writer, "exogenousDelta", entry.Deltas.Exogenous);
+        WriteVector(writer, "decisionDelta", entry.Deltas.DecisionInduced);
+        WriteVector(writer, "visibleDelta", entry.Deltas.Visible);
+        WriteVector(writer, "budgetBefore", entry.BudgetBefore);
+        WriteVector(writer, "budgetAfter", entry.BudgetAfter);
+        writer.WriteEndObject();
+    }
+
+    private static void WriteIncident(Utf8JsonWriter writer, OperationalIncident incident)
+    {
+        writer.WriteStartObject();
+        writer.WriteString("incidentId", incident.Id.Value);
+        writer.WriteString("reasonCode", incident.ReasonCode);
+        WriteRequestSet(writer, "affectedRequestIds", incident.AffectedRequestIds);
+        WriteIdentifiers(writer, "affectedVehicleIds", incident.AffectedVehicleIds.Select(value => value.Value));
+        writer.WriteNumber("openedEventSeq", incident.OpenedEventSequence);
+        writer.WriteNumber("openedAtMs", incident.OpenedAt.Milliseconds);
+        if (incident.ResolvedEventSequence is long resolved)
+        {
+            writer.WriteNumber("resolvedEventSeq", resolved);
+            writer.WriteNumber("resolvedAtMs", incident.ResolvedAt!.Value.Milliseconds);
+        }
+
+        writer.WriteEndObject();
+    }
+
+    private static void WriteLatePickup(Utf8JsonWriter writer, ObservedLatePickup late)
+    {
+        writer.WriteStartObject();
+        writer.WriteString("requestId", late.RequestId.Value);
+        writer.WriteString("vehicleId", late.VehicleId.Value);
+        writer.WriteNumber("latestPickupMs", late.LatestPickup.Milliseconds);
+        writer.WriteNumber("actualPickupMs", late.ActualPickup.Milliseconds);
+        writer.WriteNumber("sourceEventSeq", late.SourceEventSequence);
+        writer.WriteNumber("recordedEpoch", late.RecordedEpoch);
+        writer.WriteEndObject();
     }
 
     private static void WritePublishedPromise(
@@ -221,62 +312,6 @@ public static class OnlineStateCanonicalizer
     {
         writer.WritePropertyName(field);
         CommitmentContractCodec.WriteVector(writer, OnlineDecisionActionMapper.MapVector(vector));
-    }
-
-    private static void WriteIncidentLedger(Utf8JsonWriter writer, OperationalIncidentLedger ledger)
-    {
-        writer.WritePropertyName("incidentLedger");
-        writer.WriteStartObject();
-        writer.WritePropertyName("incidents");
-        writer.WriteStartArray();
-        foreach (var incident in ledger.Incidents.Values.OrderBy(
-                     value => value.Id.Value, StringComparer.Ordinal))
-        {
-            writer.WriteStartObject();
-            writer.WriteString("incidentId", incident.Id.Value);
-            writer.WriteString("reasonCode", incident.ReasonCode);
-            WriteRequestSet(writer, "affectedRequestIds", incident.AffectedRequestIds);
-            WriteIdentifiers(writer, "affectedVehicleIds", incident.AffectedVehicleIds.Select(value => value.Value));
-            writer.WriteNumber("openedEventSeq", incident.OpenedEventSequence);
-            writer.WriteNumber("openedAtMs", incident.OpenedAt.Milliseconds);
-            if (incident.ResolvedEventSequence is long resolved)
-            {
-                writer.WriteNumber("resolvedEventSeq", resolved);
-                writer.WriteNumber("resolvedAtMs", incident.ResolvedAt!.Value.Milliseconds);
-            }
-
-            writer.WriteEndObject();
-        }
-
-        writer.WriteEndArray();
-        writer.WritePropertyName("breaches");
-        writer.WriteStartArray();
-        foreach (var breach in ledger.Breaches)
-        {
-            WriteBreach(writer, breach);
-        }
-
-        writer.WriteEndArray();
-        if (ledger.LatePickups.Count != 0)
-        {
-            writer.WritePropertyName("latePickups");
-            writer.WriteStartArray();
-            foreach (var late in ledger.LatePickups)
-            {
-                writer.WriteStartObject();
-                writer.WriteString("requestId", late.RequestId.Value);
-                writer.WriteString("vehicleId", late.VehicleId.Value);
-                writer.WriteNumber("latestPickupMs", late.LatestPickup.Milliseconds);
-                writer.WriteNumber("actualPickupMs", late.ActualPickup.Milliseconds);
-                writer.WriteNumber("sourceEventSeq", late.SourceEventSequence);
-                writer.WriteNumber("recordedEpoch", late.RecordedEpoch);
-                writer.WriteEndObject();
-            }
-
-            writer.WriteEndArray();
-        }
-
-        writer.WriteEndObject();
     }
 
     private static void WriteBreach(Utf8JsonWriter writer, CommitmentBreachRecord breach)
@@ -485,22 +520,4 @@ public static class OnlineStateCanonicalizer
                 "cancelledAfterAcceptance",
             _ => throw new ArgumentOutOfRangeException(nameof(lifecycle)),
         };
-
-    private static void WriteFrame(
-        IBufferWriter<byte> writer,
-        string tag,
-        ReadOnlySpan<byte> value)
-    {
-        var tagBytes = Encoding.UTF8.GetBytes(tag);
-        var header = writer.GetSpan(sizeof(ushort));
-        BinaryPrimitives.WriteUInt16BigEndian(
-            header,
-            checked((ushort)tagBytes.Length));
-        writer.Advance(sizeof(ushort));
-        writer.Write(tagBytes);
-        header = writer.GetSpan(sizeof(ulong));
-        BinaryPrimitives.WriteUInt64BigEndian(header, (ulong)value.Length);
-        writer.Advance(sizeof(ulong));
-        writer.Write(value);
-    }
 }

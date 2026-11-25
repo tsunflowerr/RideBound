@@ -97,16 +97,20 @@ public static class RunnerHost
                 return 3;
             }
 
-            if (result.Response is not null)
+            if (result.Streamed is { } streamed)
             {
-                if (result.Response.MessageType.Value == "error")
+                await writer.WriteAsync(streamed, cancellationToken).ConfigureAwait(false);
+            }
+            else if (result.Response is { } response)
+            {
+                if (response.MessageType.Value == "error")
                 {
                     await diagnostics.WriteLineAsync(
-                        $"Protocol error: {result.Response.Payload.GetProperty("code").GetString()}")
+                        $"Protocol error: {response.Payload.GetProperty("code").GetString()}")
                         .ConfigureAwait(false);
                 }
 
-                await writer.WriteAsync(result.Response, cancellationToken)
+                await writer.WriteAsync(response, cancellationToken)
                     .ConfigureAwait(false);
             }
 

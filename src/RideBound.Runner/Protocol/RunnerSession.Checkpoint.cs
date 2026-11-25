@@ -3,6 +3,7 @@ using RideBound.Application.State;
 using RideBound.Contracts.Protocol;
 using RideBound.Contracts.Serialization;
 using RideBound.Runner.Online;
+using RideBound.Runner.StateAudit;
 
 namespace RideBound.Runner.Protocol;
 
@@ -34,7 +35,7 @@ public sealed partial class RunnerSession
         }
 
         var committed = _onlineCoordinator.CommittedState;
-        var canonical = OnlineStateCanonicalizer.Canonicalize(committed);
+        var canonical = OnlineStateCanonicalizer.CanonicalizeSegments(committed);
         if (CheckpointStateHash(committed, canonical) != _stateHash)
         {
             return Error(
@@ -44,14 +45,17 @@ public sealed partial class RunnerSession
                 envelope);
         }
 
-        using var document = JsonDocument.Parse(canonical);
-        var content = new CheckpointContent(
+        using var emptyState = JsonDocument.Parse("{}");
+        var shell = new CheckpointContent(
             _manifestHash, _stateHash, _previousDecisionHash,
-            _appliedEpoch, _nextEventSequence, _simulationTimeMilliseconds, document.RootElement);
-        var payload = new CheckpointPayload(
-            CheckpointPayloadCodec.CurrentVersion, CheckpointPayloadCodec.CalculateHash(content), content);
-        return new RunnerSessionResult(
-            CreateEnvelope("checkpoint", CheckpointPayloadCodec.Encode(payload), envelope.RunId, envelope.ScenarioId));
+            _appliedEpoch, _nextEventSequence, _simulationTimeMilliseconds, emptyState.RootElement);
+        var hash = CheckpointPayloadCodec.CalculateHash(shell, canonical.Parts);
+        var canonicalShell = CanonicalJson.Serialize(CreateEnvelope(
+            "checkpoint", CheckpointPayloadCodec.EncodeShell(hash, shell), envelope.RunId, envelope.ScenarioId));
+        var (before, after) = CheckpointPayloadCodec.SplitAtEmptyOnlineState(canonicalShell);
+
+        return RunnerSessionResult.FromStreamed(new StreamedResponse(
+            "checkpoint", [before, .. canonical.Parts, after]));
     }
 
     private RunnerSessionResult ProcessRestore(ProtocolEnvelope envelope)
@@ -105,13 +109,12 @@ public sealed partial class RunnerSession
             state = state with { TravelTimes = travel.WithForecast(forecast) };
         }
 
-        var canonical = OnlineStateCanonicalizer.Canonicalize(state);
         if (state.Run.Id.Value != _identity.RunId.Value
             || state.Run.ScenarioId.Value != _identity.ScenarioId.Value
             || state.Run.AppliedEpoch != content.AppliedEpoch
             || state.NextEventSequence != content.NextEventSequence
             || state.Run.SimulationTime.Milliseconds != content.SimulationTimeMs
-            || CheckpointStateHash(state, canonical) != content.StateHash
+            || CheckpointStateHash(state) != content.StateHash
             || (content.AppliedEpoch == 0) != (content.PreviousDecisionHash == ProtocolHash.ZeroHash))
         {
             return Error(
@@ -149,11 +152,11 @@ public sealed partial class RunnerSession
                 envelope.ScenarioId));
     }
 
-    private Sha256Hex CheckpointStateHash(OnlineState state, ReadOnlySpan<byte> canonical) =>
+    private Sha256Hex CheckpointStateHash(OnlineState state, CanonicalSegments? canonical = null) =>
         (UsesLightAuditHash, state.Run.AppliedEpoch) switch
         {
             (true, _) => CalculateLightStateIdentityHash(state),
             (_, 0) => _stateHash,
-            _ => OnlineStateCanonicalizer.CalculateCanonicalHash(canonical),
+            _ => OnlineStateCanonicalizer.HashV1(canonical ?? OnlineStateCanonicalizer.CanonicalizeSegments(state)),
         };
 }

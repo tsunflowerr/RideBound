@@ -34,7 +34,7 @@ public sealed partial class RunnerSession
             ?
             [
                 EventBatchMember, canonicalBatch,
-                OnlineStateMember, OnlineStateCanonicalizer.Canonicalize(coordinator.CommittedState),
+                OnlineStateMember, .. OnlineStateCanonicalizer.CanonicalizeSegments(coordinator.CommittedState).Parts,
                 StateIdentityMember, identity.WrittenMemory, InputEnd,
             ]
             : [EventBatchMember, canonicalBatch, StateIdentityMember, identity.WrittenMemory, InputEnd];

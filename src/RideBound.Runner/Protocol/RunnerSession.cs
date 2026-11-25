@@ -37,7 +37,25 @@ public enum RunnerExecutionMode
 
 public sealed record RunnerSessionResult(
     ProtocolEnvelope? Response,
-    bool ShouldTerminate = false);
+    bool ShouldTerminate = false)
+{
+    private readonly ProtocolEnvelope? _response = Response;
+
+    public StreamedResponse? Streamed { get; private init; }
+
+    public ProtocolEnvelope? Response
+    {
+        get => _response ?? Streamed?.ToEnvelope();
+        init
+        {
+            _response = value;
+            Streamed = null;
+        }
+    }
+
+    internal static RunnerSessionResult FromStreamed(StreamedResponse response) =>
+        new((ProtocolEnvelope?)null) { Streamed = response };
+}
 
 public sealed partial class RunnerSession
 {

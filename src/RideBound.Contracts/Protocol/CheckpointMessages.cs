@@ -1,7 +1,5 @@
-using System.Buffers;
 using System.Buffers.Binary;
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using RideBound.Contracts.Serialization;
 
@@ -60,17 +58,20 @@ public static class CheckpointPayloadCodec
                 nameof(payload));
         }
 
-        return ProtocolPayloadReader.Write(
+        return WritePayload(payload.CheckpointVersion, payload.CheckpointHash, payload.Content);
+    }
+
+    private static byte[] WritePayload(string version, Sha256Hex hash, CheckpointContent content) =>
+        ProtocolPayloadReader.Write(
             writer =>
             {
                 writer.WriteStartObject();
-                writer.WriteString("checkpointVersion", payload.CheckpointVersion);
-                writer.WriteString("checkpointHash", payload.CheckpointHash.Value);
+                writer.WriteString("checkpointVersion", version);
+                writer.WriteString("checkpointHash", hash.Value);
                 writer.WritePropertyName("content");
-                WriteContent(writer, payload.Content);
+                WriteContent(writer, content);
                 writer.WriteEndObject();
             });
-    }
 
     public static ProtocolPayloadDecodeResult<CheckpointPayload> Decode(
         JsonElement payload)
@@ -149,20 +150,114 @@ public static class CheckpointPayloadCodec
         ValidateContent(content);
         var canonical = CanonicalJson.Canonicalize(
             ProtocolPayloadReader.Write(writer => WriteContent(writer, content)));
-        var buffer = new ArrayBufferWriter<byte>();
-        buffer.Write(HashDomain);
-        var tag = Encoding.UTF8.GetBytes("canonicalCheckpointContent");
-        var header = buffer.GetSpan(sizeof(ushort));
-        BinaryPrimitives.WriteUInt16BigEndian(header, checked((ushort)tag.Length));
-        buffer.Advance(sizeof(ushort));
-        buffer.Write(tag);
-        header = buffer.GetSpan(sizeof(ulong));
-        BinaryPrimitives.WriteUInt64BigEndian(header, (ulong)canonical.Length);
-        buffer.Advance(sizeof(ulong));
-        buffer.Write(canonical);
-        var text = Convert.ToHexStringLower(SHA256.HashData(buffer.WrittenSpan));
-        Sha256Hex.TryCreate(text, out var hash);
-        return hash!;
+        return HashCanonicalContent(canonical, [], default);
+    }
+
+    /// <summary>
+    /// Hashes a checkpoint whose online state is already canonical JSON, possibly split
+    /// across multiple byte ranges. The shell must have an empty online state.
+    /// </summary>
+    public static Sha256Hex CalculateHash(
+        CheckpointContent shell,
+        IReadOnlyList<ReadOnlyMemory<byte>> canonicalOnlineState)
+    {
+        ArgumentNullException.ThrowIfNull(canonicalOnlineState);
+        RequireEmptyOnlineState(shell);
+        var canonical = CanonicalJson.Canonicalize(
+            ProtocolPayloadReader.Write(writer => WriteContent(writer, shell)));
+        var (before, after) = SplitAtEmptyOnlineState(canonical);
+        return HashCanonicalContent(before, canonicalOnlineState, after);
+    }
+
+    /// <summary>
+    /// Encodes a checkpoint shell with a hash computed over the full state.
+    /// Insert the canonical state bytes into its empty onlineState before sending.
+    /// </summary>
+    public static byte[] EncodeShell(Sha256Hex checkpointHash, CheckpointContent shell)
+    {
+        ArgumentNullException.ThrowIfNull(checkpointHash);
+        RequireEmptyOnlineState(shell);
+        return WritePayload(CurrentVersion, checkpointHash, shell);
+    }
+
+    /// <summary>
+    /// Splits canonical JSON around its unique empty onlineState object. The value
+    /// itself is omitted so that the caller can insert canonical state bytes.
+    /// </summary>
+    public static (ReadOnlyMemory<byte> Before, ReadOnlyMemory<byte> After) SplitAtEmptyOnlineState(
+        byte[] canonical)
+    {
+        ArgumentNullException.ThrowIfNull(canonical);
+        var reader = new Utf8JsonReader(canonical);
+        var isStateValue = false;
+        var valueStart = -1;
+        while (reader.Read())
+        {
+            if (isStateValue && reader.TokenType == JsonTokenType.StartObject)
+            {
+                var offset = checked((int)reader.TokenStartIndex);
+                if (canonical.AsSpan(offset).StartsWith("{}"u8))
+                {
+                    if (valueStart != -1)
+                    {
+                        throw new ArgumentException(
+                            "Canonical checkpoint JSON has more than one empty onlineState member.", nameof(canonical));
+                    }
+
+                    valueStart = offset;
+                }
+            }
+
+            isStateValue = reader.TokenType == JsonTokenType.PropertyName && reader.ValueTextEquals("onlineState"u8);
+        }
+
+        if (valueStart == -1)
+        {
+            throw new ArgumentException(
+                "Canonical checkpoint JSON must contain an empty onlineState member.", nameof(canonical));
+        }
+
+        return (canonical.AsMemory(0, valueStart), canonical.AsMemory(valueStart + 2));
+    }
+
+    private static void RequireEmptyOnlineState(CheckpointContent shell)
+    {
+        ValidateContent(shell);
+        if (shell.OnlineState.EnumerateObject().Any())
+        {
+            throw new ArgumentException("A checkpoint shell must have an empty online state.", nameof(shell));
+        }
+    }
+
+    private static Sha256Hex HashCanonicalContent(
+        ReadOnlyMemory<byte> before,
+        IReadOnlyList<ReadOnlyMemory<byte>> parts,
+        ReadOnlyMemory<byte> after)
+    {
+        var length = (long)before.Length + after.Length;
+        foreach (var part in parts)
+        {
+            length += part.Length;
+        }
+
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        hash.AppendData(HashDomain);
+        var tag = "canonicalCheckpointContent"u8;
+        Span<byte> header = stackalloc byte[sizeof(ulong)];
+        BinaryPrimitives.WriteUInt16BigEndian(header, (ushort)tag.Length);
+        hash.AppendData(header[..sizeof(ushort)]);
+        hash.AppendData(tag);
+        BinaryPrimitives.WriteUInt64BigEndian(header, (ulong)length);
+        hash.AppendData(header);
+        hash.AppendData(before.Span);
+        foreach (var part in parts)
+        {
+            hash.AppendData(part.Span);
+        }
+
+        hash.AppendData(after.Span);
+        Sha256Hex.TryCreate(Convert.ToHexStringLower(hash.GetHashAndReset()), out var result);
+        return result!;
     }
 
     private static ProtocolPayloadDecodeResult<CheckpointContent> ReadContent(

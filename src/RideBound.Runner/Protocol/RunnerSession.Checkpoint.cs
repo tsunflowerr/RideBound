@@ -150,7 +150,10 @@ public sealed partial class RunnerSession
     }
 
     private Sha256Hex CheckpointStateHash(OnlineState state, ReadOnlySpan<byte> canonical) =>
-        state.Run.AppliedEpoch == 0
-            ? _stateHash
-            : OnlineStateCanonicalizer.CalculateCanonicalHash(canonical);
+        (UsesLightAuditHash, state.Run.AppliedEpoch) switch
+        {
+            (true, _) => CalculateLightStateIdentityHash(state),
+            (_, 0) => _stateHash,
+            _ => OnlineStateCanonicalizer.CalculateCanonicalHash(canonical),
+        };
 }

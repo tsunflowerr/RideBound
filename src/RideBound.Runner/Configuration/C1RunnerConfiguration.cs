@@ -30,7 +30,8 @@ public sealed class C1RunnerConfiguration : ICommitmentPolicyProvider, IStopDist
         Dictionary<(NodeId From, NodeId To), long> distances,
         bool recordLatePickups,
         ShadowAllocationInputs? shadowAllocation,
-        TravelTimeForecast? planningForecast)
+        TravelTimeForecast? planningForecast,
+        bool usesLightAuditHash)
     {
         ContentHash = contentHash;
         PolicyVersion = policyVersion;
@@ -39,6 +40,7 @@ public sealed class C1RunnerConfiguration : ICommitmentPolicyProvider, IStopDist
         RecordLatePickups = recordLatePickups;
         ShadowAllocation = shadowAllocation;
         PlanningForecast = planningForecast;
+        UsesLightAuditHash = usesLightAuditHash;
         _policies = new CommitmentPolicyCatalog(policies);
         _distances = distances;
     }
@@ -50,6 +52,7 @@ public sealed class C1RunnerConfiguration : ICommitmentPolicyProvider, IStopDist
     public bool RecordLatePickups { get; }
     public ShadowAllocationInputs? ShadowAllocation { get; }
     public TravelTimeForecast? PlanningForecast { get; }
+    public bool UsesLightAuditHash { get; }
 
     public bool Matches(RunManifestIdentity manifest) =>
         manifest.PolicyId == PolicyId
@@ -63,7 +66,7 @@ public sealed class C1RunnerConfiguration : ICommitmentPolicyProvider, IStopDist
         var root = document.RootElement;
         RequireObject(root, "$",
             ["configurationVersion", "policyId", "policyVersion", "candidateGeneration",
-                "solverExecution", "policies", "stopDistances"], "lateBoarding", "shadowAllocation", "planningForecast");
+                "solverExecution", "policies", "stopDistances"], "lateBoarding", "shadowAllocation", "planningForecast", "auditHash");
         if (Text(root, "configurationVersion") != "1.0.0" || Text(root, "policyId") != PolicyId)
         {
             throw new InvalidDataException("C1 requires configurationVersion 1.0.0 and policyId ridebound-hard-vector.");
@@ -121,12 +124,21 @@ public sealed class C1RunnerConfiguration : ICommitmentPolicyProvider, IStopDist
         var forecast = root.TryGetProperty("planningForecast", out var forecastElement)
             ? ReadPlanningForecast(forecastElement)
             : null;
+        var usesLightAuditHash = root.TryGetProperty("auditHash", out _)
+            ? Text(root, "auditHash") switch
+            {
+                "full-v1" => false,
+                "light-v1" => true,
+                _ => throw new InvalidDataException("auditHash must be full-v1 or light-v1."),
+            }
+            : false;
         var solver = new SolverBackedRidePoolingPolicyOptions(
             RidePoolingPolicyKind.RideBoundHardVector,
             ReadExecutionBudget(root.GetProperty("solverExecution")));
         Sha256Hex.TryCreate(Convert.ToHexStringLower(SHA256.HashData(canonical)), out var contentHash);
         return new C1RunnerConfiguration(
-            contentHash!, policyVersion, generation, solver, policies, distances, recordLatePickups, shadow, forecast);
+            contentHash!, policyVersion, generation, solver, policies, distances,
+            recordLatePickups, shadow, forecast, usesLightAuditHash);
     }
 
     public bool TryGetPolicy(string policyId, out CommitmentPolicy policy) =>

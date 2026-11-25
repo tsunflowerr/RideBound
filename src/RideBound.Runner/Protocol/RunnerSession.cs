@@ -1,4 +1,3 @@
-using System.Buffers;
 using System.Security.Cryptography;
 using System.Text.Json;
 using RideBound.Algorithms.Candidates;
@@ -358,7 +357,8 @@ public sealed partial class RunnerSession
             envelope.EpochId!.Value.Value,
             firstSequence,
             lastSequence);
-        var canonicalBatchHash = CalculateCanonicalBatchHash(envelope);
+        var canonicalBatch = CanonicalJson.Canonicalize(ProtocolEnvelopeCodec.Encode(envelope));
+        var canonicalBatchHash = Convert.ToHexStringLower(SHA256.HashData(canonicalBatch));
 
         if (_lastBatch is not null && _lastBatch.Key == key)
         {
@@ -473,15 +473,14 @@ public sealed partial class RunnerSession
                 zero);
         }
 
-        var canonicalInput = CreateCanonicalInput(envelope);
+        var canonicalInput = CreateCanonicalInputParts(canonicalBatch);
         var canonicalDecision = CanonicalJson.Canonicalize(
             DecisionPayloadCodec.Encode(shell, hashProjection: true));
-        var decisionHash = ProtocolHash.CalculateDecisionHash(
-            _previousDecisionHash,
-            _manifestHash,
-            _identity!.Manifest.PolicyVersion,
-            canonicalInput,
-            canonicalDecision);
+        var decisionHash = UsesLightAuditHash
+            ? ProtocolHash.CalculateDecisionHashLight(
+                _previousDecisionHash, _manifestHash, _identity!.Manifest.PolicyVersion, canonicalInput, canonicalDecision)
+            : ProtocolHash.CalculateDecisionHash(
+                _previousDecisionHash, _manifestHash, _identity!.Manifest.PolicyVersion, canonicalInput, canonicalDecision);
         var decision = shell with { DecisionHash = decisionHash };
         var response = CreateEnvelope(
             "decision",
@@ -573,47 +572,6 @@ public sealed partial class RunnerSession
         && envelope.RunId == _identity.RunId
         && envelope.ScenarioId == _identity.ScenarioId;
 
-    private byte[] CreateCanonicalInput(ProtocolEnvelope envelope)
-    {
-        var envelopeBytes = ProtocolEnvelopeCodec.Encode(envelope);
-        using var envelopeDocument = JsonDocument.Parse(envelopeBytes);
-        var buffer = new ArrayBufferWriter<byte>();
-
-        using (var writer = new Utf8JsonWriter(buffer))
-        {
-            writer.WriteStartObject();
-            writer.WritePropertyName("eventBatch");
-            envelopeDocument.RootElement.WriteTo(writer);
-            writer.WritePropertyName("stateIdentityBefore");
-            writer.WriteStartObject();
-            writer.WriteNumber("epochId", _appliedEpoch);
-            writer.WriteNumber("nextEventSeq", _nextEventSequence);
-            writer.WriteNumber("simTimeMs", _simulationTimeMilliseconds);
-            writer.WriteString("stateHash", _stateHash.Value);
-            writer.WriteEndObject();
-
-            if (_executionMode == RunnerExecutionMode.OnlineRollingCost)
-            {
-                writer.WritePropertyName("onlineStateBefore");
-                using var onlineDocument = JsonDocument.Parse(
-                    OnlineStateCanonicalizer.Canonicalize(
-                        _onlineCoordinator!.CommittedState));
-                onlineDocument.RootElement.WriteTo(writer);
-            }
-
-            writer.WriteEndObject();
-        }
-
-        return CanonicalJson.Canonicalize(buffer.WrittenSpan);
-    }
-
-    private static string CalculateCanonicalBatchHash(ProtocolEnvelope envelope)
-    {
-        var canonical = CanonicalJson.Canonicalize(
-            ProtocolEnvelopeCodec.Encode(envelope));
-        return Convert.ToHexStringLower(SHA256.HashData(canonical));
-    }
-
     private OnlineDecisionBuildResult BuildOnlineDecision(
         ProtocolEnvelope envelope)
     {
@@ -697,7 +655,9 @@ public sealed partial class RunnerSession
                 SolverStatus.Completed,
             _ => SolverStatus.NotRun,
         };
-        var stateAfterHash = OnlineStateCanonicalizer.CalculateHash(proposedState!);
+        var stateAfterHash = UsesLightAuditHash
+            ? CalculateLightStateIdentityHash(proposedState!)
+            : OnlineStateCanonicalizer.CalculateHash(proposedState!);
         var certificate = _c1Configuration is null
             ? null
             : new CertificateShell(

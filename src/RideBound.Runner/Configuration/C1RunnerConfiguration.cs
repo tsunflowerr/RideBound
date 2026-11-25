@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text.Json;
 using RideBound.Algorithms.Candidates;
@@ -28,7 +29,8 @@ public sealed class C1RunnerConfiguration : ICommitmentPolicyProvider, IStopDist
         CommitmentPolicy[] policies,
         Dictionary<(NodeId From, NodeId To), long> distances,
         bool recordLatePickups,
-        ShadowAllocationInputs? shadowAllocation)
+        ShadowAllocationInputs? shadowAllocation,
+        TravelTimeForecast? planningForecast)
     {
         ContentHash = contentHash;
         PolicyVersion = policyVersion;
@@ -36,6 +38,7 @@ public sealed class C1RunnerConfiguration : ICommitmentPolicyProvider, IStopDist
         Solver = solver;
         RecordLatePickups = recordLatePickups;
         ShadowAllocation = shadowAllocation;
+        PlanningForecast = planningForecast;
         _policies = new CommitmentPolicyCatalog(policies);
         _distances = distances;
     }
@@ -46,6 +49,7 @@ public sealed class C1RunnerConfiguration : ICommitmentPolicyProvider, IStopDist
     public SolverBackedRidePoolingPolicyOptions Solver { get; }
     public bool RecordLatePickups { get; }
     public ShadowAllocationInputs? ShadowAllocation { get; }
+    public TravelTimeForecast? PlanningForecast { get; }
 
     public bool Matches(RunManifestIdentity manifest) =>
         manifest.PolicyId == PolicyId
@@ -59,7 +63,7 @@ public sealed class C1RunnerConfiguration : ICommitmentPolicyProvider, IStopDist
         var root = document.RootElement;
         RequireObject(root, "$",
             ["configurationVersion", "policyId", "policyVersion", "candidateGeneration",
-                "solverExecution", "policies", "stopDistances"], "lateBoarding", "shadowAllocation");
+                "solverExecution", "policies", "stopDistances"], "lateBoarding", "shadowAllocation", "planningForecast");
         if (Text(root, "configurationVersion") != "1.0.0" || Text(root, "policyId") != PolicyId)
         {
             throw new InvalidDataException("C1 requires configurationVersion 1.0.0 and policyId ridebound-hard-vector.");
@@ -114,12 +118,15 @@ public sealed class C1RunnerConfiguration : ICommitmentPolicyProvider, IStopDist
             }
             : false;
 
+        var forecast = root.TryGetProperty("planningForecast", out var forecastElement)
+            ? ReadPlanningForecast(forecastElement)
+            : null;
         var solver = new SolverBackedRidePoolingPolicyOptions(
             RidePoolingPolicyKind.RideBoundHardVector,
             ReadExecutionBudget(root.GetProperty("solverExecution")));
         Sha256Hex.TryCreate(Convert.ToHexStringLower(SHA256.HashData(canonical)), out var contentHash);
         return new C1RunnerConfiguration(
-            contentHash!, policyVersion, generation, solver, policies, distances, recordLatePickups, shadow);
+            contentHash!, policyVersion, generation, solver, policies, distances, recordLatePickups, shadow, forecast);
     }
 
     public bool TryGetPolicy(string policyId, out CommitmentPolicy policy) =>
@@ -134,6 +141,28 @@ public sealed class C1RunnerConfiguration : ICommitmentPolicyProvider, IStopDist
         }
 
         return _distances.TryGetValue((from, to), out distance);
+    }
+
+    private static TravelTimeForecast ReadPlanningForecast(JsonElement element)
+    {
+        RequireFields(element, "planningForecast", "profile", "binMs");
+        var bin = Integer(element, "binMs", TravelTimeForecast.MinimumBinMilliseconds, DomainLimits.MaxCanonicalInteger);
+        // Canonical JSON uses integer numbers. Forecast factors use invariant decimal strings.
+        var profile = Array(element, "profile")
+            .Select(value =>
+                value.ValueKind == JsonValueKind.String
+                && double.TryParse(value.GetString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var factor)
+                && double.IsFinite(factor)
+                && factor > 0
+                    ? factor
+                    : throw new InvalidDataException("planningForecast.profile must contain finite positive decimal strings."))
+            .ToArray();
+        if (profile.Length == 0)
+        {
+            throw new InvalidDataException("planningForecast.profile must be non-empty.");
+        }
+
+        return new TravelTimeForecast(profile, bin);
     }
 
     private static CommitmentPolicy ReadPolicy(JsonElement element)

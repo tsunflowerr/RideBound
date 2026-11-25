@@ -41,10 +41,11 @@ public sealed class TravelTimeForecast
         }
 
         _profile = profile.ToArray();
+        Profile = Array.AsReadOnly(_profile);
         BinMilliseconds = binMilliseconds;
     }
 
-    public IReadOnlyList<double> Profile => _profile;
+    public IReadOnlyList<double> Profile { get; }
 
     public long BinMilliseconds { get; }
 

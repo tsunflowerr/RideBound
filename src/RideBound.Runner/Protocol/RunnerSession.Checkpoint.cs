@@ -100,6 +100,11 @@ public sealed partial class RunnerSession
         }
 
         var state = restored.State!;
+        if (_c1Configuration?.PlanningForecast is { } forecast && state.TravelTimes is { } travel)
+        {
+            state = state with { TravelTimes = travel.WithForecast(forecast) };
+        }
+
         var canonical = OnlineStateCanonicalizer.Canonicalize(state);
         if (state.Run.Id.Value != _identity.RunId.Value
             || state.Run.ScenarioId.Value != _identity.ScenarioId.Value

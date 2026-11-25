@@ -635,7 +635,7 @@ public sealed partial class RunnerSession
                 mapped.Witness!.Message);
         }
 
-        var batch = mapped.Batch!;
+        var batch = WithPlanningForecast(mapped.Batch!);
         if (_c1Configuration is { } c1)
         {
             foreach (var arrived in batch.Events.OfType<RequestArrived>())
@@ -733,6 +733,24 @@ public sealed partial class RunnerSession
             : _rollingCostPolicy.DecideWithSolver(
                 reduced, _candidateOptions, _solver!, _solverConfiguration.ExecutionBudget);
         return (rollingCost.Decision, rollingCost.Decision?.ProposedState, [], rollingCost.Witness);
+    }
+
+    private InternalEventBatch WithPlanningForecast(InternalEventBatch batch)
+    {
+        if (_c1Configuration?.PlanningForecast is not { } forecast
+            || !batch.Events.Any(value => value is TravelTimesUpdated))
+        {
+            return batch;
+        }
+
+        return batch with
+        {
+            Events = batch.Events
+                .Select(value => value is TravelTimesUpdated travel
+                    ? travel with { Snapshot = travel.Snapshot.WithForecast(forecast) }
+                    : value)
+                .ToArray(),
+        };
     }
 
     private EventReductionCoordinator CreateOnlineCoordinator(OnlineState state) =>

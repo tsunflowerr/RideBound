@@ -11,13 +11,16 @@ permissions:
 jobs:
   dotnet:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/core
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
-          global-json-file: global.json
+          global-json-file: src/core/global.json
           cache: true
-          cache-dependency-path: "**/*.csproj"
+          cache-dependency-path: "src/core/**/*.csproj"
       - name: Restore
         run: dotnet restore RideBound.slnx
       - name: Build

@@ -66,7 +66,7 @@ public sealed class RunnerEndToEndTests
             "runner/full-tiny-transcript.input.ndjson");
         var tampered = transcript.Replace(
             "\"eventType\":\"timerTick\",\"payload\":{}",
-            "\"eventType\":\"incidentResolved\",\"payload\":{\"incidentId\":\"tampered\"}",
+            "\"eventType\":\"bookingConfirmed\",\"payload\":{\"requestId\":\"tampered\"}",
             StringComparison.Ordinal);
 
         var original = await RunInMemory(transcript);

@@ -125,8 +125,6 @@ public sealed class SchemaAssetTests
                      "passenger-event-payload.schema.json",
                      "travel-times-updated-event-payload.schema.json",
                      "timer-tick-event-payload.schema.json",
-                     "incident-opened-event-payload.schema.json",
-                     "incident-resolved-event-payload.schema.json",
                      "request-accepted-action-payload.schema.json",
                      "request-outcome-action-payload.schema.json",
                      "vehicle-plan-updated-action-payload.schema.json",

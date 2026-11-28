@@ -10,7 +10,6 @@ public enum DecisionType
     RequestDeferred,
     VehiclePlanUpdated,
     PromisePublished,
-    CommitmentBreachDeclared,
 }
 
 public enum DecisionProductionStatus
@@ -70,8 +69,6 @@ public static class DecisionTypeVocabulary
             DecisionType.RequestDeferred => "requestDeferred",
             DecisionType.VehiclePlanUpdated => "vehiclePlanUpdated",
             DecisionType.PromisePublished => "promisePublished",
-            DecisionType.CommitmentBreachDeclared =>
-                "commitmentBreachDeclared",
             _ => throw new ArgumentOutOfRangeException(nameof(decisionType)),
         };
 }
@@ -94,8 +91,6 @@ public static class DecisionReasonCodes
 
     public const string SolverTimeoutSafeFallback = "SOLVER_TIMEOUT_SAFE_FALLBACK";
 
-    public const string IncidentOverride = "INCIDENT_OVERRIDE";
-
     public const string Wp1StructuralOnly = "WP1_STRUCTURAL_ONLY";
 
     public static IReadOnlyList<string> All { get; } =
@@ -109,7 +104,6 @@ public static class DecisionReasonCodes
             FrozenPrefix,
             CommitmentBudget,
             SolverTimeoutSafeFallback,
-            IncidentOverride,
             Wp1StructuralOnly,
         ]);
 }

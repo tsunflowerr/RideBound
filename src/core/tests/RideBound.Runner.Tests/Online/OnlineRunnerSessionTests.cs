@@ -13,6 +13,26 @@ namespace RideBound.Runner.Tests.Online;
 
 public sealed partial class OnlineRunnerSessionTests
 {
+    [Theory]
+    [InlineData("incidentOpened")]
+    [InlineData("incidentResolved")]
+    public void Retired_incident_events_are_rejected_without_advancing_state(string eventType)
+    {
+        var session = CreateInitializedOnlineSession();
+        BootstrapAndAcknowledge(session);
+        var checkpoint = ReadCheckpoint(session);
+        var batch = JsonNode.Parse(CreateTimerBatch(2, 4, 1_100))!;
+        batch["payload"]!["events"]![0]!["eventType"] = eventType;
+
+        var result = session.Process(Bytes(batch));
+
+        Assert.Equal("error", result.Response?.MessageType.Value);
+        Assert.Equal("SCHEMA_VALIDATION_FAILED", result.Response!.Payload.GetProperty("code").GetString());
+        Assert.Equal(checkpoint.CheckpointHash, ReadCheckpoint(session).CheckpointHash);
+        Assert.Equal(4, session.NextEventSequence);
+        Assert.Equal("decision", session.Process(CreateTimerBatch(2, 4, 1_100)).Response?.MessageType.Value);
+    }
+
     [Fact]
     public void Bootstrap_batch_produces_typed_B1_actions_and_waits_for_ack()
     {
@@ -551,6 +571,21 @@ public sealed partial class OnlineRunnerSessionTests
         action.GetProperty("decisionType").GetString() == type;
 
     private static byte[] Bytes(JsonNode node) => Encoding.UTF8.GetBytes(node.ToJsonString());
+
+    private static RunnerSession OpenC1(C1RunnerConfiguration configuration)
+    {
+        var session = CreateC1Session(configuration);
+        var initialized = session.Process(Bytes(CreateC1Initialize(configuration)));
+        Assert.Equal("initialized", initialized.Response?.MessageType.Value);
+        return session;
+    }
+
+    private static void BootstrapAndAcknowledge(RunnerSession session)
+    {
+        var bootstrap = ReadDecision(session, ReadFixture("wp2/valid-bootstrap-event-batch.json"));
+        Assert.Contains(bootstrap.Decision.Actions, value => IsAction(value, "requestAccepted"));
+        Assert.Null(session.Process(CreateDecisionApplied(1, 1_000, bootstrap.Decision.DecisionHash.Value)).Response);
+    }
 
     private static RunnerSession CreateC1Session(C1RunnerConfiguration? configuration)
     {

@@ -246,13 +246,6 @@ public sealed class EventDecisionMessageTests
                             [new PromiseServiceTokenContract("pickup", "r-1", RouteStopKind.Pickup),
                              new PromiseServiceTokenContract("drop", "r-1", RouteStopKind.DropOff)]),
                         zeroBudget, zeroBudget, zeroBudget, zeroBudget, zeroBudget))),
-            DecisionType.CommitmentBreachDeclared => OnlineDecisionActionCodec.Encode(
-                new OnlineDecisionAction(
-                    decisionType,
-                    new CommitmentBreachDeclaredActionPayload(
-                        "breach-1", "incident-1", "r-1", 3,
-                        ["PICKUP_ETA_WITNESS", "BUDGET_WITNESS"],
-                        zeroBudget, zeroBudget with { PickupEtaTotalMs = 500 }))),
             _ => ParseObject(
                 $$"""
                 {
@@ -417,11 +410,11 @@ public sealed class EventDecisionMessageTests
         };
         var payload = new DecisionPayload(
             DecisionProductionStatus.Produced,
-            DecisionReasonCodes.IncidentOverride,
+            DecisionReasonCodes.CommitmentBudget,
             [],
             new CertificateShell(
                 CertificateStatus.Produced,
-                DecisionReasonCodes.IncidentOverride,
+                DecisionReasonCodes.CommitmentBudget,
                 nonNormal),
             new SolverStatusShell(SolverStatus.SafeFallback),
             zero!, zero!, zero!, zero!);
@@ -448,49 +441,24 @@ public sealed class EventDecisionMessageTests
     }
 
     [Fact]
-    public void Operational_breach_actions_require_a_typed_incident_and_unique_witnesses()
+    public void Decision_decoder_rejects_the_retired_commitment_breach_action()
     {
-        var action = CreateAction(DecisionType.CommitmentBreachDeclared);
-        var body = action.GetProperty("payload");
-        Assert.Equal("incident-1", body.GetProperty("incidentId").GetString());
-        Assert.Equal(3, body.GetProperty("sourceEventSeq").GetInt64());
-        Assert.Equal(
-            ["BUDGET_WITNESS", "PICKUP_ETA_WITNESS"],
-            body.GetProperty("witnessCodes").EnumerateArray().Select(value => value.GetString()));
-        Assert.Equal(500, body.GetProperty("attemptedBudgetAfter").GetProperty("pickupEtaTotalMs").GetInt64());
-
         var zero = ProtocolHash.ZeroHash;
-        var decision = new DecisionPayload(
+        var payload = new DecisionPayload(
             DecisionProductionStatus.Produced,
-            DecisionReasonCodes.IncidentOverride,
-            [action],
+            DecisionReasonCodes.CommitmentBudget,
+            [CreateAction(DecisionType.RequestDeferred)],
             new CertificateShell(
-                CertificateStatus.Produced,
-                DecisionReasonCodes.IncidentOverride,
-                Certificate(zero) with
-                {
-                    NormalOperation = false,
-                    Witnesses = [new CertificateWitnessContract("budget", "BUDGET_WITNESS")],
-                }),
-            new SolverStatusShell(SolverStatus.NotRun),
+                CertificateStatus.NotProduced,
+                DecisionPayloadCodec.CertificateNotAvailableReasonCode),
+            new SolverStatusShell(SolverStatus.SafeFallback),
             zero, zero, zero, zero);
-        var encoded = DecisionPayloadCodec.Encode(decision);
-        using var valid = JsonDocument.Parse(encoded);
-        Assert.True(DecisionPayloadCodec.Decode(valid.RootElement).IsSuccess);
+        var retired = JsonNode.Parse(DecisionPayloadCodec.Encode(payload))!;
+        retired["actions"]![0]!["decisionType"] = "commitmentBreachDeclared";
 
-        foreach (var field in new[] { "incidentId", "requestId", "sourceEventSeq", "attemptedBudgetAfter" })
-        {
-            var malformed = JsonNode.Parse(encoded)!;
-            malformed["actions"]![0]!["payload"]!.AsObject().Remove(field);
-            var rejected = DecisionPayloadCodec.Decode(JsonSerializer.SerializeToElement(malformed));
-            Assert.Equal($"$.payload.actions[0].payload.{field}", rejected.Error?.Field);
-        }
+        var result = DecisionPayloadCodec.Decode(JsonSerializer.SerializeToElement(retired));
 
-        var duplicate = JsonNode.Parse(encoded)!;
-        duplicate["actions"]![0]!["payload"]!["witnessCodes"] =
-            new JsonArray("BUDGET_WITNESS", "BUDGET_WITNESS");
-        var duplicateResult = DecisionPayloadCodec.Decode(JsonSerializer.SerializeToElement(duplicate));
-        Assert.StartsWith("$.payload.actions[0].payload.witnessCodes", duplicateResult.Error?.Field);
+        Assert.Equal("$.payload.actions[0].decisionType", result.Error?.Field);
     }
 
     private static CommitmentCertificateBody Certificate(Sha256Hex hash) =>
@@ -573,12 +541,6 @@ public sealed class EventDecisionMessageTests
                     hash!,
                     [new TravelArcContract("n-1", "n-2", 1)])),
             EventType.TimerTick => TimerTickEventPayload.Instance,
-            EventType.IncidentOpened => new IncidentOpenedEventPayload(
-                "incident-1",
-                "ROAD_CLOSED",
-                ["v-1"]),
-            EventType.IncidentResolved => new IncidentResolvedEventPayload(
-                "incident-1"),
             _ => throw new ArgumentOutOfRangeException(nameof(eventType)),
         };
     }

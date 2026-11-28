@@ -9,8 +9,6 @@ namespace RideBound.Runner.Protocol;
 
 public sealed partial class RunnerSession
 {
-    private bool _hasRestored;
-
     private RunnerSessionResult ProcessCheckpoint(ProtocolEnvelope envelope)
     {
         if (Status != RunnerSessionStatus.Initialized
@@ -59,105 +57,11 @@ public sealed partial class RunnerSession
             "checkpoint", [before, .. canonical.Parts, after]));
     }
 
-    private RunnerSessionResult ProcessRestore(ProtocolEnvelope envelope)
-    {
-        if (Status != RunnerSessionStatus.Initialized
-            || _onlineCoordinator is null
-            || _pending is not null
-            || _appliedEpoch != 0
-            || _hasRestored
-            || !IdentityMatches(envelope))
-        {
-            return Error(
-                "INVALID_SESSION_STATE",
-                ProtocolFailureDisposition.RejectMessage,
-                "restore requires a newly initialized online session without a pending decision.",
-                envelope);
-        }
-
-        var decoded = CheckpointPayloadCodec.Decode(envelope.Payload);
-        if (!decoded.IsSuccess)
-        {
-            return PayloadError(decoded.Error!, envelope);
-        }
-
-        var checkpoint = decoded.Value!;
-        var content = checkpoint.Content;
-        if (content.ManifestHash != _manifestHash)
-        {
-            return Error(
-                "MANIFEST_MUTATION",
-                ProtocolFailureDisposition.FailSession,
-                "Checkpoint manifest hash differs from the initialized run.",
-                envelope);
-        }
-
-        var restored = OnlineStateCheckpointCodec.Decode(
-            content.OnlineState, _identity!.Manifest.TravelTimeSnapshotHash.Value,
-            _c1Configuration?.ShadowAllocation?.Threshold);
-        if (!restored.IsSuccess)
-        {
-            return Error(
-                "SCHEMA_VALIDATION_FAILED",
-                ProtocolFailureDisposition.RejectMessage,
-                restored.Error!,
-                envelope);
-        }
-
-        var state = restored.State!;
-        if (_c1Configuration?.PlanningForecast is { } forecast && state.TravelTimes is { } travel)
-        {
-            state = state with { TravelTimes = travel.WithForecast(forecast) };
-        }
-
-        if (state.Run.Id.Value != _identity.RunId.Value
-            || state.Run.ScenarioId.Value != _identity.ScenarioId.Value
-            || state.Run.AppliedEpoch != content.AppliedEpoch
-            || state.NextEventSequence != content.NextEventSequence
-            || state.Run.SimulationTime.Milliseconds != content.SimulationTimeMs
-            || CheckpointStateHash(state) != content.StateHash
-            || (content.AppliedEpoch == 0) != (content.PreviousDecisionHash == ProtocolHash.ZeroHash))
-        {
-            return Error(
-                "HASH_MISMATCH",
-                ProtocolFailureDisposition.FailSession,
-                "Checkpoint state or decision chain differs from its declared identity.",
-                envelope);
-        }
-
-        if (_c1Configuration is { } c1
-                ? state.Run.Requests.Values.Any(request => !c1.TryGetPolicy(request.CommitmentPolicyId, out _))
-                : state.Commitments.Histories.Count != 0)
-        {
-            return Error(
-                "SCHEMA_VALIDATION_FAILED",
-                ProtocolFailureDisposition.RejectMessage,
-                "Checkpoint commitment state conflicts with the bound policy.",
-                envelope);
-        }
-
-        _onlineCoordinator = CreateOnlineCoordinator(state);
-        _appliedEpoch = content.AppliedEpoch;
-        _nextEventSequence = content.NextEventSequence;
-        _simulationTimeMilliseconds = content.SimulationTimeMs;
-        _stateHash = content.StateHash;
-        _previousDecisionHash = content.PreviousDecisionHash;
-        _lastBatch = null;
-        _hasRestored = true;
-
-        return new RunnerSessionResult(
-            CreateEnvelope(
-                "restore",
-                RestoreAcknowledgedPayloadCodec.Encode(new RestoreAcknowledgedPayload("restored", checkpoint.CheckpointHash)),
-                envelope.RunId,
-                envelope.ScenarioId));
-    }
-
-    private Sha256Hex CheckpointStateHash(OnlineState state, CanonicalSegments? canonical = null) =>
+    private Sha256Hex CheckpointStateHash(OnlineState state, CanonicalSegments canonical) =>
         (UsesLightAuditHash, state.Run.AppliedEpoch) switch
         {
             (true, _) => CalculateLightStateIdentityHash(state),
             (_, 0) => _stateHash,
-            _ => OnlineStateCanonicalizer.HashV1(canonical ?? OnlineStateCanonicalizer.CanonicalizeSegments(state)),
+            _ => OnlineStateCanonicalizer.HashV1(canonical),
         };
 }

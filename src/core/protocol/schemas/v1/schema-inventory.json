@@ -130,7 +130,7 @@
     },
     {
       "contractType": "vocabulary-only",
-      "messageType": "checkpoint|restore|finalizeRun|runSummary|shutdown",
+      "messageType": "checkpoint|finalizeRun|runSummary|shutdown",
       "schema": "protocol-envelope.schema.json",
       "fixtureDirectory": "../fixtures/protocol",
       "implementationStatus": "payload-future-work-package"

@@ -13,7 +13,7 @@ public sealed partial class OnlineRunnerSessionTests
     [Theory]
     [InlineData("+Infinity", "guaranteed")]
     [InlineData("-Infinity", "allowed")]
-    public void Shadow_class_is_frozen_at_the_first_promise_and_retained_after_restore(
+    public void Shadow_class_is_frozen_at_the_first_promise_and_retained_in_checkpoint(
         string threshold, string expectedClass)
     {
         using var network = new ShadowNetworkFixture();
@@ -29,19 +29,14 @@ public sealed partial class OnlineRunnerSessionTests
         Assert.Equal(expectedClass, allocation.GetProperty("class").GetString());
         Assert.NotEmpty(allocation.GetProperty("score").GetString()!);
 
-        var restarted = OpenC1(configuration);
-        Assert.Equal("restore", restarted.Process(CreateRestoreRequest(checkpoint)).Response?.MessageType.Value);
-        Assert.Equal(checkpoint.CheckpointHash, ReadCheckpoint(restarted).CheckpointHash);
-
         var next = CreateTimerBatch(3, 5, 1_200);
-        var restored = ReadDecision(restarted, next);
-        Assert.Equal(ReadDecision(live, next).Frame, restored.Frame);
-        Assert.Equal(checkpoint.Content.StateHash, restored.Decision.StateBeforeHash);
-        var revision = Assert.Single(restored.Decision.Actions, action => IsAction(action, "promisePublished"));
+        var decision = ReadDecision(live, next).Decision;
+        Assert.Equal(checkpoint.Content.StateHash, decision.StateBeforeHash);
+        var revision = Assert.Single(decision.Actions, action => IsAction(action, "promisePublished"));
         Assert.Equal(2, revision.GetProperty("payload").GetProperty("promiseVersion").GetInt32());
-        AcknowledgeServiceQualityDecision(restarted, restored.Decision, 3, 1_200);
-        var after = ReadCheckpoint(restarted);
-        Assert.Equal(restored.Decision.StateAfterHash, after.Content.StateHash);
+        AcknowledgeServiceQualityDecision(live, decision, 3, 1_200);
+        var after = ReadCheckpoint(live);
+        Assert.Equal(decision.StateAfterHash, after.Content.StateHash);
         Assert.Equal(CanonicalJsonText(allocation), CanonicalJsonText(ReadShadowAllocation(after)));
     }
 
@@ -73,7 +68,7 @@ public sealed partial class OnlineRunnerSessionTests
     }
 
     [Fact]
-    public void Shadow_restore_rejects_missing_forged_or_unconfigured_allocations()
+    public void Shadow_state_decoder_rejects_missing_forged_or_unconfigured_allocations()
     {
         using var network = new ShadowNetworkFixture();
         var configuration = C1RunnerConfiguration.Decode(Bytes(network.Configuration("+Infinity")));

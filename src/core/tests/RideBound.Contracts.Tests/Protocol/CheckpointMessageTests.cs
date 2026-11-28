@@ -39,7 +39,7 @@ public sealed class CheckpointMessageTests
     }
 
     [Fact]
-    public void Unknown_checkpoint_version_is_rejected_before_restore()
+    public void Checkpoint_decoder_rejects_an_unknown_version()
     {
         using var document = JsonDocument.Parse(
             $$"""

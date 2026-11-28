@@ -64,7 +64,7 @@ public sealed partial class OnlineRunnerSessionTests
     }
 
     [Fact]
-    public void Light_audit_checkpoint_preserves_the_ledger_and_replays_the_decision_chain()
+    public void Light_audit_checkpoint_preserves_the_ledger_and_decision_chain()
     {
         var configuration = ReadAuditConfiguration("light-v1");
         var live = OpenC1(configuration);
@@ -74,37 +74,13 @@ public sealed partial class OnlineRunnerSessionTests
         Assert.Equal(AuditStateIdentity(2, 5, 1_100), checkpoint.Content.StateHash);
         Assert.Single(checkpoint.Content.OnlineState.GetProperty("commitmentLedger").EnumerateArray());
 
-        var restored = OpenC1(configuration);
-        Assert.Equal("restore", restored.Process(CreateRestoreRequest(checkpoint)).Response?.MessageType.Value);
-        Assert.Equal(checkpoint.CheckpointHash, ReadCheckpoint(restored).CheckpointHash);
-
         var next = CreateTimerBatch(3, 5, 1_200);
-        var uninterrupted = ReadDecision(live, next);
-        var replayed = ReadDecision(restored, next);
-        Assert.Equal(uninterrupted.Frame, replayed.Frame);
-        Assert.Equal(uninterrupted.Frame, ReadDecision(restored, next).Frame);
-        Assert.Equal(checkpoint.Content.PreviousDecisionHash, replayed.Decision.PreviousDecisionHash);
-        Assert.Equal(AuditStateIdentity(3, 6, 1_200), replayed.Decision.StateAfterHash);
-        AcknowledgeServiceQualityDecision(restored, replayed.Decision, 3, 1_200);
-        Assert.Equal(replayed.Decision.DecisionHash, ReadCheckpoint(restored).Content.PreviousDecisionHash);
-    }
-
-    [Fact]
-    public void Light_audit_still_checks_the_checkpoint_state_content_hash_and_manifest()
-    {
-        var configuration = ReadAuditConfiguration("light-v1");
-        var live = OpenC1(configuration);
-        BootstrapAndAcknowledge(live);
-        var checkpoint = ReadCheckpoint(live);
-        var restore = JsonNode.Parse(CreateRestoreRequest(checkpoint))!;
-        restore["payload"]!["content"]!["onlineState"]!["vehicles"]![0]!["capacity"] = 5;
-
-        var changed = OpenC1(configuration).Process(Bytes(restore)).Response;
-        Assert.Equal("error", changed?.MessageType.Value);
-        Assert.Contains("Checkpoint content hash mismatch", changed?.Payload.GetProperty("message").GetString());
-
-        var mismatched = OpenC1(ReadAuditConfiguration(null)).Process(CreateRestoreRequest(checkpoint)).Response;
-        Assert.Equal("MANIFEST_MUTATION", mismatched?.Payload.GetProperty("code").GetString());
+        var decision = ReadDecision(live, next);
+        Assert.Equal(decision.Frame, ReadDecision(live, next).Frame);
+        Assert.Equal(checkpoint.Content.PreviousDecisionHash, decision.Decision.PreviousDecisionHash);
+        Assert.Equal(AuditStateIdentity(3, 6, 1_200), decision.Decision.StateAfterHash);
+        AcknowledgeServiceQualityDecision(live, decision.Decision, 3, 1_200);
+        Assert.Equal(decision.Decision.DecisionHash, ReadCheckpoint(live).Content.PreviousDecisionHash);
     }
 
     [Fact]

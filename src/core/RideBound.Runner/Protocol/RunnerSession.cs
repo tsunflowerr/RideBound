@@ -190,7 +190,6 @@ public sealed partial class RunnerSession
             "eventBatch" => ProcessEventBatch(envelope),
             "decisionApplied" => ProcessDecisionApplied(envelope),
             "checkpoint" => ProcessCheckpoint(envelope),
-            "restore" => ProcessRestore(envelope),
             _ => Error(
                 "INVALID_SESSION_STATE",
                 ProtocolFailureDisposition.RejectMessage,

@@ -434,18 +434,10 @@ public sealed partial class OnlineRunnerSessionTests
             Assert.Equal(moved.Decision.StateAfterHash, checkpoint.Content.StateHash);
             Assert.Equal(moved.Decision.DecisionHash, checkpoint.Content.PreviousDecisionHash);
 
-            var restarted = CreateC1Session(configuration);
-            Assert.Equal("initialized", restarted.Process(Bytes(CreateC1Initialize(configuration))).Response?.MessageType.Value);
-            var restored = restarted.Process(CreateRestoreRequest(checkpoint));
-            Assert.Equal("restore", restored.Response?.MessageType.Value);
-            Assert.Equal("restored", restored.Response?.Payload.GetProperty("status").GetString());
-            Assert.Equal(checkpoint.CheckpointHash.Value, restored.Response?.Payload.GetProperty("checkpointHash").GetString());
-            Assert.Equal(3, restarted.AppliedEpoch);
-            Assert.Equal(7, restarted.NextEventSequence);
-            Assert.Equal(checkpoint.CheckpointHash, ReadCheckpoint(restarted).CheckpointHash);
+            Assert.Equal(3, checkpoint.Content.AppliedEpoch);
+            Assert.Equal(7, checkpoint.Content.NextEventSequence);
 
             var next = ReadDecision(session, following);
-            Assert.Equal(next.Frame, ReadDecision(restarted, following).Frame);
             Assert.Equal(moved.Decision.StateAfterHash, next.Decision.StateBeforeHash);
             Assert.DoesNotContain(next.Decision.Actions, x => IsAction(x, "promisePublished"));
 
@@ -496,41 +488,19 @@ public sealed partial class OnlineRunnerSessionTests
     }
 
     [Fact]
-    public void A_genesis_checkpoint_can_only_be_restored_once()
+    public void Restore_message_is_rejected_without_changing_the_checkpoint()
     {
-        var checkpoint = ReadCheckpoint(CreateInitializedOnlineSession());
-        Assert.Equal(0, checkpoint.Content.AppliedEpoch);
+        var session = CreateInitializedOnlineSession();
+        var checkpoint = ReadCheckpoint(session);
+        var restore = CheckpointEnvelope(
+            "restore", JsonNode.Parse(CheckpointPayloadCodec.Encode(checkpoint))!);
 
-        var restarted = CreateInitializedOnlineSession();
-        var restore = CreateRestoreRequest(checkpoint);
-        Assert.Equal("restore", restarted.Process(restore).Response?.MessageType.Value);
-        Assert.Equal(checkpoint.CheckpointHash, ReadCheckpoint(restarted).CheckpointHash);
-        Assert.Equal("error", restarted.Process(restore).Response?.MessageType.Value);
-        Assert.Equal(0, restarted.AppliedEpoch);
-    }
+        var rejected = session.Process(restore);
 
-    [Theory]
-    [InlineData("manifest")]
-    [InlineData("epoch")]
-    [InlineData("state")]
-    public void Rehashed_checkpoint_must_match_the_manifest_and_inner_state(string field)
-    {
-        var checkpoint = ReadCheckpoint(CreateInitializedOnlineSession());
-        Sha256Hex.TryCreate(new string('f', 64), out var other);
-        var content = field switch
-        {
-            "manifest" => checkpoint.Content with { ManifestHash = other! },
-            "epoch" => checkpoint.Content with { AppliedEpoch = 1 },
-            _ => checkpoint.Content with { StateHash = other! },
-        };
-        var modified = checkpoint with { Content = content, CheckpointHash = CheckpointPayloadCodec.CalculateHash(content) };
-
-        var restarted = CreateInitializedOnlineSession();
-        var rejected = restarted.Process(CreateRestoreRequest(modified));
         Assert.Equal("error", rejected.Response?.MessageType.Value);
-        Assert.Equal(field == "manifest" ? "MANIFEST_MUTATION" : "HASH_MISMATCH",
-            rejected.Response?.Payload.GetProperty("code").GetString());
-        Assert.Equal(0, restarted.AppliedEpoch);
+        Assert.Equal("UNKNOWN_MESSAGE_TYPE", rejected.Response!.Payload.GetProperty("code").GetString());
+        Assert.Equal(RunnerSessionStatus.Initialized, session.Status);
+        Assert.Equal(checkpoint.CheckpointHash, ReadCheckpoint(session).CheckpointHash);
     }
 
     private static CheckpointPayload ReadCheckpoint(RunnerSession session)
@@ -544,9 +514,6 @@ public sealed partial class OnlineRunnerSessionTests
 
     private static byte[] CreateCheckpointRequest() =>
         CheckpointEnvelope("checkpoint", new JsonObject());
-
-    private static byte[] CreateRestoreRequest(CheckpointPayload checkpoint) =>
-        CheckpointEnvelope("restore", JsonNode.Parse(CheckpointPayloadCodec.Encode(checkpoint))!);
 
     private static byte[] CheckpointEnvelope(string type, JsonNode payload) =>
         Bytes(new JsonObject

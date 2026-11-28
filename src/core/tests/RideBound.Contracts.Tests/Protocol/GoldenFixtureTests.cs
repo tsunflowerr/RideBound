@@ -9,94 +9,47 @@ namespace RideBound.Contracts.Tests.Protocol;
 public sealed class GoldenFixtureTests
 {
     [Fact]
-    public void Required_inventory_contains_exactly_two_named_fixtures()
+    public void Required_inventory_contains_the_duplicate_event_fixture()
     {
         var root = FixtureLoader.GetFixturePath("golden/required");
-        var directories = Directory.GetDirectories(root)
-            .Order(StringComparer.Ordinal)
-            .ToArray();
 
-        Assert.Equal(2, directories.Length);
+        var directory = Assert.Single(Directory.GetDirectories(root));
+
+        Assert.Equal("09-duplicate-event-idempotent", Path.GetFileName(directory));
+    }
+
+    [Fact]
+    public void Required_metadata_describes_the_runner_executable_fixture()
+    {
+        var root = FixtureLoader.GetFixturePath("golden/required");
+        var metadata = Assert.Single(Directory.GetFiles(root, "metadata.json", SearchOption.AllDirectories));
+
+        using var document = JsonDocument.Parse(File.ReadAllText(metadata));
+        var value = document.RootElement;
         Assert.Equal(
-            [
-                "09-duplicate-event-idempotent",
-                "10-checkpoint-restore-equivalence",
-            ],
-            directories.Select(Path.GetFileName));
+            ["expectedOutcome", "expectedValidator", "fixtureId", "minimumWorkPackage", "supportLevel"],
+            value.EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal));
+        Assert.Equal("pass", value.GetProperty("expectedOutcome").GetString());
+        Assert.Equal("runner-executable", value.GetProperty("supportLevel").GetString());
+        Assert.Equal("duplicate-event-idempotent", value.GetProperty("fixtureId").GetString());
     }
 
     [Fact]
-    public void Required_metadata_uses_honest_wp1_support_taxonomy()
+    public void Required_input_is_a_canonicalizable_event_batch()
     {
         var root = FixtureLoader.GetFixturePath("golden/required");
-        var metadataFiles = Directory.GetFiles(
-                root,
-                "metadata.json",
-                SearchOption.AllDirectories)
-            .Order(StringComparer.Ordinal)
-            .ToArray();
-        var supportLevels = new List<string>();
+        var input = Assert.Single(Directory.GetFiles(root, "input.json", SearchOption.AllDirectories));
+        var bytes = File.ReadAllBytes(input);
 
-        Assert.Equal(2, metadataFiles.Length);
+        var canonical = CanonicalJson.Canonicalize(bytes);
+        var envelope = ProtocolEnvelopeCodec.Decode(bytes);
 
-        foreach (var metadataFile in metadataFiles)
-        {
-            using var document = JsonDocument.Parse(File.ReadAllText(metadataFile));
-            var rootElement = document.RootElement;
-            var fields = rootElement.EnumerateObject()
-                .Select(property => property.Name)
-                .Order(StringComparer.Ordinal)
-                .ToArray();
-            Assert.Equal(
-                [
-                    "expectedOutcome",
-                    "expectedValidator",
-                    "fixtureId",
-                    "minimumWorkPackage",
-                    "supportLevel",
-                ],
-                fields);
-            Assert.Equal("pass", rootElement.GetProperty("expectedOutcome").GetString());
-            supportLevels.Add(rootElement.GetProperty("supportLevel").GetString()!);
-
-            var directoryName = Path.GetFileName(
-                Path.GetDirectoryName(metadataFile))!;
-            Assert.Equal(
-                directoryName[3..],
-                rootElement.GetProperty("fixtureId").GetString());
-        }
-
-        Assert.Single(supportLevels, value => value == "future-behavior");
-        Assert.Single(
-            supportLevels,
-            value => value == "runner-executable");
-        Assert.DoesNotContain("schema-only", supportLevels);
-    }
-
-    [Fact]
-    public void Every_required_input_is_canonicalizable_event_batch_contract()
-    {
-        var root = FixtureLoader.GetFixturePath("golden/required");
-        var inputs = Directory.GetFiles(
-            root,
-            "input.json",
-            SearchOption.AllDirectories);
-
-        Assert.Equal(2, inputs.Length);
-
-        foreach (var input in inputs)
-        {
-            var bytes = File.ReadAllBytes(input);
-            var canonical = CanonicalJson.Canonicalize(bytes);
-            var envelope = ProtocolEnvelopeCodec.Decode(bytes);
-
-            Assert.NotEmpty(canonical);
-            Assert.True(envelope.IsSuccess, input);
-            Assert.Equal("eventBatch", envelope.Envelope?.MessageType.Value);
-            var payload = EventBatchPayloadCodec.Decode(envelope.Envelope!.Payload);
-            Assert.True(payload.IsSuccess, input);
-            Assert.Single(payload.Value!.Events);
-        }
+        Assert.NotEmpty(canonical);
+        Assert.True(envelope.IsSuccess, input);
+        Assert.Equal("eventBatch", envelope.Envelope?.MessageType.Value);
+        var payload = EventBatchPayloadCodec.Decode(envelope.Envelope!.Payload);
+        Assert.True(payload.IsSuccess, input);
+        Assert.Single(payload.Value!.Events);
     }
 
     [Fact]

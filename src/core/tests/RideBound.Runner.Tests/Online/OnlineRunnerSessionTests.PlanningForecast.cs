@@ -36,7 +36,7 @@ public sealed partial class OnlineRunnerSessionTests
     [Theory]
     [InlineData(false, 60_050, 60_150, 60_175, 60_295)]
     [InlineData(true, 60_100, 60_300, 60_350, 60_590)]
-    public void Planning_uses_the_bound_forecast_after_restore_and_traffic_updates(
+    public void Planning_uses_the_bound_forecast_across_traffic_updates(
         bool enableForecast, long firstPickup, long firstDrop, long updatedPickup, long updatedDrop)
     {
         var configuration = enableForecast
@@ -53,26 +53,17 @@ public sealed partial class OnlineRunnerSessionTests
         Assert.False(travel.TryGetProperty("planningForecast", out _));
         Assert.Equal(100, travel.GetProperty("arcs")[0].GetProperty("travelTimeMs").GetInt64());
 
-        var restored = OpenC1(configuration);
-        Assert.Equal("restore", restored.Process(CreateRestoreRequest(checkpoint)).Response?.MessageType.Value);
-        Assert.Equal(checkpoint.CheckpointHash, ReadCheckpoint(restored).CheckpointHash);
-
         var booking = JsonNode.Parse(CreateTimerBatch(2, 4, 59_950))!;
         var bookingEvent = booking["payload"]!["events"]![0]!;
         bookingEvent["eventType"] = "bookingConfirmed";
         bookingEvent["payload"] = new JsonObject { ["requestId"] = "r-1" };
 
         var confirmed = ReadDecision(live, Bytes(booking));
-        var confirmedAfterRestore = ReadDecision(restored, Bytes(booking));
-        Assert.Equal(confirmed.Frame, confirmedAfterRestore.Frame);
         AssertForecastPromise(confirmed.Decision, firstPickup, firstDrop);
         AcknowledgeServiceQualityDecision(live, confirmed.Decision, 2, 59_950);
-        AcknowledgeServiceQualityDecision(restored, confirmedAfterRestore.Decision, 2, 59_950);
 
         var traffic = TrafficSnapshotBatch(3, 5, 59_975, 2, toPickup: 200, toDrop: 120);
         var updated = ReadDecision(live, traffic);
-        var updatedAfterRestore = ReadDecision(restored, traffic);
-        Assert.Equal(updated.Frame, updatedAfterRestore.Frame);
         AssertForecastPromise(updated.Decision, updatedPickup, updatedDrop);
     }
 

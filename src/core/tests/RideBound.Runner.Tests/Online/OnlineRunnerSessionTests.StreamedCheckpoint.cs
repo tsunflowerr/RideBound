@@ -13,7 +13,7 @@ public sealed partial class OnlineRunnerSessionTests
     [Theory]
     [InlineData("full-v1")]
     [InlineData("light-v1")]
-    public async Task Streamed_checkpoint_matches_the_canonical_envelope_and_restores_over_ndjson(string auditMode)
+    public async Task Streamed_checkpoint_matches_the_canonical_envelope_over_ndjson(string auditMode)
     {
         var configuration = ReadAuditConfiguration(auditMode);
         var session = OpenC1(configuration);
@@ -57,17 +57,6 @@ public sealed partial class OnlineRunnerSessionTests
         Assert.Equal(conventional, Encoding.UTF8.GetBytes(frames[^2]));
         Assert.Equal(5, output.WritesPerFrame.Count);
         Assert.True(output.WritesPerFrame[^1] > 8);
-
-        var continuation = CreateTimerBatch(3, 5, 1_200);
-        var uninterrupted = ReadDecision(session, continuation);
-        using var resumed = await RunCheckpointTransport(
-            configuration, hello, initial, CreateRestoreRequest(checkpoint), continuation);
-        var lines = Encoding.UTF8.GetString(resumed.ToArray()).Split('\n');
-        using var ack = JsonDocument.Parse(lines[2]);
-        Assert.Equal("restore", ack.RootElement.GetProperty("messageType").GetString());
-        var expected = CanonicalJson.Canonicalize(Encoding.UTF8.GetBytes(uninterrupted.Frame));
-        Assert.Equal(expected, Encoding.UTF8.GetBytes(lines[3]));
-        Assert.Equal(string.Empty, lines[^1]);
     }
 
     private static byte[] CreateCheckpointBootstrap()

@@ -11,7 +11,7 @@ namespace RideBound.Runner.Tests.Online;
 public sealed partial class OnlineRunnerSessionTests
 {
     [Fact]
-    public void Traffic_breach_is_hashed_once_after_ack_and_survives_checkpoint_restore()
+    public void Traffic_breach_is_hashed_once_after_ack_and_retained_after_recovery()
     {
         var configuration = ReadServiceQualityConfiguration();
         var session = OpenC1(configuration);
@@ -60,15 +60,10 @@ public sealed partial class OnlineRunnerSessionTests
         Assert.Equal(breach.GetProperty("budgetBefore").GetRawText(),
             breach.GetProperty("attemptedBudgetAfter").GetRawText());
 
-        var restarted = OpenC1(configuration);
-        Assert.Equal("restore", restarted.Process(CreateRestoreRequest(checkpoint)).Response?.MessageType.Value);
-        Assert.Equal(checkpoint.CheckpointHash, ReadCheckpoint(restarted).CheckpointHash);
         var recovery = TrafficSnapshotBatch(4, 6, 1_300, 3, 100);
-        var live = ReadDecision(session, recovery);
-        var restored = ReadDecision(restarted, recovery);
-        Assert.Equal(live.Frame, restored.Frame);
-        AcknowledgeServiceQualityDecision(restarted, restored.Decision, 4, 1_300);
-        var recoveredLedger = ReadCheckpoint(restarted).Content.OnlineState.GetProperty("incidentLedger");
+        var recovered = ReadDecision(session, recovery).Decision;
+        AcknowledgeServiceQualityDecision(session, recovered, 4, 1_300);
+        var recoveredLedger = ReadCheckpoint(session).Content.OnlineState.GetProperty("incidentLedger");
         Assert.Equal(breach.GetProperty("breachId").GetString(),
             Assert.Single(recoveredLedger.GetProperty("breaches").EnumerateArray()).GetProperty("breachId").GetString());
     }
@@ -91,31 +86,26 @@ public sealed partial class OnlineRunnerSessionTests
     [Theory]
     [InlineData("record-v1")]
     [InlineData("reject")]
-    public void Late_boarding_mode_is_applied_consistently_after_restore(string mode)
+    public void Late_boarding_mode_controls_the_checkpoint_state(string mode)
     {
         var configuration = ReadServiceQualityConfiguration(mode);
         var live = OpenC1(configuration);
         var route = BootstrapForServiceQuality(live);
         _ = ConfirmServiceQualityBooking(live);
         var checkpoint = ReadCheckpoint(live);
-        var restarted = OpenC1(configuration);
-        Assert.Equal("restore", restarted.Process(CreateRestoreRequest(checkpoint)).Response?.MessageType.Value);
-
         var boarding = CreateLateBoardingBatch(route);
         if (mode == "reject")
         {
-            var error = restarted.Process(boarding).Response;
+            var error = live.Process(boarding).Response;
             Assert.Equal("error", error?.MessageType.Value);
             Assert.Equal("SCHEMA_VALIDATION_FAILED", error?.Payload.GetProperty("code").GetString());
-            Assert.Equal(checkpoint.CheckpointHash, ReadCheckpoint(restarted).CheckpointHash);
+            Assert.Equal(checkpoint.CheckpointHash, ReadCheckpoint(live).CheckpointHash);
             return;
         }
 
-        var original = ReadDecision(live, boarding);
-        var restored = ReadDecision(restarted, boarding);
-        Assert.Equal(original.Frame, restored.Frame);
-        AcknowledgeServiceQualityDecision(restarted, restored.Decision, 3, 2_500);
-        var final = ReadCheckpoint(restarted);
+        var decision = ReadDecision(live, boarding).Decision;
+        AcknowledgeServiceQualityDecision(live, decision, 3, 2_500);
+        var final = ReadCheckpoint(live);
         var state = final.Content.OnlineState;
         var rider = Assert.Single(state.GetProperty("requests").EnumerateArray());
         Assert.Equal("onboard", rider.GetProperty("lifecycle").GetString());
@@ -128,10 +118,6 @@ public sealed partial class OnlineRunnerSessionTests
         Assert.Equal(2_000, recorded.GetProperty("latestPickupMs").GetInt64());
         Assert.Equal(2_500, recorded.GetProperty("actualPickupMs").GetInt64());
         Assert.Equal(6, recorded.GetProperty("sourceEventSeq").GetInt64());
-
-        var afterBoarding = OpenC1(configuration);
-        Assert.Equal("restore", afterBoarding.Process(CreateRestoreRequest(final)).Response?.MessageType.Value);
-        Assert.Equal(final.CheckpointHash, ReadCheckpoint(afterBoarding).CheckpointHash);
     }
 
     [Fact]

@@ -19,10 +19,6 @@ public sealed record CheckpointPayload(
     Sha256Hex CheckpointHash,
     CheckpointContent Content);
 
-public sealed record RestoreAcknowledgedPayload(
-    string Status,
-    Sha256Hex CheckpointHash);
-
 public static class CheckpointPayloadCodec
 {
     public const string CurrentVersion = "1.0.0";
@@ -370,26 +366,4 @@ public static class CheckpointPayloadCodec
 
     private static IReadOnlySet<string> Set(params string[] values) =>
         new HashSet<string>(values, StringComparer.Ordinal);
-}
-
-public static class RestoreAcknowledgedPayloadCodec
-{
-    public static byte[] Encode(RestoreAcknowledgedPayload payload)
-    {
-        ArgumentNullException.ThrowIfNull(payload);
-
-        if (!string.Equals(payload.Status, "restored", StringComparison.Ordinal))
-        {
-            throw new ArgumentException("Restore status must be 'restored'.", nameof(payload));
-        }
-
-        return ProtocolPayloadReader.Write(
-            writer =>
-            {
-                writer.WriteStartObject();
-                writer.WriteString("status", payload.Status);
-                writer.WriteString("checkpointHash", payload.CheckpointHash.Value);
-                writer.WriteEndObject();
-            });
-    }
 }

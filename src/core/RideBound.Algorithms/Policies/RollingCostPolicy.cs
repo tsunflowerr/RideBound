@@ -1,7 +1,3 @@
-using System.Buffers.Binary;
-using System.Globalization;
-using System.Security.Cryptography;
-using System.Text;
 using RideBound.Algorithms.Candidates;
 using RideBound.Application.Optimization;
 using RideBound.Application.State;
@@ -151,55 +147,7 @@ public sealed class RollingCostPolicy
             generationWork += work;
         }
 
-        var omittedCount = 0L;
-        var saturated = false;
-        foreach (var omission in diagnostics.Omissions)
-        {
-            saturated |= omission.CountWasSaturated;
-            if (omission.Count > DomainLimits.MaxCanonicalInteger - omittedCount)
-            {
-                omittedCount = DomainLimits.MaxCanonicalInteger;
-                saturated = true;
-            }
-            else
-            {
-                omittedCount += omission.Count;
-            }
-        }
-
-        return CandidateSelectionPreSolveAccounting.Create(
-            budget,
-            generationWork,
-            validationWork,
-            omittedCount,
-            omittedCount == 0 ? null : AggregateOmissionDigest(diagnostics.Omissions),
-            saturated);
-    }
-
-    private static string AggregateOmissionDigest(IReadOnlyList<CandidateOmissionWitness> omissions)
-    {
-        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-        hash.AppendData("RideBound.Wp4OmissionAccounting.v1\0"u8);
-        foreach (var omission in omissions
-                     .OrderBy(value => value.Code, StringComparer.Ordinal)
-                     .ThenBy(value => value.StableDigest, StringComparer.Ordinal))
-        {
-            Append(omission.Code);
-            Append(omission.Count.ToString(CultureInfo.InvariantCulture));
-            Append(omission.StableDigest);
-            Append(omission.CountWasSaturated ? "1" : "0");
-        }
-
-        return Convert.ToHexStringLower(hash.GetHashAndReset());
-
-        void Append(string value)
-        {
-            var bytes = Encoding.UTF8.GetBytes(value);
-            Span<byte> length = stackalloc byte[sizeof(int)];
-            BinaryPrimitives.WriteInt32BigEndian(length, bytes.Length);
-            hash.AppendData(length);
-            hash.AppendData(bytes);
-        }
+        return CandidateSelectionPreSolveAccounting.Create(budget, generationWork, validationWork);
     }
 
     private sealed class SolverFleetValidator(

@@ -171,7 +171,7 @@ public sealed class InsertionCandidateGeneratorTests
 
         Assert.True(first.IsSuccess, first.Witness?.Message);
         var set = Assert.Single(first.VehicleCandidates!);
-        Assert.True(set.WasTruncated);
+        Assert.False(first.Diagnostics!.IsComplete);
         Assert.Equal(2, set.Candidates.Count);
         Assert.Contains(set.Candidates, value => value.IsNoOp);
         Assert.Equal(
@@ -260,19 +260,11 @@ public sealed class InsertionCandidateGeneratorTests
             candidate => Assert.Equal(
                 [urgentAlphabeticallyLast.Id],
                 candidate.NewRequestIds));
-        Assert.Equal(2, result.Diagnostics!.TotalPendingRequestCount);
-        Assert.Equal(1, result.Diagnostics.ConsideredRequestCount);
-        Assert.Equal(1, result.Diagnostics.OmittedRequestCount);
-        var omission = Assert.Single(
-            result.Diagnostics.Omissions,
-            witness => witness.Code
-                == CandidateGenerationFailureCodes.RequestBoundOmission);
-        Assert.Equal([lateAlphabeticallyFirst.Id], omission.RequestIds);
-        Assert.True(result.VehicleCandidates!.Single().WasTruncated);
+        Assert.False(result.Diagnostics!.IsComplete);
     }
 
     [Fact]
-    public void Bounded_best_first_work_keeps_higher_acceptance_and_counts_unknown_paths()
+    public void Bounded_best_first_work_keeps_higher_acceptance_and_marks_incomplete_search()
     {
         var first = AlgorithmTestData.PendingRequest("request-1");
         var second = AlgorithmTestData.PendingRequest(
@@ -288,39 +280,18 @@ public sealed class InsertionCandidateGeneratorTests
             maximumExplorationWorkUnits: 3);
 
         var firstRun = _generator.Generate(state, options);
-        var secondRun = _generator.Generate(state, options);
 
         Assert.True(firstRun.IsSuccess, firstRun.Witness?.Message);
         var set = Assert.Single(firstRun.VehicleCandidates!);
         var accepted = Assert.Single(set.Candidates, candidate => !candidate.IsNoOp);
         Assert.Equal(2, accepted.NewRequestIds.Count);
-        Assert.True(set.WasTruncated);
+        Assert.False(firstRun.Diagnostics!.IsComplete);
         var loss = Assert.Single(firstRun.Diagnostics!.VehicleLosses);
         Assert.Equal(3, loss.ExplorationWorkUnits);
-        Assert.Equal(1, loss.EvaluatedCandidatePathCount);
-        Assert.Equal(7, loss.OmittedUnexpandedCandidatePathCount);
-        Assert.Equal(
-            8,
-            loss.EvaluatedCandidatePathCount
-                + loss.OmittedUnexpandedCandidatePathCount);
-        Assert.True(loss.WorkBudgetExhausted);
-        var omission = Assert.Single(
-            firstRun.Diagnostics.Omissions,
-            witness => witness.Code
-                == CandidateGenerationFailureCodes.WorkBoundOmission);
-        Assert.Equal(7, omission.Count);
-        Assert.False(omission.CountWasSaturated);
-        Assert.Equal(
-            omission.StableDigest,
-            Assert.Single(
-                secondRun.Diagnostics!.Omissions,
-                witness => witness.Code
-                    == CandidateGenerationFailureCodes.WorkBoundOmission)
-                .StableDigest);
     }
 
     [Fact]
-    public void Candidate_cap_prefers_acceptance_then_cost_and_reports_feasible_loss()
+    public void Candidate_cap_prefers_acceptance_then_cost_and_marks_incomplete_search()
     {
         var first = AlgorithmTestData.PendingRequest("request-1");
         var second = AlgorithmTestData.PendingRequest(
@@ -337,7 +308,6 @@ public sealed class InsertionCandidateGeneratorTests
             2,
             2);
         var bounded = _generator.Generate(state, boundedOptions);
-        var repeated = _generator.Generate(state, boundedOptions);
 
         Assert.True(full.IsSuccess, full.Witness?.Message);
         Assert.True(full.Diagnostics!.IsComplete);
@@ -355,27 +325,7 @@ public sealed class InsertionCandidateGeneratorTests
             candidate => !candidate.IsNoOp);
         Assert.Equal(2, retained.NewRequestIds.Count);
         Assert.Equal(fullTwoRequest.CandidateId, retained.CandidateId);
-        var loss = Assert.Single(bounded.Diagnostics!.VehicleLosses);
-        Assert.Equal(9, loss.UniqueFeasibleCandidateCountBeforeCap);
-        Assert.Equal(2, loss.RetainedCandidateCount);
-        Assert.Equal(7, loss.OmittedFeasibleCandidateCountByCap);
-        Assert.Equal(
-            loss.UniqueFeasibleCandidateCountBeforeCap,
-            loss.RetainedCandidateCount
-                + loss.OmittedFeasibleCandidateCountByCap);
-        Assert.True(loss.CandidateCapApplied);
-        var omission = Assert.Single(
-            bounded.Diagnostics.Omissions,
-            witness => witness.Code
-                == CandidateGenerationFailureCodes.CandidateCapOmission);
-        Assert.Equal(7, omission.Count);
-        Assert.Equal(
-            omission.StableDigest,
-            Assert.Single(
-                repeated.Diagnostics!.Omissions,
-                witness => witness.Code
-                    == CandidateGenerationFailureCodes.CandidateCapOmission)
-                .StableDigest);
+        Assert.False(bounded.Diagnostics!.IsComplete);
     }
 
     [Fact]
@@ -414,7 +364,7 @@ public sealed class InsertionCandidateGeneratorTests
     }
 
     [Fact]
-    public void Omission_count_saturates_at_the_canonical_limit()
+    public void Large_frontier_with_only_the_root_expanded_is_incomplete()
     {
         var requests = Enumerable.Range(0, 55)
             .Select(index => AlgorithmTestData.PendingRequest($"request-{index:D2}"))
@@ -429,12 +379,6 @@ public sealed class InsertionCandidateGeneratorTests
         var diagnostics = result.Diagnostics!;
         var loss = Assert.Single(diagnostics.VehicleLosses);
         Assert.Equal(1, loss.ExplorationWorkUnits);
-        Assert.Equal(0, loss.EvaluatedCandidatePathCount);
-        Assert.Equal(DomainLimits.MaxCanonicalInteger, loss.OmittedUnexpandedCandidatePathCount);
-        Assert.True(loss.OmissionCountWasSaturated);
-        var omission = Assert.Single(diagnostics.Omissions);
-        Assert.Equal(CandidateGenerationFailureCodes.WorkBoundOmission, omission.Code);
-        Assert.True(omission.CountWasSaturated);
         Assert.False(diagnostics.IsComplete);
     }
 }

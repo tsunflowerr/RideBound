@@ -140,7 +140,6 @@ public sealed class SolverBackedFleetSelectionTests
         var accounting = CandidateSelectionPreSolveAccounting.Create(
             budget,
             1,
-            0,
             0).Value!;
         return new SolverBackedFleetSelector(new ExactTestSolver()).Select(
             sets,
@@ -167,7 +166,7 @@ public sealed class SolverBackedFleetSelectionTests
     public void Solver_solution_from_another_problem_uses_the_validated_no_op()
     {
         var budget = Budget();
-        var accounting = CandidateSelectionPreSolveAccounting.Create(budget, 0, 0, 0).Value!;
+        var accounting = CandidateSelectionPreSolveAccounting.Create(budget, 0, 0).Value!;
         var vehicle = AlgorithmTestData.VehicleOne;
         var result = new SolverBackedFleetSelector(new ForeignSolutionSolver()).Select(
             [Set(vehicle, Candidate("no-op", vehicle, [], 0))],
@@ -214,7 +213,7 @@ public sealed class SolverBackedFleetSelectionTests
     }
 
     [Fact]
-    public void Bounded_generation_and_solver_loss_are_reported_separately()
+    public void Bounded_generation_and_solver_fallback_are_reported_separately()
     {
         var first = AlgorithmTestData.PendingRequest("request-1");
         var second = AlgorithmTestData.PendingRequest(
@@ -231,11 +230,9 @@ public sealed class SolverBackedFleetSelectionTests
 
         Assert.True(result.IsSuccess, result.Witness?.Message);
         var decision = result.Decision!;
-        Assert.Equal(1, decision.GenerationDiagnostics!.OmittedRequestCount);
+        Assert.False(decision.GenerationDiagnostics!.IsComplete);
         var execution = decision.SelectionExecution!;
-        Assert.True(execution.Diagnostics.CandidateLossOccurred);
         Assert.True(execution.Diagnostics.SolverLossOccurred);
-        Assert.Matches("^[0-9a-f]{64}$", execution.Diagnostics.OmissionDigest!);
         Assert.Equal(CandidateSelectionSolveStatus.SafeFallback, execution.SolveResult.Status);
         Assert.All(decision.RequestActions, action => Assert.Equal(RequestDecisionOutcome.Deferred, action.Outcome));
         Assert.Same(state.Run, decision.ProposedState.Run);
@@ -307,7 +304,7 @@ public sealed class SolverBackedFleetSelectionTests
     private static VehicleCandidateSet Set(
         VehicleId vehicleId,
         params InsertionCandidate[] candidates) =>
-        new(vehicleId, candidates, [], false);
+        new(vehicleId, candidates, []);
 
     private static InsertionCandidate Candidate(
         string id,
@@ -357,7 +354,6 @@ public sealed class SolverBackedFleetSelectionTests
                     (level, index) => ObjectiveSolveBound.Create(
                         index,
                         level,
-                        best.ObjectiveValues[index],
                         best.ObjectiveValues[index]).Value!)
                 .ToArray();
             return CandidateSelectionSolveResult.Optimal(
@@ -403,7 +399,6 @@ public sealed class SolverBackedFleetSelectionTests
                 budget,
                 Math.Min(work, budget.MaximumWorkUnits),
                 1,
-                0,
                 bounds).Value!;
     }
 
@@ -416,7 +411,6 @@ public sealed class SolverBackedFleetSelectionTests
             var diagnostics = CandidateSelectionSolverDiagnostics.Create(
                 problem,
                 budget,
-                0,
                 0,
                 0,
                 []).Value!;

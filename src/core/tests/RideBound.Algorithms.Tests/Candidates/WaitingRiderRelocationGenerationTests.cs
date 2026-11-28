@@ -64,11 +64,6 @@ public sealed class WaitingRiderRelocationGenerationTests
 
         var loss = Assert.Single(result.Diagnostics!.RelocationLosses!);
         Assert.Equal(AlgorithmTestData.VehicleOne, loss.DonorVehicleId);
-        Assert.Equal(1, loss.EligibleRiderCount);
-        Assert.Equal(1, loss.EvaluatedReceiverRouteCount);
-        Assert.Equal(1, loss.FeasibleReceiverCount);
-        Assert.Equal(1, loss.FeasibleDonorCount);
-        Assert.True(result.Diagnostics.IsComplete);
         AssertIdsAreUnique(result);
     }
 
@@ -90,7 +85,7 @@ public sealed class WaitingRiderRelocationGenerationTests
     }
 
     [Fact]
-    public void Donor_search_reports_paths_omitted_by_its_work_budget()
+    public void Donor_search_under_its_work_budget_still_returns_feasible_relocation()
     {
         var pending = AlgorithmTestData.PendingRequest(
             "pending", AlgorithmTestData.NodeThree, AlgorithmTestData.NodeOne);
@@ -106,14 +101,8 @@ public sealed class WaitingRiderRelocationGenerationTests
         Assert.True(result.IsSuccess, result.Witness?.Message);
         var diagnostics = result.Diagnostics!;
         var loss = Assert.Single(diagnostics.RelocationLosses!);
-        var omission = Assert.Single(
-            diagnostics.Omissions,
-            value => value.Code == CandidateGenerationFailureCodes.RelocationWorkBoundOmission);
-        Assert.Equal(1, loss.OmittedUnexpandedDonorPathCount);
-        Assert.Equal(loss.OmittedUnexpandedDonorPathCount, omission.Count);
-        Assert.Equal([Waiting], omission.RequestIds);
+        Assert.True(loss.WorkUnits > 1);
         Assert.False(diagnostics.IsComplete);
-        Assert.True(result.VehicleCandidates!.Single(set => set.VehicleId == loss.DonorVehicleId).WasTruncated);
         Assert.Empty(Assert.Single(Relocation(result, RelocationRole.Donor)).NewRequestIds);
         Assert.Single(Relocation(result, RelocationRole.Receiver));
     }
@@ -126,11 +115,7 @@ public sealed class WaitingRiderRelocationGenerationTests
         var result = Generate(Fixture(receiverRider: other), new WaitingRiderRelocationGenerationOptions());
 
         Assert.True(result.IsSuccess, result.Witness?.Message);
-        var loss = Assert.Single(result.Diagnostics!.RelocationLosses!, value => value.DonorVehicleId == AlgorithmTestData.VehicleOne);
-        Assert.Equal(6, loss.EvaluatedReceiverRouteCount);
-        Assert.Equal(
-            loss.FeasibleReceiverCount,
-            Relocation(result, RelocationRole.Receiver).Count(value => value.RelocatedRequestId == Waiting));
+        Assert.Single(result.Diagnostics!.RelocationLosses!, value => value.DonorVehicleId == AlgorithmTestData.VehicleOne);
         Assert.All(
             Relocation(result, RelocationRole.Receiver).Where(value => value.RelocatedRequestId == Waiting),
             value => Assert.Equal(4, value.Route.MutableSuffix.Count));
@@ -151,8 +136,6 @@ public sealed class WaitingRiderRelocationGenerationTests
         Assert.Equal(
             [AlgorithmTestData.VehicleTwo],
             Relocation(nearest, RelocationRole.Receiver).Select(value => value.VehicleId).Distinct().ToArray());
-        // The target cap is a neighbourhood choice, not an omission.
-        Assert.True(nearest.Diagnostics!.IsComplete);
     }
 
     [Fact]
@@ -166,10 +149,7 @@ public sealed class WaitingRiderRelocationGenerationTests
         Assert.True(result.IsSuccess, result.Witness?.Message);
         Assert.Empty(Relocation(result, RelocationRole.Donor));
         Assert.Empty(Relocation(result, RelocationRole.Receiver));
-        var loss = Assert.Single(result.Diagnostics!.RelocationLosses!);
-        Assert.Equal(1, loss.RidersWithoutFeasibleReceiver);
-        Assert.Equal(1, loss.EvaluatedReceiverRouteCount);
-        Assert.Equal(0, loss.FeasibleReceiverCount);
+        Assert.Single(result.Diagnostics!.RelocationLosses!);
     }
 
     /// <summary>

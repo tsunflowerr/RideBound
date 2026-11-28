@@ -299,7 +299,7 @@ public sealed class WaitingRiderRelocationPolicyTests
             if (returnUnknown)
             {
                 var noIncumbent = CandidateSelectionSolverDiagnostics.Create(
-                    problem, budget, 0, 0, 0, []).Value!;
+                    problem, budget, 0, 0, []).Value!;
                 return CandidateSelectionSolveResult.Unknown(
                     noIncumbent, "TEST_NO_INCUMBENT", "No incumbent in this test.");
             }
@@ -312,14 +312,12 @@ public sealed class WaitingRiderRelocationPolicyTests
                 budget,
                 1,
                 1,
-                0,
                 best is null
                     ? []
                     : problem.ObjectiveLevels
                         .Select((level, index) => ObjectiveSolveBound.Create(
                             index,
                             level,
-                            best.ObjectiveValues[index],
                             best.ObjectiveValues[index]).Value!)
                         .ToArray()).Value!;
             return best is null

@@ -115,10 +115,6 @@ public sealed class ExogenousServiceQualityBreachBridgeTests
             travel.SnapshotHash,
             commitments);
         var diagnostics = new CandidateGenerationDiagnostics(
-            0,
-            0,
-            0,
-            [],
             [],
             [
                 new ExogenousServiceQualityBreach(

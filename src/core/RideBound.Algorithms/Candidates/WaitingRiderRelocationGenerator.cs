@@ -35,12 +35,6 @@ public sealed partial class InsertionCandidateGenerator
             }
 
             var work = 0L;
-            var evaluatedReceivers = 0L;
-            var feasibleReceivers = 0L;
-            var feasibleDonors = 0L;
-            var omittedDonorPaths = 0L;
-            var saturated = false;
-            var withoutReceiver = 0L;
 
             foreach (var seed in seeds)
             {
@@ -52,7 +46,6 @@ public sealed partial class InsertionCandidateGenerator
 
                 if (targets.Count == 0)
                 {
-                    withoutReceiver++;
                     continue;
                 }
 
@@ -107,7 +100,6 @@ public sealed partial class InsertionCandidateGenerator
                                  seed.DropOff))
                     {
                         work = SaturatingAdd(work, 1);
-                        evaluatedReceivers = SaturatingAdd(evaluatedReceivers, 1);
                         EvaluateRoute(
                             state,
                             receiver,
@@ -124,7 +116,6 @@ public sealed partial class InsertionCandidateGenerator
 
                 if (receiverFeasible.Count == 0)
                 {
-                    withoutReceiver++;
                     continue;
                 }
 
@@ -138,43 +129,12 @@ public sealed partial class InsertionCandidateGenerator
                     new RelocationRoot(donorContext, seed.DonorSuffix));
 
                 work = SaturatingAdd(work, exploration.WorkUnits);
-                saturated |= exploration.OmissionCountWasSaturated
-                    || exploration.OmittedCandidatePathCount
-                        > DomainLimits.MaxCanonicalInteger - omittedDonorPaths;
-                omittedDonorPaths = SaturatingAdd(
-                    omittedDonorPaths,
-                    exploration.OmittedCandidatePathCount);
-
-                if (exploration.OmittedCandidatePathCount > 0)
-                {
-                    result.Omissions.Add(
-                        new CandidateOmissionWitness(
-                            CandidateGenerationFailureCodes.RelocationWorkBoundOmission,
-                            exploration.OmittedCandidatePathCount,
-                            CandidateIdentity.CreateOmissionDigest(
-                                exploration.OmittedSubtreeIds),
-                            [seed.Request.Id],
-                            exploration.OmissionCountWasSaturated));
-                    result.Truncated.Add(donor.Id);
-                }
-
-                feasibleDonors = SaturatingAdd(feasibleDonors, donorFeasible.Count);
-                feasibleReceivers = SaturatingAdd(feasibleReceivers, receiverFeasible.Count);
+                result.IsComplete &= exploration.IsComplete;
                 result.Add(donorFeasible.Values, donorPruned.Values);
                 result.Add(receiverFeasible.Values, receiverPruned.Values);
             }
 
-            result.Losses.Add(
-                new RelocationCandidateLoss(
-                    donor.Id,
-                    seeds.Count,
-                    work,
-                    evaluatedReceivers,
-                    feasibleReceivers,
-                    feasibleDonors,
-                    omittedDonorPaths,
-                    saturated,
-                    withoutReceiver));
+            result.Losses.Add(new RelocationCandidateLoss(donor.Id, work));
         }
 
         return result;
@@ -193,11 +153,9 @@ public sealed partial class InsertionCandidateGenerator
         private readonly Dictionary<VehicleId, List<InsertionCandidate>> _candidates = [];
         private readonly Dictionary<VehicleId, List<CandidatePruneWitness>> _pruned = [];
 
-        public List<CandidateOmissionWitness> Omissions { get; } = [];
+        public bool IsComplete { get; set; } = true;
 
         public List<RelocationCandidateLoss> Losses { get; } = [];
-
-        public HashSet<VehicleId> Truncated { get; } = [];
 
         public void Add(
             IEnumerable<InsertionCandidate> candidates,
@@ -226,9 +184,8 @@ public sealed partial class InsertionCandidateGenerator
         {
             var hasCandidates = _candidates.TryGetValue(set.VehicleId, out var candidates);
             var hasPruned = _pruned.TryGetValue(set.VehicleId, out var pruned);
-            var truncated = Truncated.Contains(set.VehicleId);
 
-            if (!hasCandidates && !hasPruned && !truncated)
+            if (!hasCandidates && !hasPruned)
             {
                 return set;
             }
@@ -243,7 +200,6 @@ public sealed partial class InsertionCandidateGenerator
                     .Concat(pruned ?? [])
                     .OrderBy(value => value.CandidateId, StringComparer.Ordinal)
                     .ToArray(),
-                WasTruncated = set.WasTruncated || truncated,
             };
         }
     }

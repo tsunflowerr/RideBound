@@ -56,42 +56,15 @@ public sealed record VehicleCandidateSet(
     VehicleId VehicleId,
     IReadOnlyList<InsertionCandidate> Candidates,
     IReadOnlyList<CandidatePruneWitness> PrunedCandidates,
-    bool WasTruncated,
     VehicleCandidateLoss? Loss = null);
 
-public sealed record CandidateOmissionWitness(
-    string Code,
-    long Count,
-    string StableDigest,
-    IReadOnlyList<RequestId>? RequestIds = null,
-    bool CountWasSaturated = false);
-
-public sealed record VehicleCandidateLoss(
-    long ExplorationWorkUnits,
-    long EvaluatedCandidatePathCount,
-    long UniqueFeasibleCandidateCountBeforeCap,
-    long RetainedCandidateCount,
-    long PhysicallyOrSchedulePrunedCount,
-    long OmittedUnexpandedCandidatePathCount,
-    long OmittedFeasibleCandidateCountByCap,
-    bool WorkBudgetExhausted,
-    bool CandidateCapApplied,
-    bool OmissionCountWasSaturated = false);
+public sealed record VehicleCandidateLoss(long ExplorationWorkUnits);
 
 /// <summary>
 /// G2 accounting for one donor vehicle with at least one eligible waiting rider. Kept apart
 /// from <see cref="VehicleCandidateLoss"/>, whose meaning stays that of the ordinary search.
 /// </summary>
-public sealed record RelocationCandidateLoss(
-    VehicleId DonorVehicleId,
-    long EligibleRiderCount,
-    long WorkUnits,
-    long EvaluatedReceiverRouteCount,
-    long FeasibleReceiverCount,
-    long FeasibleDonorCount,
-    long OmittedUnexpandedDonorPathCount,
-    bool OmissionCountWasSaturated,
-    long RidersWithoutFeasibleReceiver);
+public sealed record RelocationCandidateLoss(VehicleId DonorVehicleId, long WorkUnits);
 
 /// <summary>
 /// A service-quality deadline the vehicle's unchanged active route can no longer
@@ -110,21 +83,10 @@ public sealed record ExogenousServiceQualityBreach(
     long ExogenousMilliseconds);
 
 public sealed record CandidateGenerationDiagnostics(
-    long TotalPendingRequestCount,
-    long ConsideredRequestCount,
-    long OmittedRequestCount,
     IReadOnlyList<VehicleCandidateLoss> VehicleLosses,
-    IReadOnlyList<CandidateOmissionWitness> Omissions,
     IReadOnlyList<ExogenousServiceQualityBreach> ExogenousServiceQualityBreaches,
-    IReadOnlyList<RelocationCandidateLoss>? RelocationLosses = null)
-{
-    public bool IsComplete => OmittedRequestCount == 0
-        && VehicleLosses.All(
-            loss => loss.OmittedUnexpandedCandidatePathCount == 0
-                && loss.OmittedFeasibleCandidateCountByCap == 0)
-        && (RelocationLosses is null
-            || RelocationLosses.All(loss => loss.OmittedUnexpandedDonorPathCount == 0));
-}
+    IReadOnlyList<RelocationCandidateLoss>? RelocationLosses = null,
+    bool IsComplete = true);
 
 public sealed record CandidateGenerationResult
 {
@@ -249,11 +211,6 @@ public static class CandidateGenerationFailureCodes
     public const string PlanVersionOverflow = "PLAN_VERSION_OVERFLOW";
     public const string ScheduleEvaluationFailed = "SCHEDULE_EVALUATION_FAILED";
     public const string SlackProfileFailed = "SLACK_PROFILE_FAILED";
-    public const string RequestBoundOmission = "REQUEST_BOUND_OMISSION";
-    public const string WorkBoundOmission = "WORK_BOUND_OMISSION";
-    public const string CandidateCapOmission = "CANDIDATE_CAP_OMISSION";
-    public const string RelocationWorkBoundOmission =
-        "RELOCATION_WORK_BOUND_OMISSION";
     public const string ExactSmallRequestBoundExceeded =
         "EXACT_SMALL_REQUEST_BOUND_EXCEEDED";
     public const string ExactSmallCandidateCapExceeded =

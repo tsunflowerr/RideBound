@@ -101,8 +101,7 @@ public static class OnlineStateCanonicalizer
         return result!;
     }
 
-    // Canonical JSON is compositional. Canonicalize a bounded group of array entries at a
-    // time, then use just its bytes between the square brackets.
+    // Splice each canonical chunk without its outer brackets.
     private static void WriteCanonicalArray<T>(
         CanonicalSegmentBuilder builder,
         IEnumerable<T> values,

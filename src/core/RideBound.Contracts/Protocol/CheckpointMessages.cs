@@ -149,10 +149,7 @@ public static class CheckpointPayloadCodec
         return HashCanonicalContent(canonical, [], default);
     }
 
-    /// <summary>
-    /// Hashes a checkpoint whose online state is already canonical JSON, possibly split
-    /// across multiple byte ranges. The shell must have an empty online state.
-    /// </summary>
+    /// <summary>Hashes an empty checkpoint shell with the supplied canonical state bytes.</summary>
     public static Sha256Hex CalculateHash(
         CheckpointContent shell,
         IReadOnlyList<ReadOnlyMemory<byte>> canonicalOnlineState)
@@ -165,10 +162,7 @@ public static class CheckpointPayloadCodec
         return HashCanonicalContent(before, canonicalOnlineState, after);
     }
 
-    /// <summary>
-    /// Encodes a checkpoint shell with a hash computed over the full state.
-    /// Insert the canonical state bytes into its empty onlineState before sending.
-    /// </summary>
+    /// <summary>Encodes a checkpoint shell whose empty onlineState must be filled before sending.</summary>
     public static byte[] EncodeShell(Sha256Hex checkpointHash, CheckpointContent shell)
     {
         ArgumentNullException.ThrowIfNull(checkpointHash);
@@ -176,10 +170,7 @@ public static class CheckpointPayloadCodec
         return WritePayload(CurrentVersion, checkpointHash, shell);
     }
 
-    /// <summary>
-    /// Splits canonical JSON around its unique empty onlineState object. The value
-    /// itself is omitted so that the caller can insert canonical state bytes.
-    /// </summary>
+    /// <summary>Returns the bytes before and after the empty onlineState object.</summary>
     public static (ReadOnlyMemory<byte> Before, ReadOnlyMemory<byte> After) SplitAtEmptyOnlineState(
         byte[] canonical)
     {

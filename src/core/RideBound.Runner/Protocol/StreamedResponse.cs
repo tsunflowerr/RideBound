@@ -2,9 +2,7 @@ using RideBound.Contracts.Protocol;
 
 namespace RideBound.Runner.Protocol;
 
-/// <summary>
-/// Holds a protocol response as byte segments that can be written to an NDJSON stream.
-/// </summary>
+/// <summary>Writes a segmented NDJSON response.</summary>
 public sealed class StreamedResponse
 {
     private readonly IReadOnlyList<ReadOnlyMemory<byte>> _parts;

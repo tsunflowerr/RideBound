@@ -75,10 +75,7 @@ internal sealed class CanonicalSegments(IReadOnlyList<ReadOnlyMemory<byte>> part
     }
 }
 
-/// <summary>
-/// Collects structural JSON and canonical fragments in output order. Structural ranges are
-/// resolved once the byte buffer has reached its final size.
-/// </summary>
+// Resolve structural ranges only after the byte buffer stops growing.
 internal sealed class CanonicalSegmentBuilder
 {
     private readonly List<(ReadOnlyMemory<byte> Fragment, int Offset, int GlueLength)> _pending = [];

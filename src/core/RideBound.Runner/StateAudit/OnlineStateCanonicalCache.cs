@@ -24,8 +24,7 @@ internal sealed class OnlineStateCanonicalCache
     public CanonicalSegments Travel(TravelTimeSnapshot snapshot) =>
         _travel.GetValue(snapshot, OnlineStateCanonicalizer.CanonicalizeTravelTimes);
 
-    // Each entity type is written by a single projection. The arrays are exposed only
-    // as read-only ranges, and the weak keys release them when the entities are retired.
+    // Each entity type has one projection, cached only while the entity is alive.
     public ReadOnlyMemory<byte> Entity<T>(T item, Action<Utf8JsonWriter, T> write)
         where T : class
     {

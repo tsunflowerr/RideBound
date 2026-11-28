@@ -6,12 +6,7 @@ using RideBound.Contracts.Serialization;
 namespace RideBound.Runner.StateAudit;
 
 /// <summary>
-/// Writes canonical JSON v1 bytes directly (docs/06 section 10.1; CanonicalJson.cs).
-/// The output is byte-identical to <c>CanonicalJson.Canonicalize</c> applied to the same
-/// value: members are written in ordinal name order (enforced at run time), strings use
-/// exactly CanonicalJson.WriteJsonString escaping, integers use Utf8Formatter inside the
-/// canonical safe range, and null is rejected. Property names must be plain ASCII names
-/// that need no escaping.
+/// Writes canonical JSON v1 directly. Member names must be unescaped ASCII in ordinal order.
 /// </summary>
 internal sealed class CanonicalBuffer
 {
@@ -71,8 +66,7 @@ internal sealed class CanonicalBuffer
                 "Null is not permitted in canonical protocol JSON.");
         }
 
-        // Fast path: printable ASCII without '"' or '\' is copied byte for byte, which is
-        // exactly what CanonicalJson.WriteJsonString emits for such a string.
+        // Copy printable ASCII directly when it needs no escaping.
         var plain = true;
 
         foreach (var character in value)
@@ -104,7 +98,7 @@ internal sealed class CanonicalBuffer
         Byte((byte)'"');
     }
 
-    // Mirrors CanonicalJson.EnsureValidUnicode + CanonicalJson.WriteJsonString (CanonicalJson.cs:203-303).
+    // Match CanonicalJson Unicode validation and escaping.
     private void WriteEscaped(string value)
     {
         for (var index = 0; index < value.Length; index++)
@@ -202,11 +196,7 @@ internal sealed class CanonicalBuffer
     }
 }
 
-/// <summary>
-/// Writes one canonical object: members must be added in strictly increasing ordinal
-/// name order (the order CanonicalJson.WriteObject sorts to); a wrong order throws, so a
-/// coding error can never silently produce non-canonical bytes.
-/// </summary>
+/// <summary>Writes an object and enforces strictly increasing ordinal member order.</summary>
 internal ref struct CanonicalObject
 {
     private readonly CanonicalBuffer _buffer;

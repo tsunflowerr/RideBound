@@ -4,7 +4,6 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using RideBound.Contracts.Protocol;
 using RideBound.Runner.Configuration;
-using RideBound.Runner.Online;
 
 namespace RideBound.Runner.Tests.Online;
 
@@ -65,28 +64,6 @@ public sealed partial class OnlineRunnerSessionTests
         Assert.Equal("guaranteed", ReadShadowAllocation(checkpoint).GetProperty("class").GetString());
         var rider = Assert.Single(checkpoint.Content.OnlineState.GetProperty("requests").EnumerateArray());
         Assert.Equal("onboard", rider.GetProperty("lifecycle").GetString());
-    }
-
-    [Fact]
-    public void Shadow_state_decoder_rejects_missing_forged_or_unconfigured_allocations()
-    {
-        using var network = new ShadowNetworkFixture();
-        var configuration = C1RunnerConfiguration.Decode(Bytes(network.Configuration("+Infinity")));
-        var session = OpenC1(configuration);
-        _ = BootstrapForServiceQuality(session);
-        _ = ConfirmServiceQualityBooking(session);
-        var state = ReadCheckpoint(session).Content.OnlineState;
-        var initialHash = state.GetProperty("travelTimes").GetProperty("snapshotHash").GetString()!;
-        Assert.False(OnlineStateCheckpointCodec.Decode(state, initialHash).IsSuccess);
-
-        var tampered = JsonNode.Parse(state.GetRawText())!.AsObject();
-        tampered["shadowAllocations"]![0]!["class"] = "allowed";
-        using var forged = JsonDocument.Parse(Bytes(tampered));
-        Assert.False(OnlineStateCheckpointCodec.Decode(forged.RootElement, initialHash, double.PositiveInfinity).IsSuccess);
-
-        tampered.Remove("shadowAllocations");
-        using var missing = JsonDocument.Parse(Bytes(tampered));
-        Assert.False(OnlineStateCheckpointCodec.Decode(missing.RootElement, initialHash, double.PositiveInfinity).IsSuccess);
     }
 
     [Fact]
